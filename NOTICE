@@ -1,0 +1,21 @@
+# What the licence covers, and what it does not
+
+The work in this repository — `index.html`, `js/`, `utilities/` and the
+documentation beside them — is licensed under the GNU General Public License,
+version 3 or (at your option) any later version. `LICENSE` holds the full text.
+
+`js/mac-*.js` are copied from grimoire (`ratlizard/grimoire`), which is under
+the same licence, and are kept identical to it by `utilities/copies_check.mjs`.
+
+## Not covered
+
+**The Logical Journey of the Zoombinis itself.** The game is copyright
+Brøderbund Software and TERC, and its successors. The game, its data, its
+documentation and everything shipped with it are not in this repository and
+are not distributed with it. The page reads a copy that you supply, or one the
+Internet Archive already hosts publicly, in your browser.
+
+**`reference/`**, which is gitignored: the game, the extraction project's
+tools and output, and the programs the checks compare against, among them
+ScummVM's Zoombinis branch (`ied206/scummvm-zoombini`, GPL-3.0). None of their
+code is in this repository unless a file says it was ported, and from where.

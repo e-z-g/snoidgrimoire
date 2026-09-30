@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SnoidGrimoire</title>
+<style>
+:root {
+  --bg: #070a10; --panel: #0e131c; --raise: #161d29; --line: #232c3b; --text: #d9dfe8;
+  --dim: #8c97a9; --faint: #5d677a; --accent: #7fc3ff; --warn: #e8b86a; --bad: #ef8a80;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); }
+body { display: flex; flex-direction: column; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button, .btn {
+  background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 5px 11px;
+  cursor: pointer; white-space: nowrap;
+}
+button:hover, .btn:hover { border-color: var(--faint); }
+button:disabled { opacity: .45; cursor: default; }
+select { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; min-width: 0; max-width: 100%; }
+a { color: var(--accent); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+code, .mono { font: 12.5px/1.35 var(--mono); }
+
+/* ---- the bar ---- */
+#bar {
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line);
+  background: var(--panel); flex: none; min-height: 44px;
+}
+#brand { font-weight: 650; letter-spacing: .02em; cursor: pointer; }
+#crumbs { display: flex; gap: 6px; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; color: var(--dim); }
+#crumbs .sep { color: var(--faint); }
+#status { margin-left: auto; color: var(--dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#status.bad { color: var(--bad); }
+
+/* ---- before anything is open ---- */
+#start { flex: 1; display: grid; place-items: center; padding: 24px 16px; overflow: auto; }
+#start .card { max-width: 580px; width: 100%; }
+#start h1 { font-size: 22px; font-weight: 650; margin: 0 0 6px; }
+#start p { color: var(--dim); margin: 8px 0; }
+#drop {
+  margin: 18px 0; border: 1.5px dashed var(--line); border-radius: 10px; padding: 22px 16px; text-align: center;
+  background: var(--panel);
+}
+#drop.over { border-color: var(--accent); }
+#drop .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+#start ul { color: var(--dim); padding-left: 20px; margin: 6px 0; }
+#start li { margin: 3px 0; }
+#remote { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+/* ---- the browser ---- */
+#app { flex: 1; display: flex; min-height: 0; }
+#side {
+  width: 270px; flex: none; border-right: 1px solid var(--line); background: var(--panel);
+  overflow: auto; padding: 8px 0 24px;
+}
+#side h2 { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin: 12px 14px 4px; }
+.arc { display: flex; justify-content: space-between; gap: 8px; padding: 4px 14px; cursor: pointer; }
+.arc:hover { background: var(--raise); }
+.arc.on { background: var(--raise); box-shadow: inset 3px 0 var(--accent); }
+.arc .name { font-weight: 550; }
+.arc .place { color: var(--dim); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.arc.unfetched .name { color: var(--dim); font-weight: 400; }
+details.type { margin: 2px 0; }
+details.type summary { padding: 3px 14px; cursor: pointer; color: var(--dim); list-style: none; display: flex; justify-content: space-between; }
+details.type summary::-webkit-details-marker { display: none; }
+details.type summary:hover { color: var(--text); }
+details.type summary .n { color: var(--faint); }
+.ids { display: flex; flex-wrap: wrap; gap: 3px; padding: 4px 12px 8px 22px; }
+.ids a {
+  font: 12px/1.2 var(--mono); padding: 2px 5px; border-radius: 4px; background: var(--bg);
+  border: 1px solid var(--line); color: var(--text);
+}
+.ids a:hover { border-color: var(--faint); text-decoration: none; }
+.ids a.on { border-color: var(--accent); color: var(--accent); }
+
+#view { flex: 1; min-width: 0; overflow: auto; padding: 16px 20px 40px; }
+#view h1 { font-size: 19px; font-weight: 650; margin: 0 0 2px; }
+#view .sub { color: var(--dim); margin: 0 0 14px; }
+#view .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0 14px; }
+#view .tools label { color: var(--dim); }
+.note { color: var(--dim); font-size: 13px; }
+.warn { color: var(--warn); }
+.bad { color: var(--bad); }
+table.plain { border-collapse: collapse; margin: 6px 0 14px; }
+table.plain td, table.plain th { padding: 3px 12px 3px 0; text-align: left; vertical-align: top; }
+table.plain th { color: var(--faint); font-weight: 500; font-size: 12.5px; }
+table.plain td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; max-width: 100%; height: auto; display: block; }
+.picture { background: repeating-conic-gradient(#1a2130 0 25%, #121824 0 50%) 0 0 / 16px 16px; display: inline-block; border: 1px solid var(--line); }
+.sheet { display: flex; flex-wrap: wrap; gap: 6px; }
+.frame {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border-radius: 6px;
+  border: 1px solid var(--line); background: repeating-conic-gradient(#1a2130 0 25%, #121824 0 50%) 0 0 / 12px 12px;
+  cursor: pointer;
+}
+.frame:hover, .frame.on { border-color: var(--accent); }
+.frame span { font: 10.5px/1 var(--mono); color: var(--dim); background: var(--bg); padding: 1px 3px; border-radius: 3px; }
+#focus { margin: 0 0 16px; }
+.swatches { display: grid; grid-template-columns: repeat(16, minmax(0, 26px)); gap: 2px; }
+.swatches div { aspect-ratio: 1; border-radius: 3px; border: 1px solid rgba(255,255,255,.06); }
+.swatches div.off { background: repeating-linear-gradient(45deg, #1b2230 0 3px, #111722 3px 6px); }
+.strings p { margin: 0 0 12px; max-width: 70ch; white-space: pre-wrap; }
+.strings p b { color: var(--faint); font-weight: 500; font: 12px var(--mono); margin-right: 6px; }
+.frames td { font: 12px/1.35 var(--mono); }
+.frames td.rec { color: var(--text); }
+.frames tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+.regs { font: 12px/1.5 var(--mono); color: var(--dim); column-width: 120px; }
+audio { width: min(420px, 100%); }
+
+/* ---- the view switch ---- */
+#views { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; flex: none; }
+#views a { padding: 2px 10px; border-radius: 5px; color: var(--dim); text-decoration: none; }
+#views a.on { background: var(--raise); color: var(--text); }
+
+/* ---- the map ---- */
+#journey { flex: 1; display: flex; min-height: 0; }
+#jstage { position: relative; flex: 1; min-width: 0; overflow: hidden; background: #05070b; }
+#jmap { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#jmap.dragging { cursor: grabbing; }
+#jstage.broken #jmap, #jstage.broken #jtools { display: none; }
+#jtools {
+  position: absolute; left: 10px; top: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  max-width: calc(100% - 20px); z-index: 2;
+}
+#jtools > * { background: rgba(14, 19, 28, .9); }
+#jtools button { min-width: 34px; }
+#jscale { position: absolute; right: 10px; bottom: 8px; color: #c9c1ad; font-size: 12px; z-index: 2; pointer-events: none; text-shadow: 0 0 3px #000, 0 0 2px #000; }
+#jpanel {
+  width: 360px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow: auto;
+  padding: 14px 16px 30px;
+}
+#jpanel h2 { font-size: 18px; margin: 0 0 2px; font-weight: 650; }
+#jpanel .sub { color: var(--dim); margin-bottom: 10px; }
+#jpanel h3 { font-size: 12.5px; font-weight: 600; color: var(--dim); margin: 16px 0 5px; }
+#jpanel p { margin: 6px 0; }
+#jpanel .actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 8px; }
+#jpanel .actions .btn { color: var(--text); text-decoration: none; }
+#jpanel small { color: var(--faint); }
+#jpanel .help p { margin: 0 0 8px; white-space: pre-wrap; }
+ol.route { margin: 0; padding-left: 22px; }
+ol.route li { padding: 1px 0; }
+ol.route small { margin-left: 8px; }
+.chip { display: inline-block; width: 18px; height: 6px; border-radius: 3px; flex: none; }
+.legend div { display: flex; align-items: center; gap: 9px; padding: 2px 4px; cursor: pointer; border-radius: 5px; }
+.legend div:hover { background: var(--raise); }
+.legend div.on { color: var(--accent); background: var(--raise); }
+.legend small { margin-left: auto; }
+table.kv { border-collapse: collapse; width: 100%; }
+table.kv td { padding: 2px 0; vertical-align: top; }
+table.kv td:first-child { color: var(--dim); padding-right: 12px; white-space: nowrap; width: 1%; }
+.dealt { border-left: 2px solid var(--line); padding-left: 8px; margin: 6px 0 10px; }
+.dealt summary { cursor: pointer; color: var(--accent); margin: 6px 0; }
+table.band { font-size: 12px; margin: 6px 0 4px; width: 100%; }
+table.band td, table.band th { padding: 2px 6px 2px 0; }
+table.band td.mark { color: var(--accent); }
+
+/* ---- the town, all round ---- */
+#town { flex: 1; position: relative; min-height: 0; background: #000; overflow: hidden; }
+#tcanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+#ttools {
+  position: absolute; left: 10px; right: 10px; top: 10px; display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; z-index: 2;
+  pointer-events: none;
+}
+#ttools > * { pointer-events: auto; }
+#ttools .panel {
+  display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; background: rgba(14, 19, 28, .88);
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+}
+#ttools label { display: flex; align-items: center; gap: 6px; color: var(--dim); white-space: nowrap; }
+#ttools label b { color: var(--text); font-weight: 600; min-width: 2.2em; font-variant-numeric: tabular-nums; }
+#ttools input[type=range] { width: 130px; accent-color: var(--accent); }
+#ttools button { background: rgba(22, 29, 41, .92); }
+#tcaption {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 2; pointer-events: none;
+  background: rgba(8, 10, 14, .78); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-weight: 600;
+  white-space: nowrap;
+}
+#tcaption small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+#tstatus { position: absolute; left: 12px; bottom: 12px; z-index: 2; color: var(--warn); }
+#ttools select { background: var(--bg); }
+#tcardexit { display: none; }
+#town:fullscreen { width: 100%; height: 100%; }
+#town.cardboard #ttools, #town.cardboard #tcaption { display: none; }
+/* An iPhone cannot put the town full screen: at least lose the site's bar. */
+body:has(#town.cardboard) #bar { display: none; }
+#town.cardboard #tcardexit {
+  display: block; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 3;
+  background: rgba(14, 19, 28, .75); font-size: 12px; padding: 3px 9px;
+}
+
+/* ---- a puzzle taken apart ---- */
+#solve { flex: 1; display: flex; min-height: 0; }
+#sstage { flex: 1; min-width: 0; overflow: auto; background: #05070b; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+#sdiagram svg { display: block; width: 100%; height: auto; max-width: 1100px; margin: 0 auto; background: #070a10; border: 1px solid var(--line); border-radius: 6px; }
+#scaption { color: var(--dim); text-align: center; font-size: 13px; }
+#spanel {
+  width: 420px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow: auto;
+  padding: 14px 16px 30px;
+}
+#spanel h2 { font-size: 18px; margin: 0 0 2px; font-weight: 650; }
+#spanel .sub { color: var(--dim); margin-bottom: 8px; }
+#spanel p { margin: 6px 0; }
+#spanel .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+#spanel .actions .btn { color: var(--text); text-decoration: none; }
+#spanel .actions select { max-width: 100%; }
+#spanel details.sec { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 10px; }
+#spanel details.sec > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--dim); margin-bottom: 4px; }
+.sband { display: grid; gap: 2px; }
+.szb { display: flex; align-items: center; gap: 6px; padding: 1px 0; }
+.szb .n { width: 18px; text-align: right; color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; flex: none; }
+.szb img.zb, .szb .zb.none { width: 30px; height: 40px; object-fit: contain; object-position: center bottom; image-rendering: pixelated; flex: none; }
+.szb .traits { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; flex: 1; min-width: 0; }
+.szb select { font-size: 12px; padding: 2px 2px; width: 100%; }
+.szb .x { padding: 1px 7px; flex: none; }
+.sform .field, #spanel .field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 5px 0; }
+.field .label { color: var(--dim); min-width: 5.5em; }
+.field small { flex-basis: 100%; color: var(--faint); }
+.field .several { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.field .order { display: flex; flex-wrap: wrap; gap: 4px; }
+.tabs { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; margin: 14px 0 8px; }
+.tabs a { flex: 1; text-align: center; padding: 4px 8px; border-radius: 5px; color: var(--dim); }
+.tabs a.on { background: var(--raise); color: var(--text); }
+#spanel .big { font-size: 15px; }
+#spanel .big b { font-size: 20px; color: var(--accent); }
+ol.sols { padding-left: 20px; margin: 6px 0; }
+ol.sols li { cursor: pointer; padding: 3px 0; }
+ol.sols li.on b { color: var(--accent); }
+ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
+.walk { border-left: 2px solid var(--line); padding-left: 10px; margin: 8px 0; }
+.walk .crumbs { font-size: 12px; color: var(--faint); }
+.walk .move { font-weight: 600; }
+.working { color: var(--warn); }
+
+/* ---- a phone ---- */
+@media (max-width: 760px) {
+  #app { flex-direction: column; }
+  #side { width: auto; max-height: 38vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  #view { padding: 12px 12px 32px; }
+  #crumbs { display: none; }
+  #journey { flex-direction: column; }
+  #jstage { flex: 1 1 52%; }
+  #jpanel { width: auto; flex: 1 1 48%; border-left: 0; border-top: 1px solid var(--line); }
+  #solve { flex-direction: column; }
+  #sstage { flex: 0 1 auto; max-height: 46%; padding: 8px; }
+  #spanel { width: auto; flex: 1 1 54%; border-left: 0; border-top: 1px solid var(--line); }
+  .swatches { grid-template-columns: repeat(16, minmax(0, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="brand" title="Back to the start">SnoidGrimoire</span>
+  <nav id="views" hidden><a data-view="map" href="#journey">Map</a><a data-view="archives" href="#RODMAP">Archives</a></nav>
+  <span id="crumbs"></span>
+  <span id="status"></span>
+</div>
+
+<div id="start">
+  <div class="card">
+    <h1>SnoidGrimoire</h1>
+    <p>Reads the files of <i>The Logical Journey of the Zoombinis</i> (Brøderbund, 1996): every
+      picture, sprite sheet, sound, tune, palette, cursor, string, walk and animation script in
+      its Mohawk archives.</p>
+    <div id="drop">
+      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here</div>
+      <div class="row">
+        <label class="btn">Choose files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
+        <label class="btn">Choose the DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
+      </div>
+    </div>
+    <ul>
+      <li>The archives are in <code>DATA</code> on the game's CD, 22 of them, <code>BASECAMP.MHK</code> to <code>ZOOMBINI.MHK</code>.</li>
+      <li>A CD image (<code>.iso</code>) is read as it is: the archives are taken out of its <code>DATA</code> folder.</li>
+      <li>Nothing leaves your browser.</li>
+    </ul>
+    <div id="remote">
+      <p>Or read the copy the Internet Archive hosts: the Learning Company's re-release of 2001, whose
+        archives differ from 1996's in places. Each archive is fetched from archive.org when you open
+        it, 0.5 to 24 MB.</p>
+      <button id="useRemote">Read archive.org's copy</button>
+    </div>
+  </div>
+</div>
+
+<main id="journey" hidden>
+  <div id="jstage">
+    <canvas id="jmap"></canvas>
+    <div id="jtools">
+      <button id="jzoomOut" title="Zoom out">−</button>
+      <button id="jzoomIn" title="Zoom in">+</button>
+      <button id="jfit" title="The whole map, or the whole place">Fit</button>
+      <select id="jlevel" title="The level the roads are drawn at and the help is for">
+        <option value="1">Level 1: Not So Easy</option>
+        <option value="2">Level 2: Oh, So Hard</option>
+        <option value="3">Level 3: Very Hard</option>
+        <option value="4">Level 4: Very, Very Hard</option>
+      </select>
+    </div>
+    <div id="jscale"></div>
+  </div>
+  <aside id="jpanel"></aside>
+</main>
+
+<main id="town" hidden>
+  <canvas id="tcanvas"></canvas>
+  <div id="ttools">
+    <a class="btn" href="#place=TOWN">‹ Map</a>
+    <div class="panel">
+      <label>Zoombinis <input type="range" id="tpeople" min="0" max="625" step="1"> <b id="tpeopleN"></b></label>
+      <label>Reward buildings <input type="range" id="trewards" min="0" max="16" step="1"> <b id="trewardsN"></b></label>
+      <label title="How to show the town's depth on a flat screen">Depth <select id="tdepth">
+        <option value="none">None</option>
+        <option value="sway">Sway</option>
+        <option value="anaglyph">Red–cyan glasses</option>
+        <option value="cardboard">Cardboard</option>
+      </select></label>
+      <label title="Draw the pixels blended rather than square"><input type="checkbox" id="tsmooth"> Smooth</label>
+    </div>
+    <button id="tsound">Sound</button>
+    <button id="tmotion" hidden>Look with the phone</button>
+    <button id="tvr" hidden>Enter VR</button>
+  </div>
+  <button id="tcardexit">✕ Leave Cardboard</button>
+  <div id="tcaption" hidden></div>
+  <div id="tstatus"></div>
+</main>
+
+<main id="solve" hidden>
+  <div id="sstage">
+    <div id="sdiagram"></div>
+    <div id="scaption"></div>
+  </div>
+  <aside id="spanel"></aside>
+</main>
+
+<div id="app" hidden>
+  <nav id="side"></nav>
+  <main id="view"></main>
+</div>
+
+<script src="js/mac-bytes.js"></script>
+<script src="js/mac-media.js"></script>
+<script src="js/mac-export.js"></script>
+<script src="js/zb-mohawk.js"></script>
+<script src="js/zb-bitmap.js"></script>
+<script src="js/zb-script.js"></script>
+<script src="js/zb-disc.js"></script>
+<script src="js/zb-journey.js"></script>
+<script src="js/zb-town.js"></script>
+<script src="js/zb-snoid.js"></script>
+<script src="js/zb-diagram.js"></script>
+<script src="js/zb-puzzle.js"></script>
+<script src="js/zb-puzzle-bridge.js"></script>
+<script src="js/zb-puzzle-tunnels.js"></script>
+<script src="js/zb-puzzle-pizza.js"></script>
+<script src="js/zb-puzzle-ferry.js"></script>
+<script src="js/zb-puzzle-lilly.js"></script>
+<script src="js/zb-puzzle-slides.js"></script>
+<script src="js/zb-puzzle-fleens.js"></script>
+<script src="js/zb-puzzle-hotel.js"></script>
+<script src="js/zb-puzzle-net.js"></script>
+<script src="js/zb-puzzle-caves.js"></script>
+<script src="js/zb-puzzle-smoke.js"></script>
+<script src="js/zb-puzzle-maze2.js"></script>
+<script src="js/page-open.js"></script>
+<script src="js/page-browse.js"></script>
+<script src="js/page-map.js"></script>
+<script src="js/page-town.js"></script>
+<script src="js/page-solve.js"></script>
+</body>
+</html>
