@@ -18,6 +18,7 @@ const CHECKS = [
   ['journey', 'the places, routes and names against the program and ScummVM'],
   ['town', 'Zoombiniville\'s rules, world and names against ScummVM and the program'],
   ['snoid', 'the snoids put together from their parts, against animate.py and every snoid script; the walk against ScummVM'],
+  ['maker', 'the snoids\' idles, feet shows and walks as the Zoombini maker plays them'],
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
   ['page', 'index.html in headless Chrome: the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
 ];
