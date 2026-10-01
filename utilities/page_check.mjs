@@ -110,6 +110,54 @@ const VIEWS = [
   // An edit: the credits' first string rewritten, read back out of the rebuilt archive, listed under Changes, undone.
   ['ZOOMBINI/STRL/2900', "(() => { const b = document.getElementById('strEdit'); if (b) { b.click(); const t = document.querySelector('#view textarea'); t.value = 'Edited by a check'; document.getElementById('strApply').click(); } return /Edited by a check/.test(document.getElementById('view').textContent) && /edited/.test(document.querySelector('#view .sub').textContent) && openedArchive(ARCHIVES.get('ZOOMBINI')).list('STRL').length === 53 && parseStringList(openedArchive(ARCHIVES.get('ZOOMBINI')).get('STRL', 2900))[0] === 'Edited by a check'; })()"],
   ['changes', "/STRL 2900/.test(document.getElementById('view').textContent) && document.querySelector('[data-save=\"ZOOMBINI\"]') && (document.querySelector('#view [data-undo]').click(), true) && !EDITS.size"],
+  // Replacements, each handed a file as a person would pick one, and read back out of the rebuilt archive.
+  ['ZOOMBINI/tBMP/3000', `(() => {
+    if (!window.__frame) {
+      const cell = document.querySelector('#sheet .frame'); if (!cell) return false;
+      cell.click();
+      const f = decodeBitmapResource(openedArchive(ARCHIVES.get('ZOOMBINI')).get('tBMP', 3000)).frames[0];
+      const c = document.createElement('canvas'); c.width = f.width; c.height = f.height;
+      const g = c.getContext('2d'); g.translate(f.width, 0); g.scale(-1, 1); g.drawImage(document.querySelector('#sheet .frame canvas'), 0, 0);
+      window.__frame = 'asked';
+      c.toBlob(b => { const dt = new DataTransfer(); dt.items.add(new File([b], 'mirrored.png', { type: 'image/png' }));
+        const input = [...document.querySelectorAll('#focus input[type=file]')][0]; input.files = dt.files; input.dispatchEvent(new Event('change')); });
+      return false;
+    }
+    const e = EDITS.get('ZOOMBINI'), c = e && e.changes.get('tBMP/3000');
+    if (!c) return false;
+    const now = decodeBitmapResource(openedArchive(ARCHIVES.get('ZOOMBINI')).get('tBMP', 3000)).frames;
+    const was = decodeBitmapResource(e.original.subarray(openMohawk(e.original).find('tBMP', 3000).offset, openMohawk(e.original).find('tBMP', 3000).offset + openMohawk(e.original).find('tBMP', 3000).size)).frames;
+    const w = was[0].width, mirrored = now[0].pixels.every((v, i) => v === was[0].pixels[Math.floor(i / w) * w + (w - 1 - i % w)]);
+    return mirrored && now.length === 890 && now.slice(1).every((f, k) => f.pixels.every((v, i) => v === was[k + 1].pixels[i])) && /frame 0 replaced/.test(c.what);
+  })()`],
+  ['FLEENS/SND/1000', `(() => {
+    if (!window.__sound) {
+      const input = document.querySelector('#view input[type=file]'); if (!input) return false;
+      const pcm = new Uint8Array(11025).map((_, i) => 128 + Math.round(100 * Math.sin(i / 10)));
+      const dt = new DataTransfer(); dt.items.add(new File([wavFromPcmBytes(pcm, 11025, 8, 1)], 'tone.wav', { type: 'audio/wav' }));
+      input.files = dt.files; input.dispatchEvent(new Event('change')); window.__sound = 'asked';
+      return false;
+    }
+    const e = EDITS.get('FLEENS'), c = e && e.changes.get('SND/1000');
+    if (!c) return false;
+    const w = parseMohawkWave(openedArchive(ARCHIVES.get('FLEENS')).get('\\0SND', 1000));
+    return w.rate === 11025 && Math.abs(w.sampleCount - 11025) <= 1 && w.loopCount === 0xffff && /tone.wav/.test(c.what);
+  })()`],
+  ['PICKER/tBMP/4000', `(() => {
+    if (!window.__pic) {
+      const input = document.querySelector('#view input[type=file]'); if (!input) return false;
+      const c = document.createElement('canvas'); c.width = 64; c.height = 48;
+      const g = c.getContext('2d'); g.fillStyle = 'rgb(200,30,30)'; g.fillRect(0, 0, 64, 48);
+      window.__pic = 'asked';
+      c.toBlob(b => { const dt = new DataTransfer(); dt.items.add(new File([b], 'red.png', { type: 'image/png' })); input.files = dt.files; input.dispatchEvent(new Event('change')); });
+      return false;
+    }
+    const e = EDITS.get('PICKER');
+    if (!e || !e.changes.get('tBMP/4000')) return false;
+    const f = decodeTbmp(openedArchive(ARCHIVES.get('PICKER')).get('tBMP', 4000));
+    return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /64 × 48 where it was 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
+  })()`],
+  ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
   ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],

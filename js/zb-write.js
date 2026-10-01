@@ -97,3 +97,71 @@ function zbStringListBytes(lines) {
   for (const b of parts) { if (b.includes(0)) throw new Error('a string cannot hold a NUL'); out.set(b, p); p += b.length + 1; }
   return out;
 }
+
+/* A single picture, as 30 on the disc are: raw rows padded to an even
+   length (format 0x0102), behind the same literal-only LZ stream. */
+function zbPictureBytes(width, height, pixels) {
+  const bpr = (width + 1) & ~1, rows = new Uint8Array(bpr * height);
+  for (let y = 0; y < height; y++) rows.set(pixels.subarray(y * width, (y + 1) * width), y * bpr);
+  const body = new Uint8Array(rows.length + Math.ceil(rows.length / 8));
+  let q = 0;
+  for (let i = 0; i < rows.length; i += 8) { body[q++] = 0xff; const c = rows.subarray(i, i + 8); body.set(c, q); q += c.length; }
+  const out = new Uint8Array(18 + q), dv = new DataView(out.buffer);
+  dv.setUint16(0, width); dv.setUint16(2, height); dv.setInt16(4, bpr); dv.setUint16(6, 0x0102);
+  dv.setUint32(8, rows.length); dv.setUint32(12, q); dv.setUint16(16, 1024);
+  out.set(body.subarray(0, q), 18);
+  return out;
+}
+
+/* RGBA pixels (an ImageData's data) as palette indices: each the nearest
+   of `allowed` in `pal` ([r, g, b] by index), by a weighted distance that
+   follows the eye better than plain RGB (the "redmean" of
+   compuphase.com/cmetric.htm); a pixel under half opaque becomes 0, the
+   clear index, where `clear` allows it. */
+function zbQuantize(rgba, pal, allowed, clear = true) {
+  const n = rgba.length / 4, out = new Uint8Array(n), memo = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = rgba[4 * i], g = rgba[4 * i + 1], b = rgba[4 * i + 2];
+    if (clear && rgba[4 * i + 3] < 128) continue;
+    const key = (r << 16) | (g << 8) | b;
+    let best = memo.get(key);
+    if (best === undefined) {
+      let d0 = Infinity;
+      for (const k of allowed) {
+        const c = pal[k], rm = (r + c[0]) / 2, dr = r - c[0], dg = g - c[1], db = b - c[2];
+        const d = (2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db;
+        if (d < d0) { d0 = d; best = k; }
+      }
+      memo.set(key, best);
+    }
+    out[i] = best;
+  }
+  return out;
+}
+
+/* A sound's bytes with new samples, raw unsigned 8-bit mono, its other
+   chunks (a Cue#) kept and its Data chunk's header as before but for the
+   count and the loop: `loop` [start, end] in samples, or by default the
+   original's loop where it still fits and the whole sound where not. */
+function zbWaveBytes(original, samples, rate = 11025, loop = null) {
+  const old = parseMohawkWave(original);
+  const chunks = mohawkChunks(original, 'WAVE').map(c => {
+    if (c.tag !== 'Data') return { tag: c.tag, body: original.subarray(c.offset, c.offset + c.size) };
+    const body = new Uint8Array(20 + samples.length), dv = new DataView(body.buffer);
+    const [ls, le] = loop || (old.loopEnd <= samples.length ? [old.loopStart, old.loopEnd] : [0, samples.length]);
+    dv.setUint16(0, rate); dv.setUint32(2, samples.length); body[6] = 8; body[7] = 1;
+    dv.setUint16(8, 0); dv.setUint16(10, old.loopCount); dv.setUint32(12, ls); dv.setUint32(16, le);
+    body.set(samples, 20);
+    return { tag: 'Data', body };
+  });
+  const size = 4 + chunks.reduce((n, c) => n + 8 + c.body.length + (c.body.length & 1), 0);
+  const out = new Uint8Array(8 + size), dv = new DataView(out.buffer);
+  out.set([0x4d, 0x48, 0x57, 0x4b]); dv.setUint32(4, size); out.set([0x57, 0x41, 0x56, 0x45], 8);
+  let o = 12;
+  for (const c of chunks) {
+    for (let i = 0; i < 4; i++) out[o + i] = c.tag.charCodeAt(i);
+    dv.setUint32(o + 4, c.body.length); out.set(c.body, o + 8);
+    o += 8 + c.body.length + (c.body.length & 1);
+  }
+  return out;
+}

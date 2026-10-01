@@ -87,3 +87,85 @@ function editStrings(entry, id, lines, body) {
     route();
   });
 }
+
+/* ---- replacing a picture, a frame, a sound ------------------------------------ */
+
+/* The colours a replacement may use: ZOOMBINI's art only the shared range,
+   10-45, which is the same in every scene's palette; anything else, those
+   and whatever its palette gives, bar Windows's own at 0-9 and 246-255. */
+function editAllowed(entry, pf) {
+  const set = new Set(Array.from({ length: 36 }, (_, i) => 10 + i));
+  if (entry.name !== 'ZOOMBINI' && pf.chosen) {
+    const p = pf.chosen.parsed;
+    for (let i = p.start; i < p.start + p.colours.length; i++) if (i >= 10 && i <= 245) set.add(i);
+  }
+  return [...set];
+}
+async function editReadImage(file) {
+  const bmp = await createImageBitmap(file);
+  const c = document.createElement('canvas');
+  c.width = bmp.width; c.height = bmp.height;
+  const g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0);
+  return g.getImageData(0, 0, c.width, c.height);
+}
+/* Any sound the browser can play, as the game's: mono, 11,025 Hz, unsigned 8-bit. */
+async function editReadSound(file) {
+  const AC = window.AudioContext || window.webkitAudioContext, ac = new AC();
+  const buf = await ac.decodeAudioData(await file.arrayBuffer());
+  ac.close();
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * 11025)), 11025);
+  const src = off.createBufferSource();
+  src.buffer = buf; src.connect(off.destination); src.start();
+  const f = (await off.startRendering()).getChannelData(0), out = new Uint8Array(f.length);
+  for (let i = 0; i < f.length; i++) out[i] = Math.max(0, Math.min(255, Math.round(f[i] * 127) + 128));
+  return out;
+}
+/* A button that asks for a file and hands it on, its failures said beside it. */
+function editFileButton(box, label, accept, use) {
+  const l = document.createElement('label');
+  l.className = 'btn';
+  l.innerHTML = `${esc(label)}<input type="file" accept="${accept}" hidden>`;
+  const err = document.createElement('span');
+  err.className = 'bad';
+  l.querySelector('input').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    err.textContent = '';
+    try { await use(f); route(); } catch (x) { err.textContent = x.message; console.error(x); }
+  });
+  box.append(' ', l, ' ', err);
+}
+
+function pictureTools(entry, arc, id, pf, box) {
+  editFileButton(box, 'Replace from a PNG…', 'image/*', async file => {
+    const im = await editReadImage(file), old = decodeTbmp(arc.get('tBMP', id));
+    const px = zbQuantize(im.data, pf.pal, editAllowed(entry, pf), false);
+    editApply(entry, 'tBMP', id, zbPictureBytes(im.width, im.height, px),
+      `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? `, ${im.width} × ${im.height} where it was ${old.width} × ${old.height}` : ''}`);
+  });
+}
+
+function frameTools(entry, arc, id, k, pf, frame, box) {
+  const save = document.createElement('button');
+  save.textContent = 'Save this frame as PNG';
+  save.addEventListener('click', async () => downloadBlob(await encodeIndexedPNG(frame.width, frame.height, frame.pixels, pf.pal, 0), `${entry.name.toLowerCase()}-tbmp-${id}-frame-${k}.png`));
+  box.append(save);
+  editFileButton(box, 'Replace this frame from a PNG…', 'image/*', async file => {
+    const im = await editReadImage(file);
+    const frames = zbSheetFrames(arc.get('tBMP', id)).slice();
+    frames[k] = zbRawFrame(im.width, im.height, zbQuantize(im.data, pf.pal, editAllowed(entry, pf), true));
+    const was = (EDITS.get(entry.name) || { changes: new Map() }).changes.get(editKey('tBMP', id));
+    const done = new Set([...(was && was.frames || []), k]);
+    editApply(entry, 'tBMP', id, zbSheetBytes(arc.get('tBMP', id), frames),
+      `${done.size === 1 ? 'frame' : 'frames'} ${[...done].sort((a, b) => a - b).join(', ')} replaced`);
+    EDITS.get(entry.name).changes.get(editKey('tBMP', id)).frames = done;
+  });
+}
+
+function soundTools(entry, arc, id, box) {
+  editFileButton(box, 'Replace from a sound file…', 'audio/*', async file => {
+    const samples = await editReadSound(file);
+    editApply(entry, '\0SND', id, zbWaveBytes(arc.get('\0SND', id), samples), `replaced from ${file.name}, ${(samples.length / 11025).toFixed(2)} s`);
+  });
+}

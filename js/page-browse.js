@@ -349,6 +349,7 @@ function showBitmap(entry, arc, id, bytes, body) {
     c.style.width = f.width * zc.z + 'px';
     $('pic').appendChild(c);
     $('save').addEventListener('click', async () => downloadBlob(await encodeIndexedPNG(f.width, f.height, f.pixels, pf.pal, null), base + '.png'));
+    pictureTools(entry, arc, id, pf, $('save').parentNode);
     wirePaletteControl(entry); wireZoom('picture');
     return;
   }
@@ -391,6 +392,10 @@ function showBitmap(entry, arc, id, bytes, body) {
         for (const x of sheet.querySelectorAll('.frame.on')) x.classList.remove('on');
         cell.classList.add('on');
         showFrame(d.frames[k], k, pf.pal, regs);
+        const tools = document.createElement('div');
+        tools.className = 'tools';
+        $('focus').appendChild(tools);
+        frameTools(entry, arc, id, k, pf, d.frames[k], tools);
       });
       sheet.appendChild(cell);
     }
@@ -449,6 +454,7 @@ function showSound(entry, arc, id, bytes, body) {
     + `<div class="tools"><audio controls src="${url}"${w.loopCount ? ' loop' : ''}></audio><button id="save">Save as WAV</button></div>`
     + (cues.length ? `<p class="note">Cued by ${cues.map(c => `<a href="${link(entry.name, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ')}.</p>` : '');
   $('save').addEventListener('click', () => downloadBlob(wav, `${entry.name.toLowerCase()}-snd-${id}.wav`));
+  soundTools(entry, arc, id, $('save').parentNode);
 }
 
 function showMidi(entry, id, bytes, body) {
