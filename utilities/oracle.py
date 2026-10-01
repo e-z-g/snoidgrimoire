@@ -12,6 +12,7 @@ $ZB_TOOLS (a front's own, before it lands), and never changes them.
     python3 utilities/oracle.py fleenmod [--green]
                                            # the Fleen-parts mod's resources,
                                            # as SHA-1s, and its EXE bytes
+    python3 utilities/oracle.py redshaggy  # mod_red_shaggy.py's archives, as SHA-1s
     python3 utilities/oracle.py write SPEC # an archive rewritten by
                                            # mohawk_write.py, as SHA-1s
 """
@@ -168,8 +169,21 @@ def fleenmod(green):
     return out
 
 
+def redshaggy():
+    """tools/mod_red_shaggy.py's archives, from the disc, as SHA-1s."""
+    import tempfile, contextlib, io
+    import mod_red_shaggy as R
+    out = tempfile.mkdtemp()
+    with contextlib.redirect_stdout(io.StringIO()):
+        R.main(DATA, out)
+    return {f[:-4]: hashlib.sha1(open(os.path.join(out, f), 'rb').read()).hexdigest() for f in sorted(os.listdir(out))}
+
+
 if __name__ == '__main__':
     what = sys.argv[1]
+    if what == 'redshaggy':
+        json.dump(redshaggy(), sys.stdout)
+        sys.exit()
     if what == 'fleenmod':
         json.dump(fleenmod('--green' in sys.argv), sys.stdout, default=str)
         sys.exit()

@@ -137,6 +137,10 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; max-width:
 .trow .note { width: 40px; }
 .trow canvas { image-rendering: pixelated; width: auto; height: 40px; max-width: 18vw; object-fit: contain; }
 button.play { padding: 0 7px; font-size: 11px; }
+button.fam { display: inline-flex; gap: 6px; align-items: center; }
+button.fam.on { border-color: var(--accent); color: var(--accent); }
+button.fam .strip { display: inline-flex; width: 42px; height: 12px; border: 1px solid var(--line); }
+button.fam .strip i { flex: 1; }
 .strings p b { color: var(--faint); font-weight: 500; font: 12px var(--mono); margin-right: 6px; }
 .frames td { font: 12px/1.35 var(--mono); }
 .frames td.rec { color: var(--text); }
@@ -395,6 +399,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-snoid.js"></script>
 <script src="js/zb-write.js"></script>
 <script src="js/zb-mod-fleen.js"></script>
+<script src="js/zb-recolour.js"></script>
 <script src="js/zb-diagram.js"></script>
 <script src="js/zb-puzzle.js"></script>
 <script src="js/zb-puzzle-bridge.js"></script>

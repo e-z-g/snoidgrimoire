@@ -192,7 +192,7 @@ function renderMods() {
   const need = sortedArchives().filter(e => !/^MIDI/.test(e.name));
   const missing = need.filter(e => !e.bytes);
   const view = $('view');
-  let html = '<h1>Mods</h1><h2 class="h">Fleen parts on the Zoombinis</h2>'
+  let html = '<h1>Mods</h1><div id="recolour"></div><h2 class="h">Fleen parts on the Zoombinis</h2>'
     + '<p>Every Zoombini’s hair, eyes, nose and feet become a Fleen’s, variant for variant, in every frame the game draws them: walking, tumbling, far off, and in the builder’s tiles. Made green, their skin is a Fleen’s lemon-lime too. It rebuilds ZOOMBINI.MHK and PICKER.MHK; the builder’s big Zoombini also needs ZOOMBINI.EXE, whose table places its parts.</p>';
   if (missing.length) html += `<p class="note">It counts which parts the game draws together over every snoid script on the disc, so it needs every archive: ${plural(missing.length, 'more')} to come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
   html += `<div class="tools"><label><input type="checkbox" id="modGreen"${MOD_FLEEN.green ? ' checked' : ''}> Lime green, like a Fleen</label>`
@@ -202,6 +202,7 @@ function renderMods() {
     + '<div id="modShow"></div>';
   view.innerHTML = html;
   wireFetchAll(view);
+  recolourMaker($('recolour'));
   $('modGreen').addEventListener('change', e => { MOD_FLEEN.green = e.target.checked; });
   $('modExe').addEventListener('change', async e => {
     const f = e.target.files[0];
@@ -245,4 +246,87 @@ function modShow() {
     row.appendChild(c);
   }
   box.appendChild(row);
+}
+
+/* ---- the recolour maker ---------------------------------------------------------- */
+
+/* A part recoloured (zb-recolour.js), picked on a Zoombini and seen before
+   and after as it is picked; put in, it is an edit like any other. */
+const RECOLOUR = { z: { hair: 1, eyes: 1, nose: 1, feet: 1 }, part: 'hair', from: null, to: 'reds' };
+const RECOLOUR_PARTS = [['hair', 'Hair'], ['eyes', 'Eyes'], ['nose', 'Nose'], ['feet', 'Feet'], ['skin', 'Skin']];
+
+function recolourMaker(box) {
+  const z = ARCHIVES.get('ZOOMBINI'), p = ARCHIVES.get('PICKER');
+  const missing = [z, p].filter(e => e && !e.bytes);
+  box.innerHTML = '<h2 class="h">Recolour a part</h2><p>A part in other colours wherever the game draws it, walking, tumbling, far off and in the builder: Shaggy hair red, say. Only the colours every scene shares can be used, so each family of shades becomes another, darkest to darkest.</p>';
+  if (!z || !p) { box.innerHTML += '<p class="note">It needs zoombini.mhk and picker.mhk, which are not both among the files opened.</p>'; return; }
+  if (missing.length) {
+    box.innerHTML += `<p class="note"><a id="rcFetch">Fetch ${missing.map(e => e.name.toLowerCase() + '.mhk').join(' and ')} from archive.org</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;
+    $('rcFetch').addEventListener('click', () => Promise.all(missing.map(ensureBytes)).then(() => { if (isModsHash()) renderMods(); }));
+    return;
+  }
+  const zarc = openedArchive(z), R = RECOLOUR, v = R.part === 'skin' ? 1 : R.z[R.part];
+  const counts = zbRecolourColours(zarc, R.part === 'skin' ? 'body' : R.part, v);
+  // The families the part draws in, most drawn first; skin's own and black left out of a part's.
+  const fams = new Map();
+  for (const [c, n] of counts) { const f = zbRecolourFamilyOf(c); if (f && (R.part === 'skin' ? f.key === 'skin' : f.key !== 'skin')) fams.set(f.key, (fams.get(f.key) || 0) + n); }
+  const own = [...fams].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  if (!own.includes(R.from)) R.from = own[0] || null;
+  if (R.to === R.from) R.to = ZB_RECOLOUR_FAMILIES.find(f => f.key !== R.from).key;
+  const pal = paletteFor(z, zarc, 1 << 30).pal;
+  const swatch = f => `<span class="strip">${f.shades.map(c => `<i style="background:rgb(${pal[c].join(',')})"></i>`).join('')}</span>`;
+  const chip = (f, on, attr) => `<button class="fam${on ? ' on' : ''}" ${attr}="${f.key}">${swatch(f)} ${esc(f.name)}</button>`;
+  let html = '<div class="tools">' + ZB_TRAIT_KINDS.map(k => `<label>${k[0].toUpperCase() + k.slice(1)} <select data-rz="${k}">${ZB_TRAIT_SHORT[k].map((n, i) => `<option value="${i + 1}"${i + 1 === R.z[k] ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('') + '</div>'
+    + `<div class="tools"><span class="note">Recolour its</span> ${RECOLOUR_PARTS.map(([k, n]) => `<button class="fam${k === R.part ? ' on' : ''}" data-rpart="${k}">${n}</button>`).join(' ')}</div>`;
+  html += own.length
+    ? `<div class="tools"><span class="note">Its colours</span> ${own.map(k => chip(ZB_RECOLOUR_FAMILIES.find(f => f.key === k), k === R.from, 'data-rfrom')).join(' ')}</div>`
+      + `<div class="tools"><span class="note">Into</span> ${ZB_RECOLOUR_FAMILIES.filter(f => f.key !== R.from).map(f => chip(f, f.key === R.to, 'data-rto')).join(' ')}</div>`
+    : '<p class="note">This part draws in no family of the shared colours but its skin and outline.</p>';
+  html += '<div class="trow" id="rcShow"></div>'
+    + `<div class="tools"><button id="rcApply"${R.from ? '' : ' disabled'}>Put it in</button> <span id="rcErr" class="bad"></span></div>`;
+  box.innerHTML += html;
+  const map = R.from ? zbRecolourMap(R.from, R.to) : new Map();
+  // Before and after: the Zoombini standing, the part's sprites mapped.
+  const sheet = zbSnoidSheet(zarc), placed = zbZoombiniPlacements(sheet, R.z);
+  const draw = mapped => {
+    const im = zbSnoidPaint(sheet, placed.map(q => ({ ...q })), zbSnoidBox(sheet, placed));
+    if (mapped) {
+      const box2 = zbSnoidBox(sheet, placed);
+      for (const q of placed) {
+        if (R.part !== 'skin' && q.part !== R.part) continue;
+        const f = sheet.frames[q.frame];
+        for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) {
+          const c = f.pixels[y * f.width + x];
+          if (c && map.has(c)) im.pixels[(q.y + box2.oy + y) * im.width + q.x + box2.ox + x] = map.get(c);
+        }
+      }
+    }
+    const cv = indexedCanvas(im, pal, true);
+    cv.style.height = '120px';
+    return cv;
+  };
+  const show = $('rcShow');
+  show.append(draw(false), Object.assign(document.createElement('span'), { className: 'note', textContent: '→' }), draw(true));
+  box.querySelectorAll('[data-rz]').forEach(s => s.addEventListener('change', () => { R.z[s.dataset.rz] = +s.value; recolourMaker(box); }));
+  box.querySelectorAll('[data-rpart]').forEach(b => b.addEventListener('click', () => { R.part = b.dataset.rpart; R.from = null; recolourMaker(box); }));
+  box.querySelectorAll('[data-rfrom]').forEach(b => b.addEventListener('click', () => { R.from = b.dataset.rfrom; recolourMaker(box); }));
+  box.querySelectorAll('[data-rto]').forEach(b => b.addEventListener('click', () => { R.to = b.dataset.rto; recolourMaker(box); }));
+  $('rcApply').addEventListener('click', () => {
+    try {
+      const archives = new Map([['ZOOMBINI', openedArchive(z)], ['PICKER', openedArchive(p)]]);
+      const out = zbRecolour(archives, R.part, v, map);
+      const name = R.part === 'skin' ? 'skin' : `${R.part} ${v} (${ZB_TRAIT_SHORT[R.part][v - 1]})`;
+      const what = `${name}: ${ZB_RECOLOUR_FAMILIES.find(f => f.key === R.from).name.toLowerCase()} into ${ZB_RECOLOUR_FAMILIES.find(f => f.key === R.to).name.toLowerCase()}`;
+      for (const [n, entry] of [['ZOOMBINI', z], ['PICKER', p]]) {
+        if (!EDITS.has(n)) EDITS.set(n, { original: entry.bytes, changes: new Map() });
+        for (const c of out[n]) {
+          const was = EDITS.get(n).changes.get(editKey(c.tag, c.id));
+          EDITS.get(n).changes.set(editKey(c.tag, c.id), { tag: c.tag, id: c.id, bytes: c.bytes, what: was ? `${was.what}; ${what}` : what });
+        }
+        editRebuild(entry);
+      }
+      SSPRITES.clear();
+      renderMods();
+    } catch (x) { $('rcErr').textContent = x.message; console.error(x); }
+  });
 }

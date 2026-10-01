@@ -158,6 +158,21 @@ const VIEWS = [
     return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /64 × 48 where it was 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
   })()`],
   ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
+  // The recolour maker: Shaggy hair, purples into reds, put in by its own buttons and read back, then undone.
+  ['mods', `(() => {
+    if (!window.__rc) {
+      const to = document.querySelector('[data-rto=reds]'); if (!to) return false;
+      to.click(); document.getElementById('rcApply').click(); window.__rc = 'asked';
+      return false;
+    }
+    const c = EDITS.get('ZOOMBINI') && EDITS.get('ZOOMBINI').changes.get('tBMP/3000');
+    if (!c) return false;
+    const f = decodeBitmapResource(openedArchive(ARCHIVES.get('ZOOMBINI')).get('tBMP', 3000)).frames;
+    const shaggy = f.slice(22, 54).flatMap(x => [...x.pixels]);
+    return /hair 1 \\(Shaggy\\): purples into reds/.test(c.what) && shaggy.some(v => v >= 38 && v <= 40) && !shaggy.some(v => v >= 21 && v <= 23)
+      && EDITS.get('PICKER').changes.has('tBMP/4400') && document.querySelectorAll('#rcShow canvas').length === 2;
+  })()`],
+  ['changes', "/purples into reds/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
   // The Fleen-parts mod, green, with the installed EXE, put in from Mods and read back, then undone.
   ['mods', `(() => {
     if (!window.__mod) {

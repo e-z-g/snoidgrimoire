@@ -21,6 +21,7 @@ const CHECKS = [
   ['maker', 'the snoids\' idles, feet shows and walks as the Zoombini maker plays them'],
   ['write', 'writing an archive back, against mohawk_write.py byte for byte, and read back'],
   ['fleenmod', 'the Fleen-parts mod, plain and green, against mod_fleen_parts.py byte for byte, resources and EXE'],
+  ['recolour', 'a part recoloured, against mod_red_shaggy.py byte for byte, every part read back'],
   ['xref', 'the cross-references, every one there, and search across the disc'],
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
   ['page', 'index.html in headless Chrome: the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
