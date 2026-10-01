@@ -9,6 +9,9 @@ $ZB_TOOLS (a front's own, before it lands), and never changes them.
                                            # animate.py puts them together
     python3 utilities/oracle.py snoidticks # every snoid script's ticks, each
                                            # record the part animate.py fits
+    python3 utilities/oracle.py fleenmod [--green]
+                                           # the Fleen-parts mod's resources,
+                                           # as SHA-1s, and its EXE bytes
     python3 utilities/oracle.py write SPEC # an archive rewritten by
                                            # mohawk_write.py, as SHA-1s
 """
@@ -149,8 +152,27 @@ def write(spec_path):
     return out
 
 
+def fleenmod(green):
+    """The Fleen-parts mod as tools/mod_fleen_parts.py makes it, from the disc,
+    with the installed ZOOMBINI.EXE: each rebuilt resource's SHA-1, by
+    archive, and the EXE's changed bytes."""
+    import mod_fleen_parts as F
+    changes, fit = F.build(DATA, green)
+    exe_path = os.path.join(ROOT, 'reference', 'zombs-lair', 'HDD', 'ZOOMBINI', 'ZOOMBINI.EXE')
+    exe = open(exe_path, 'rb').read()
+    big, new_exe = F.big_parts(fit, DATA, exe)
+    out = {'ZOOMBINI': {'%s/%d' % (t.replace('\0', ''), r): hashlib.sha1(d).hexdigest() for (t, r), d in changes.items()},
+           'PICKER': {'%s/%d' % (t.replace('\0', ''), r): hashlib.sha1(d).hexdigest() for (t, r), d in {**F.tiles(fit, DATA), **big}.items()},
+           'EXE': {str(i): new_exe[i] for i in range(len(exe)) if new_exe[i] != exe[i]},
+           'lift': fit.lift}
+    return out
+
+
 if __name__ == '__main__':
     what = sys.argv[1]
+    if what == 'fleenmod':
+        json.dump(fleenmod('--green' in sys.argv), sys.stdout, default=str)
+        sys.exit()
     if what == 'write':
         json.dump(write(sys.argv[2]), sys.stdout)
         sys.exit()

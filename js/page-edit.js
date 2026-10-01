@@ -61,12 +61,17 @@ function renderChanges() {
   renderSide({ name: '#changes' }, { archive: null, tag: null, id: null });
   const view = $('view');
   let html = '<h1>Changes</h1><p class="sub">What has been edited, kept in this page only: reloading it restores the files. Each changed archive saves as a new .MHK, its edited resources appended and repointed, every other byte as it was.</p>';
-  if (!EDITS.size) html += '<p class="note">Nothing is edited. A string list can be, from its view in Data.</p>';
+  if (!EDITS.size && !EXE_EDIT) html += '<p class="note">Nothing is edited. A string list, a picture, a frame or a sound can be, from its view in Data, and Mods puts a mod in.</p>';
   for (const [name, e] of EDITS) {
     html += `<h2 class="h">${esc(name)}</h2><ul>` + [...e.changes.values()].map(c => `<li><a href="#${name}/${mohawkTagLabel(c.tag)}/${c.id}">${mohawkTagLabel(c.tag)} ${c.id}</a> <span class="note">${esc(c.what)}</span> <a data-undo="${esc(name)}|${esc(c.tag)}|${c.id}">undo</a></li>`).join('') + '</ul>'
       + `<div class="tools"><button data-save="${esc(name)}">Save ${esc(name)}.MHK</button> <a data-undo="${esc(name)}||">undo all</a></div>`;
   }
+  if (EXE_EDIT) html += `<h2 class="h">${esc(EXE_EDIT.name)}</h2><p><span class="note">${esc(EXE_EDIT.what)}</span> <a data-exe-undo>undo</a></p><div class="tools"><button id="saveExe">Save ${esc(EXE_EDIT.name)}</button></div>`;
   view.innerHTML = html;
+  if (EXE_EDIT) {
+    $('saveExe').addEventListener('click', () => downloadBlob(EXE_EDIT.bytes, EXE_EDIT.name));
+    view.querySelector('[data-exe-undo]').addEventListener('click', () => { EXE_EDIT = null; route(); });
+  }
   for (const b of view.querySelectorAll('[data-save]')) b.addEventListener('click', () => downloadBlob(ARCHIVES.get(b.dataset.save).bytes, b.dataset.save + '.MHK'));
 }
 
@@ -168,4 +173,76 @@ function soundTools(entry, arc, id, box) {
     const samples = await editReadSound(file);
     editApply(entry, '\0SND', id, zbWaveBytes(arc.get('\0SND', id), samples), `replaced from ${file.name}, ${(samples.length / 11025).toFixed(2)} s`);
   });
+}
+
+/* ---- Mods ---------------------------------------------------------------------- */
+
+/* The Fleen-parts mod (zb-mod-fleen.js, the extraction project's
+   mod_fleen_parts.py), run on the archives open, its resources put in as
+   edits; ZOOMBINI.EXE, given, has its big figure's anchors rewritten and is
+   saved from Changes beside the archives. */
+let MOD_EXE = null;           // { name, bytes }: the EXE given
+let EXE_EDIT = null;          // { name, bytes, what }: the EXE as the mod rewrote it
+const MOD_FLEEN = { green: false };
+
+function isModsHash() { return location.hash === '#mods'; }
+function renderMods() {
+  $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Mods</span>';
+  renderSide({ name: '#mods' }, { archive: null, tag: null, id: null });
+  const need = sortedArchives().filter(e => !/^MIDI/.test(e.name));
+  const missing = need.filter(e => !e.bytes);
+  const view = $('view');
+  let html = '<h1>Mods</h1><h2 class="h">Fleen parts on the Zoombinis</h2>'
+    + '<p>Every Zoombini’s hair, eyes, nose and feet become a Fleen’s, variant for variant, in every frame the game draws them: walking, tumbling, far off, and in the builder’s tiles. Made green, their skin is a Fleen’s lemon-lime too. It rebuilds ZOOMBINI.MHK and PICKER.MHK; the builder’s big Zoombini also needs ZOOMBINI.EXE, whose table places its parts.</p>';
+  if (missing.length) html += `<p class="note">It counts which parts the game draws together over every snoid script on the disc, so it needs every archive: ${plural(missing.length, 'more')} to come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
+  html += `<div class="tools"><label><input type="checkbox" id="modGreen"${MOD_FLEEN.green ? ' checked' : ''}> Lime green, like a Fleen</label>`
+    + `<label class="btn">${MOD_EXE ? esc(MOD_EXE.name) + ' given' : 'Give ZOOMBINI.EXE…'}<input type="file" id="modExe" accept=".exe,.EXE" hidden></label>`
+    + `<button id="modApply"${missing.length ? ' disabled' : ''}>Put the Fleen parts in</button> <span id="modErr" class="bad"></span></div>`
+    + `<p class="note">${MOD_EXE ? 'The big Zoombini on the isle is modded too.' : 'Without the EXE, all but the big Zoombini on the isle is modded. It is in the game’s folder once installed, or on the CD.'}</p>`
+    + '<div id="modShow"></div>';
+  view.innerHTML = html;
+  wireFetchAll(view);
+  $('modGreen').addEventListener('change', e => { MOD_FLEEN.green = e.target.checked; });
+  $('modExe').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (f) { MOD_EXE = { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }; renderMods(); }
+  });
+  $('modApply').addEventListener('click', () => {
+    $('modErr').textContent = '';
+    setStatus('Putting the Fleen parts in…');
+    setTimeout(() => {
+      try { modFleenApply(); } catch (x) { $('modErr').textContent = x.message; console.error(x); }
+      setStatus('');
+      renderMods();
+    }, 20);
+  });
+  modShow();
+}
+function modFleenApply() {
+  const archives = new Map(sortedArchives().filter(e => !/^MIDI/.test(e.name) && e.bytes).map(e => [e.name, openedArchive(e)]));
+  const out = zbFleenMod(archives, MOD_EXE ? MOD_EXE.bytes : null, MOD_FLEEN.green);
+  const what = MOD_FLEEN.green ? 'Fleen parts, lime green' : 'Fleen parts';
+  for (const name of ['ZOOMBINI', 'PICKER']) {
+    const entry = ARCHIVES.get(name);
+    if (!EDITS.has(name)) EDITS.set(name, { original: entry.bytes, changes: new Map() });
+    for (const c of out[name]) EDITS.get(name).changes.set(editKey(c.tag, c.id), { tag: c.tag, id: c.id, bytes: c.bytes, what });
+    editRebuild(entry);
+  }
+  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: 'the big Zoombini’s anchors, for the Fleen parts' } : null;
+  SSPRITES.clear();
+}
+/* Five Zoombinis as the archive now draws them, one of each variant. */
+function modShow() {
+  const z = ARCHIVES.get('ZOOMBINI'), arc = z && z.bytes ? openedArchive(z) : null, box = $('modShow');
+  if (!arc || !box) return;
+  const sheet = zbSnoidSheet(arc), pal = paletteFor(z, arc, 1 << 30).pal;
+  box.innerHTML = `<p class="note">${isEdited('ZOOMBINI', 'tBMP', 3000) ? 'As the archive draws them now:' : 'As the archive draws them now, unmodded:'}</p>`;
+  const row = document.createElement('div');
+  row.className = 'trow';
+  for (let v = 1; v <= 5; v++) {
+    const c = indexedCanvas(zbZoombiniImage(sheet, { hair: v, eyes: v, nose: v, feet: v }), pal, true);
+    c.style.height = '96px';
+    row.appendChild(c);
+  }
+  box.appendChild(row);
 }

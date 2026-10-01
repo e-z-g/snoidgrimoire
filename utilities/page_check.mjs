@@ -158,7 +158,24 @@ const VIEWS = [
     return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /64 × 48 where it was 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
   })()`],
   ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
-  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes])').length === 22"],
+  // The Fleen-parts mod, green, with the installed EXE, put in from Mods and read back, then undone.
+  ['mods', `(() => {
+    if (!window.__mod) {
+      if (!document.getElementById('modApply')) return false;
+      window.__mod = 'asked';
+      fetch('reference/zombs-lair/HDD/ZOOMBINI/ZOOMBINI.EXE').then(r => r.arrayBuffer()).then(b => {
+        MOD_EXE = { name: 'ZOOMBINI.EXE', bytes: new Uint8Array(b) }; MOD_FLEEN.green = true; modFleenApply(); renderMods(); window.__mod = 'done';
+      });
+      return false;
+    }
+    if (window.__mod !== 'done') return false;
+    const z = EDITS.get('ZOOMBINI'), p = EDITS.get('PICKER');
+    return z && ['tBMP/3000', 'tBMP/3100', 'tBMP/3200', 'REGS/100'].every(k => z.changes.has(k)) && p && p.changes.has('tBMP/4400') && p.changes.has('tBMP/4300')
+      && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /As the archive draws them now:/.test(document.getElementById('modShow').textContent)
+      && document.querySelectorAll('#modShow canvas').length === 5 && openedArchive(ARCHIVES.get('ZOOMBINI')).list('tBMP').length === 6;
+  })()`],
+  ['changes', "/Fleen parts, lime green/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],
+  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/tBMP/3000', "document.querySelectorAll('#sheet .frame').length === 890"],
