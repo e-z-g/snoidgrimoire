@@ -36,7 +36,13 @@ code, .mono { font: 12.5px/1.35 var(--mono); }
 #brand { font-weight: 650; letter-spacing: .02em; cursor: pointer; }
 #crumbs { display: flex; gap: 6px; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; color: var(--dim); }
 #crumbs .sep { color: var(--faint); }
-#status { margin-left: auto; color: var(--dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#find { margin-left: auto; flex: 0 1 220px; min-width: 90px; }
+#find input { width: 100%; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+.hits li { margin: 6px 0; }
+.hits .line { color: var(--dim); display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xref h2 { font-size: 15px; margin: 22px 0 6px; }
+.xref p { margin: 4px 0; }
+#status { margin-left: 8px; color: var(--dim); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 #status.bad { color: var(--bad); }
 
 /* ---- before anything is open ---- */
@@ -267,6 +273,10 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
   #side { width: auto; max-height: 38vh; border-right: 0; border-bottom: 1px solid var(--line); }
   #view { padding: 12px 12px 32px; }
   #crumbs { display: none; }
+  #bar { flex-wrap: wrap; row-gap: 6px; }
+  #find { flex: 1 1 120px; }
+  #views { order: 5; width: 100%; }
+  #views a { flex: 1; text-align: center; padding: 3px 4px; }
   #journey { flex-direction: column; }
   #jstage { flex: 1 1 52%; }
   #jpanel { width: auto; flex: 1 1 48%; border-left: 0; border-top: 1px solid var(--line); }
@@ -282,6 +292,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
   <span id="brand" title="Back to the start">SnoidGrimoire</span>
   <nav id="views" hidden></nav>
   <span id="crumbs"></span>
+  <form id="find" hidden><input id="q" type="search" placeholder="Search" aria-label="Search the files" autocomplete="off"></form>
   <span id="status"></span>
 </div>
 
@@ -393,6 +404,8 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-puzzle-caves.js"></script>
 <script src="js/zb-puzzle-smoke.js"></script>
 <script src="js/zb-puzzle-maze2.js"></script>
+<script src="js/zb-xref.js"></script>
+<script src="js/zb-search.js"></script>
 <script src="js/page-open.js"></script>
 <script src="js/page-browse.js"></script>
 <script src="js/page-tabs.js"></script>

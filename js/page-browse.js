@@ -35,6 +35,7 @@ function parseHash() {
 function browseStart(first) {
   $('start').hidden = true;
   $('views').hidden = false;
+  $('find').hidden = false;
   const want = first || (journeyAvailable() ? 'journey' : null);
   if (want && !location.hash) location.hash = '#' + want;
   else route();
@@ -42,8 +43,8 @@ function browseStart(first) {
 
 /* The address decides the view: the map's (page-map.js) or an archive's. */
 function route() {
-  const tab = tabOfHash();
-  const town = !tab && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
+  const tab = tabOfHash(), search = tab ? null : searchOfHash();
+  const town = !tab && search == null && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
   const solve = !town && isSolveHash();
   const map = !town && !solve && isJourneyHash() && journeyAvailable();
   $('town').hidden = !town;
@@ -51,7 +52,8 @@ function route() {
   $('journey').hidden = !map;
   $('app').hidden = map || town || solve;
   renderTopTabs();
-  if (tab) renderTab(tab);
+  if (search != null) renderSearch(search);
+  else if (tab) renderTab(tab);
   else if (town) townRoute();
   else if (solve) solveRoute();
   else if (map) journeyRoute();
@@ -305,16 +307,17 @@ function renderResource(entry, arc, tag, id) {
   view.innerHTML = head;
   const body = document.createElement('div');
   view.appendChild(body);
-  if (tag === 'tBMP') return showBitmap(entry, arc, id, bytes, body);
-  if (tag === '\0SND') return showSound(entry, arc, id, bytes, body);
-  if (tag === 'tMID') return showMidi(entry, id, bytes, body);
-  if (tag === 'SHPL' || tag === 'tPAL') return showPalette(tag, bytes, body);
-  if (tag === 'STRL') return showStrings(entry, id, bytes, body);
-  if (tag === 'CURS') return showCursor(entry, id, bytes, body);
-  if (tag === 'NODE' || tag === 'PATH') return showWalks(entry, arc, id, body);
-  if (tag === 'REGS') return showRegs(entry, arc, id, bytes, body);
-  if (tag === 'SCRS' || tag === 'SCRB') return showScript(entry, arc, tag, id, bytes, body);
-  body.innerHTML = '<p class="note">No reader for this type.</p>';
+  if (tag === 'tBMP') showBitmap(entry, arc, id, bytes, body);
+  if (tag === '\0SND') showSound(entry, arc, id, bytes, body);
+  if (tag === 'tMID') showMidi(entry, id, bytes, body);
+  if (tag === 'SHPL' || tag === 'tPAL') showPalette(tag, bytes, body);
+  if (tag === 'STRL') showStrings(entry, id, bytes, body);
+  if (tag === 'CURS') showCursor(entry, id, bytes, body);
+  if (tag === 'NODE' || tag === 'PATH') showWalks(entry, arc, id, body);
+  if (tag === 'REGS') showRegs(entry, arc, id, bytes, body);
+  if (tag === 'SCRS' || tag === 'SCRB') showScript(entry, arc, tag, id, bytes, body);
+  else if (!['tBMP', '\0SND', 'tMID', 'SHPL', 'tPAL', 'STRL', 'CURS', 'NODE', 'PATH', 'REGS'].includes(tag)) body.innerHTML = '<p class="note">No reader for this type.</p>';
+  view.insertAdjacentHTML('beforeend', xrefHtml(entry, arc, tag, id));
 }
 
 /* The REGS pair that holds a sheet's registration points: ids n and n + 1,

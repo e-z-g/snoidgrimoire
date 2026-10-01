@@ -29,6 +29,7 @@ function tabOfHash() {
 }
 /* Which of the four the address is under. */
 function topTabOfHash() {
+  if (/^#search=/.test(location.hash)) return 'search';
   if (/^#(journey|place=)/.test(location.hash)) return 'world';
   if (/^#(scenario|solve=|town\b)/.test(location.hash)) return 'scenario';
   if (/^#components/.test(location.hash)) return 'components';
@@ -168,3 +169,79 @@ const SCENARIO_PANES = {
       + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">Stand in it, all round</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">On the map</a> · ' : ''}<a href="#TOWN">its archive</a></p>`;
   },
 };
+
+/* ---- cross-references -------------------------------------------------------- */
+
+/* The references among the archives open (zb-xref.js), worked out again when
+   another archive comes in; a sheet's registration points an archive at a
+   time, as its resources are viewed. */
+let XREF = null, XREF_SIG = '', SITE_READS = null;
+const XREF_PAIRS = new WeakMap();
+function siteXref() {
+  const open = openArchives(), sig = open.map(o => o.entry.name).join();
+  if (sig !== XREF_SIG) { XREF = zbXref(new Map(open.map(o => [o.entry.name, o.arc])), { pairs: false }); XREF_SIG = sig; }
+  if (!SITE_READS) SITE_READS = zbSiteReads();
+  return XREF;
+}
+function xrefLink(key) {
+  const [name, tag, id] = key.split('/');
+  return `<a href="#${key}">${name === parseHash().archive ? '' : name + ' '}${tag} ${id}</a>`;
+}
+/* A resource's references, for the foot of its view. */
+function xrefHtml(entry, arc, tag, id) {
+  let x;
+  try { x = siteXref(); } catch (e) { return `<p class="bad">Its references could not be worked out: ${esc(e.message)}</p>`; }
+  const key = zbXrefKey(entry.name, tag, id), out = (x.out.get(key) || []).slice(), back = (x.back.get(key) || []).slice();
+  if (tag === 'tBMP' || tag === 'REGS') {
+    if (!XREF_PAIRS.has(arc)) XREF_PAIRS.set(arc, zbXrefSheetRegs(arc));
+    for (const { sheet, regs } of XREF_PAIRS.get(arc)) {
+      if (tag === 'tBMP' && sheet === id) out.push({ key: zbXrefKey(entry.name, 'REGS', regs), why: 'its registration points' });
+      if (tag === 'REGS' && (regs === id || regs + 1 === id)) back.push({ key: zbXrefKey(entry.name, 'tBMP', sheet), why: 'the registration points of' });
+    }
+  }
+  const reads = SITE_READS.filter(r => r.key === key);
+  if (!out.length && !back.length && !reads.length) return '';
+  const group = (list, max = 40) => {
+    const by = new Map();
+    for (const r of list) { if (!by.has(r.why)) by.set(r.why, []); by.get(r.why).push(r.key); }
+    return [...by].map(([why, keys]) => `<p><span class="note">${esc(why)}</span> ${keys.slice(0, max).map(xrefLink).join(', ')}${keys.length > max ? ` and ${keys.length - max} more` : ''}</p>`).join('');
+  };
+  return '<div class="xref"><h2>References</h2>'
+    + (out.length ? group(out) : '')
+    + (back.length ? '<p class="note">From:</p>' + group(back) : '')
+    + (reads.length ? `<p><span class="note">read by</span> ${[...new Map(reads.map(r => [r.by, r])).values()].map(r => `<a href="${r.href}">${esc(r.by)}</a>`).join(', ')}</p>` : '')
+    + '</div>';
+}
+
+/* ---- search ------------------------------------------------------------------- */
+
+let SEARCH_DOCS = null, SEARCH_SIG = '';
+function searchOfHash() {
+  const m = /^#search=(.*)$/.exec(location.hash);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function renderSearch(q) {
+  $('q').value = q;
+  $('crumbs').innerHTML = `<span>Search</span>`;
+  const open = openArchives(), sig = open.map(o => o.entry.name).join();
+  if (sig !== SEARCH_SIG) { SEARCH_DOCS = zbSearchDocs(new Map(open.map(o => [o.entry.name, o.arc]))); SEARCH_SIG = sig; }
+  const { hits, total } = zbSearch(SEARCH_DOCS, q);
+  const kinds = [['place', 'Places'], ['puzzle', 'Puzzles'], ['text', 'Text'], ['resource', 'Resources']];
+  $('side').innerHTML = '<h2>Search</h2>' + kinds.map(([k, n]) => `<div class="arc" data-kind="${k}"><span class="name">${n}</span><span class="place">${hits.filter(h => h.doc.kind === k).length || ''}</span></div>`).join('');
+  const view = $('view');
+  view.scrollTop = 0;
+  let html = `<h1>“${esc(q)}”</h1><p class="sub">${total ? plural(total, 'match', 'matches') + (total > hits.length ? `, the first ${hits.length} shown` : '') : 'Nothing holds every word of it.'}</p>` + unfetchedNote('Searched');
+  for (const [k, n] of kinds) {
+    const list = hits.filter(h => h.doc.kind === k);
+    if (!list.length) continue;
+    html += `<h2 class="h" id="hits-${k}">${n}</h2><ul class="hits">` + list.map(h => `<li><a href="${h.doc.href}">${esc(h.doc.title)}</a>${h.line ? `<span class="line">${esc(h.line)}</span>` : ''}</li>`).join('') + '</ul>';
+  }
+  view.innerHTML = html;
+  wireFetchAll(view);
+  for (const el of $('side').querySelectorAll('[data-kind]')) el.addEventListener('click', () => { const t = $('hits-' + el.dataset.kind); if (t) t.scrollIntoView(); });
+}
+$('find').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = $('q').value.trim();
+  if (q) location.hash = '#search=' + encodeURIComponent(q);
+});

@@ -103,6 +103,10 @@ const VIEWS = [
   ['components/cursors', "document.querySelectorAll('#view .card').length === 5"],
   ['components/scripts', "/snoid script/.test(document.getElementById('view').textContent)"],
   ['components/walks', "document.querySelectorAll('#view table tr').length === 10"],
+  // Search, and a resource's references.
+  ['search=arno', "/Pizza Pass/.test(document.getElementById('view').textContent) && document.querySelector('#views a.on') === null && document.getElementById('q').value === 'arno'"],
+  ['ZOOMBINI/tBMP/3000', "document.querySelector('#view .xref') && /REGS 100/.test(document.querySelector('#view .xref').textContent) && /read by/.test(document.querySelector('#view .xref').textContent)"],
+  ['FLEENS/SND/4013', "document.querySelector('#view .xref') && /cues/.test(document.querySelector('#view .xref').textContent)"],
   ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
@@ -172,7 +176,7 @@ try {
             if (await p.evaluate(`!!(${ok})`)) { met = true; break; }
             await new Promise(res => setTimeout(res, 200));
           }
-          const wide = dev.mobile ? await p.evaluate('document.documentElement.scrollWidth > innerWidth + 1 || document.getElementById(\'view\').scrollWidth > document.getElementById(\'view\').clientWidth + 1') : false;
+          const wide = dev.mobile ? await p.evaluate('document.documentElement.scrollWidth > innerWidth + 1 || document.getElementById(\'view\').scrollWidth > document.getElementById(\'view\').clientWidth + 1 || document.getElementById(\'bar\').scrollWidth > document.getElementById(\'bar\').clientWidth + 1') : false;
           if (shots) await p.shot(path.join(shots, `${dev.name}-${hash.replace(/\//g, '-')}.png`));
           results.push({ hash, met, ms: Date.now() - t0, wide });
         }
