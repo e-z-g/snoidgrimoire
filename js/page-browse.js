@@ -500,7 +500,7 @@ function showWalks(entry, arc, id, body) {
   const room = roomPicture(arc, entry.name);
   body.innerHTML = `<p class="sub"><a href="${link(entry.name, 'NODE', id)}">NODE ${id}</a>: ${plural(nodes.length, 'waypoint')}. `
     + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a>: ${plural(paths.length, 'path')}, each up to 24 waypoints. Drawn over the room${room != null ? `, <a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>` : ''}.</p>`
-    + '<div id="walk" class="picture"></div>'
+    + '<div id="walker"></div><div id="walk" class="picture"></div>'
     + '<table class="plain" style="margin-top:14px"><tr><th>path</th><th>waypoints, in order</th></tr>'
     + paths.map((p, i) => `<tr><td style="color:${WALK_COLOURS[i % WALK_COLOURS.length]}">${i}</td><td class="mono">${p.filter(w => w).join(' → ') || '(empty)'}</td></tr>`).join('')
     + '</table><table class="plain"><tr><th>waypoint</th><th>x</th><th>y</th></tr>'
@@ -530,6 +530,71 @@ function showWalks(entry, arc, id, body) {
     g.fillStyle = '#fff'; g.fillText(i + 1, n.x, n.y + .5);
   });
   $('walk').appendChild(c);
+  walker(entry, arc, id, nodes, paths, c, $('walker'));
+}
+
+/* A Zoombini walked over the waypoints, as the program walks one
+   (zbWalk): along a path picked, or to where the room is clicked. */
+const WALK_PICK = { z: { hair: 1, eyes: 1, nose: 1, feet: 1 }, path: 0 };
+function walker(entry, arc, id, nodes, paths, c, box) {
+  const home = ARCHIVES.get('ZOOMBINI'), zarc = home && home.bytes ? openedArchive(home) : null;
+  if (!zarc) {
+    box.innerHTML = '<p class="note">A Zoombini can walk these, drawn from zoombini.mhk: '
+      + (!home ? 'it is not among the files opened.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch it from archive.org</a> (24 MB).</p>');
+    if ($('walkFetch')) $('walkFetch').addEventListener('click', () => { ensureBytes(home).then(() => { if (box.isConnected) render(); }); walker(entry, arc, id, nodes, paths, c, box); });
+    return;
+  }
+  const sheet = zbSnoidSheet(zarc), z = WALK_PICK.z, pal = paletteFor(entry, arc, roomPicture(arc, entry.name) ?? 1 << 30).pal;
+  const scripts = {}, lengths = {};
+  for (let f = 1; f <= 5; f++) for (let d = 0; d < 5; d++) {
+    const n = 100 + 5 * f + d;
+    scripts[n] = parseScript(zarc.get('SCRS', n), 'SCRS');
+    lengths[n] = scripts[n].frames.length;
+  }
+  const routes = paths.map((p, i) => ({ i, pts: p.filter(w => w).map(w => nodes[w - 1]) })).filter(r => r.pts.length > 1);
+  const cap = t => t[0].toUpperCase() + t.slice(1);
+  box.innerHTML = '<div class="tools">' + ['hair', 'eyes', 'nose', 'feet'].map(k => `<label>${cap(k)} <select data-wtrait="${k}">${ZB_TRAIT_SHORT[k].map((n, i) => `<option value="${i + 1}"${i + 1 === z[k] ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('')
+    + (routes.length ? ` <label>Walk path <select id="walkPath">${routes.map(r => `<option value="${r.i}"${r.i === WALK_PICK.path ? ' selected' : ''}>${r.i}</option>`).join('')}</select></label> <button id="walkGo">Walk it</button>` : '')
+    + '</div><p class="note">Or click the room for the Zoombini to walk there.</p>';
+  const back = document.createElement('canvas');
+  back.width = c.width; back.height = c.height;
+  back.getContext('2d').drawImage(c, 0, 0);
+  const g = c.getContext('2d');
+  let steps = [], at = 0, pos = routes.length ? { ...routes[0].pts[0] } : { x: 320, y: 360 }, facing = 0, tick = 0;
+  const sprite = new Map();
+  const draw = st => {
+    g.drawImage(back, 0, 0);
+    const placed = zbWalkPlacements(sheet, z, scripts, st);
+    const key = placed.map(p => p.frame + ':' + (p.x - st.x) + ':' + (p.y - st.y)).join();
+    if (!sprite.has(key)) { const im = zbSnoidCompose(sheet, placed); sprite.set(key, { c: indexedCanvas(im, pal, true), ox: im.ox, oy: im.oy }); }
+    const sp = sprite.get(key);
+    g.drawImage(sp.c, -sp.ox, -sp.oy);
+  };
+  const walkTo = pts => {
+    steps = zbWalk([pos, ...pts], z.feet, lengths, tick, facing);
+    at = 0;
+  };
+  const rest = () => draw({ x: pos.x, y: pos.y, script: 100 + 5 * z.feet + 0, tick: 0, facing });
+  rest();
+  const timer = setInterval(() => {
+    if (!c.isConnected) return clearInterval(timer);
+    if (at >= steps.length) return;
+    const st = steps[at++];
+    draw(st);
+    pos = { x: st.x, y: st.y }; facing = st.facing; tick = st.tick + 1;
+  }, SNOID_TICK_MS);
+  c.style.cursor = 'crosshair';
+  c.addEventListener('click', e => {
+    const r = c.getBoundingClientRect();
+    walkTo([{ x: Math.round((e.clientX - r.left) * c.width / r.width), y: Math.round((e.clientY - r.top) * c.height / r.height) }]);
+  });
+  if ($('walkGo')) $('walkGo').addEventListener('click', () => {
+    const r = routes.find(q => q.i === +$('walkPath').value);
+    WALK_PICK.path = r.i;
+    pos = { ...r.pts[0] }; tick = 0;
+    walkTo(r.pts.slice(1));
+  });
+  for (const sel of box.querySelectorAll('select[data-wtrait]')) sel.addEventListener('change', () => { z[sel.dataset.wtrait] = +sel.value; sprite.clear(); if (at >= steps.length) rest(); });
 }
 
 function showRegs(entry, arc, id, bytes, body) {
@@ -562,7 +627,8 @@ function showScript(entry, arc, tag, id, bytes, body) {
   let sub = `${plural(s.frameCount, 'frame')}, one a tick.`;
   if (tag === 'SCRS') sub += s.layout === -1 ? ' A table of positions, not an animation (header 0xffff).'
     : ` The five layers in the order they are drawn (header ${s.layout}): ${order.join(', ')}.`;
-  let html = `<p class="sub">${sub}</p><table class="plain frames"><tr><th>frame</th><th>records: shape (x, y)</th><th>event</th><th>sound</th></tr>`;
+  let html = `<p class="sub">${sub}</p>${tag === 'SCRS' && ZB_SNOID_KIND_OF_LAYOUT[s.layout] ? '<div id="snoid"></div>' : ''}`
+    + '<table class="plain frames"><tr><th>frame</th><th>records: shape (x, y)</th><th>event</th><th>sound</th></tr>';
   s.frames.forEach((f, i) => {
     const recs = f.records.map((r, k) => {
       const layer = order && f.records.length === 5 ? `<span class="note">${order[k]}</span> ` : '';
@@ -571,6 +637,128 @@ function showScript(entry, arc, tag, id, bytes, body) {
     html += `<tr><td>${i}</td><td class="rec">${recs || '<span class="note">nothing drawn</span>'}</td><td>${f.event ? '0x' + f.end.toString(16) : ''}</td><td>${soundLink(f.sound)}</td></tr>`;
   });
   body.innerHTML = html + '</table>';
+  if ($('snoid')) snoidPlayer(entry, arc, id, s, $('snoid'));
+}
+
+/* ---- a snoid script played ------------------------------------------------- */
+
+/* What the player was last set to: a Zoombini's traits and a Fleen's, the
+   snoid turned round to start with, drawn over its room, with its sounds. */
+const SNOID_PICK = { zoombini: { hair: 1, eyes: 1, nose: 1, feet: 1 }, fleen: { hair: 1, eyes: 1, nose: 1, feet: 1 },
+  turned: false, room: true, sound: false, zoom: 2 };
+const SNOID_TICK_MS = 100;       // the Zoombini maker's tick, which looked right; the program's is not read
+const SNOID_SOUNDS = new Map();  // 'ZOOMBINI 125' -> an object URL
+
+/* A snoid script, played: the snoid its layout word names, put together by
+   zb-snoid.js tick by tick, with the traits picked. */
+function snoidPlayer(entry, arc, id, script, box) {
+  const kind = ZB_SNOID_KIND_OF_LAYOUT[script.layout], K = ZB_SNOID_KINDS[kind];
+  const home = K.archive === entry.name ? entry : ARCHIVES.get(K.archive);
+  const sheetArc = home ? openedArchive(home) : null;
+  if (!sheetArc) {
+    box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk: `
+      + (!home ? 'it is not among the files opened.</p>'
+        : FETCHING.has(K.archive) ? 'fetching it…</p>'
+        : `<a id="snoidFetch">fetch it from archive.org</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
+    if ($('snoidFetch')) $('snoidFetch').addEventListener('click', () => {
+      ensureBytes(home).then(() => { if (box.isConnected) snoidPlayer(entry, arc, id, script, box); });
+      snoidPlayer(entry, arc, id, script, box);
+    });
+    return;
+  }
+  const sheet = zbSnoidSheet(sheetArc, kind);
+  const traits = SNOID_PICK[kind === 'fleen' ? 'fleen' : 'zoombini'];
+  const names = kind === 'fleen' ? ZB_FLEENS_TRAIT_WITH : ZB_TRAIT_SHORT;
+  const own = zbSnoidFeetOf(entry.name, id), feetFor = own ? [own] : zbSnoidFeetFor(sheet, zbSnoidTicks(script));
+  // A walk is written for its own feet: pick them, unless the pick fits.
+  if (!feetFor.includes(traits.feet) && feetFor.length) traits.feet = feetFor[0];
+  const ticks = zbSnoidTicks(script, SNOID_PICK.turned ? 1 : 0, entry.name);
+  const movie = zbSnoidMovie(sheet, traits, ticks);
+  const room = roomPicture(arc, entry.name);
+  // The script's coordinates are the room's when they fall inside it.
+  const inRoom = room != null && movie.width && -movie.ox >= -40 && -movie.oy >= -40 && movie.width - movie.ox <= 680 && movie.height - movie.oy <= 520;
+  const onRoom = inRoom && SNOID_PICK.room;
+  const pal = paletteFor(entry, arc, onRoom ? room : 1 << 30).pal;
+  if (kind !== 'fleen' && !onRoom) { const sc = sharedColours(); if (sc) sc.colours.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; }); }
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const pick = k => `<label>${cap(k)} <select data-trait="${k}">${names[k].map((n, i) => {
+    const off = k === 'feet' && !feetFor.includes(i + 1);
+    return `<option value="${i + 1}"${i + 1 === traits[k] ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(cap(n))}</option>`;
+  }).join('')}</select></label>`;
+  const zoom = SNOID_PICK.zoom;
+  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')} at ${1000 / SNOID_TICK_MS} a second.`
+    + (own ? ` Its feet are written for ${names.feet[own - 1].toLowerCase()}.`
+      : feetFor.length < 5 ? ` Its feet’s poses fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))} only.` : '')
+    + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} past ${movie.missing.length === 1 ? 'its' : 'their'} block, left out.</span>` : '') + '</p>'
+    + `<div class="tools">${['hair', 'eyes', 'nose', 'feet'].map(pick).join('')}</div>`
+    + `<div class="tools"><button id="snoidPlay">Pause</button><button id="snoidStep">Step</button>`
+    + `<input id="snoidAt" type="range" min="0" max="${ticks.length - 1}" value="0"><span id="snoidTick" class="note"></span>`
+    + `<label><input type="checkbox" id="snoidTurned"${SNOID_PICK.turned ? ' checked' : ''}> Turned round</label>`
+    + (inRoom ? `<label><input type="checkbox" id="snoidRoom"${SNOID_PICK.room ? ' checked' : ''}> Over its room</label>` : '')
+    + (kind !== 'fleen' ? `<label><input type="checkbox" id="snoidSound"${SNOID_PICK.sound ? ' checked' : ''}> Sound</label>` : '')
+    + `<label>Zoom <select id="snoidZoom">${[1, 2, 3, 4].map(n => `<option${n === zoom ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`
+    + '<div class="picture snoid"></div>';
+  if (!movie.width) { box.querySelector('.snoid').outerHTML = '<p class="note">No tick draws anything.</p>'; return; }
+
+  // The canvas: the room behind, cropped to where the snoid goes, or clear.
+  const pad = onRoom ? 24 : 0;
+  const x0 = onRoom ? Math.max(0, -movie.ox - pad) : -movie.ox, y0 = onRoom ? Math.max(0, -movie.oy - pad) : -movie.oy;
+  const x1 = onRoom ? Math.min(640, movie.width - movie.ox + pad) : movie.width - movie.ox, y1 = onRoom ? Math.min(480, movie.height - movie.oy + pad) : movie.height - movie.oy;
+  const c = document.createElement('canvas');
+  c.width = (x1 - x0) * zoom; c.height = (y1 - y0) * zoom; c.className = 'px';
+  box.querySelector('.snoid').appendChild(c);
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  let back = null;
+  if (onRoom) {
+    const d = decodeBitmapResource(arc.get('tBMP', room));
+    back = indexedCanvas(d.frames[0], pal, false);
+  }
+  const frames = movie.frames.map(px => indexedCanvas({ width: movie.width, height: movie.height, pixels: px }, pal, true));
+  let at = 0, playing = true;
+  const draw = () => {
+    g.clearRect(0, 0, c.width, c.height);
+    if (back) g.drawImage(back, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
+    g.drawImage(frames[at], (-movie.ox - x0) * zoom, (-movie.oy - y0) * zoom, movie.width * zoom, movie.height * zoom);
+    $('snoidAt').value = at;
+    const t = ticks[at];
+    $('snoidTick').textContent = `tick ${at}${t.facing ? ', turned' : ''}${t.layout !== script.layout ? `, order ${t.layout}` : ''}`;
+  };
+  const sound = () => {
+    if (!SNOID_PICK.sound) return;
+    const t = ticks[at], want = [];
+    if (t.sound > 0) want.push(arc.has('\0SND', t.sound) ? { archive: entry.name, id: t.sound } : { archive: 'ZOOMBINI', id: t.sound });
+    const v = zbSnoidSound(t.event, traits);
+    if (v) want.push({ archive: v.archive || entry.name, id: v.id });
+    for (const w of want) snoidPlaySound(w.archive, w.id);
+  };
+  const step = () => { at = (at + 1) % ticks.length; draw(); sound(); };
+  draw(); sound();
+  const timer = setInterval(() => { if (!c.isConnected) return clearInterval(timer); if (playing) step(); }, SNOID_TICK_MS);
+  $('snoidPlay').addEventListener('click', () => { playing = !playing; $('snoidPlay').textContent = playing ? 'Pause' : 'Play'; });
+  $('snoidStep').addEventListener('click', () => { playing = false; $('snoidPlay').textContent = 'Play'; step(); });
+  $('snoidAt').addEventListener('input', () => { playing = false; $('snoidPlay').textContent = 'Play'; at = +$('snoidAt').value; draw(); });
+  const again = () => { clearInterval(timer); snoidPlayer(entry, arc, id, script, box); };
+  for (const sel of box.querySelectorAll('select[data-trait]')) sel.addEventListener('change', () => { traits[sel.dataset.trait] = +sel.value; again(); });
+  $('snoidTurned').addEventListener('change', e => { SNOID_PICK.turned = e.target.checked; again(); });
+  if ($('snoidRoom')) $('snoidRoom').addEventListener('change', e => { SNOID_PICK.room = e.target.checked; again(); });
+  if ($('snoidSound')) $('snoidSound').addEventListener('change', e => {
+    SNOID_PICK.sound = e.target.checked;
+    if (SNOID_PICK.sound && !ARCHIVES.get('ZOOMBINI')?.bytes && ARCHIVES.get('ZOOMBINI')?.remote) ensureBytes(ARCHIVES.get('ZOOMBINI'));
+  });
+  $('snoidZoom').addEventListener('change', e => { SNOID_PICK.zoom = +e.target.value; again(); });
+}
+
+/* A sound from an open archive, played once; nothing if it is not open. */
+function snoidPlaySound(name, id) {
+  const key = `${name} ${id}`;
+  if (!SNOID_SOUNDS.has(key)) {
+    const e = ARCHIVES.get(name), a = e && e.bytes ? openedArchive(e) : null;
+    if (!a || !a.has('\0SND', id)) return;
+    const w = parseMohawkWave(a.get('\0SND', id));
+    SNOID_SOUNDS.set(key, URL.createObjectURL(new Blob([wavFromPcmBytes(w.samples, w.rate, w.bits, w.channels)], { type: 'audio/wav' })));
+  }
+  new Audio(SNOID_SOUNDS.get(key)).play().catch(() => {});
 }
 
 wireOpening();

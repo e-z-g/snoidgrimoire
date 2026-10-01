@@ -86,7 +86,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const lists = [...fs.readFileSync(spritesJs, 'utf8').matchAll(/"names":(\{[^}]*\})/g)].map(m => JSON.parse(m[1]));
     const fleen = lists.find(l => l.hair && l.hair.includes('Mohawk'));
     const mine = Object.fromEntries(KINDS.map(k => [k, S.ZB_FLEENS_TRAIT_SHORT[k].map(n => k === 'nose' ? n + ' nose' : n)]));
-    if (!fleen || !same(KINDS.map(k => fleen[k]), KINDS.map(k => mine[k]))) fail(`the Fleen names are not the maker's: ${JSON.stringify(fleen)}`);
+    // The maker lists a Fleen's own five first, then extras it can wear (Captain Cajun's feet, ...).
+    if (!fleen || !same(KINDS.map(k => fleen[k].slice(0, 5)), KINDS.map(k => mine[k]))) fail(`the Fleen names are not the maker's: ${JSON.stringify(fleen)}`);
     makerChecked = true;
     KINDS.forEach(k => S.ZB_FLEENS_TRAIT_WITH[k].forEach((w, v) => { if (!w.toLowerCase().includes(S.ZB_FLEENS_TRAIT_SHORT[k][v].toLowerCase())) fail(`Fleen ${k} ${v + 1} reads "${w}" after "with"`); }));
   }

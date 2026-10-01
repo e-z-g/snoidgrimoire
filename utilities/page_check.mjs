@@ -96,10 +96,15 @@ const VIEWS = [
   ['MAZE2/tPAL/5001', "document.querySelectorAll('.swatches div:not(.off)').length === 240"],
   ['ZOOMBINI/STRL/1700', "/Allergic Cliffs/.test(document.getElementById('view').textContent) && /level 1/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/CURS/1', "document.querySelector('#cur canvas')"],
-  ['HOTEL/NODE/1000', "document.querySelector('#walk canvas') && /21 waypoints/.test(document.getElementById('view').textContent)"],
+  ['HOTEL/NODE/1000', "document.querySelector('#walk canvas') && /21 waypoints/.test(document.getElementById('view').textContent) && document.querySelector('#walker select') && (document.getElementById('walkGo').click(), true)"],
   ['FLEENS/REGS/4000', "/registration points of a sheet of 740 frames/.test(document.getElementById('view').textContent)"],
   ['FLEENS/SCRS/4000', "document.querySelectorAll('.frames tr').length > 1 && /body, feet, nose, eyes, hair/.test(document.getElementById('view').textContent)"],
   ['PICKER/SCRB/1000', "document.querySelectorAll('.frames tr').length > 1"],
+  // Snoid scripts played: a Zoombini walking, a Fleen running, a tumble, a walk over its room.
+  ['ZOOMBINI/SCRS/112', "document.querySelector('#snoid canvas') && /tick [1-9]/.test(document.getElementById('snoidTick').textContent) && /written for roller skates/.test(document.getElementById('snoid').textContent)"],
+  ['FLEENS/SCRS/4028', "document.querySelector('#snoid canvas') && /A Fleen,/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
+  ['FLEENS/SCRS/6000', "document.querySelector('#snoid canvas') && /tumbling/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
+  ['BRIDGE/SCRS/2002', "document.querySelector('#snoid canvas') && document.getElementById('snoidRoom') && !document.querySelector('#snoid .warn')"],
   ['BRIDGE', "/Allergic Cliffs/.test(document.getElementById('view').textContent) && /level 4/.test(document.getElementById('view').textContent)"],
 ];
 
