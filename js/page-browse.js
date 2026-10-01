@@ -42,15 +42,17 @@ function browseStart(first) {
 
 /* The address decides the view: the map's (page-map.js) or an archive's. */
 function route() {
-  const town = /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
+  const tab = tabOfHash();
+  const town = !tab && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
   const solve = !town && isSolveHash();
   const map = !town && !solve && isJourneyHash() && journeyAvailable();
   $('town').hidden = !town;
   $('solve').hidden = !solve;
   $('journey').hidden = !map;
   $('app').hidden = map || town || solve;
-  for (const a of $('views').querySelectorAll('a')) a.classList.toggle('on', (a.dataset.view === 'map') === (map || town || solve));
-  if (town) townRoute();
+  renderTopTabs();
+  if (tab) renderTab(tab);
+  else if (town) townRoute();
   else if (solve) solveRoute();
   else if (map) journeyRoute();
   else render();

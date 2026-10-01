@@ -453,11 +453,12 @@ function mapApplyHash() {
 /* ---- the bar and the panel ----------------------------------------------- */
 
 function mapCrumbs() {
+  if (!isJourneyHash()) return;     // a flight still under way after the view has changed
   const k = JVIEW.place || JVIEW.sel;
   const parts = [`<a data-go="map">Map</a>`];
   if (k) parts.push(`<span>${esc(jPlace(k).name)}</span>`);
   $('crumbs').innerHTML = parts.join('<span class="sep">›</span>');
-  const arch = $('views').querySelector('[data-view="archives"]');
+  const arch = $('views').querySelector('[data-view="data"]');
   if (arch) arch.href = '#' + (k || (JMAP_FROM ? JMAP_FROM.name : 'RODMAP'));
 }
 

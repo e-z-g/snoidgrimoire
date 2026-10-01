@@ -108,6 +108,26 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; max-width:
 .swatches div { aspect-ratio: 1; border-radius: 3px; border: 1px solid rgba(255,255,255,.06); }
 .swatches div.off { background: repeating-linear-gradient(45deg, #1b2230 0 3px, #111722 3px 6px); }
 .strings p { margin: 0 0 12px; max-width: 70ch; white-space: pre-wrap; }
+/* ---- Scenario and Components ---- */
+#view details.sec { border-top: 1px solid var(--line); padding: 6px 0; }
+#view details.sec > summary { cursor: pointer; padding: 2px 0; }
+#view details.sec > p { max-width: 75ch; }
+#view h2.h { font-size: 15px; margin: 22px 0 4px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 10px; }
+.card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); }
+.card:hover { border-color: var(--faint); text-decoration: none; }
+.card .pic { height: 120px; display: grid; place-items: center; background: repeating-conic-gradient(#1a2130 0 25%, #121824 0 50%) 0 0 / 12px 12px; border-radius: 4px; overflow: hidden; font-size: 12px; color: var(--bad); }
+.card .pic canvas { image-rendering: pixelated; }
+.card .cap { font-size: 12.5px; }
+.palrow { display: flex; gap: 10px; align-items: center; margin: 3px 0; }
+.palrow a { flex: none; width: 150px; font: 12px var(--mono); }
+.palrow .strip { display: flex; flex: 1; min-width: 0; height: 14px; border: 1px solid var(--line); }
+.palrow .strip i { flex: 1; min-width: 0; }
+.trow { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 4px 0; }
+.wide { overflow-x: auto; max-width: 100%; }
+.trow .note { width: 40px; }
+.trow canvas { image-rendering: pixelated; width: auto; height: 40px; max-width: 18vw; object-fit: contain; }
+button.play { padding: 0 7px; font-size: 11px; }
 .strings p b { color: var(--faint); font-weight: 500; font: 12px var(--mono); margin-right: 6px; }
 .frames td { font: 12px/1.35 var(--mono); }
 .frames td.rec { color: var(--text); }
@@ -260,7 +280,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <body>
 <div id="bar">
   <span id="brand" title="Back to the start">SnoidGrimoire</span>
-  <nav id="views" hidden><a data-view="map" href="#journey">Map</a><a data-view="archives" href="#RODMAP">Archives</a></nav>
+  <nav id="views" hidden></nav>
   <span id="crumbs"></span>
   <span id="status"></span>
 </div>
@@ -375,6 +395,8 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-puzzle-maze2.js"></script>
 <script src="js/page-open.js"></script>
 <script src="js/page-browse.js"></script>
+<script src="js/page-tabs.js"></script>
+<script src="js/page-galleries.js"></script>
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>

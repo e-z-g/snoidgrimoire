@@ -89,6 +89,20 @@ const VIEWS = [
   ['journey&place=SMOKE', `ZB_PUZZLES.size === 12 && [...ZB_PUZZLES.keys()].every(k => [1, 2, 3, 4].every(l => {
     JVIEW.level = l; JVIEW.deal = { key: k, seed: 7 * l, size: [16, 9, 3][l % 3] };
     const h = puzzlePanel(k); return /class="dealt"/.test(h) && !/class="bad"/.test(h); }))`],
+  // Grimoire's tabs: Scenario's panes and Components' galleries, across every archive.
+  ['scenario/places', "document.querySelectorAll('#view table tr').length === 17 && document.querySelector('#views a.on').dataset.view === 'scenario'"],
+  ['scenario/puzzles', "document.querySelectorAll('#view details.sec').length === 12"],
+  ['scenario/snoids', "document.querySelectorAll('#view .trow canvas').length === 20 && document.querySelectorAll('#view .ids a').length >= 717"],
+  ['scenario/town', "/Zoombiniville/.test(document.getElementById('view').textContent)"],
+  ['components/pictures', "document.querySelectorAll('#view .card').length === 65 && document.querySelector('#view .card .pic canvas')"],
+  ['components/sheets', "document.querySelectorAll('#view .card').length === 112 && document.querySelector('#views a.on').dataset.view === 'components'"],
+  ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice, kind/.test(document.getElementById('view').innerHTML)"],
+  ['components/music', "document.querySelectorAll('#view table tr').length === 37"],
+  ['components/text', "document.querySelectorAll('#view details.sec').length === 53 && /the credits/.test(document.getElementById('view').textContent)"],
+  ['components/palettes', "document.querySelectorAll('#view .palrow').length === 48"],
+  ['components/cursors', "document.querySelectorAll('#view .card').length === 5"],
+  ['components/scripts', "/snoid script/.test(document.getElementById('view').textContent)"],
+  ['components/walks', "document.querySelectorAll('#view table tr').length === 10"],
   ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
