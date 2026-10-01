@@ -17,6 +17,8 @@
 //     apart); and none else: the nine ticks of FLEENS 7026-7030
 //     and NET 13003-13004 whose order comes from code not traced
 //     (ZB_UNTRACED) are the only ones zbSnoidParts fits;
+//   - no tick of those scripts shown clear: one that draws nothing holds the
+//     last that draws (zbSnoidShown), as the Zoombini maker plays them;
 //   - every pose of those scripts inside its block, for the feet its number
 //     says (zbSnoidFeetOf) or else for some feet;
 //   - the walk (zbWalkDirection, zbWalkLeg): its slope thresholds and speeds
@@ -83,7 +85,7 @@ for (const [kind, parts] of Object.entries(W.blocks)) {
 }
 const key = ps => ps.map(p => p.join(',')).sort().join(' ');
 const swap = (ps, a) => ps.map(([p, ...r]) => [a[p] || p, ...r]);
-const counts = { scripts: 0, ticks: 0, drawn: 0, ambiguous: 0, untraced: 0, feetBound: 0 };
+const counts = { held: 0, scripts: 0, ticks: 0, drawn: 0, ambiguous: 0, untraced: 0, feetBound: 0 };
 for (const n of archiveNames()) {
   const a = S.openMohawk(archiveBytes(n));
   for (const { id } of a.list('SCRS')) {
@@ -103,6 +105,9 @@ for (const n of archiveNames()) {
       if (kind === 'zoombini' && four && key(got) === key(swap(exp, { body: 'nose', nose: 'body' }))) { counts.ambiguous++; return; }
       if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}: ${JSON.stringify(got)}, animate.py ${JSON.stringify(exp)}`);
     });
+    const shown = S.zbSnoidShown(ticks, K.effects);
+    if (shown.some(k => k < 0 || !S.zbSnoidParts(ticks[k], K.effects).length)) { if (bad++ < 12) fail(`${n} SCRS ${id}: a tick shows nothing`); }
+    counts.held += shown.filter((k, i) => k !== i).length;
     const sheetish = { effects: K.effects, blocks: K.blocks };
     const fits = S.zbSnoidFeetFor(sheetish, ticks), own = S.zbSnoidFeetOf(n, id), feet = own ? [own] : fits;
     if (own && !fits.includes(own) && bad++ < 12) fail(`${n} SCRS ${id}: written for feet ${own} by its number, whose block does not hold its poses`);
@@ -117,7 +122,7 @@ for (const n of archiveNames()) {
   }
 }
 if (counts.untraced !== Object.values(ZB_UNTRACED).flat().length) fail(`${counts.untraced} ticks fitted, not ${Object.values(ZB_UNTRACED).flat().length}`);
-if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties the layout word decides, ${counts.untraced} untraced ones fitted; ${counts.feetBound} scripts written for some feet only`);
+if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties the layout word decides, ${counts.untraced} untraced ones fitted; ${counts.held} that draw nothing holding the last that does; ${counts.feetBound} scripts written for some feet only`);
 // The walk.
 const cpp = path.join(ROOT, 'reference', 'scummvm-zoombini', 'engines', 'mohawk', 'zoombini_scripts.cpp');
 if (fs.existsSync(cpp)) {

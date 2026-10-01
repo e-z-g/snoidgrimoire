@@ -224,17 +224,30 @@ function zbTraitIcon(sheet, kind, value) {
   return zbSnoidCompose(sheet, [{ frame: f, x: 0, y: 0 }]);
 }
 
+/* Which tick each tick shows: itself, or where it draws nothing (2,516
+   ticks in 385 scripts on the disc), the last before it that draws, going
+   round from the end for the first ones; -1 if none draws. So the Zoombini
+   maker plays them (tools/export_web.py clip(): "an empty section holds
+   the previous tick"); drawn clear, they flicker. */
+function zbSnoidShown(ticks, effects = null) {
+  const draws = ticks.map(t => zbSnoidParts(t, effects).length > 0);
+  let prev = draws.lastIndexOf(true);
+  return draws.map((d, i) => (d ? (prev = i) : prev));
+}
+
 /* A whole script, every tick as an indexed image of one size: { width,
    height, ox, oy, frames: [pixels], missing } with (ox, oy) where the
    script's origin falls and `missing` the parts its poses left out.
-   `ticks` is zbSnoidTicks's; a tick that draws nothing is clear. */
+   `ticks` is zbSnoidTicks's; a tick that draws nothing shows the one
+   zbSnoidShown says. */
 function zbSnoidMovie(sheet, traits, ticks) {
   const missing = [], placed = ticks.map(t => zbSnoidPlacements(sheet, traits, t, missing));
   const all = placed.flat();
   if (!all.length) return { width: 0, height: 0, ox: 0, oy: 0, frames: placed.map(() => new Uint8Array(0)), missing };
-  const box = zbSnoidBox(sheet, all);
+  const box = zbSnoidBox(sheet, all), shown = zbSnoidShown(ticks, sheet.effects);
+  const painted = placed.map((p, i) => (shown[i] === i ? zbSnoidPaint(sheet, p, box).pixels : null));
   return { width: box.width, height: box.height, ox: box.ox, oy: box.oy, missing,
-    frames: placed.map(p => zbSnoidPaint(sheet, p, box).pixels) };
+    frames: shown.map(k => painted[k]) };
 }
 
 function zbSnoidBox(sheet, placed) {
@@ -339,9 +352,12 @@ function zbWalk(points, feet, lengths, tick = 0, facing = 0) {
   }
   return out;
 }
-/* A walking Zoombini's sprites on a tick of zbWalk: placed in the room. */
+/* A walking Zoombini's sprites on a tick of zbWalk: placed in the room. A
+   tick of its script that draws nothing shows the one before (zbSnoidShown). */
 function zbWalkPlacements(sheet, z, scripts, step) {
-  const s = scripts[step.script], f = s.frames[step.tick];
+  const s = scripts[step.script];
+  if (!s.shown) s.shown = zbSnoidShown(zbSnoidTicks(s));
+  const f = s.frames[Math.max(0, s.shown[step.tick])];
   return zbSnoidPlacements(sheet, z, { records: f.records, layout: s.layout, facing: step.facing })
     .map(p => ({ ...p, x: p.x + step.x, y: p.y + step.y }));
 }
