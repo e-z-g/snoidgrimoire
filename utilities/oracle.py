@@ -9,6 +9,8 @@ $ZB_TOOLS (a front's own, before it lands), and never changes them.
                                            # animate.py puts them together
     python3 utilities/oracle.py snoidticks # every snoid script's ticks, each
                                            # record the part animate.py fits
+    python3 utilities/oracle.py write SPEC # an archive rewritten by
+                                           # mohawk_write.py, as SHA-1s
 """
 import hashlib, json, os, sys
 
@@ -119,8 +121,39 @@ def snoidticks():
     return out
 
 
+def write(spec_path):
+    """An archive written as tools/mohawk_write.py writes it, from a spec
+    the check makes: {archive, sheets: [{id, raw: {frame: [w, h, base64]}}],
+    regs: [{id, values: {index: value}}]}. Gives each rebuilt resource's and
+    the whole archive's SHA-1."""
+    import base64, struct
+    import mohawk_write as MW
+    spec = json.load(open(spec_path))
+    path = os.path.join(DATA, spec['archive'] + '.MHK')
+    m = MHK(path)
+    changes, out = {}, {}
+    for sh in spec.get('sheets', []):
+        old = m.get('tBMP', sh['id'])
+        frames = MW.subimages(old)
+        for k, (w, h, px) in sh['raw'].items():
+            frames[int(k)] = MW.raw_subimage(w, h, base64.b64decode(px))
+        changes[('tBMP', sh['id'])] = MW.compound(old, frames)
+    for rg in spec.get('regs', []):
+        old = bytearray(m.get('REGS', rg['id']))
+        for k, v in rg['values'].items():
+            struct.pack_into('>h', old, 2 + 2 * int(k), v)
+        changes[('REGS', rg['id'])] = bytes(old)
+    for (tag, rid), data in changes.items():
+        out['%s/%d' % (tag, rid)] = hashlib.sha1(data).hexdigest()
+    out['archive'] = hashlib.sha1(MW.replace(path, changes)).hexdigest()
+    return out
+
+
 if __name__ == '__main__':
     what = sys.argv[1]
+    if what == 'write':
+        json.dump(write(sys.argv[2]), sys.stdout)
+        sys.exit()
     if what in ('snoids', 'snoidticks'):
         json.dump(snoids() if what == 'snoids' else snoidticks(), sys.stdout)
         sys.exit()

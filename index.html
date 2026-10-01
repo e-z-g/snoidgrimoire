@@ -115,6 +115,9 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; max-width:
 .swatches div.off { background: repeating-linear-gradient(45deg, #1b2230 0 3px, #111722 3px 6px); }
 .strings p { margin: 0 0 12px; max-width: 70ch; white-space: pre-wrap; }
 /* ---- Scenario and Components ---- */
+#view textarea { width: 100%; max-width: 70ch; font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+#view .field { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+#view .field .label { font: 12px var(--mono); color: var(--faint); width: 22px; padding-top: 7px; flex: none; }
 #view details.sec { border-top: 1px solid var(--line); padding: 6px 0; }
 #view details.sec > summary { cursor: pointer; padding: 2px 0; }
 #view details.sec > p { max-width: 75ch; }
@@ -390,6 +393,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-journey.js"></script>
 <script src="js/zb-town.js"></script>
 <script src="js/zb-snoid.js"></script>
+<script src="js/zb-write.js"></script>
 <script src="js/zb-diagram.js"></script>
 <script src="js/zb-puzzle.js"></script>
 <script src="js/zb-puzzle-bridge.js"></script>
@@ -410,6 +414,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-browse.js"></script>
 <script src="js/page-tabs.js"></script>
 <script src="js/page-galleries.js"></script>
+<script src="js/page-edit.js"></script>
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>

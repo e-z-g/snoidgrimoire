@@ -107,7 +107,10 @@ const VIEWS = [
   ['search=arno', "/Pizza Pass/.test(document.getElementById('view').textContent) && document.querySelector('#views a.on') === null && document.getElementById('q').value === 'arno'"],
   ['ZOOMBINI/tBMP/3000', "document.querySelector('#view .xref') && /REGS 100/.test(document.querySelector('#view .xref').textContent) && /read by/.test(document.querySelector('#view .xref').textContent)"],
   ['FLEENS/SND/4013', "document.querySelector('#view .xref') && /cues/.test(document.querySelector('#view .xref').textContent)"],
-  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc').length === 22"],
+  // An edit: the credits' first string rewritten, read back out of the rebuilt archive, listed under Changes, undone.
+  ['ZOOMBINI/STRL/2900', "(() => { const b = document.getElementById('strEdit'); if (b) { b.click(); const t = document.querySelector('#view textarea'); t.value = 'Edited by a check'; document.getElementById('strApply').click(); } return /Edited by a check/.test(document.getElementById('view').textContent) && /edited/.test(document.querySelector('#view .sub').textContent) && openedArchive(ARCHIVES.get('ZOOMBINI')).list('STRL').length === 53 && parseStringList(openedArchive(ARCHIVES.get('ZOOMBINI')).get('STRL', 2900))[0] === 'Edited by a check'; })()"],
+  ['changes', "/STRL 2900/.test(document.getElementById('view').textContent) && document.querySelector('[data-save=\"ZOOMBINI\"]') && (document.querySelector('#view [data-undo]').click(), true) && !EDITS.size"],
+  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/tBMP/3000', "document.querySelectorAll('#sheet .frame').length === 890"],

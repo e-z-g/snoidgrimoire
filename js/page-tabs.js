@@ -33,6 +33,7 @@ function topTabOfHash() {
   if (/^#(journey|place=)/.test(location.hash)) return 'world';
   if (/^#(scenario|solve=|town\b)/.test(location.hash)) return 'scenario';
   if (/^#components/.test(location.hash)) return 'components';
+  if (location.hash === '#changes') return 'data';
   return 'data';
 }
 /* The bar's four tabs, the one the address is under lit. */

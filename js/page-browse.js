@@ -43,7 +43,7 @@ function browseStart(first) {
 
 /* The address decides the view: the map's (page-map.js) or an archive's. */
 function route() {
-  const tab = tabOfHash(), search = tab ? null : searchOfHash();
+  const tab = tabOfHash(), search = tab ? null : searchOfHash(), changes = !tab && search == null && isChangesHash();
   const town = !tab && search == null && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
   const solve = !town && isSolveHash();
   const map = !town && !solve && isJourneyHash() && journeyAvailable();
@@ -52,7 +52,9 @@ function route() {
   $('journey').hidden = !map;
   $('app').hidden = map || town || solve;
   renderTopTabs();
-  if (search != null) renderSearch(search);
+  if (search == null) $('q').value = '';
+  if (changes) renderChanges();
+  else if (search != null) renderSearch(search);
   else if (tab) renderTab(tab);
   else if (town) townRoute();
   else if (solve) solveRoute();
@@ -119,6 +121,8 @@ function renderSide(entry, h) {
   const side = $('side');
   const keep = side.scrollTop;
   let html = `<h2>${esc(SOURCE)}</h2>`;
+  const edits = [...EDITS.values()].reduce((n, e) => n + e.changes.size, 0);
+  html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits ? plural(edits, 'edit') : 'nothing edited'}</span></div>`;
   for (const e of sortedArchives()) {
     html += `<div class="arc${e === entry ? ' on' : ''}${e.remote && !e.bytes ? ' unfetched' : ''}" data-arc="${esc(e.name)}">`
       + `<span class="name">${esc(e.name)}</span><span class="place">${esc(placeOf(e.name))}</span></div>`;
@@ -301,7 +305,7 @@ function helpHtml(name) {
 
 function renderResource(entry, arc, tag, id) {
   const r = arc.find(tag, id);
-  const head = `<h1>${esc(tagLabel(tag))} ${id}</h1><p class="sub">${esc(entry.name)} · ${plural(r.size, 'byte')}${r.name ? ' · “' + esc(r.name) + '”' : ''}</p>`;
+  const head = `<h1>${esc(tagLabel(tag))} ${id}</h1><p class="sub">${esc(entry.name)} · ${plural(r.size, 'byte')}${r.name ? ' · “' + esc(r.name) + '”' : ''}${editedNote(entry, tag, id)}</p>`;
   const bytes = arc.get(tag, id);
   const view = $('view');
   view.innerHTML = head;
@@ -474,7 +478,8 @@ function showStrings(entry, id, bytes, body) {
     if (place && id % 20 === 0) what = `The help for <a href="#${place}">${esc(ZB_ARCHIVES[place].place)}</a>${base >= 1700 ? ', level ' + (id % 100 / 20 + 1) : ''}.`;
     else if (id === 2900) what = 'The credits.';
   }
-  body.innerHTML = `<p class="sub">${plural(s.length, 'string')}. ${what}</p><div class="strings">${s.map((t, i) => `<p><b>${i}</b>${esc(t)}</p>`).join('')}</div>`;
+  body.innerHTML = `<p class="sub">${plural(s.length, 'string')}. ${what}</p><div class="tools"><button id="strEdit">Edit the text</button></div><div class="strings">${s.map((t, i) => `<p><b>${i}</b>${esc(t)}</p>`).join('')}</div>`;
+  $('strEdit').addEventListener('click', () => editStrings(entry, id, s, body));
 }
 
 function showCursor(entry, id, bytes, body) {
