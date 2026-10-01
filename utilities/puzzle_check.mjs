@@ -8,6 +8,9 @@
 //   - every js/zb-puzzle-*.js is loaded by index.html, and every puzzle
 //     has a check in utilities/puzzles/ and a deal at each level that
 //     answers in the shape zb-puzzle.js describes;
+//   - where a band waits at each puzzle (ZB_WAITING): ScummVM's table that
+//     its page class loads the band at, and the program's, little-endian
+//     x, y pairs at the offset given in ZOOMBINI.EXE;
 //
 // and each puzzle's own rules by utilities/puzzles/<archive>.mjs, whose
 // default export is given { S, fail, say, scumm, exe, need, bands, find,
@@ -108,6 +111,36 @@ for (const k of keys) {
     }
   }
 }
+// Where a band waits: ScummVM's table, and the program's bytes.
+const WAITING_IN_SCUMMVM = {
+  BRIDGE: ['puzzle_bridge.h', 'kLeftBankWaitingPositions'], TUNNELS: ['puzzle_tunnels.h', 'kSnoidPositions'],
+  PIZZA: ['puzzle_pizza.h', 'kSnoidPositions'], FERRY: ['puzzle_ferry.h', 'kDockSnoidPositions'],
+  SLIDES: ['puzzle_slides.h', 'kSnoidPositions'], FLEENS: ['puzzle_fleens.h', 'kPackSnoidPositions'],
+  HOTEL: ['puzzle_hotel.h', 'kIntroSnoidPositions'], NET: ['puzzle_net.h', 'kSnoidPositions'],
+  CAVES: ['puzzle_caves.h', 'kWaitingSnoidPositions'], SMOKE: ['puzzle_smoke.h', 'kSnoidPositions'],
+  MAZE2: ['puzzle_maze.h', 'kSnoidPositions'],
+};
+{
+  let tables = 0;
+  for (const k of keys) {
+    const w = S.ZB_WAITING[k], sv = WAITING_IN_SCUMMVM[k];
+    if (!w !== !sv) { fail(`${k}: ${w ? 'a waiting table ScummVM is not read for' : 'no waiting table'}`); continue; }
+    if (!w) continue;
+    const text = scumm(path.join('zoombini_pages', sv[0]));
+    const m = need(new RegExp(`${sv[1]}\\[(\\d+)\\]\\s*\\{([^}]*)\\}`), text, `${k}'s ${sv[1]}`);
+    const theirs = [...m[2].matchAll(/Point\((-?\d+),\s*(-?\d+)\)/g)].flatMap(p => [+p[1], +p[2]]);
+    if (theirs.length !== 2 * +m[1]) fail(`${k}: read ${theirs.length / 2} of ScummVM's ${m[1]} places`);
+    if (w.at.length !== 32 || JSON.stringify(theirs.slice(0, 32)) !== JSON.stringify(w.at)) fail(`${k}: the waiting places are not ScummVM's ${sv[1]}`);
+    const dv = new DataView(exe.buffer, exe.byteOffset);
+    const ours = Array.from({ length: theirs.length }, (_, i) => dv.getInt16(w.exe + 2 * i, true));
+    if (JSON.stringify(ours) !== JSON.stringify(theirs)) fail(`${k}: ZOOMBINI.EXE at 0x${w.exe.toString(16)} is not ScummVM's ${sv[1]}`);
+    if (find(exe, new Uint8Array(exe.buffer, exe.byteOffset + w.exe, 8)).length < 1) fail(`${k}: lost the table in ZOOMBINI.EXE`);
+    tables++;
+  }
+  if (S.ZB_WAITING.LILLY) fail('LILLY has a waiting table, though its band stands off the screen');
+  say(`waiting: ${tables} puzzles' places for the band as ScummVM's and in ZOOMBINI.EXE`);
+}
+
 for (const f of modules) {
   const key = f.replace(/\.mjs$/, '');
   if (want.length && !want.includes(key)) continue;

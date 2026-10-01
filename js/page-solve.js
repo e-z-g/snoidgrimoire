@@ -23,7 +23,7 @@
    $, esc, ARCHIVES, ensureBytes, openedArchive and sharedColours it uses;
    page-browse.js's route() calls solveRoute. */
 
-const SVIEW = { key: null, level: 1, seed: 1, size: 16, band: null, set: null, view: 'known', knows: 'program', path: [], pick: 0 };
+const SVIEW = { key: null, level: 1, seed: 1, size: 16, band: null, set: null, view: 'known', knows: 'program', path: [], pick: 0, stage: 'diagram' };
 let SDEALT = null, SSOLVED = null, SSTRAT = null, SNODES = [], SERROR = null, SPUZZLE = null;
 const SSPRITES = new Map();       // 'z:2552' or 't:hair:1' -> { url, width, height, ox, oy }
 
@@ -42,6 +42,7 @@ function solveHashFor() {
   if (v.knows !== 'program') q.push(`knows=${v.knows}`);
   if (v.path.length) q.push(`path=${v.path.join('.')}`);
   if (v.pick) q.push(`pick=${v.pick}`);
+  if (v.stage === 'scene') q.push('stage=scene');
   return '#' + q.join('&');
 }
 function solveWriteHash(replace = true) {
@@ -65,6 +66,7 @@ function solveApplyHash() {
   SVIEW.knows = q.get('knows') === 'form' ? 'form' : 'program';
   SVIEW.path = (q.get('path') || '').split('.').filter(s => /^\d+$/.test(s)).map(Number);
   SVIEW.pick = Math.max(0, +q.get('pick') || 0);
+  SVIEW.stage = q.get('stage') === 'scene' ? 'scene' : 'diagram';
 }
 
 /* ---- the puzzle, worked out ------------------------------------------------ */
@@ -246,6 +248,8 @@ function solveUnknownHtml(band) {
 /* ---- the stage ---------------------------------------------------------------- */
 
 function solveStage() {
+  for (const a of document.querySelectorAll('#stabs a')) a.classList.toggle('on', a.dataset.stage === SVIEW.stage);
+  if (SVIEW.stage === 'scene') return solveScene();
   const band = SDEALT ? SDEALT.band : [];
   let d = null, cap = '';
   if (SVIEW.view === 'known' && SSOLVED && SSOLVED.solutions && SSOLVED.solutions.length) {
@@ -257,6 +261,40 @@ function solveStage() {
   }
   $('sdiagram').innerHTML = d ? zbDiagramSvg(d, solveSprites(band)) : `<p class="note">${esc(SERROR || 'No diagram.')}</p>`;
   $('scaption').textContent = cap;
+}
+
+/* The scene: the place's picture at the level, and the band where the
+   program puts it on coming there (zbBandWaiting), standing, facing right
+   as it arrives. Needs the place's archive and ZOOMBINI's, fetched when
+   asked. */
+function solveScene() {
+  const key = SVIEW.key, place = ZB_PLACE_BY_KEY.get(key), band = SDEALT ? SDEALT.band : [];
+  const home = ARCHIVES.get(key), z = ARCHIVES.get('ZOOMBINI');
+  const waiting = zbBandWaiting(key, band);
+  $('scaption').textContent = waiting ? `The band waiting at ${place.name}, where the program puts it on coming there (ZOOMBINI.EXE's places).`
+    : `At ${place.name} the band stands off the screen, and the toads' own runners draw it; not drawn yet.`;
+  const missing = [home, z].filter(e => !e || !e.bytes);
+  if (missing.some(e => !e)) { $('sdiagram').innerHTML = `<p class="note">The scene needs ${esc(key.toLowerCase())}.mhk and zoombini.mhk, which are not both among the files opened.</p>`; return; }
+  if (missing.length) {
+    $('sdiagram').innerHTML = missing.some(e => FETCHING.has(e.name)) ? '<p class="note">Fetching…</p>'
+      : `<p class="note">The scene is drawn from ${missing.map(e => esc(e.name.toLowerCase()) + '.mhk').join(' and ')}: <a data-sact="scene">fetch ${missing.length > 1 ? 'them' : 'it'} from archive.org</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;
+    return;
+  }
+  const arc = openedArchive(home), zarc = openedArchive(z);
+  const pic = zbPlacePicture(arc, key, SVIEW.level), pal = paletteFor(home, arc, pic.palette).pal;
+  const c = document.createElement('canvas');
+  c.width = 640; c.height = 480; c.className = 'scene';
+  const g = c.getContext('2d');
+  for (const l of pic.layers) g.drawImage(indexedCanvas(decodeBitmapResource(arc.get('tBMP', l.id)).frames[l.frame], pal, false), l.x, l.y);
+  if (waiting) {
+    const sheet = zbSnoidSheet(zarc, ZB_WAITING[key].small ? 'small' : 'zoombini');
+    for (const w of waiting) {
+      const im = zbZoombiniImage(sheet, w.z);
+      g.drawImage(indexedCanvas(im, pal, true), w.x - im.ox, w.y - im.oy);
+    }
+  }
+  $('sdiagram').innerHTML = '';
+  $('sdiagram').appendChild(c);
 }
 
 /* ---- going there ---------------------------------------------------------------- */
@@ -293,6 +331,15 @@ function solveRedo() { SVIEW.path = []; SVIEW.pick = 0; solveWriteHash(); solveR
 
 function wireSolve() {
   const panel = $('spanel');
+  $('sstage').addEventListener('click', e => {
+    const a = e.target.closest('[data-stage],[data-sact="scene"]');
+    if (!a) return;
+    e.preventDefault();
+    if (a.dataset.stage) { SVIEW.stage = a.dataset.stage; solveWriteHash(); return solveStage(); }
+    const want = [ARCHIVES.get(SVIEW.key), ARCHIVES.get('ZOOMBINI')].filter(x => x && !x.bytes);
+    Promise.all(want.map(ensureBytes)).then(() => { SSPRITES.clear(); if (isSolveHash()) solveStage(); });
+    solveStage();
+  });
   panel.addEventListener('change', e => {
     const t = e.target, v = SVIEW;
     if (t.id === 'spuzzle') { v.key = t.value; v.set = null; return solveRedo(); }

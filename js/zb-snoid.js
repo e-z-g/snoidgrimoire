@@ -69,6 +69,17 @@ const ZB_SNOID_FLEEN_BLOCKS = {
   eyes: { base: [180, 218, 256, 294, 332], poses: [19, 19, 19, 19, 19] },
   hair: { base: [370, 406, 442, 478, 514], poses: [18, 18, 18, 18, 18] },
 };
+/* tBMP 3200, the Zoombini far off, which Hotel Dimensia's band waits as
+   (ScummVM's ZoombiniPuzzleHotel::loadZoombinisFromPack): the same parts,
+   shorter blocks, no walks' tails (tools/animate.py ZOOMBINI_SMALL_ATLAS,
+   whose feet were checked by eye, no script on the disc drawing it). */
+const ZB_SNOID_SMALL_BLOCKS = {
+  feet: { base: [262, 348, 454, 470, 556], poses: [43, 53, 8, 43, 6] },
+  body: { base: [0], poses: [11] },
+  nose: { base: [222, 230, 238, 246, 254], poses: [4, 4, 4, 4, 4] },
+  eyes: { base: [182, 190, 198, 206, 214], poses: [4, 4, 4, 4, 4] },
+  hair: { base: [22, 54, 86, 118, 150], poses: [16, 16, 16, 16, 16] },
+};
 /* The snoids: where each one's sheet is, its blocks, and (the tumble) its
    effects, by the pose they start at and how many. */
 const ZB_SNOID_KINDS = {
@@ -76,6 +87,7 @@ const ZB_SNOID_KINDS = {
   tumble: { name: 'a Zoombini tumbling', archive: 'ZOOMBINI', sheet: 3100, regs: 102, blocks: ZB_SNOID_TUMBLE_BLOCKS,
     effects: { first: 379, poses: 21 } },
   fleen: { name: 'a Fleen', archive: 'FLEENS', sheet: 4000, regs: 4000, blocks: ZB_SNOID_FLEEN_BLOCKS },
+  small: { name: 'a Zoombini far off', archive: 'ZOOMBINI', sheet: 3200, regs: 3200, blocks: ZB_SNOID_SMALL_BLOCKS },
 };
 /* Which snoid a script's layout word draws. */
 const ZB_SNOID_KIND_OF_LAYOUT = { 0: 'zoombini', 1: 'zoombini', 2: 'tumble', 3: 'fleen' };
@@ -87,7 +99,7 @@ const ZB_SNOID_ICON_BASE = 850;
 const ZB_SNOID_ICONS = ['hair', 'eyes', 'feet', 'nose'];
 
 /* A snoid's sheet and its registration points, read once an archive. The
-   Zoombini's also has SCRS 100, its standing pose. */
+   Zoombini's, near or far, also has SCRS 100, its standing pose. */
 const ZB_SNOID_CACHE = new WeakMap();
 function zbSnoidSheet(arc, kind = 'zoombini') {
   if (!ZB_SNOID_CACHE.has(arc)) ZB_SNOID_CACHE.set(arc, {});
@@ -97,7 +109,7 @@ function zbSnoidSheet(arc, kind = 'zoombini') {
     const d = decodeBitmapResource(arc.get('tBMP', K.sheet));
     const xs = parseRegs(arc.get('REGS', K.regs)), ys = parseRegs(arc.get('REGS', K.regs + 1));
     if (xs.length !== d.frames.length + 1 || ys.length !== d.frames.length + 1) throw new Error(`REGS ${K.regs} and ${K.regs + 1} do not fit tBMP ${K.sheet}'s ${d.frames.length} sprites`);
-    const standing = kind === 'zoombini' ? parseScript(arc.get('SCRS', ZB_SNOID_STANDING), 'SCRS') : null;
+    const standing = kind === 'zoombini' || kind === 'small' ? parseScript(arc.get('SCRS', ZB_SNOID_STANDING), 'SCRS') : null;
     got[kind] = { kind, blocks: K.blocks, effects: K.effects || null, frames: d.frames, xs, ys, standing };
   }
   return got[kind];

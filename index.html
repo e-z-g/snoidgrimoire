@@ -201,6 +201,8 @@ body:has(#town.cardboard) #bar { display: none; }
 #sstage { flex: 1; min-width: 0; overflow: auto; background: #05070b; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 #sdiagram svg { display: block; width: 100%; height: auto; max-width: 1100px; margin: 0 auto; background: #070a10; border: 1px solid var(--line); border-radius: 6px; }
 #scaption { color: var(--dim); text-align: center; font-size: 13px; }
+#stabs { margin: 0 auto; width: 100%; max-width: 360px; }
+#sdiagram canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; margin: 0 auto; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #spanel {
   width: 420px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow: auto;
   padding: 14px 16px 30px;
@@ -335,6 +337,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 
 <main id="solve" hidden>
   <div id="sstage">
+    <div class="tabs" id="stabs"><a data-stage="diagram">Diagram</a><a data-stage="scene">The scene</a></div>
     <div id="sdiagram"></div>
     <div id="scaption"></div>
   </div>

@@ -89,9 +89,10 @@ def snoidticks():
     import animate as A
     kinds = {0: A.ZOOMBINI_ATLAS, 1: A.ZOOMBINI_ATLAS, 2: A.ZOOMBINI_TUMBLE_ATLAS, 3: A.FLEENS_ATLAS}
     out = {'blocks': {}, 'scripts': {}}
-    for word, kind in ((0, 'zoombini'), (2, 'tumble'), (3, 'fleen')):
+    for kind, atlas in (('zoombini', A.ZOOMBINI_ATLAS), ('tumble', A.ZOOMBINI_TUMBLE_ATLAS),
+                        ('fleen', A.FLEENS_ATLAS), ('small', A.ZOOMBINI_SMALL_ATLAS)):
         out['blocks'][kind] = {p['name']: [p['bases'], [A.pose_count(p, v) for v in range(len(p['bases']))]]
-                               for p in kinds[word]}
+                               for p in atlas}
     for name in archives():
         m = MHK(os.path.join(DATA, name + '.MHK'))
         for rid, _, _ in m.res.get('SCRS', []):

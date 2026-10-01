@@ -128,6 +128,38 @@ const ZB_TRAIT_WITH = {
 };
 const ZB_PUZZLES = new Map();
 
+/* Where a band waits on coming to each puzzle: the program's tables of
+   places, x and y where each Zoombini stands, the first of the band at the
+   first (ScummVM's loadZoombinisFromPack and the tables it is given, named
+   in utilities/puzzle_check.mjs; ZOOMBINI.EXE holds each as little-endian
+   x, y pairs at `exe`, four of them with 20 places of which a band uses 16).
+   Hotel Dimensia's band waits in the distance, drawn small (tBMP 3200,
+   `small`). The toads' band is not here: its Zoombinis stand off the
+   screen, at (680, 220), and other runners draw them. */
+const ZB_WAITING = {
+  BRIDGE: { exe: 0xd9b30, at: [176, 304, 169, 327, 144, 283, 147, 355, 124, 318, 119, 379, 108, 284, 99, 345, 88, 414, 69, 262, 79, 303, 78, 370, 61, 346, 45, 301, 36, 359, 30, 404] },
+  TUNNELS: { exe: 0xcfc00, at: [399, 402, 367, 398, 337, 397, 306, 400, 274, 400, 240, 403, 381, 424, 351, 424, 322, 428, 292, 422, 261, 426, 371, 458, 342, 459, 310, 457, 277, 457, 245, 459] },
+  PIZZA: { exe: 0xc58b8, at: [288, 389, 240, 386, 257, 434, 202, 396, 224, 437, 186, 443, 158, 400, 151, 455, 126, 391, 118, 446, 89, 403, 86, 456, 48, 396, 51, 440, 20, 416, 18, 457] },
+  FERRY: { exe: 0xda0e2, at: [370, 160, 395, 196, 332, 156, 348, 196, 294, 168, 316, 196, 253, 166, 276, 196, 214, 157, 237, 196, 175, 160, 196, 190, 135, 152, 150, 191, 94, 145, 110, 186] },
+  SLIDES: { exe: 0xcbfba, at: [482, 127, 428, 128, 375, 129, 318, 127, 272, 129, 226, 128, 184, 127, 140, 129, 87, 128, 110, 170, 122, 246, 84, 212, 140, 327, 77, 293, 40, 157, 44, 232] },
+  FLEENS: { exe: 0xda23c, at: [238, 368, 185, 417, 155, 448, 197, 396, 160, 357, 164, 384, 150, 416, 116, 357, 130, 386, 109, 418, 117, 448, 74, 348, 89, 384, 67, 418, 76, 450, 56, 379] },
+  HOTEL: { exe: 0xda384, at: [455, 423, 432, 421, 412, 420, 395, 425, 379, 418, 365, 433, 352, 412, 340, 433, 328, 418, 314, 432, 295, 421, 279, 430, 264, 437, 259, 421, 244, 432, 226, 421] },
+  NET: { exe: 0xdaac8, at: [233, 392, 209, 378, 196, 390, 185, 365, 167, 380, 160, 408, 135, 397, 121, 407, 115, 368, 114, 342, 99, 375, 97, 394, 95, 346, 91, 411, 79, 355, 62, 404] },
+  CAVES: { exe: 0xbe6a4, at: [180, 110, 160, 136, 130, 167, 106, 193, 86, 232, 140, 100, 120, 126, 100, 157, 76, 183, 46, 222, 100, 90, 80, 116, 60, 147, 36, 173, 60, 80, 40, 106] },
+  SMOKE: { exe: 0xdb33c, at: [214, 128, 175, 126, 135, 127, 94, 126, 53, 128, 237, 176, 196, 177, 150, 178, 110, 176, 69, 178, 234, 36, 195, 37, 155, 36, 114, 35, 73, 38, 237, 79] },
+  MAZE2: { exe: 0xc282c, at: [287, 394, 260, 426, 224, 447, 188, 441, 157, 455, 263, 384, 219, 397, 184, 388, 155, 402, 121, 417, 226, 354, 189, 349, 156, 354, 131, 375, 85, 394, 164, 311] },
+};
+ZB_WAITING.HOTEL.small = true;
+/* A band waiting at a puzzle: [{ z, i, x, y }], i its place in the band,
+   in the order to draw them, the nearer (lower on the screen) over the
+   farther; or null where the puzzle has no table. */
+function zbBandWaiting(key, band) {
+  const w = ZB_WAITING[key];
+  if (!w) return null;
+  return band.slice(0, w.at.length / 2).map((z, i) => ({ z, i, x: w.at[2 * i], y: w.at[2 * i + 1] }))
+    .sort((a, b) => a.y - b.y || a.i - b.i);
+}
+
 /* "a ponytail", "sunglasses": trait kind and value 1-5. */
 function zbTraitWith(kind, value) { return ZB_TRAIT_WITH[kind][value - 1]; }
 /* A list of phrases joined as English: "a, b or c". */

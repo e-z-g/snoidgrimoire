@@ -7,7 +7,8 @@
 //   - the blocks hold every tick of every Zoombini script in ZOOMBINI.MHK
 //     (SCRS 100-150): no record's pose runs past its part's block, the feet
 //     scripts 105-129 and 146-150 taking the variant they were written for;
-//   - every standing Zoombini composes to one image whose origin is inside it;
+//   - every standing Zoombini composes to one image whose origin is inside it,
+//     and so does every one far off (tBMP 3200);
 //   - the blocks of all three snoids (Zoombini, tumble, Fleen) are animate.py's;
 //   - every tick of every snoid script on the disc (utilities/oracle.py
 //     snoidticks), each record given the part the layout word and the events
@@ -50,6 +51,14 @@ for (let n = 0; n < 625; n++) {
   if (JSON.stringify(got) !== JSON.stringify(want[n])) { if (bad++ < 3) fail(`Zoombini ${n}: ${JSON.stringify(got)}, animate.py ${JSON.stringify(want[n])}`); }
   const img = S.zbZoombiniImage(sheet, z);
   if (!(img.ox >= 0 && img.oy >= 0 && img.ox < img.width && img.oy < img.height)) { if (bad++ < 3) fail(`Zoombini ${n}'s origin is outside it`); }
+}
+
+// The Zoombini far off (tBMP 3200), as Hotel Dimensia's band waits: all 625
+// standing, every part inside its block.
+const small = S.zbSnoidSheet(arc, 'small');
+for (let n = 0; n < 625; n++) {
+  const z = { hair: Math.floor(n / 125) + 1, eyes: Math.floor(n / 25) % 5 + 1, nose: Math.floor(n / 5) % 5 + 1, feet: n % 5 + 1 };
+  try { S.zbZoombiniImage(small, z); } catch (e) { if (bad++ < 3) fail(`Zoombini ${n} far off: ${e.message}`); }
 }
 
 // Every tick of the Zoombini's own scripts, inside its blocks.

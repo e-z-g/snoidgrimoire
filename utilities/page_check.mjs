@@ -68,6 +68,11 @@ const VIEWS = [
   // A puzzle taken apart: the answer known, and the strategy walked two steps in.
   ['solve=BRIDGE&level=2&deal=12345', `/of 16 can cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('#sdiagram svg image').length >= 16 && document.querySelectorAll('.szb').length === 16 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are sure to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
+  // The scene: the place's picture with the band waiting, near and far off.
+  ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent)"],
+  ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
+  ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],
+  ['solve=LILLY&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /off the screen/.test(document.getElementById('scaption').textContent)"],
   // Every puzzle solved and drawn in the page, both ways where it hides something.
   ['solve=CAVES&level=2&deal=7&size=9', `ZB_PUZZLES.size === 12 && [...ZB_PUZZLES.keys()].every(k => {
     const P = ZB_PUZZLES.get(k), arc = P.archive ? solveOpen(P.archive) : undefined;
