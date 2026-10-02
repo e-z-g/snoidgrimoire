@@ -28,7 +28,9 @@
 //     traits ScummVM's test allows (at level 3 those the band fits round
 //     the boards), it is walked down every branch on small bands and
 //     played against the dealt traits on large ones, the feedback being
-//     ScummVM's judging, and no branch places fewer than it says are sure;
+//     ScummVM's judging, which the puzzle's own answer must agree with at
+//     every move (and zbStrategyPlay end where the play does), and no
+//     branch places fewer than it says are sure;
 //     with fewer chances its sure count is held to a plain minimax over
 //     every room on small bands; and the times are kept.
 export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
@@ -236,7 +238,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const lets = (level, placed, slot, v) => { const take = judge(level); for (const p of placed) if (!take(p.slot, p.v)) return null; return take(slot, v); };
   const kindsAll = ['hair', 'eyes', 'nose', 'feet'];
   const tuplesOf = level => { const A = level === 1 ? 1 : level === 4 ? 3 : 2, out = []; const r = pre => { if (pre.length === A) out.push(pre); else for (let a = 0; a < 4; a++) if (!pre.includes(a)) r([...pre, a]); }; r([]); return out; };
-  let trips = 0, solved = 0, brute = 0, walked = 0, playedH = 0, ends = 0, plain = 0, slowRoot = 0, slowNext = 0, notAll = 0;
+  let trips = 0, solved = 0, brute = 0, walked = 0, playedH = 0, answered = 0, ends = 0, plain = 0, slowRoot = 0, slowNext = 0, notAll = 0;
   const timedNext = o => { const t0 = Date.now(); const nd = o.next(); slowNext = Math.max(slowNext, Date.now() - t0); return nd; };
   const nodeOk = (level, band, nd, boards) => {
     const zs = nd.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
@@ -255,7 +257,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (depth > 60) throw new Error('a strategy deeper than 60 moves');
     return Math.min(...nd.outcomes.map(o => walkH(level, band, timedNext(o), boards, depth + 1)));
   };
-  const playH = (level, band, st, used, boards) => {
+  const playH = (level, band, st, state, boards) => {
+    const used = state.traits;
     let nd = st.root;
     const placed = [];
     for (let k = 0; nd.outcomes.length; k++) {
@@ -265,11 +268,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const ok = lets(level, placed, slot, v);
       const o = nd.outcomes.find(o => ok ? /^It is let in/.test(o.label) : /^It is turned away/.test(o.label));
       if (!o) throw new Error(`the game's feedback (${ok ? 'let in' : 'turned away'}) for "${nd.move}" is not among the strategy's outcomes`);
+      if (nd.outcomes[P.answer(level, band, state, nd)] !== o) throw new Error(`the puzzle's answer to "${nd.move}" is not ScummVM's judging (${ok ? 'let in' : 'turned away'})`);
+      answered++;
       if (ok) placed.push({ slot, v });
       nd = timedNext(o);
       if (k > 80) throw new Error('a strategy deeper than 80 moves');
     }
     if (nd.crossed !== placed.length) throw new Error(`a strategy says ${nd.crossed} have rooms, and the judging let in ${placed.length}`);
+    const end = S.zbStrategyPlay(P, level, band, state, st);
+    if (!end || end.crossed !== nd.crossed) throw new Error(`played by the puzzle's answers, the strategy ends ${end ? `with ${end.crossed} in rooms` : 'on an answer it did not look for'}, not ${nd.crossed}`);
     return nd.crossed;
   };
   for (let level = 1; level <= 4; level++) {
@@ -344,7 +351,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
-            const got = playH(level, band, st, used, boards);
+            const got = playH(level, band, st, state, boards);
             if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.sure} sure`); break; }
             playedH++;
           }
@@ -420,7 +427,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   if (slowRoot > 2500) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
-  const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} held to placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits, none short of what they say is sure; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
+  const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} held to placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits (the puzzle's answer ScummVM's judging at all ${answered} moves), none short of what they say is sure; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
   say(`counter ${first} of ${last} (chances ${chances}); the traits' test as ScummVM's in ${tests} cases; rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
     + `${dealt} deals as ScummVM deals them (traits in the program's order), ${placed} Zoombinis given rooms by their marks as ScummVM judges`);
   say(bench);

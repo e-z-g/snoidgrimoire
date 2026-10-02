@@ -78,8 +78,10 @@
               zoombini: the band index it sends or null, left: hypotheses
               still possible, crossed, diagram (optional), outcomes: [{
               label, left, next() }] }, next() the node that follows, made
-              when asked; a node with no outcomes ends the puzzle, and
-              says how it ended in move.
+              when asked; a node with no outcomes ends the puzzle, says
+              how it ended in move, and says in spent how many of the
+              chances the play used (pegs, mistakes, meals or mudballs
+              wasted, Zoombinis sent for nothing).
               opts.state is the puzzle as dealt (or edited): the strategy
               may use what the player can see of it (the marks on a wall,
               the clues on a lion's, the rooms boarded up), and never its

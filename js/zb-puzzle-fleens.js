@@ -287,7 +287,7 @@ function zbFleensStrategy(level, band, opts = {}) {
       const left = choose(n - sent, want - lured), grid = ZB_TRAIT_KINDS.map(() => ({ to: null, values: null }));
       const hive = Array.from({ length: want }, (_, k) => ({ look: null, lured: k < lured }));
       const diagram = (s, cap, done) => zbFleensDiagram(level, band, { hive, others: [], grid, unsent: done ? [] : unsent, waiting: done ? [] : waiting, lost, across: done ? band.map((_, i) => i).filter(i => !lost.includes(i)) : [], sending: s, caption: cap });
-      if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross.`, zoombini: null, left, crossed: n - cost(sent), outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
+      if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross.`, zoombini: null, left, crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
       return {
         move: `Send Zoombini ${sent + 1} down the lure path.`, zoombini: sent, left, crossed: 0,
         diagram: diagram(sent, `${lured} of ${want} lured; ${left} ways the beehive’s may be left`),
@@ -359,7 +359,7 @@ function zbFleensStrategy(level, band, opts = {}) {
     const diagram = (s, cap, done) => zbFleensDiagram(level, band, { hive: hiveCards, others: otherCards, grid, unsent: done ? [] : unsent, waiting: done ? [] : waiting, lost,
       across: done ? band.map((_, i) => i).filter(i => !lost.includes(i)) : [], sending: s, caption: cap });
     if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross, having sent ${sent}.`,
-      zoombini: null, left: weight(hs), crossed: n - cost(sent), outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
+      zoombini: null, left: weight(hs), crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
     const z = value(hs, sentMask, lured).z;
     return {
       move: `Send Zoombini ${z + 1} down the lure path.`, zoombini: z, left: weight(hs), crossed: 0,
@@ -481,5 +481,13 @@ ZB_PUZZLES.set('FLEENS', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbFleensStrategy(level, band, opts); },
+  /* The Zoombini sent is followed by its own Fleen, from the beehive
+     branch if it is one of the beehive's three and from another branch if
+     not; a strategy made with nothing seen tells the two apart only by
+     the branch. */
+  answer(level, band, state, node) {
+    const z = node.zoombini, hive = zbFleensTargets(state).includes(z), look = zbFleensLook(state.fleens[z]);
+    return node.outcomes.findIndex(o => o.hive === hive && (o.look == null || o.look === look));
+  },
   source: 'ScummVM’s puzzle_fleens.cpp, checked against the program’s code.',
 });

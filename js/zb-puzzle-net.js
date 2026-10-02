@@ -432,7 +432,7 @@ function zbNetStrategy(level, band, opts = {}) {
     if (!unhit.length || !shots) {
       return {
         move: !unhit.length ? `Every mark is hit: all ${n} across.` : `The tank is empty: ${crossed} across, ${n - crossed} left behind.`,
-        zoombini: null, left, crossed, outcomes: [],
+        zoombini: null, left, crossed, spent: misses.length, outcomes: [],
         diagram: zbNetDiagram(level, band, marks, { hits: hit, misses, crossed, over: true, caption: !unhit.length ? `All ${n} across` : `${crossed} across, ${n - crossed} left behind` }),
       };
     }
@@ -626,5 +626,12 @@ ZB_PUZZLES.set('NET', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbNetStrategy(level, band, opts); },
+  /* The mudball the move fires lands on the first section whose values
+     are its choices, under the rule dealt; the outcome is the one for
+     that section. */
+  answer(level, band, state, node) {
+    const cell = zbNetLands(state.rule, node.shot.map(v => v ?? 0));
+    return node.outcomes.findIndex(o => o.cell === cell);
+  },
   source: 'ScummVM’s puzzle_net.cpp, checked against the program’s code.',
 });

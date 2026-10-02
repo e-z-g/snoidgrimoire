@@ -322,7 +322,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
     if (!u || !p) {
       const lost = bits(u);
       return { move: !u ? `Every Zoombini's bridge is known now: all ${across} of the band that can cross have.` : `The sixth peg has fallen: ${lost} left behind.`,
-        zoombini: null, left, crossed: across, outcomes: [],
+        zoombini: null, left, crossed: across, spent: 6 - p, outcomes: [],
         diagram: zbBridgeDiagram(band, { near, up, low, pegs: p, caption: !u ? `All ${across} across` : `${across} across, ${lost} left behind` }) };
     }
     const key = H.join(',') + '|' + u + '|' + p;

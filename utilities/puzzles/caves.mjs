@@ -15,7 +15,10 @@
 //     names and on no other; the stones hold the band's groups in the
 //     order drawn, as many as each has; the clues are the orders' values
 //     at their places; and the one-shot changes the trait and nothing
-//     else the deal draws.
+//     else the deal draws;
+//   - each strategy played against the rule it was dealt, the judge
+//     answering each move, gives the answers the puzzle's answer gives
+//     and places no fewer than it says are sure.
 import { site, archiveBytes } from '../load.mjs';
 
 export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
@@ -179,7 +182,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     };
     return v(rules.map((_, i) => i), 0, (1 << n) - 1, limit);
   };
-  let trips = 0, solved = 0, brutes = 0, walks = 0, ends = 0, slowest = 0, slowNext = 0;
+  let trips = 0, solved = 0, brutes = 0, walks = 0, ends = 0, played = 0, slowest = 0, slowNext = 0;
   // Walks: every branch, or twelve at random. The feedback given must be
   // possible under some rule the wall allows, each placement called sure
   // must fit under every rule still possible, and the ends must count
@@ -285,6 +288,38 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (worst < st.sure) { bad(`the strategy says ${st.sure} are sure, and a branch places ${worst}`); break; }
       if (full && st.exact && worst !== st.sure) { bad(`the strategy is exact at ${st.sure}, and its worst branch places ${worst}`); break; }
       walks++;
+      // Played against the dealt rule: the judge says what the game does
+      // with each move (it stays on a stone it fits, else is walked to a
+      // free stone it fits, every one of which must be an outcome, the
+      // first of them taken), and the puzzle's answer must agree.
+      {
+        const sn = stone => stone + 4;
+        const used = new Set();
+        let node = st.root, wrong = null, placed = 0;
+        for (let depth = 0; !wrong; depth++) {
+          for (const m of node.move.split('Put Zoombini')[0].matchAll(/Zoombini (\d+) on stone (\d+)/g)) {
+            if (!fits(band[+m[1] - 1], sn(+m[2]), d.state) || used.has(sn(+m[2]))) wrong = `a sure placement does not fit the dealt rule: ${m[0]}`;
+            used.add(sn(+m[2])); placed++;
+          }
+          if (wrong || !node.outcomes.length) break;
+          const mv = /Put Zoombini (\d+) on stone (\d+)\./.exec(node.move), z = band[+mv[1] - 1], seat = sn(+mv[2]);
+          const free = [...Array(n).keys()].map(j => 21 - n + j).filter(t => !used.has(t) && fits(z, t, d.state));
+          const at = t => node.outcomes.findIndex(o => (/walked to stone (\d+)/.exec(o.label) || [0, mv[2]])[1] == t - 4);
+          if (!fits(z, seat, d.state) && free.some(t => at(t) < 0)) { wrong = `the game may walk ${node.move} to a stone no outcome names`; break; }
+          const k = fits(z, seat, d.state) ? at(seat) : at(free[0]);
+          if (k < 0) { wrong = `the game's answer to "${node.move}" is not among its outcomes`; break; }
+          if (C.answer(level, band, d.state, node) !== k) { wrong = `the puzzle answers "${node.move}" with ${C.answer(level, band, d.state, node)}, the judge with ${k} (${node.outcomes[k].label})`; break; }
+          used.add(fits(z, seat, d.state) ? seat : free[0]); placed++;
+          node = node.outcomes[k].next();
+          if (depth > 40) wrong = 'a strategy deeper than 40 moves';
+        }
+        if (!wrong && node.crossed !== placed) wrong = `played against the dealt rule, the end says ${node.crossed} cross, ${placed} are placed`;
+        const end = wrong ? null : S.zbStrategyPlay(C, level, band, d.state, st);
+        if (!wrong && (!end || end.crossed !== node.crossed)) wrong = 'zbStrategyPlay does not end where the judge does';
+        if (!wrong && end.crossed < st.sure) wrong = `played against the dealt rule, ${end.crossed} cross, fewer than the ${st.sure} sure`;
+        if (wrong) { bad(wrong); break; }
+        played++;
+      }
     }
   }
   // With the wall unseen, a small band at level 1 can be short: the brute
@@ -306,7 +341,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (!short) fail('no band came out short with the wall unseen, so the brute force held nothing but the whole band');
   if (slowest > 2500) fail(`a strategy took ${slowest} ms`);
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
-  say(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends; slowest ${slowest} ms, a step ${slowNext} ms)`);
+  say(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends; slowest ${slowest} ms, a step ${slowNext} ms), ${played} played against the dealt rule, the puzzle answering every move as the judge does`);
 
   say(`mistakes ${S.ZB_CAVES_MISTAKES.join(', ')} as ScummVM's; stones and clues in ZOOMBINI.EXE at 0x${(atSeats[0] || 0).toString(16)} and 0x${(atGlyphs[0] || 0).toString(16)}; `
     + `tMID ${base + 3} in both MIDI archives; ${dealt} deals judged, ${runs} runs of stones each holding exactly its Zoombinis`);

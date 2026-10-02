@@ -595,7 +595,7 @@ function zbPizzaNode(e, band, st) {
     const meal = mealSlots(w0), { lost, waiting } = people();
     return {
       move: `Serve ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, meal)}: every hypothesis left agrees it is ${ZB_PIZZA_TROLLS[t]}’s wish.`,
-      zoombini: st.lost, left: st.idx.length, crossed: 0, meal,
+      zoombini: st.lost, left: st.idx.length, crossed: 0, meal, hungry: st.hungry,
       diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left; ${ZB_PIZZA_TROLLS[t]}’s wish is known` }),
       outcomes: [{ label: `${ZB_PIZZA_TROLLS[t]} eats it`, left: st.idx.length, eaten: t,
         next: () => { const fed = fedNow.slice(); fed[t] = true; return zbPizzaNode(e, band, { ...st, hungry: st.hungry & ~(1 << t), tried: st.tried.concat(w0).sort((x, y) => x - y), fed }); } }],
@@ -606,7 +606,7 @@ function zbPizzaNode(e, band, st) {
     return {
       move: !st.hungry ? `Every troll has eaten: ${crossed === n ? `all ${n}` : `the ${crossed} left`} cross${crossed === 1 ? 'es' : ''}${st.lost ? `, ${st.lost} lost on the way` : ''}, having wasted ${st.wasted} meal${st.wasted === 1 ? '' : 's'}.`
         : `Every Zoombini is lost before the trolls have all eaten: none cross.`,
-      zoombini: null, left: st.idx.length, crossed, outcomes: [],
+      zoombini: null, left: st.idx.length, crossed, spent: st.wasted, outcomes: [],
       diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, lost, across: st.hungry ? [] : waiting, forgiven,
         caption: !st.hungry ? `All the trolls have eaten: ${crossed} across` : 'No one left to carry a meal' }),
     };
@@ -626,7 +626,7 @@ function zbPizzaNode(e, band, st) {
   const tried = st.tried.concat(M).sort((x, y) => x - y);
   return {
     move: `Serve ${zbPizzaMealWords(level, meal)}; Zoombini ${st.lost + 1} carries it.`,
-    zoombini: st.lost, left: st.idx.length, crossed: 0, meal,
+    zoombini: st.lost, left: st.idx.length, crossed: 0, meal, hungry: st.hungry,
     diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left, ${forgiven.left} meal${forgiven.left === 1 ? '' : 's'} forgiven still` }),
     outcomes: parts.map(part => {
       const seen = zbPizzaReactions(e, st.hungry, part.code), reactions = seen.map(([t, c]) => zbPizzaReactionWords(t, c));
@@ -757,5 +757,21 @@ ZB_PUZZLES.set('PIZZA', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbPizzaStrategy(level, band, opts); },
+  /* The meal goes to the trolls still hungry (the node's hungry, a troll
+     to a bit) in turn, each judging it against its wish, until one eats
+     it; the outcome is the one with those reactions. A meal in the pit is
+     not judged at all, and no outcome is the game's. */
+  answer(level, band, state, node) {
+    if (state.rejectExamples && state.rejectExamples.some(m => m.join() === node.meal.join())) return -1;
+    const wishes = zbPizzaWishes(level, state), seen = [];
+    for (let t = 0; t < wishes.length; t++) {
+      if (!(node.hungry >> t & 1)) continue;
+      const c = zbPizzaJudge(wishes[t], node.meal);
+      seen.push([t, c]);
+      if (c === 2) break;
+    }
+    const eaten = seen.length && seen[seen.length - 1][1] === 2 ? seen[seen.length - 1][0] : -1;
+    return node.outcomes.findIndex(o => o.reactions ? o.reactions.join(';') === seen.join(';') : o.eaten === eaten);
+  },
   source: 'ScummVM’s puzzle_pizza.cpp, checked against the program’s code.',
 });

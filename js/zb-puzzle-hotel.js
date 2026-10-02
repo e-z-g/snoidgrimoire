@@ -422,7 +422,7 @@ function zbHotelStrategy(level, band, opts = {}) {
   const posList = P => P.map(c => c < 0 ? null : posOf(c));
   const node = (P, H, c, plan) => {
     const left = weight(H), u = unplaced(P), inside = n - u.length;
-    const end = (move, lostCaption) => ({ move, zoombini: null, left, crossed: inside, place: P, outcomes: [],
+    const end = (move, lostCaption) => ({ move, zoombini: null, left, crossed: inside, spent: C - c, place: P, outcomes: [],
       diagram: zbHotelDiagram(band, { level, place: posList(P), boards, chances: c, lost: !!u.length, caption: lostCaption }) });
     if (!u.length) return end(`Every Zoombini has a room: all ${inside} are in.`, `All ${inside} in rooms`);
     if (!c) return end(`The counter is full and the hotel closes: ${u.length} without a room.`, `${inside} in rooms, ${u.length} left out`);
@@ -446,7 +446,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     const pos = posOf(code);
     return {
       move: `Give Zoombini ${i + 1} ${zbHotelRoomName(level, pos)}.`,
-      zoombini: i, room: pos, left, crossed: inside, place: P,
+      zoombini: i, room: pos, rooms: posList(P), left, crossed: inside, place: P,
       diagram: zbHotelDiagram(band, { level, place: posList(P), boards, sent: { i, pos }, chances: c, caption: `${left} hypotheses left; ${inside} in rooms` }),
       outcomes,
     };
@@ -639,5 +639,19 @@ ZB_PUZZLES.set('HOTEL', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbHotelStrategy(level, band, opts); },
+  /* The room takes it when each floor, trunk or door it is in is settled
+     for its value of the trait deciding it, or, where one is not yet
+     settled, its value is settled nowhere else; it is let in, and
+     otherwise turned away. A boarded room is not judged at all. */
+  answer(level, band, state, node) {
+    const z = band[node.zoombini], traits = state.traits;
+    if (zbHotelBoarded(level, node.room, level === 3 ? state.boarded || [] : [])) return -1;
+    const lets = node.room.every((p, j) => {
+      const settled = new Map();
+      node.rooms.forEach((q, i) => { if (q) settled.set(q[j], band[i][traits[j]]); });
+      return settled.has(p) ? settled.get(p) === z[traits[j]] : ![...settled.values()].includes(z[traits[j]]);
+    });
+    return lets ? 0 : node.outcomes.length > 1 ? 1 : -1;
+  },
   source: 'ScummVM’s puzzle_hotel.cpp, checked against the program’s code.',
 });

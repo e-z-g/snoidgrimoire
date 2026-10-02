@@ -25,9 +25,10 @@
 //     troll its own meal as the port's judge serves it; and the strategy,
 //     played against every hypothesis at levels 1 and 2 and hundreds at 3
 //     and 4 (with the pit known and not), the trolls' reactions worked out
-//     by zbPizzaJudge, never serves a meal twice or off the machine and
-//     never gets fewer across than it says are sure; level 1's every
-//     branch walked; within its time.
+//     by zbPizzaJudge and by the puzzle's answer, which agree at every
+//     move, and walked again by zbStrategyPlay to the same end, never
+//     serves a meal twice or off the machine and never gets fewer across
+//     than it says are sure; level 1's every branch walked; within its time.
 export default function check({ S, fail, say, scumm, exe, need, bands }) {
   const h = scumm('zoombini_pages/puzzle_pizza.h'), cpp = scumm('zoombini_pages/puzzle_pizza.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -210,8 +211,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   const moved = P.edit(4, band5, base4, { s0: 'Arno', s1: 'Arno', s2: 'Arno', s3: 'Willa', s4: 'Willa', s5: 'Shyler', s6: 'nobody', s7: 'Shyler' });
   if (!same(moved.rejectExamples, [[0, 3], [1, 3], [1, 5], [0, 5]])) fail(`edited wishes at level 4 give the pit ${JSON.stringify(moved.rejectExamples)}`);
 
-  // The strategy, played.
-  let played = 0, walkedAll = 0, slowest = 0, slowNext = 0;
+  // The strategy, played: each move answered by the check's own judge,
+  // and by the puzzle's answer, which must pick the same outcome; then
+  // again by zbStrategyPlay, the page's walk, to an end as good as sure.
+  let played = 0, walkedAll = 0, slowest = 0, slowNext = 0, answered = 0;
   const results = [];
   const plays = [];
   for (let level = 1; level <= 4; level++) for (const knows of ['program', 'form']) plays.push({ level, knows });
@@ -223,13 +226,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
     const e = [...S.ZB_PIZZA_ENGINES.values()].find(x => x.level === level && x.knows === knows && same(x.pit, state ? state.rejectExamples.map(m => m.reduce((a, sl) => a | 1 << S.zbPizzaSlots(level).indexOf(sl), 0)).sort((x, y) => x - y) : []));
     if (!e || e.count !== st.hypotheses) { fail(`level ${level} (${knows}): the strategy's hypotheses are not its engine's`); continue; }
     const buttons = S.zbPizzaSlots(level), T = L[level - 1].trolls, pit = state ? state.rejectExamples.map(m => m.join()) : [];
-    const next = o => { if (!o.node) { const t1 = Date.now(); o.node = o.next(); slowNext = Math.max(slowNext, Date.now() - t1); } return o.node; };
+    // A node is made once: zbStrategyPlay, after the judge, takes the same.
+    const next = o => { if (!o.node) { const t1 = Date.now(), nd = o.next(); o.node = nd; o.next = () => nd; slowNext = Math.max(slowNext, Date.now() - t1); } return o.node; };
     const rnd = S.zbRandom(1000 + level);
     const pickH = e.count <= 800 ? [...Array(e.count).keys()] : Array.from({ length: 300 }, () => rnd.number(e.count - 1));
     let worst = n, bad = null;
     for (const i of pickH) {
       const wish = [0, 1, 2].slice(0, T).map(t => buttons.filter((sl, b) => e.h[i] >> 8 * t + b & 1));
       const hungry = [true, T > 1, T > 2], tried = pit.slice();
+      const hs = { arnoToppings: wish[0], willaToppings: T > 1 ? wish[1] : null, shylerToppings: T > 2 ? wish[2] : null, rejectExamples: state ? state.rejectExamples : null };
       let node = st.root, steps = 0;
       while (node.outcomes.length && !bad) {
         if (++steps > 40) { bad = 'a play of more than 40 meals'; break; }
@@ -242,6 +247,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
         const eaten = seen.length && seen[seen.length - 1][1] === 2 ? seen[seen.length - 1][0] : -1;
         const o = node.outcomes.find(x => x.reactions ? same(x.reactions, seen) : x.eaten === eaten);
         if (!o) { bad = `no branch for what the trolls do (${JSON.stringify(seen)}) after "${node.move}"`; break; }
+        const k = P.answer(level, band, hs, node);
+        if (node.outcomes[k] !== o) { bad = `the puzzle's answer to "${node.move}" is ${k < 0 ? 'no branch' : `"${node.outcomes[k].label}"`}, the judge's "${o.label}"`; break; }
+        answered++;
         if (eaten >= 0) hungry[eaten] = false;
         tried.push(meal.join());
         node = next(o);
@@ -249,6 +257,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       if (bad) break;
       worst = Math.min(worst, node.crossed);
       if (node.crossed < st.sure) { bad = `a play gets ${node.crossed} across where ${st.sure} are said to be sure`; break; }
+      const end = S.zbStrategyPlay(P, level, band, hs, st);
+      if (end !== node) { bad = `zbStrategyPlay ends ${end ? `with ${end.crossed} across` : 'on a move with no branch'}, not where the judge's play does, with ${node.crossed}`; break; }
       played++;
     }
     if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `said to be exact at ${st.sure} but every play gets ${worst} or more`;
@@ -263,7 +273,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
 
   const tail = runs.map(r => '0x' + r.at.toString(16)).join(', ');
-  say(`${trips} forms given back and solved; strategies (level, f form, p pit known: sure/band) ${results.join(' ')}, played against ${played} hypotheses (level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
+  say(`${trips} forms given back and solved; strategies (level, f form, p pit known: sure/band) ${results.join(' ')}, played against ${played} hypotheses (the puzzle's answer the judge's at all ${answered} moves, zbStrategyPlay's ends the same; level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
     + `levels' numbers and trolls as ScummVM's and ZOOMBINI.EXE's (${tail}); ${dealt} deals: toppings wanted once each, each troll's meal eaten by it alone, `
     + `every topping wanted in ${allWanted.map((n, i) => `${n}/${perLevel[i]}`).join(', ')} by level; level 2 left a troll wanting nothing in ${wantNothing} of ${level2}`);
 }

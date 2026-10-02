@@ -205,6 +205,20 @@ ZB_PUZZLES.set('CAVES', {
   edit(level, band, state, values) { return zbCavesEdit(level, band, state, values); },
   solve(level, band, state) { return zbCavesSolve(level, band, state); },
   strategy(level, band, arc, opts = {}) { return zbCavesStrategy(level, band, opts); },
+  /* It stays when the stone it is put on is of its own run, and is walked
+     to a free stone of its run otherwise (findMatchingSeatNumber). The
+     game draws that stone at random; here it is the first, nearest the
+     top of the path. */
+  answer(level, band, state, node) {
+    const z = band[node.zoombini];
+    const fits = seat => seat >= state.firstUsableSeatNumber && seat <= ZB_CAVES_SEATS
+      && state.seatPrimaryRuleValues[seat] === z[state.primaryRuleTraitKind]
+      && (state.ruleTraitCount < 2 || state.seatSecondaryRuleValues[seat] === z[state.secondaryRuleTraitKind]);
+    /* The walks are in the order of the path, so the first that fits is
+       the first free stone of its run. */
+    return fits(node.seat) ? node.outcomes.findIndex(o => o.seat === node.seat)
+      : node.outcomes.findIndex(o => o.seat !== node.seat && fits(o.seat));
+  },
   source: 'ScummVM’s puzzle_caves.cpp, checked against the program’s code.',
 });
 
@@ -615,7 +629,7 @@ function zbCavesStrategy(level, band, opts = {}) {
     const draw = (extra, caption) => zbCavesDiagram(level, band, Object.assign({ state, seatOf, mistakes: [made, limit], caption }, extra));
     if (!r || !m) {
       return { move: !r ? `${sureWords}All ${across} are on the path, and cross.` : `${sureWords}That was the last mistake allowed: ${across} cross, and ${r} stay${r === 1 ? 's' : ''} behind.`,
-        zoombini: null, left: weight(H), crossed: across, outcomes: [],
+        zoombini: null, left: weight(H), crossed: across, spent: made, outcomes: [],
         diagram: draw({ left: waitingNow }, !r ? `All ${across} on the path` : `${across} on the path, ${r} left behind`) };
     }
     const key = `${hkey(H)}|${occ}|${rem}|${m}`;
@@ -631,16 +645,16 @@ function zbCavesStrategy(level, band, opts = {}) {
     const { stays, wrong } = split(H, mv.z, mv.j), rem2 = rem & ~(1 << mv.z);
     const outcomes = [];
     if (stays.length) {
-      outcomes.push({ label: `It stays (${weight(stays)} left)`, left: weight(stays),
+      outcomes.push({ label: `It stays (${weight(stays)} left)`, left: weight(stays), seat: seatOfJ(mv.j),
         next: () => node(Int32Array.from(stays), occ | 1 << mv.j, rem2, m, [...pm, [mv.z, mv.j]]) });
     }
     for (const w of walked(wrong, mv.z, occ)) {
-      outcomes.push({ label: `It is walked to stone ${stone(w.T)}: a mistake${m === 1 ? ', the last allowed' : ''} (${weight(w.H)} left)`, left: weight(w.H),
+      outcomes.push({ label: `It is walked to stone ${stone(w.T)}: a mistake${m === 1 ? ', the last allowed' : ''} (${weight(w.H)} left)`, left: weight(w.H), seat: seatOfJ(w.T),
         next: () => node(Int32Array.from(w.H), occ | 1 << w.T, rem2, m - 1, [...pm, [mv.z, w.T]]) });
     }
     return {
       move: `${sureWords}Put Zoombini ${mv.z + 1} on stone ${stone(mv.j)}.`,
-      zoombini: mv.z, left: weight(H), crossed: across,
+      zoombini: mv.z, seat: seatOfJ(mv.j), left: weight(H), crossed: across,
       diagram: draw({ waiting: waitingNow.filter(i => i !== mv.z), move: { i: mv.z, seat: seatOfJ(mv.j) } }, `${weight(H)} rules left`),
       outcomes,
     };

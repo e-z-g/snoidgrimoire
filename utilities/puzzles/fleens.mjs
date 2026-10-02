@@ -26,8 +26,10 @@
 //     Zoombinis; and the strategy, played against every mapping and choice
 //     of the beehive's that shows the Fleens seen (enumerated here, apart
 //     from the port), follows each Zoombini sent with its own Fleen and
-//     never gets fewer across than it says are sure; small bands' every
-//     branch walked, and with nothing seen, min(band, 6) sure.
+//     never gets fewer across than it says are sure, the port's answer
+//     picking the check's branch at every move; played against the dealt
+//     Fleens, seen or not, as many across; small bands' every branch
+//     walked, and with nothing seen, min(band, 6) sure.
 import fs from 'node:fs';
 import path from 'node:path';
 import { REF, archiveBytes } from '../load.mjs';
@@ -195,7 +197,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     }
     return out;
   };
-  let played = 0, stratCount = 0, walked = 0, slowest = 0, amb = 0, maxSent = 0;
+  let played = 0, agreed = 0, stratCount = 0, walked = 0, slowest = 0, amb = 0, maxSent = 0;
   const walkAll = (nd, sure, depth) => { if (depth > 20) throw new Error('too deep'); if (!nd.outcomes.length) return [nd.crossed, nd.crossed]; const r = nd.outcomes.map(o => walkAll(o.next(), sure, depth + 1)); walked++; return [Math.min(...r.map(x => x[0])), Math.max(...r.map(x => x[1]))]; };
   const twins = band => { const b = band.slice(); b[1] = { ...b[0] }; return b; };
   const diag = []; for (let k = 1; k <= 5; k++) diag.push({ hair: k, eyes: k, nose: k, feet: k }, { hair: k, eyes: k % 5 + 1, nose: (k + 1) % 5 + 1, feet: (k + 2) % 5 + 1 });
@@ -215,6 +217,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (all.length > 1) amb++;
     let bad = null, worst = n;
     for (const h of all) {
+      // The hypothesis as a puzzle the port would deal, for its answer.
+      const as = { ...state, fleens: h.images.map(S.zbFleensFromLook), targetSnoidOrdinals: [0, 1, 2].map(k => band.map((_, i) => i).filter(i => h.mask >> i & 1)[k] + 1 || 0) };
       let node = st.root, sent = 0, lured = 0;
       const was = new Set();
       while (node.outcomes.length) {
@@ -223,6 +227,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         was.add(z);
         const hive = !!(h.mask >> z & 1), o = node.outcomes.find(x => x.look === h.images[z] && x.hive === hive);
         if (!o) { bad = `no branch for Zoombini ${z + 1}'s Fleen`; break; }
+        if (P.answer(level, band, as, node) !== node.outcomes.indexOf(o)) { bad = `the port answers Zoombini ${z + 1} with outcome ${P.answer(level, band, as, node)}, the check with ${node.outcomes.indexOf(o)}`; break; }
+        agreed++;
         sent++; lured += hive; node = o.next();
       }
       if (bad) break;
@@ -233,6 +239,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       worst = Math.min(worst, crossed);
       played++;
     }
+    // Played against the dealt Fleens, the game answering each move.
+    if (!bad) {
+      const end = S.zbStrategyPlay(P, level, band, state, st);
+      if (!end) bad = 'the game\'s answer to a move is not among the strategy\'s outcomes';
+      else if (end.crossed < st.sure) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.sure} sure`;
+    }
     if (!bad && st.exact && worst !== st.sure) bad = `said to be exact at ${st.sure} but every play gets ${worst}`;
     if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.sure, 0); if (lo < st.sure) bad = 'a branch short of sure'; }
     // And with nothing seen: any of the band's places may be the beehive's.
@@ -240,6 +252,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const blind = P.strategy(level, band, null, { knows });
       if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen ${blind.sure} are said to be sure, not ${n - Math.max(0, n - 6)}`;
       else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen the worst branch gets ${lo}`; }
+      if (!bad) { const end = S.zbStrategyPlay(P, level, band, state, blind); if (!end || end.crossed < blind.sure) bad = `with nothing seen, played against the dealt Fleens, ${end ? end.crossed : 'no outcome'} across`; }
     }
     if (bad) { fail(`level ${level} (${knows}, a band of ${n}): ${bad}`); continue; }
     stratCount++;
@@ -247,7 +260,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowest > 1500) fail(`a strategy took ${slowest} ms`);
 
   const pct = n => `${Math.round(100 * n / (keepsLike[0] + keepsLike[1] + keepsLike[2]))}%`;
-  say(`${trips} forms given back and solved; ${stratCount} strategies played against every hidden part that fits what is seen (${played} plays, ${amb} strategies with more than one, at most ${maxSent} sent, all across), ${walked} branches walked, slowest ${slowest} ms; `
+  say(`${trips} forms given back and solved; ${stratCount} strategies played against every hidden part that fits what is seen (${played} plays, the port's answer the check's at all ${agreed} moves, ${amb} strategies with more than one, at most ${maxSent} sent, all across, and played against the dealt Fleens), ${walked} branches walked, slowest ${slowest} ms; `
     + `dealing as ScummVM's, table in ZOOMBINI.EXE at 0x${(tableAt[0] || 0).toString(16)}, beehive REGS 5000's ${hivePlaces}${makerChecked ? ', names the maker\'s' : ''}; ${dealt} deals of the level's form, `
     + `${visits} visits keeping what the program keeps; at levels 3 and 4 no trait keeps its like in ${pct(keepsLike[0])}, one in ${pct(keepsLike[1])}, two in ${pct(keepsLike[2])}`);
 }

@@ -409,7 +409,7 @@ function zbTunnelsStrategy(level, band, opts = {}) {
     if (!u || !c) {
       const lost = band.length - crossed;
       return { move: !u ? `Every Zoombini's tunnel is known now: all ${crossed} are through.` : `No chances are left and the tunnels close: ${lost} left behind.`,
-        zoombini: null, left, crossed, where, outcomes: [],
+        zoombini: null, left, crossed, spent: C - c, where, outcomes: [],
         diagram: zbTunnelsDiagram(band, { level, where, chances: c, lost: !!lost, caption: !u ? `All ${crossed} through` : `${crossed} through, ${lost} left behind` }) };
     }
     const m = plan || planFor(H, u, c), [acc, ra, rb] = split3(H, m.i, m.t);
@@ -419,11 +419,11 @@ function zbTunnelsStrategy(level, band, opts = {}) {
     const outcomes = [];
     if (acc.length) {
       const u2 = u & ~(1 << m.i);
-      outcomes.push({ label: `It goes through (${weight(acc)} left)`, left: weight(acc), next: () => go(acc, u2 & ~agreed(acc), c, [m.i, ...freeOf(acc, u2)], 0) });
+      outcomes.push({ label: `It goes through (${weight(acc)} left)`, guardian: null, left: weight(acc), next: () => go(acc, u2 & ~agreed(acc), c, [m.i, ...freeOf(acc, u2)], 0) });
     }
     [[ra, sideWord(m.t), ''], [rb, vertWord(m.t), level === 1 ? ': the tunnel is closed' : '']].forEach(([R, who, why], j) => {
       if (!R.length) return;
-      outcomes.push({ label: `The ${who} guardian turns it back${why}${c > 1 ? '' : ', and that was the last chance'} (${weight(R)} left)`, left: weight(R),
+      outcomes.push({ label: `The ${who} guardian turns it back${why}${c > 1 ? '' : ', and that was the last chance'} (${weight(R)} left)`, guardian: who, left: weight(R),
         next: () => c > 1 ? go(R, u & ~agreed(R), c - 1, freeOf(R, u), j + 1) : go(R, u, 0, [], j + 1) });
     });
     return {
@@ -602,5 +602,16 @@ ZB_PUZZLES.set('TUNNELS', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbTunnelsStrategy(level, band, opts); },
+  /* It goes through when the tunnel it is sent into is the one the rules
+     give it. Otherwise the guardian of the tunnel's side turns it back if
+     it belongs on the other side, and the tunnel's upper or lower guardian
+     if it belongs in the other tunnel on this side (at level 1, a closed
+     tunnel's); an outcome's guardian is the one it names, null for
+     through. */
+  answer(level, band, state, node) {
+    const e = zbTunnelsEntrance(band[node.zoombini], state.guardRules, state.level1BlockedPairToggle), t = node.tunnel;
+    const who = e === t ? null : (e < 2) !== (t < 2) ? (t < 2 ? 'left' : 'right') : (t === 0 || t === 3 ? 'upper' : 'lower');
+    return node.outcomes.findIndex(o => o.guardian === who);
+  },
   source: 'ScummVM’s puzzle_tunnels.cpp, checked against the program’s code.',
 });

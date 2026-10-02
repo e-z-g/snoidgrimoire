@@ -131,7 +131,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (seenSteps.size !== 2) fail('the rotation was not both 2 and 3');
   // ---- the workbench ---------------------------------------------------------
   const valuesOf = form => Object.fromEntries(form.filter(x => x.kind !== 'note').map(x => [x.key, x.value]));
-  const bench = { trips: 0, solved: 0, walks: 0, followed: 0, lemma: 0, slowest: 0 };
+  const bench = { trips: 0, solved: 0, walks: 0, followed: 0, played: 0, lemma: 0, slowest: 0 };
   const perms = []; const permute = (a, k = 0) => { if (k === 5) { perms.push(a.slice()); return; } for (let i = k; i < 5; i++) { [a[k], a[i]] = [a[i], a[k]]; permute(a, k + 1); [a[k], a[i]] = [a[i], a[k]]; } }; permute([0, 1, 2, 3, 4]);
   /* A whole rule of one of the ways, the squares in an order of their own
      when untied. */
@@ -217,19 +217,27 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           if (nd.crossed < st.sure) why.push(`a branch gets ${nd.crossed} across`);
           bench.walks++;
         }
-        // The branch a whole rule makes, for rules of the kind the player allows.
+        // The branch a whole rule makes, for the rule dealt and for rules of
+        // the kind the player allows, each move judged here and answered by
+        // the puzzle, which must agree.
         const Hs = S.zbNetStructures(level, knows), untied = level >= 3 && knows === 'form';
-        for (let w = 0; w < 6; w++) {
+        for (let w = 0; w < 7; w++) {
           const h = Hs[rnd.number(Hs.length - 1)];
-          const truth = ruleOf(level, h, perms[rnd.number(119)], perms[rnd.number(119)], untied ? perms[rnd.number(119)] : null);
+          const truth = w === 0 ? d.state.rule : ruleOf(level, h, perms[rnd.number(119)], perms[rnd.number(119)], untied ? perms[rnd.number(119)] : null);
+          const state = w === 0 ? d.state : { rule: truth };
           let nd = st.root;
           while (nd.outcomes.length) {
             check(nd);
-            const o = nd.outcomes.find(o => o.cell === S.zbNetLands(truth, nd.shot.map(v => v ?? 0)));
-            if (!o) { why.push('a rule lands a mudball where the strategy has no outcome'); break; }
-            nd = o.next();
+            const k = nd.outcomes.findIndex(o => o.cell === S.zbNetLands(truth, nd.shot.map(v => v ?? 0)));
+            if (k < 0) { why.push('a rule lands a mudball where the strategy has no outcome'); break; }
+            if (P.answer(level, band, state, nd) !== k) { why.push(`the puzzle answers ${nd.move} with outcome ${P.answer(level, band, state, nd)}, the check with ${k}`); break; }
+            nd = nd.outcomes[k].next();
           }
           if (nd.crossed < st.sure) why.push(`the rule's branch gets ${nd.crossed} across`);
+          const end = S.zbStrategyPlay(P, level, band, state, st);
+          if (!end) why.push('played against the rule, the game\'s answer to a move is not among the strategy\'s outcomes');
+          else if (end.crossed < st.sure) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.sure} sure`);
+          else bench.played++;
           bench.followed++;
         }
       }
@@ -248,6 +256,6 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (bench.slowest > 500) fail(`a strategy step took ${bench.slowest} ms`);
 
   say(`names, ways and tank as ScummVM's (the program keeps no table of this rule); ${dealt} deals over bands of 16 to 1: groups, tank and orders of each level as the program's, `
-    + `workbench: ${bench.trips} forms given back, ${bench.solved} solved, the strategy's proof held for ${bench.lemma} whole rules (every one the program can deal at levels 1 to 3), ${bench.walks} random branches and ${bench.followed} rules' branches all taking the whole band, slowest step ${bench.slowest} ms; `
+    + `workbench: ${bench.trips} forms given back, ${bench.solved} solved, the strategy's proof held for ${bench.lemma} whole rules (every one the program can deal at levels 1 to 3), ${bench.walks} random branches and ${bench.followed} rules' branches (the dealt one among them) all taking the whole band, the puzzle's answer the check's at every move and ${bench.played} played to the end, slowest step ${bench.slowest} ms; `
     + `every mudball on its own section, the answer's mudball on each of ${landed} marks`);
 }
