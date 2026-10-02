@@ -569,7 +569,7 @@ function townMotion() {
     window.removeEventListener('deviceorientation', TV.motion.on);
     TV.yaw = townLookYaw(); TV.pitch = 0;
     TV.motion = null;
-    $('tmotion').textContent = 'Look with the phone';
+    $('tmotion').textContent = 'Motion';
     return;
   }
   const start = () => {
@@ -587,7 +587,7 @@ function townMotion() {
     };
     TV.motion = m;
     window.addEventListener('deviceorientation', m.on);
-    $('tmotion').textContent = 'Stop the motion';
+    $('tmotion').textContent = 'Stop';
   };
   const DOE = window.DeviceOrientationEvent;
   if (DOE && typeof DOE.requestPermission === 'function') DOE.requestPermission().then(r => { if (r === 'granted') start(); }, () => {});

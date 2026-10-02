@@ -107,7 +107,7 @@ function buildWindows() {
 async function journeyRoute() {
   $('jstage').classList.toggle('broken', false);
   if (!await journeyLoad()) {
-    $('jpanel').innerHTML = `<h2>The journey</h2><p class="bad">${esc(JMAP_ERROR || 'The map could not be read.')}</p><p><a href="#${esc((ARCHIVES.get('RODMAP') || ARCHIVES.get('MAP') || {}).name || '')}">See the archive</a></p>`;
+    $('jpanel').innerHTML = `<h2>The journey</h2><p class="bad">${esc(JMAP_ERROR || 'The map could not be read.')}</p><p><a href="#${esc((ARCHIVES.get('RODMAP') || ARCHIVES.get('MAP') || {}).name || '')}">The archive</a></p>`;
     $('jstage').classList.add('broken');
     return;
   }
@@ -490,7 +490,7 @@ function journeyPanel() {
     html += `<h3>${esc(r.name)}</h3><ol class="route">` + r.places.map(k => `<li>${jPlaceLink(k)}<small>${esc(jPlace(k).kind)}</small></li>`).join('') + '</ol>';
   }
   html += `<h3>The roads, at a level</h3>${levelLegend()}`;
-  html += JSAVE ? `<p class="note">The roads as ${esc(JSAVE.name)} has them, each in the colour of the level it was crossed at; <a data-nosave>draw them all at the level picked</a>.</p>`
+  html += JSAVE ? `<p class="note">The roads as ${esc(JSAVE.name)} has them, each in the colour of the level it was crossed at; <a data-nosave>Clear</a>.</p>`
     : `<p class="note">The game draws each stretch of road in the colour of the level it was crossed at; here they are all drawn at the level picked, and a place's help is that level's.</p>`;
   return html;
 }
@@ -509,8 +509,8 @@ function placePanel(key) {
   const id = p.hard && JVIEW.level >= 3 ? p.hard : p.background;
   let html = `<h2>${esc(p.name)}</h2><div class="sub">${esc(key)} · ${where}</div>`;
   html += '<div class="actions">'
-    + (inIt ? `<button data-go="map">Back to the map</button>` : `<button data-go="in" data-key="${key}">Go in</button>`)
-    + (key === 'TOWN' && entry ? ` <a class="btn" href="#town">Stand in it, all round (VR)</a>` : '')
+    + (inIt ? `<button data-go="map">Map</button>` : `<button data-go="in" data-key="${key}">Go in</button>`)
+    + (key === 'TOWN' && entry ? ` <a class="btn" href="#town">All round</a>` : '')
     + ` <a class="btn" href="#${key}">The archive</a>`
     + (p.panorama ? ` <a class="btn" href="#${key}/tBMP/${p.panorama.sheet}">The panorama</a>` : ` <a class="btn" href="#${key}/tBMP/${id}">The picture</a>`)
     + '</div>';
@@ -584,7 +584,7 @@ function helpPanel(p) {
   if (!z) return `<h3>${head}</h3><p class="note">It is in ZOOMBINI.MHK, STRL ${id}, which is not among the files opened.</p>`;
   if (!z.bytes) {
     if (FETCHING.has('ZOOMBINI')) return `<h3>${head}</h3><p class="note">Fetching zoombini.mhk from archive.org…</p>`;
-    return `<h3>${head}</h3><p class="note">It is in zoombini.mhk, STRL ${id}: <a data-fetch="ZOOMBINI">fetch it from archive.org</a> (24 MB).</p>`;
+    return `<h3>${head}</h3><p class="note">It is in zoombini.mhk, STRL ${id}: <a data-fetch="ZOOMBINI">fetch</a> (24 MB).</p>`;
   }
   const arc = openedArchive(z);
   if (!arc || !arc.has('STRL', id)) return `<h3>${head}</h3><p class="warn">ZOOMBINI has no STRL ${id}.</p>`;

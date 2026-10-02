@@ -160,7 +160,7 @@ function solveBandHtml(band) {
   return '<div class="sband">' + band.map((z, i) => `<div class="szb"><span class="n">${i + 1}</span>${solveZoombiniImg(z)}`
     + `<span class="traits">${ZB_TRAIT_KINDS.map(k => pick(i, k, z[k])).join('')}</span>`
     + (band.length > 1 ? `<button class="x" data-drop="${i}" title="Leave this Zoombini out">×</button>` : '') + '</div>').join('') + '</div>'
-    + `<div class="actions">${band.length < 16 ? '<button data-sact="add">Add a Zoombini</button>' : ''} <button data-sact="dice">Another band</button>`
+    + `<div class="actions">${band.length < 16 ? '<button data-sact="add">Add</button>' : ''} <button data-sact="dice">Another band</button>`
     + `${SVIEW.band ? ' <button data-sact="dealband">The dealt band</button>' : ''}</div>`;
 }
 
@@ -191,7 +191,7 @@ function solvePanel() {
   if (!solveSheet()) {
     const e = ARCHIVES.get('ZOOMBINI');
     html += e ? (FETCHING.has('ZOOMBINI') ? '<p class="note">Fetching zoombini.mhk, for the Zoombinis’ pictures…</p>'
-      : `<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch it from archive.org</a> (24 MB). Until then they are numbers.</p>`)
+      : `<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are numbers.</p>`)
       : '<p class="note">ZOOMBINI.MHK is not among the files opened, so the Zoombinis are numbers.</p>';
   }
 
@@ -201,7 +201,7 @@ function solvePanel() {
   if (SDEALT) html += SDEALT.setup.map(l => `<p class="note">${esc(l)}</p>`).join('');
   html += solveFormHtml(P, band);
   if (SERROR) html += `<p class="bad">${esc(SERROR)}</p>`;
-  html += `<div class="actions"><button data-sact="redeal">Deal it again</button>${v.set ? ' <button data-sact="unset">As dealt</button>' : ''}</div></details>`;
+  html += `<div class="actions"><button data-sact="redeal">Deal again</button>${v.set ? ' <button data-sact="unset">As dealt</button>' : ''}</div></details>`;
 
   html += `<div class="tabs"><a data-sview="known" class="${v.view === 'known' ? 'on' : ''}">Answer known</a>`
     + `<a data-sview="unknown" class="${v.view === 'unknown' ? 'on' : ''}">Answer unknown</a></div>`;

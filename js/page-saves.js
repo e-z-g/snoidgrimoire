@@ -39,11 +39,11 @@ function renderSaves() {
   renderSide({ name: '#saves' }, { archive: null, tag: null, id: null });
   const view = $('view');
   let html = '<h1>Saves</h1><p class="sub">A saved game is ZOOM0000.TXT, ZOOM0001.TXT and on, in the game’s folder once installed; ZOOMBINI.WHO beside them names each. Read here, nothing leaves the page.</p>'
-    + '<div class="tools"><label class="btn">Open saved games…<input type="file" id="saveFiles" multiple hidden></label>'
+    + '<div class="tools"><label class="btn">Open…<input type="file" id="saveFiles" multiple hidden></label>'
     + (ROSTER ? ` <span class="note">roster: ${ROSTER.map(e => `${esc(e.name)} (${esc(e.file)})`).join(', ') || 'empty'}</span>` : '') + '</div>';
   if (!SAVES.length) html += '<p class="note">None open yet.</p>';
   const z = ARCHIVES.get('ZOOMBINI'), sprites = z && z.bytes;
-  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch it from archive.org</a> (24 MB). Until then they are named.</p>';
+  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are named.</p>';
   const zb = e => sprites ? solveZoombiniImg(e.traits) : '';
   for (const s of SAVES) {
     const f = s.state;

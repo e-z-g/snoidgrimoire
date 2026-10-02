@@ -89,7 +89,7 @@ function openArchives() {
 function unfetchedNote(what) {
   const left = sortedArchives().filter(e => !e.bytes && e.remote);
   if (!left.length) return '';
-  return `<p class="note">${what} from the ${plural(openArchives().length, 'archive')} open; ${plural(left.length, 'more')} archive.org has not sent yet: <a data-fetchall>fetch them</a> (about 100 MB in all).</p>`;
+  return `<p class="note">${what} from the ${plural(openArchives().length, 'archive')} open; ${plural(left.length, 'more')} archive.org has not sent yet: <a data-fetchall>fetch</a> (about 100 MB in all).</p>`;
 }
 function wireFetchAll(view) {
   const a = view.querySelector('[data-fetchall]');
@@ -110,7 +110,7 @@ const SCENARIO_PANES = {
       const routes = zbPlaceRoutes(p.key).map(r => ZB_ROUTES[r.route].name);
       html += `<tr><td>${esc(p.name)}</td><td class="note">${esc(p.kind)}</td><td class="note">${esc([...new Set(routes)].join('; '))}</td>`
         + `<td>${ARCHIVES.has(p.key) ? `<a href="#${p.key}">${p.key}</a>` : p.key}</td>`
-        + `<td>${journeyAvailable() ? `<a href="#place=${p.key}">on the map</a>` : ''}${ZB_PUZZLES.has(p.key) ? ` · <a href="#solve=${p.key}">taken apart</a>` : ''}${p.key === 'TOWN' ? ' · <a href="#town">all round</a>' : ''}</td></tr>`;
+        + `<td>${journeyAvailable() ? `<a href="#place=${p.key}">Map</a>` : ''}${ZB_PUZZLES.has(p.key) ? ` · <a href="#solve=${p.key}">Taken apart</a>` : ''}${p.key === 'TOWN' ? ' · <a href="#town">All round</a>' : ''}</td></tr>`;
     }
     view.innerHTML = html + '</table></div>';
   },
@@ -122,7 +122,7 @@ const SCENARIO_PANES = {
       html += `<details class="sec"><summary><b>${esc(place.name)}</b> <span class="note">${esc(key)}</span></summary>`
         + `<p>${esc(P.about)}</p>`
         + P.levels.map((l, i) => `<p><b>Level ${i + 1}, ${esc(ZB_LEVELS[i])}.</b> ${esc(l.rule)} <span class="note">${esc(l.chances)}</span></p>`).join('')
-        + `<p class="note">${journeyAvailable() ? `<a href="#place=${key}">On the map</a> · ` : ''}<a href="#solve=${key}">Taken apart</a> · <a href="#${key}">its archive</a></p></details>`;
+        + `<p class="note">${journeyAvailable() ? `<a href="#place=${key}">Map</a> · ` : ''}<a href="#solve=${key}">Taken apart</a> · <a href="#${key}">Archive</a></p></details>`;
     }
     view.innerHTML = html;
   },
@@ -167,7 +167,7 @@ const SCENARIO_PANES = {
 
   town(view) {
     view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville, where the band ends up: houses for the Zoombinis who have arrived, a reward building for each route crossed at each level.</p>'
-      + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">Stand in it, all round</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">On the map</a> · ' : ''}<a href="#TOWN">its archive</a></p>`;
+      + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">All round</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">Map</a> · ' : ''}<a href="#TOWN">Archive</a></p>`;
   },
 };
 

@@ -261,8 +261,8 @@ function roomPicture(arc, name) {
 function renderArchive(entry, arc, h) {
   const view = $('view');
   const place = placeOf(entry.name);
-  const onMap = (ZB_PLACE_BY_KEY.has(entry.name) && journeyAvailable() ? ` · <a href="#place=${entry.name}">on the map</a>` : '')
-    + (entry.name === 'TOWN' ? ' · <a href="#town">stand in it, all round</a>' : '');
+  const onMap = (ZB_PLACE_BY_KEY.has(entry.name) && journeyAvailable() ? ` · <a href="#place=${entry.name}">Map</a>` : '')
+    + (entry.name === 'TOWN' ? ' · <a href="#town">All round</a>' : '');
   let html = `<h1>${esc(entry.name)}</h1><p class="sub">${esc(place)}${place ? ' · ' : ''}${fmtBytes(entry.size)}${onMap}</p>`;
   if (h.tag && !arc.has(h.tag, h.id)) html += `<p class="warn">${esc(entry.name)} has no ${esc(tagLabel(h.tag))}${h.id != null ? ' ' + h.id : ''}.</p>`;
   html += '<table class="plain"><tr><th>type</th><th>resources</th><th>bytes</th><th>what</th></tr>';
@@ -294,7 +294,7 @@ function helpHtml(name) {
   if (!a || !a.help) return '';
   const z = ARCHIVES.get('ZOOMBINI');
   const arc = z && z.bytes ? openedArchive(z) : null;
-  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? ', <a href="#ZOOMBINI">open it</a> to read it here' : ''}.</p>`;
+  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? ', <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
   let html = '<h2 style="font-size:15px;margin:22px 0 6px">The help</h2><div class="strings">';
   for (let k = 0; k < 4; k++) {
     const id = a.help + k * 20;
@@ -361,7 +361,7 @@ function showBitmap(entry, arc, id, bytes, body) {
   const biggest = Math.max(...d.frames.map(f => Math.max(f.width, f.height)));
   const zc = zoomControl('sheet', biggest <= 64 ? 2 : 1);
   body.innerHTML = `<p class="sub">A sprite sheet of ${plural(d.frames.length, 'frame')}${regs ? `, registered by <a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a> and ${regs.id + 1}` : ''}. Index 0 is transparent.</p>`
-    + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save the frames (.zip)</button></div>`
+    + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as .zip</button></div>`
     + '<div id="focus"></div><div id="sheet" class="sheet"></div>';
   wirePaletteControl(entry); wireZoom('sheet');
   $('save').addEventListener('click', async () => {
@@ -488,7 +488,7 @@ function showStrings(entry, id, bytes, body) {
     if (place && id % 20 === 0) what = `The help for <a href="#${place}">${esc(ZB_ARCHIVES[place].place)}</a>${base >= 1700 ? ', level ' + (id % 100 / 20 + 1) : ''}.`;
     else if (id === 2900) what = 'The credits.';
   }
-  body.innerHTML = `<p class="sub">${plural(s.length, 'string')}. ${what}</p><div class="tools"><button id="strEdit">Edit the text</button></div><div class="strings">${s.map((t, i) => `<p><b>${i}</b>${esc(t)}</p>`).join('')}</div>`;
+  body.innerHTML = `<p class="sub">${plural(s.length, 'string')}. ${what}</p><div class="tools"><button id="strEdit">Edit</button></div><div class="strings">${s.map((t, i) => `<p><b>${i}</b>${esc(t)}</p>`).join('')}</div>`;
   $('strEdit').addEventListener('click', () => editStrings(entry, id, s, body));
 }
 
@@ -560,7 +560,7 @@ function walker(entry, arc, id, nodes, paths, c, box) {
   const home = ARCHIVES.get('ZOOMBINI'), zarc = home && home.bytes ? openedArchive(home) : null;
   if (!zarc) {
     box.innerHTML = '<p class="note">A Zoombini can walk these, drawn from zoombini.mhk: '
-      + (!home ? 'it is not among the files opened.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch it from archive.org</a> (24 MB).</p>');
+      + (!home ? 'it is not among the files opened.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch</a> (24 MB).</p>');
     if ($('walkFetch')) $('walkFetch').addEventListener('click', () => { ensureBytes(home).then(() => { if (box.isConnected) render(); }); walker(entry, arc, id, nodes, paths, c, box); });
     return;
   }
@@ -574,7 +574,7 @@ function walker(entry, arc, id, nodes, paths, c, box) {
   const routes = paths.map((p, i) => ({ i, pts: p.filter(w => w).map(w => nodes[w - 1]) })).filter(r => r.pts.length > 1);
   const cap = t => t[0].toUpperCase() + t.slice(1);
   box.innerHTML = '<div class="tools">' + ['hair', 'eyes', 'nose', 'feet'].map(k => `<label>${cap(k)} <select data-wtrait="${k}">${ZB_TRAIT_SHORT[k].map((n, i) => `<option value="${i + 1}"${i + 1 === z[k] ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('')
-    + (routes.length ? ` <label>Walk path <select id="walkPath">${routes.map(r => `<option value="${r.i}"${r.i === WALK_PICK.path ? ' selected' : ''}>${r.i}</option>`).join('')}</select></label> <button id="walkGo">Walk it</button>` : '')
+    + (routes.length ? ` <label>Walk path <select id="walkPath">${routes.map(r => `<option value="${r.i}"${r.i === WALK_PICK.path ? ' selected' : ''}>${r.i}</option>`).join('')}</select></label> <button id="walkGo">Walk</button>` : '')
     + '</div><p class="note">Or click the room for the Zoombini to walk there.</p>';
   const back = document.createElement('canvas');
   back.width = c.width; back.height = c.height;
@@ -679,7 +679,7 @@ function snoidPlayer(entry, arc, id, script, box) {
     box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk: `
       + (!home ? 'it is not among the files opened.</p>'
         : FETCHING.has(K.archive) ? 'fetching it…</p>'
-        : `<a id="snoidFetch">fetch it from archive.org</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
+        : `<a id="snoidFetch">fetch</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
     if ($('snoidFetch')) $('snoidFetch').addEventListener('click', () => {
       ensureBytes(home).then(() => { if (box.isConnected) snoidPlayer(entry, arc, id, script, box); });
       snoidPlayer(entry, arc, id, script, box);
