@@ -152,6 +152,40 @@ function zbLillyRouteMaps(arc) {
   return maps;
 }
 
+/* A route map edited, as REGS words in and out (map 0-2, 15000-15002 as
+   stored, before the program turns or mirrors it): the pad at row, col
+   given route (0 for none, else one of the map's own). */
+function zbLillyEditMap(words, map, row, col, route) {
+  const [first, last] = ZB_LILLY_MAP_ROUTES[map];
+  if (route && (route < first || route > last)) throw new Error(`Titanic Tattooed Toads: map ${map + 1} holds routes ${first}-${last}, not ${route}`);
+  const w = Array.from(words);
+  w[row * 12 + col] = route;
+  return w;
+}
+/* Each of a map's routes, as stored: its pads, and whether a toad could
+   follow it from the first column to the last, a pad at a time to one
+   beside it, before or behind (the routes on the disc all can). */
+function zbLillyRouteRuns(words, map) {
+  const [first, last] = ZB_LILLY_MAP_ROUTES[map], out = [];
+  for (let route = first; route <= last; route++) {
+    const on = (r, c) => r >= 0 && r < 12 && c >= 0 && c < 12 && words[r * 12 + c] === route;
+    let pads = 0;
+    for (let k = 0; k < 144; k++) if (words[k] === route) pads++;
+    const seen = new Set(), todo = [];
+    for (let r = 0; r < 12; r++) if (on(r, 0)) { seen.add(r * 12); todo.push([r, 0]); }
+    let across = false;
+    while (todo.length) {
+      const [r, c] = todo.pop();
+      if (c === 11) across = true;
+      for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (on(r + dr, c + dc) && !seen.has((r + dr) * 12 + c + dc)) { seen.add((r + dr) * 12 + c + dc); todo.push([r + dr, c + dc]); }
+      }
+    }
+    out.push({ route, pads, across });
+  }
+  return out;
+}
+
 /* A map turned: 0 a quarter clockwise, 1 a half, 2 a quarter the other
    way (ScummVM's rotateGrid); mirrored: 0 left to right, 1 top to bottom
    (flipGrid). */

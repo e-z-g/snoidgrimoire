@@ -481,4 +481,32 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     + `first launches as a second reading gives (${tally}; ${crossed} of ${sent} Zoombinis at levels 1-3 cross from some launcher); `
     + `workbench: ${trips} forms given back and ${rejects} bad values refused, ${sols} solutions played again as said, ${brutes} small bands' most matched by trying every order, `
     + `${fewer} puzzles where not everyone can cross one at a time (${unsettled} of them short of the bound for launches that overlap), ${exactBig} of ${bigs} with 11 or more proven, the slowest solve ${worst} ms`);
+
+  // ---- a layout edited (the page's layout editor) ------------------------
+  // Every square of every layout made what it is gives the same words; a
+  // whirlpool put on an empty square and taken off again, and the seats
+  // put back, give the words back; an edited square reads back as put.
+  {
+    const arc = open('MAZE2');
+    let squares = 0;
+    for (const id of S.ZB_MAZE2_LAYOUT_IDS) {
+      const words = Array.from(S.parseRegs(arc.get('REGS', id))), L = S.zbMaze2ParseLayout(id, words);
+      const firsts = new Set();
+      for (const c of L.cells) {
+        if (c.type > 7 || firsts.has(c.row * 13 + c.col)) continue;
+        firsts.add(c.row * 13 + c.col);
+        const again = S.zbMaze2EditSquare(words, c.row, c.col, c);
+        if (JSON.stringify(S.zbMaze2ParseLayout(id, again).cells) !== JSON.stringify(L.cells)) { fail(`REGS ${id}: the square at ${c.row},${c.col} made what it is changes the layout`); break; }
+        squares++;
+      }
+      const empty = [...Array(169).keys()].find(k => !L.cells.some(c => c.row * 13 + c.col === k) && !S.ZB_MAZE2_EXITS.some(e => e[1] * 13 + e[2] === k));
+      const [r, c] = [Math.floor(empty / 13), empty % 13];
+      const put = S.zbMaze2EditSquare(words, r, c, { type: 1, group: 1, ways: [true, true, true, true], dir: 0, turns: false });
+      const got = S.zbMaze2ParseLayout(id, put).cells;
+      if (got.length !== L.cells.length + 1 || got[got.length - 1].type !== 1 || got[got.length - 1].row !== r) fail(`REGS ${id}: a whirlpool put at ${r},${c} does not read back last`);
+      if (JSON.stringify(S.zbMaze2EditSquare(put, r, c, null)) !== JSON.stringify(words)) fail(`REGS ${id}: a whirlpool put on and taken off does not give the words back`);
+      if (JSON.stringify(S.zbMaze2EditSeats(words, L.seats)) !== JSON.stringify(words)) fail(`REGS ${id}: its seats put back change its words`);
+    }
+    say(`layouts edited: ${squares} squares made what they are, and a whirlpool put on and off, in each of ${S.ZB_MAZE2_LAYOUT_IDS.length} layouts, give their words back`);
+  }
 }

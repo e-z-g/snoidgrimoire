@@ -19,7 +19,10 @@
      its own bytes (zbSheetFrames);
    - a string list is a count byte and the strings, each ended by a NUL, in
      Windows-1252 (zbStringListBytes), so every list on the disc writes back
-     to its own bytes. */
+     to its own bytes;
+   - a REGS is its numbers, signed 16-bit big-endian, nothing else
+     (zbRegsBytes), as parseRegs reads it: a puzzle's layout (a maze's
+     squares, a pond's routes) is written so. */
 
 /* The archive's bytes with each of `changes`, [{ tag, id, bytes }], put in. */
 function zbWriteArchive(bytes, changes) {
@@ -163,5 +166,15 @@ function zbWaveBytes(original, samples, rate = 11025, loop = null) {
     dv.setUint32(o + 4, c.body.length); out.set(c.body, o + 8);
     o += 8 + c.body.length + (c.body.length & 1);
   }
+  return out;
+}
+
+/* A REGS from its numbers, each -32768 to 32767. */
+function zbRegsBytes(numbers) {
+  const out = new Uint8Array(2 * numbers.length), dv = new DataView(out.buffer);
+  numbers.forEach((v, i) => {
+    if (!Number.isInteger(v) || v < -32768 || v > 32767) throw new Error(`REGS: ${v} is not a 16-bit number`);
+    dv.setInt16(2 * i, v);
+  });
   return out;
 }

@@ -203,6 +203,31 @@ function zbMaze2ParseLayout(id, w) {
   return { id, seats, cells };
 }
 
+/* A layout edited, as REGS words (parseRegs's numbers) in and out, for
+   the page to write back (zbRegsBytes): the square at row, col made cell,
+   { type 0-7, group 1-8, ways [4 booleans], dir 0-3, turns }, or emptied
+   (null). The square's first record is rewritten where it stands, so the
+   feature arrows keep their order and so the features dealt to them; any
+   other record on it goes, and a square that had none gets its record
+   last. A record of an exit (types 20-23) is left as it is. */
+function zbMaze2EditSquare(words, row, col, cell) {
+  const w = Array.from(words), n = w[0], recs = [];
+  for (let i = 0; i < n; i++) recs.push(w.slice(10 + 10 * i, 20 + 10 * i));
+  const here = r => r[1] === row && r[2] === col && r[0] <= 7;
+  const rec = cell && [cell.type, row, col, cell.group, ...cell.ways.map(f => (f ? 1 : 0)), cell.dir, cell.turns ? 1 : 0];
+  const first = recs.findIndex(here), out = [];
+  recs.forEach((r, i) => { if (i === first && rec) out.push(rec); else if (!here(r)) out.push(r); });
+  if (first < 0 && rec) out.push(rec);
+  return [out.length, ...w.slice(1, 10), ...out.flat()];
+}
+/* The launcher seats (0-13, nine at most) put in a layout's words. */
+function zbMaze2EditSeats(words, seats) {
+  if (seats.length > 9 || seats.some(s => !(s >= 0 && s <= 13))) throw new Error('Bubblewonder Abyss: a layout has up to nine launchers, seats 1-14');
+  const w = Array.from(words);
+  for (let i = 0; i < 9; i++) w[1 + i] = i < seats.length ? seats[i] + 1 : 0;
+  return w;
+}
+
 /* The layouts of an opened MAZE2 (openMohawk), by REGS id, read once an
    archive. A missing layout is an Error when a deal asks for it. */
 const ZB_MAZE2_READ = new WeakMap();
@@ -1331,8 +1356,12 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
    shows them; its arrows as they start, a feature arrow with its feature,
    the coloured squares in their colours, and each launch's route; those
    across at the upper right, the rest at the lower left, faded. */
+/* Where the diagram puts the grid: square (row, col) is C across with its
+   top left at GX + row x C, GY + col x C (the page's layout editor clicks
+   on it). */
+const ZB_MAZE2_DRAWN = { C: 34, GX: 180, GY: 44 };
 function zbMaze2Diagram(B, band, replay, caption) {
-  const W = 800, H = 500, C = 34, GX = 180, GY = 44, items = [];
+  const W = 800, H = 500, { C, GX, GY } = ZB_MAZE2_DRAWN, items = [];
   const cx = r => GX + r * C + C / 2, cy = c => GY + c * C + C / 2;
   const hex = c => ZB_MAZE2_HEX[c.colour] || 'ink';
   items.push({ t: 'rect', x: GX - 4, y: GY - 4, w: 13 * C + 8, h: 13 * C + 8, fill: 'panel', stroke: 'line' });

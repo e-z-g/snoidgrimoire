@@ -7,8 +7,8 @@
 //   - the written archive reads back: every resource but the changed is the
 //     same bytes, the changed frames are the pixels written, the rest of the
 //     sheet's frames as they were;
-//   - every string list on the disc writes back to its own bytes, and every
-//     sound, given its own samples and loop;
+//   - every string list on the disc writes back to its own bytes, every
+//     REGS, and every sound, given its own samples and loop;
 //   - every single picture, written as a replaced one is (format 0x0102),
 //     reads back to its own pixels;
 //   - a picture's own colours, matched to its palette, come back as the
@@ -106,5 +106,15 @@ const allowed = Array.from({ length: 256 }, (_, i) => i).filter(i => i);
 const q = S.zbQuantize(rgba, pal, allowed);
 q.forEach((v, i) => { const want = room.pixels[i]; if (want === 0 ? v !== 0 : pal[v].join() !== pal[want].join()) { if (bad++ < 3) fail(`pixel ${i}: matched to ${v}, whose colour is not ${want}'s`); } else matched++; });
 
-if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''}, and read back; ${lists} string lists and ${sounds} sounds written back to their own bytes; ${pictures} pictures read back from themselves written anew; ${matched} pixels' colours matched back`);
+let regsBack = 0;
+for (const an of archiveNames()) {
+  const a = S.openMohawk(archiveBytes(an));
+  for (const r of a.list('REGS')) {
+    const b = a.get('REGS', r.id);
+    if (!same(S.zbRegsBytes(Array.from(S.parseRegs(b))), b)) fail(`${an} REGS ${r.id} does not write back to its own bytes`);
+    regsBack++;
+  }
+}
+if (!regsBack) fail('no REGS found to write back');
+if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''}, and read back; ${lists} string lists, ${regsBack} REGS and ${sounds} sounds written back to their own bytes; ${pictures} pictures read back from themselves written anew; ${matched} pixels' colours matched back`);
 process.exit(fails ? 1 : 0);

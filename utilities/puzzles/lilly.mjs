@@ -298,4 +298,25 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (wb) fail(wb);
   say(`${trips} forms given back and dealt again as dealt; ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms; bands of 16 as level:most/swaps ${summary.join(' ')})`);
   say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}); maps as REGS 15000-15002; ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 the ${spared} spared routes carry every band`);
+
+  // ---- a route map edited (the page's layout editor) ----------------------
+  // Every route on the disc runs from the first column to the last, a pad
+  // repainted and painted back gives the words back, and a route broken in
+  // its last column is no longer across.
+  {
+    const arc = open('LILLY');
+    for (let g = 0; g < 3; g++) {
+      const words = Array.from(S.parseRegs(arc.get('REGS', S.ZB_LILLY_ROUTE_REGS[g])));
+      const runs = S.zbLillyRouteRuns(words, g);
+      if (runs.some(r => !r.across || !r.pads)) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: a route that does not run across: ${JSON.stringify(runs)}`);
+      const k = words.findIndex(v => v), back = S.zbLillyEditMap(S.zbLillyEditMap(words, g, Math.floor(k / 12), k % 12, 0), g, Math.floor(k / 12), k % 12, words[k]);
+      if (JSON.stringify(back) !== JSON.stringify(words)) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: a pad repainted and painted back changes the map`);
+      const route = runs[0].route, cut = words.map((v, i) => (i % 12 === 11 && v === route ? 0 : v));
+      if (S.zbLillyRouteRuns(cut, g)[0].across) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: route ${route} without its last column is still across`);
+      let refused = false;
+      try { S.zbLillyEditMap(words, g, 0, 0, g === 0 ? 4 : 1); } catch (e) { refused = true; }
+      if (!refused) fail(`map ${g + 1} takes another family's route`);
+    }
+    say('route maps edited: every route on the disc across, a pad painted back as it was, a route cut in its last column not across, another family\'s route refused');
+  }
 }

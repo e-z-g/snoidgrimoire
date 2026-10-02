@@ -69,6 +69,10 @@ const VIEWS = [
   ['solve=BRIDGE&level=2&deal=12345', `/of 16 can cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('#sdiagram svg image').length >= 16 && document.querySelectorAll('.szb').length === 16 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are sure to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
   // The scene: the place's picture with the band waiting, near and far off.
+  // Very, Very, VERY Hard: a search for the hardest deal, which the ferry
+  // ends at once (it deals nothing at random), and a dealt one linked.
+  ['solve=FERRY&level=5&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
+  ['solve=BRIDGE&level=5&deal=4242&size=9', `/Level 4’s rules/.test(document.getElementById('spanel').textContent) && /sure to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent)"],
   ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
   ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],
@@ -226,6 +230,18 @@ const VIEWS = [
   ['FLEENS/SCRS/6000', "document.querySelector('#snoid canvas') && /tumbling/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
   ['BRIDGE/SCRS/2002', "document.querySelector('#snoid canvas') && document.getElementById('snoidRoom') && !document.querySelector('#snoid .warn')"],
   ['BRIDGE', "/Allergic Cliffs/.test(document.getElementById('view').textContent) && /level 4/.test(document.getElementById('view').textContent)"],
+  // A puzzle's layout edited on the solve page: a click puts a white arrow
+  // on a maze square, an edit in MAZE2 that Changes then undoes; the toads'
+  // route maps drawn to paint.
+  ['solve=MAZE2&level=4&deal=9&stage=layout', `(() => {
+    const sq = document.querySelectorAll('#sdiagram .lhits rect');
+    if (sq.length !== 169 || document.querySelectorAll('#sdiagram [data-seat]').length !== 14) return false;
+    const id = (SDEALT.edited || SDEALT.state).mazeLayoutRegsId;
+    if (!window.layoutClicked) { window.layoutClicked = true; sq[6 * 13 + 6].dispatchEvent(new MouseEvent('click', { bubbles: true })); return false; }
+    return isEdited('MAZE2', 'REGS', id) && zbMaze2ParseLayout(id, parseRegs(solveOpen('MAZE2').get('REGS', id))).cells.some(c => c.row === 6 && c.col === 6 && c.type === 3) && /edited/.test(document.getElementById('scaption').textContent);
+  })()`],
+  ['changes', `(() => { if (EDITS.has('MAZE2')) { editUndo(ARCHIVES.get('MAZE2')); route(); } return !EDITS.has('MAZE2') && /Changes/.test(document.getElementById('view').textContent); })()`],
+  ['solve=LILLY&level=2&deal=5&stage=layout', `document.querySelectorAll('#sdiagram [data-pad]').length === 144 && document.querySelectorAll('#sdiagram [data-lmap]').length === 3 && /route 1: \\d+ pads, across/.test(document.getElementById('sdiagram').textContent)`],
 ];
 
 try {

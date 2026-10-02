@@ -237,7 +237,15 @@ body:has(#town.cardboard) #bar { display: none; }
 #sstage { flex: 1; min-width: 0; overflow: auto; background: #05070b; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 #sdiagram svg { display: block; width: 100%; height: auto; max-width: 1100px; margin: 0 auto; background: #070a10; border: 1px solid var(--line); border-radius: 6px; }
 #scaption { color: var(--dim); text-align: center; font-size: 13px; }
-#stabs { margin: 0 auto; width: 100%; max-width: 360px; }
+#stabs { margin: 0 auto; width: 100%; max-width: 480px; }
+#sdiagram .ltools { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; max-width: 1100px; margin: 0 auto 8px; color: var(--dim); font-size: 13px; }
+#sdiagram .ltools label { white-space: nowrap; }
+#sdiagram .ltabs { max-width: 480px; margin: 0 auto 8px; }
+#sdiagram .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 5px; vertical-align: -1px; }
+#sdiagram .lhits rect { cursor: pointer; }
+#sdiagram .lhits rect:hover { fill: rgba(255,255,255,0.12); }
+#sdiagram [data-pad] { cursor: crosshair; }
+#sdiagram svg:has([data-pad]) { touch-action: none; }
 #sdiagram canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; margin: 0 auto; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #spanel {
   width: 420px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow: auto;
@@ -378,7 +386,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 
 <main id="solve" hidden>
   <div id="sstage">
-    <div class="tabs" id="stabs"><a data-stage="diagram">Diagram</a><a data-stage="scene">The scene</a></div>
+    <div class="tabs" id="stabs"><a data-stage="diagram">Diagram</a><a data-stage="scene">The scene</a><a data-stage="layout">The layout</a></div>
     <div id="sdiagram"></div>
     <div id="scaption"></div>
   </div>
@@ -418,6 +426,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-puzzle-caves.js"></script>
 <script src="js/zb-puzzle-smoke.js"></script>
 <script src="js/zb-puzzle-maze2.js"></script>
+<script src="js/zb-hardest.js"></script>
 <script src="js/zb-xref.js"></script>
 <script src="js/zb-search.js"></script>
 <script src="js/page-open.js"></script>
@@ -429,5 +438,6 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>
+<script src="js/page-layout.js"></script>
 </body>
 </html>
