@@ -59,8 +59,8 @@ function renderSaves() {
     html += '<div class="wide"><table class="plain"><tr><th>route</th><th>at level</th><th>its places, crossed at</th></tr>'
       + f.routes.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${r.level}</td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
     html += `<p><b>The town</b> <span class="note">${plural(f.population, 'Zoombini')}, ${plural(f.rewards.length, 'reward building')}</span></p>`;
-    html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads as it has them</button>`
-      + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town as it stands</a>` : '') + '</div>';
+    html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads</button>`
+      + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town</a>` : '') + '</div>';
   }
   view.innerHTML = html;
   $('saveFiles').addEventListener('change', async e => {
