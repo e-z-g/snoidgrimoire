@@ -74,7 +74,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- the workbench -----------------------------------------------------
   const P = S.ZB_PUZZLES.get('BRIDGE');
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
-  let trips = 0, walked = 0, leaves = 0;
+  let trips = 0, walked = 0, leaves = 0, played = 0;
   const walk = (node, sure, depth) => {
     if (!node.outcomes.length) { leaves++; return node.crossed; }
     if (depth > 40) throw new Error('a strategy deeper than 40 moves');
@@ -98,6 +98,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy says ${st.sure} are sure, and a branch gets ${worst} across`); break; }
         if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is said to be exact at ${st.sure}, and its worst branch gets ${worst}`); break; }
         walked++;
+        // Played against the dealt rule, the game answering each move.
+        if (knows === 'program') {
+          const end = S.zbStrategyPlay(P, level, band, d.state, st);
+          if (!end) { fail(`level ${level}: the game's answer to a move is not among the strategy's outcomes`); break; }
+          if (end.crossed < st.sure) { fail(`level ${level}: played against the dealt rule, ${end.crossed} across, fewer than the ${st.sure} sure`); break; }
+          played++;
+        }
       }
     }
   }
@@ -105,5 +112,5 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   try { P.edit(3, bands(1, 5)[0].band, {}, { t1: 'hair:1', t2: 'hair:2', upper: 'with' }); } catch (e) { bad = e.message; }
   if (!bad) fail('the form takes two values of one trait at level 3');
 
-  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it says is sure; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
+  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it says is sure, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
 }

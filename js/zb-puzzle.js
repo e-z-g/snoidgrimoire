@@ -86,6 +86,11 @@
               hidden part. opts.knows is 'program' or 'form'.
               Both are bounded (opts.budget, milliseconds, a second or two
               by default) and say so in exact when they stop short.
+     answer(level, band, state, node, arc)
+              what the game does with a strategy node's move when its
+              hidden part is state's: the index in node.outcomes, or -1
+              when no outcome is the game's (state is none of the
+              hypotheses). zbStrategyPlay walks a strategy so.
      A diagram is the puzzle drawn as data, for the page to paint:
               { width, height, items }, each item one of
                 { t: 'rect', x, y, w, h, r, fill, stroke }
@@ -248,6 +253,21 @@ function zbDealNeeds(key) {
   const route = ZB_ROUTES.find(r => r.places.slice(1, -1).includes(key));
   const keys = route ? route.places.slice(1, route.places.indexOf(key) + 1) : [key];
   return [...new Set(keys.filter(k => ZB_PUZZLES.has(k) && ZB_PUZZLES.get(k).archive).map(k => ZB_PUZZLES.get(k).archive))];
+}
+
+/* A strategy played against a puzzle dealt (or edited): the node it ends
+   at, each move answered as the game would answer it (the puzzle's
+   answer), or null when the game gives an answer the strategy did not
+   look for. Its crossed is how many a player who plays for the worst
+   gets across this puzzle. */
+function zbStrategyPlay(P, level, band, state, strategy, arc) {
+  let node = strategy.root;
+  for (let steps = 0; node.outcomes.length; steps++) {
+    const k = P.answer(level, band, state, node, arc);
+    if (!(k >= 0) || !node.outcomes[k] || steps > 200) return null;
+    node = node.outcomes[k].next();
+  }
+  return node;
 }
 
 /* A band in the address: four digits a Zoombini, hair, eyes, nose, feet. */

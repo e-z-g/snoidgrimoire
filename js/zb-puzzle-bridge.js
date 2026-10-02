@@ -182,6 +182,11 @@ ZB_PUZZLES.set('BRIDGE', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbBridgeStrategy(level, band, opts); },
+  /* It crosses when the bridge it is sent over is the one its traits
+     give it, and is sneezed back otherwise. */
+  answer(level, band, state, node) {
+    return zbBridgeMatches(band[node.zoombini], state.rule) === state.matchingTraitsUseUpperLane ? (node.upper ? 0 : 1) : (node.upper ? 1 : 0);
+  },
   source: 'ScummVM’s puzzle_bridge.cpp, checked against the program’s code.',
 });
 
@@ -336,7 +341,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
     const aFree = freeOf(a, u & ~(1 << i)), sFree = p > 1 ? freeOf(s, u) : [];
     return {
       move: `Send Zoombini ${i + 1} over the ${upper ? 'upper' : 'lower'} bridge.`,
-      zoombini: i, left, crossed: across,
+      zoombini: i, upper, left, crossed: across,
       diagram: zbBridgeDiagram(band, { near: near.filter(k => k !== i), up, low, pegs: p, sent: { i, upper }, caption: `${left} hypotheses left, ${p} pegs` }),
       outcomes: [
         { label: `It crosses (${weight(a)} left)`, left: weight(a), next: () => place(a, u & ~(1 << i) & ~agreed(a), p, [i, ...aFree]) },
