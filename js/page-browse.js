@@ -123,6 +123,7 @@ function renderSide(entry, h) {
   const side = $('side');
   const keep = side.scrollTop;
   let html = `<h2>${esc(SOURCE)}</h2>`;
+  if (REMEMBERED) html += `<p class="remembered">Remembered in this browser. <a data-forget>Forget</a></p>`;
   const edits = [...EDITS.values()].reduce((n, e) => n + e.changes.size, 0);
   html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits || EXE_EDIT ? plural(edits + (EXE_EDIT ? 1 : 0), 'edit') : 'nothing edited'}</span></div>`;
   html += `<div class="arc${isSavesHash() ? ' on' : ''}" data-arc="saves"><span class="name">Saves</span><span class="place">${SAVES.length ? plural(SAVES.length, 'game') + ' open' : 'saved games'}</span></div>`;
@@ -150,6 +151,8 @@ function renderSide(entry, h) {
     if (on) side.scrollTop = Math.max(0, on.offsetTop - side.offsetTop - 8);
   }
   for (const el of side.querySelectorAll('.arc')) el.addEventListener('click', () => { location.hash = '#' + el.dataset.arc; });
+  const forget = side.querySelector('[data-forget]');
+  if (forget) forget.addEventListener('click', () => memoryForget().then(() => { setStatus('Forgotten: the next visit starts with nothing open.'); renderSide(entry, h); }));
 }
 
 /* ---- palettes -------------------------------------------------------------- */

@@ -242,6 +242,27 @@ const VIEWS = [
   })()`],
   ['changes', `(() => { if (EDITS.has('MAZE2')) { editUndo(ARCHIVES.get('MAZE2')); route(); } return !EDITS.has('MAZE2') && /Changes/.test(document.getElementById('view').textContent); })()`],
   ['solve=LILLY&level=2&deal=5&stage=layout', `document.querySelectorAll('#sdiagram [data-pad]').length === 144 && document.querySelectorAll('#sdiagram [data-lmap]').length === 3 && /route 1: \\d+ pads, across/.test(document.getElementById('sdiagram').textContent)`],
+  // Remembered in this browser: every archive the CD image gave, at its own
+  // size; then opened again from there alone, as a visit with no ?src is.
+  ['journey', `(() => {
+    if (!window.memoryChecked) {
+      window.memoryChecked = 'pending';
+      (async () => {
+        let got = null;
+        for (let i = 0; i < 150; i++) {
+          got = await memoryRead();
+          if (got && got.archives.length === ARCHIVES.size) break;
+          await new Promise(r => setTimeout(r, 200));
+        }
+        const sizes = new Map([...ARCHIVES.values()].map(e => [e.name, e.size]));
+        if (!got || got.archives.length !== sizes.size || got.archives.some(r => r.bytes.byteLength !== sizes.get(r.name))) { window.memoryChecked = 'bad'; return; }
+        ARCHIVES.clear();
+        await openRemembered();
+        window.memoryChecked = REMEMBERED && ARCHIVES.size === sizes.size && [...ARCHIVES.values()].every(e => e.bytes && e.size === sizes.get(e.name)) ? 'ok' : 'bad';
+      })();
+    }
+    return window.memoryChecked === 'ok';
+  })()`],
 ];
 
 try {

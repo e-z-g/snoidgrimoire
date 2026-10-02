@@ -67,6 +67,8 @@ code, .mono { font: 12.5px/1.35 var(--mono); }
   overflow: auto; padding: 8px 0 24px;
 }
 #side h2 { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); margin: 12px 14px 4px; }
+#side .remembered { font-size: 12px; color: var(--dim); margin: 0 14px 8px; }
+#side .remembered a { cursor: pointer; }
 .arc { display: flex; justify-content: space-between; gap: 8px; padding: 4px 14px; cursor: pointer; }
 .arc:hover { background: var(--raise); }
 .arc.on { background: var(--raise); box-shadow: inset 3px 0 var(--accent); }
@@ -330,12 +332,12 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
     <ul>
       <li>The archives are in <code>DATA</code> on the game's CD, 22 of them, <code>BASECAMP.MHK</code> to <code>ZOOMBINI.MHK</code>.</li>
       <li>A CD image (<code>.iso</code>) is read as it is: the archives are taken out of its <code>DATA</code> folder.</li>
-      <li>Nothing leaves your browser.</li>
+      <li>Nothing leaves your browser. What you open is remembered there, so the next visit opens it at once.</li>
     </ul>
     <div id="remote">
       <p>Or read the copy the Internet Archive hosts: the Learning Company's re-release of 2001, whose
-        archives differ from 1996's in places. Each archive is fetched from archive.org when you open
-        it, 0.5 to 24 MB.</p>
+        archives differ from 1996's in places. Every archive is fetched from archive.org, about 100 MB
+        in all, the one you open first, and remembered in your browser.</p>
       <button id="useRemote">Read archive.org's copy</button>
     </div>
   </div>

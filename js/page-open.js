@@ -2,7 +2,17 @@
    =========================================================================
    The picker, the folder picker, dropping files on the page, `?src=` for a
    page served over HTTP (comma-separated, archives or a CD image), and
-   archive.org's copy, fetched an archive at a time as each is opened.
+   archive.org's copy, every archive fetched in turn from the start, the
+   one a view asks for first.
+
+   Remembered between visits, as Cythera's grimoire remembers its archive:
+   every archive taken in, from files or from archive.org, is kept in this
+   browser's IndexedDB as it was read (edits are not: they stay in the page
+   until saved from Changes), and a visit with no ?src opens what is
+   remembered at once, offline too. A new set taken in replaces it; Forget,
+   at the top of Data's list, clears it. Where IndexedDB is refused (some
+   file:// pages, a private window) nothing is remembered and nothing else
+   changes.
 
    Every archive the page knows is an entry in ARCHIVES, by upper-case name:
    { name, size, bytes, arc, error, remote }. `arc` is openMohawk's result,
@@ -24,6 +34,68 @@ const REMOTE = {
   names: ['BASECAMP', 'BCTWO', 'BRIDGE', 'CAVES', 'FERRY', 'FLEENS', 'HELP', 'HOTEL', 'LILLY', 'MAZE2', 'MUSIC',
     'NET', 'NETDEMO', 'PICKER', 'PIZZA', 'RODMAP', 'SLIDES', 'SMOKE', 'TOWN', 'TUNNELS', 'XFER', 'ZOOMBINI'],
 };
+
+/* ---- remembered between visits ------------------------------------------- */
+
+const MEMORY_DB = 'snoidgrimoire', MEMORY_STORE = 'archives', MEMORY_SOURCE = '#source';
+let REMEMBERED = false;
+function memoryTx(mode, fn) {
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(MEMORY_DB, 1); } catch (e) { reject(e); return; }
+    req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(MEMORY_STORE)) req.result.createObjectStore(MEMORY_STORE); };
+    req.onerror = () => reject(req.error || new Error('IndexedDB unavailable'));
+    req.onblocked = () => reject(new Error('IndexedDB blocked'));
+    req.onsuccess = () => {
+      const db = req.result, tx = db.transaction(MEMORY_STORE, mode), r = fn(tx.objectStore(MEMORY_STORE));
+      tx.oncomplete = () => { db.close(); resolve(r && r.result); };
+      tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('IndexedDB refused it')); };
+    };
+  });
+}
+/* A new set: what was remembered goes, and where it came from is kept. */
+function memoryBegin(label, remote) {
+  REMEMBERED = false;
+  return memoryTx('readwrite', s => { s.clear(); s.put({ label, remote, savedAt: Date.now() }, MEMORY_SOURCE); }).catch(() => {});
+}
+/* One archive as it was read; its own bytes, not the CD image they sit in. */
+function memoryPut(entry) {
+  const bytes = entry.bytes.slice();
+  return memoryTx('readwrite', s => s.put({ name: entry.name, bytes }, entry.name))
+    .then(() => { REMEMBERED = true; })
+    .catch(e => setStatus(`Not remembered in this browser: ${e.message}`, true));
+}
+async function memoryRead() {
+  const all = await memoryTx('readonly', s => s.getAll());
+  const source = all.find(r => r.label), archives = all.filter(r => r.bytes);
+  return source && archives.length ? { source, archives } : null;
+}
+function memoryForget() {
+  REMEMBERED = false;
+  return memoryTx('readwrite', s => s.clear()).catch(() => {});
+}
+/* Asked once something is remembered, so the browser keeps it under
+   pressure for space; a browser may say no. */
+function memoryKeep() { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }
+
+/* What was remembered, opened as it was taken in. */
+async function openRemembered() {
+  let got;
+  try { got = await memoryRead(); } catch (e) { return false; }
+  if (!got) return false;
+  ARCHIVES.clear();
+  if (got.source.remote) for (const n of REMOTE.names) ARCHIVES.set(n, { name: n, size: null, bytes: null, arc: null, error: null, remote: true });
+  for (const r of got.archives) {
+    const bytes = new Uint8Array(r.bytes);
+    ARCHIVES.set(r.name, { name: r.name, size: bytes.length, bytes, arc: null, error: null, remote: !!got.source.remote });
+  }
+  REMEMBERED = true;
+  SOURCE = got.source.label;
+  setStatus(`Opened as remembered in this browser, ${fmtBytes(got.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
+  browseStart();
+  if (got.source.remote) fetchTheRest();
+  return true;
+}
 
 function setStatus(text, bad) {
   const el = document.getElementById('status');
@@ -72,6 +144,10 @@ async function takeFiles(picked, source) {
   SOURCE = source;
   setStatus(refused.length ? `Read ${took} archives; not used: ${refused.slice(0, 4).join(', ')}${refused.length > 4 ? '…' : ''}` : '');
   browseStart();
+  memoryBegin(source, false).then(async () => {
+    for (const e of ARCHIVES.values()) await memoryPut(e);
+    memoryKeep();
+  });
 }
 
 async function readPicked(files) {
@@ -88,6 +164,26 @@ function useRemote() {
   for (const n of REMOTE.names) ARCHIVES.set(n, { name: n, size: null, bytes: null, arc: null, error: null, remote: true });
   SOURCE = REMOTE.label;
   browseStart(location.hash ? null : 'journey');
+  memoryBegin(REMOTE.label, true).then(() => { memoryKeep(); fetchTheRest(); });
+}
+/* Every archive archive.org has not sent yet, one after another, behind
+   whatever a view asks for (ensureBytes shares a fetch already under way).
+   The view showing is drawn again once the last is in. */
+let FETCHING_REST = null;
+function fetchTheRest() {
+  if (FETCHING_REST) return FETCHING_REST;
+  const left = () => sortedArchives().filter(e => !e.bytes && e.remote && !e.error);
+  const total = left().length;
+  if (!total) return Promise.resolve();
+  FETCHING_REST = (async () => {
+    for (let e; (e = left()[0]);) {
+      await ensureBytes(e);
+      if (e.error) break;
+    }
+    FETCHING_REST = null;
+    if (!left().length) { setStatus(`Every archive is in, and remembered in this browser.`); if (ARCHIVES.size && $('start').hidden) route(); }
+  })();
+  return FETCHING_REST;
 }
 
 /* An archive's bytes, fetched from archive.org the first time. */
@@ -121,7 +217,9 @@ function ensureBytes(entry) {
       if (!looksLikeMohawk(bytes)) throw new Error('what came back is not a Mohawk archive');
       entry.bytes = bytes;
       entry.size = bytes.length;
-      setStatus('');
+      const left = sortedArchives().filter(e => !e.bytes && e.remote).length;
+      setStatus(left ? `${left} more archive${left === 1 ? '' : 's'} to come from archive.org.` : '');
+      memoryPut(entry);
     } catch (e) {
       entry.error = `Could not fetch it from archive.org (${e.message}).`;
       setStatus(entry.error, true);
@@ -185,10 +283,11 @@ function wireOpening() {
 
   // Once every script is in: the map and the town are the last to load,
   // and an address such as #place=PIZZA or #town goes straight to them.
-  const start = () => {
+  const start = async () => {
     const src = new URLSearchParams(location.search).get('src');
     if (src === 'archive.org') useRemote();
     else if (src) openFromUrls(src.split(','));
+    else await openRemembered();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
