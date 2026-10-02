@@ -137,6 +137,9 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; max-width:
 .trow .note { width: 40px; }
 .trow canvas { image-rendering: pixelated; width: auto; height: 40px; max-width: 18vw; object-fit: contain; }
 button.play { padding: 0 7px; font-size: 11px; }
+#view .sband { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 4px 0 12px; }
+#view .szb { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+#view .szb img { height: 44px; image-rendering: pixelated; }
 button.fam { display: inline-flex; gap: 6px; align-items: center; }
 button.fam.on { border-color: var(--accent); color: var(--accent); }
 button.fam .strip { display: inline-flex; width: 42px; height: 12px; border: 1px solid var(--line); }
@@ -398,6 +401,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-town.js"></script>
 <script src="js/zb-snoid.js"></script>
 <script src="js/zb-write.js"></script>
+<script src="js/zb-save.js"></script>
 <script src="js/zb-mod-fleen.js"></script>
 <script src="js/zb-recolour.js"></script>
 <script src="js/zb-diagram.js"></script>
@@ -421,6 +425,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-tabs.js"></script>
 <script src="js/page-galleries.js"></script>
 <script src="js/page-edit.js"></script>
+<script src="js/page-saves.js"></script>
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>

@@ -190,7 +190,21 @@ const VIEWS = [
       && document.querySelectorAll('#modShow canvas').length === 5 && openedArchive(ARCHIVES.get('ZOOMBINI')).list('tBMP').length === 6;
   })()`],
   ['changes', "/Fleen parts, lime green/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],
-  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods])').length === 22"],
+  // A saved game: the test one, opened as a person would, its band and places shown, then its roads on the map.
+  ['saves', `(() => {
+    if (!window.__save) {
+      const input = document.getElementById('saveFiles'); if (!input) return false;
+      window.__save = 'asked';
+      Promise.all(['ZOOM0000.TXT', 'ZOOMBINI.WHO'].map(n => fetch('reference/saves/test-2026-10-01/' + n).then(r => r.arrayBuffer()).then(b => new File([b], n)))).then(fs => {
+        const dt = new DataTransfer(); fs.forEach(f => dt.items.add(f)); input.files = dt.files; input.dispatchEvent(new Event('change'));
+      });
+      return false;
+    }
+    const t = document.getElementById('view').textContent;
+    return /“Test” \\(ZOOM0000.TXT\\)/.test(t) && /WaitingonZoombiniIsle16/.test(t.replace(/\\s+/g, '')) && /at the map/.test(t) && document.querySelectorAll('#view .szb img').length === 16 && (document.querySelector('[data-save-map]').click(), true);
+  })()`],
+  ['journey', "JSAVE && JSAVE.levels.get(17) === 1 && JSAVE.levels.get(18) === 1 && JSAVE.levels.get(19) === 0 && /as “Test”/.test(document.getElementById('jpanel').textContent) && (document.querySelector('#jpanel [data-nosave]').click(), !JSAVE)"],
+  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods]):not([data-arc=saves])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/tBMP/3000', "document.querySelectorAll('#sheet .frame').length === 890"],

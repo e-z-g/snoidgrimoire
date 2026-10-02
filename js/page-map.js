@@ -208,7 +208,10 @@ function mapDraw() {
   const [gx, gy] = mapToScreen(0, 0);
   ctx.drawImage(JGROUND, gx, gy, 640 * s, 480 * s);
   for (const r of JMAP.roads) {
-    const c = jSprite(r.frames[JVIEW.level - 1]);
+    // A save's roads at the levels it crossed them, the rest not drawn; else all at the level picked.
+    const level = JSAVE ? JSAVE.levels.get(r.shape) : JVIEW.level;
+    if (!level) continue;
+    const c = jSprite(r.frames[level - 1]);
     if (c) { const [x, y] = mapToScreen(r.x, r.y); ctx.drawImage(c, x, y, c.width * s, c.height * s); }
   }
   JDRAWN = [];
@@ -487,7 +490,8 @@ function journeyPanel() {
     html += `<h3>${esc(r.name)}</h3><ol class="route">` + r.places.map(k => `<li>${jPlaceLink(k)}<small>${esc(jPlace(k).kind)}</small></li>`).join('') + '</ol>';
   }
   html += `<h3>The roads, at a level</h3>${levelLegend()}`;
-  html += `<p class="note">The game draws each stretch of road in the colour of the level it was crossed at; here they are all drawn at the level picked, and a place's help is that level's.</p>`;
+  html += JSAVE ? `<p class="note">The roads as ${esc(JSAVE.name)} has them, each in the colour of the level it was crossed at; <a data-nosave>draw them all at the level picked</a>.</p>`
+    : `<p class="note">The game draws each stretch of road in the colour of the level it was crossed at; here they are all drawn at the level picked, and a place's help is that level's.</p>`;
   return html;
 }
 
@@ -705,11 +709,12 @@ function wireJourney() {
   $('jlevel').onchange = () => setLevel(+$('jlevel').value);
 
   const onClick = e => {
-    const a = e.target.closest('[data-sel],[data-go],[data-level],[data-fetch],[data-deal]');
+    const a = e.target.closest('[data-sel],[data-go],[data-level],[data-fetch],[data-deal],[data-nosave]');
     if (!a || $('journey').hidden) return;
     e.preventDefault();
     const d = a.dataset;
-    if (d.level) setLevel(+d.level);
+    if (a.hasAttribute('data-nosave')) { JSAVE = null; mapPanel(); mapRedraw(); }
+    else if (d.level) setLevel(+d.level);
     else if (d.deal) {
       JVIEW.deal = { key: d.deal, seed: 1 + Math.floor(Math.random() * 0x7fffffff), size: JVIEW.bandSize };
       mapWriteHash(true);
