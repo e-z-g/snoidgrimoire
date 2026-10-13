@@ -328,6 +328,19 @@ try {
           }
           results.push({ hash: `components/${key} saved whole`, met: !note, ms: Date.now() - t0, wide: false, note });
         }
+        // A tune played: the instruments from the copy in reference/ (the
+        // page's own fetch is archive.org's), the sound in an <audio>.
+        if (!dev.mobile && fs.existsSync(path.join(REF, 'quicktime', 'QUICKTIM.EXE'))) {
+          await p.evaluate("location.hash = '#MIDIMAC/tMID/30000'");
+          const t0 = Date.now();
+          const until = async cond => { while (Date.now() - t0 < 60000 && !(await p.evaluate(cond))) await new Promise(res => setTimeout(res, 200)); return p.evaluate(cond); };
+          let met = await until("!!document.querySelector('#tune .tplay')");
+          if (met) {
+            await p.evaluate("window.QTGOT = false; fetch('reference/quicktime/QUICKTIM.EXE').then(r => r.arrayBuffer()).then(b => { QT_LIB = qtInstrumentsFromFile(new Uint8Array(b)); window.QTGOT = true; })");
+            met = await until('window.QTGOT') && (await p.evaluate("document.querySelector('#tune .tplay').click()"), await until("!!document.querySelector('#tune audio[src^=\"blob:\"]') && /through QuickTime 3/.test(document.getElementById('tune').textContent)"));
+          }
+          results.push({ hash: 'MIDIMAC/tMID/30000 played', met: !!met, ms: Date.now() - t0, wide: false, note: await p.evaluate("(document.getElementById('tune') || {}).textContent || ''") });
+        }
         return results;
       },
     });

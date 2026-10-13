@@ -467,10 +467,12 @@ function showSound(entry, arc, id, bytes, body) {
 function showMidi(entry, id, bytes, body) {
   const m = parseMohawkMidi(bytes);
   body.innerHTML = `<p class="sub">A standard MIDI file of format ${m.header.format}, ${plural(m.header.tracks, 'track')}, ${m.header.division} ticks a beat. Its chunks: ${m.chunks.map(esc).join(', ')}.</p>`
-    + `<div class="tools"><button id="save">Save as .mid</button></div>`
+    + `<div class="tools"><button id="save">Save as .mid</button></div><div id="tune" class="tools"></div>`
+    + `<p class="note">On a Mac the game played its tunes through QuickTime’s instruments; on Windows through whatever MIDI device the machine had. Play is the first, with QuickTime 3’s set, which is larger than the set a Mac of 1996 had.</p>`
     + (m.programs ? `<p class="note">Its Prg# chunk, which a MIDI file does not carry: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
     + `<p class="note">${entry.name === 'MIDIMAC' ? 'Authored for the Mac and QuickTime' : 'Authored for Windows'}, as ScummVM's branch describes the two music archives.</p>`;
   $('save').addEventListener('click', () => downloadBlob(m.file, `${entry.name.toLowerCase()}-tmid-${id}.mid`));
+  tunePlayer(entry, openedArchive(entry), id, $('tune'));
 }
 
 function showPalette(tag, bytes, body) {

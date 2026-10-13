@@ -15,6 +15,11 @@ documentation and everything shipped with it are not in this repository and
 are not distributed with it. The page reads a copy that you supply, or one the
 Internet Archive already hosts publicly, in your browser.
 
+**QuickTime Musical Instruments.** A tune is played through QuickTime 3's
+instruments, copyright Apple Computer and Roland. They are not in this
+repository: the page fetches QuickTime 3's installer from the Internet
+Archive, or takes a copy you supply, in your browser.
+
 **`reference/`**, which is gitignored: the game, the extraction project's
 tools and output, and the programs the checks compare against, among them
 ScummVM's Zoombinis branch (`ied206/scummvm-zoombini`, GPL-3.0). None of their

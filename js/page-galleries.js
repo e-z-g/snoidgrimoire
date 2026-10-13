@@ -172,11 +172,12 @@ const ZB_GALLERIES = {
   },
 
   music(view) {
-    galleryHead(view, 'Music', 'Every tune, as authored for Windows (MIDIMPC) and for the Mac (MIDIMAC); each saves as a MIDI file.', 'Tunes');
-    let html = '<table class="plain"><tr><th>archive</th><th>tune</th><th>bytes</th></tr>';
+    galleryHead(view, 'Music', 'Every tune, as authored for Windows (MIDIMPC) and for the Mac (MIDIMAC); each saves as a MIDI file, and plays through QuickTime’s instruments, as a Mac played it.', 'Tunes');
+    let html = '<table class="plain"><tr><th>archive</th><th>tune</th><th>bytes</th><th></th></tr>';
     for (const { entry, arc } of openArchives()) for (const r of arc.list('tMID'))
-      html += `<tr><td>${entry.name}</td><td><a href="${link(entry.name, 'tMID', r.id)}">${r.id}</a></td><td class="num">${fmtBytes(r.size)}</td></tr>`;
+      html += `<tr><td>${entry.name}</td><td><a href="${link(entry.name, 'tMID', r.id)}">${r.id}</a></td><td class="num">${fmtBytes(r.size)}</td><td class="tune" data-arc="${entry.name}" data-id="${r.id}"></td></tr>`;
     view.insertAdjacentHTML('beforeend', html + '</table>');
+    for (const td of view.querySelectorAll('td.tune')) { const entry = ARCHIVES.get(td.dataset.arc); tunePlayer(entry, openedArchive(entry), +td.dataset.id, td); }
   },
 
   text(view) {
