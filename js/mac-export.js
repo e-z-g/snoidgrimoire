@@ -31,7 +31,17 @@ function zipDosStamp(d) {
  * and passes both, because the header still needs the uncompressed size and
  * the CRC of the ORIGINAL bytes. Omit it and the entry is stored, exactly as
  * before. */
-function buildZip(files) {
+function buildZip(files) { return new Blob(buildZipParts(files), { type: 'application/zip' }); }
+// The same archive as one array of bytes, for a caller that has to read it
+// back at once (a check, or a zip made to be handed straight to a reader).
+function buildZipBytes(files) {
+  const parts = buildZipParts(files);
+  let n = 0; for (const p of parts) n += p.length;
+  const out = new Uint8Array(n); n = 0;
+  for (const p of parts) { out.set(p, n); n += p.length; }
+  return out;
+}
+function buildZipParts(files) {
   const enc = new TextEncoder();
   const stamp = zipDosStamp(new Date());
   const parts = [], centrals = [];
@@ -84,7 +94,7 @@ function buildZip(files) {
   ev.setUint16(10, files.length, true);
   ev.setUint32(12, centralSize, true);
   ev.setUint32(16, offset, true);
-  return new Blob(parts.concat(centrals, [eocd]), { type: 'application/zip' });
+  return parts.concat(centrals, [eocd]);
 }
 
 /* Every save in both pages goes through here. Revoking the object URL in the

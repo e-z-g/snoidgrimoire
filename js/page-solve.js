@@ -372,6 +372,8 @@ function solveHardSearch() {
 function solveRoute() {
   SHARD = null;
   solveApplyHash();
+  const place = ZB_PLACE_BY_KEY.get(SVIEW.key);
+  $('crumbs').innerHTML = `<a href="#scenario">Scenario</a><span class="sep">›</span><a href="#scenario/puzzles">Puzzles</a>${place ? `<span class="sep">›</span><span>${esc(place.name)}</span>` : ''}`;
   const need = solveNeeds();
   if (need.missing) {
     $('spanel').innerHTML = `<p class="warn">This puzzle's layout is in ${esc(need.missing)}.MHK, which is not among the files opened.</p>`;

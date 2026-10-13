@@ -73,7 +73,7 @@ const VIEWS = [
   // ends at once (it deals nothing at random), and a dealt one linked.
   ['solve=FERRY&level=5&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=5&deal=4242&size=9', `/Level 4’s rules/.test(document.getElementById('spanel').textContent) && /sure to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent)"],
+  ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
   ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
   ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],
   ['solve=LILLY&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /off the screen/.test(document.getElementById('scaption').textContent)"],
@@ -314,6 +314,20 @@ try {
           if (shots) await p.shot(path.join(shots, `${dev.name}-${hash.replace(/\//g, '-')}.png`));
           results.push({ hash, met, ms: Date.now() - t0, wide });
         }
+        // A gallery saved whole: every sound, tune and string list in the zip.
+        if (!dev.mobile) for (const [key, tag, ext] of [['sounds', '\\0SND', 'wav'], ['music', 'tMID', 'mid'], ['text', 'STRL', 'txt']]) {
+          await p.evaluate(`location.hash = '#components/${key}'`);
+          const t0 = Date.now();
+          let note = 'no button';
+          while (Date.now() - t0 < 5000 && !(await p.evaluate("!!document.getElementById('saveall')"))) await new Promise(res => setTimeout(res, 100));
+          if (await p.evaluate("!!document.getElementById('saveall')")) {
+            await p.evaluate("window.SAVED = null; window.dlBlob = (blob, name) => { window.SAVED = { name, size: blob.size }; }; window.ZIPPED = null; (() => { const z = buildZip; window.buildZip = files => { window.ZIPPED = files.map(f => f.name); return z(files); }; })(); document.getElementById('saveall').click()");
+            while (Date.now() - t0 < 120000 && !(await p.evaluate('!!window.SAVED'))) await new Promise(res => setTimeout(res, 200));
+            note = await p.evaluate(`(() => { const want = openArchives().reduce((n, o) => n + o.arc.list('${tag}').length, 0), got = (window.ZIPPED || []).filter(n => n.startsWith('${key}/') && n.endsWith('.${ext}')).length;
+              return window.SAVED && got === want && got === window.ZIPPED.length && window.SAVED.name === 'zoombinis-${key}.zip' && window.SAVED.size > got * 30 ? '' : got + ' of ' + want + ' in ' + JSON.stringify(window.SAVED); })()`);
+          }
+          results.push({ hash: `components/${key} saved whole`, met: !note, ms: Date.now() - t0, wide: false, note });
+        }
         return results;
       },
     });
@@ -323,7 +337,7 @@ try {
       if (!v.met) fail(`${dev.name} #${v.hash}: did not come up${v.note ? ' (' + v.note + ')' : ''}`);
       if (v.wide) fail(`${dev.name} #${v.hash}: wider than the screen`);
     }
-    console.log(`${dev.name}: the CD image read, the map first; ${r.more[0].note}; ${r.more.slice(1).filter(v => v.met).length} of ${VIEWS.length} views up (slowest ${Math.max(...r.more.map(v => v.ms))} ms)`);
+    console.log(`${dev.name}: the CD image read, the map first; ${r.more[0].note}; ${r.more.slice(1).filter(v => v.met).length} of ${r.more.length - 1} views up (slowest ${Math.max(...r.more.map(v => v.ms))} ms)`);
   }
 
   // ---- the town, in WebGL ------------------------------------------------
@@ -334,11 +348,16 @@ try {
         const sleep = ms => new Promise(res => setTimeout(res, ms));
         const got = {};
         await sleep(300);
-        got.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK");
+        got.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›All round$/.test(document.getElementById('crumbs').textContent)");
         if (shots) await p.shot(path.join(shots, `${dev.name}-town.png`));
-        await p.evaluate("TV.yaw = (946 - 320) / 1920 * 2 * Math.PI; TV.pitch = Math.atan((300 - 230) * (2 * Math.PI / 1920))");
-        await sleep(300);
-        got.caption = await p.evaluate("document.getElementById('tcaption').textContent");
+        // (the caption is set as a frame is drawn, and SwiftShader's frames
+        // can be slower than any one wait: looked at until it is named)
+        for (const t0 = Date.now(); Date.now() - t0 < 8000;) {
+          await p.evaluate("TV.yaw = (946 - 320) / 1920 * 2 * Math.PI; TV.pitch = Math.atan((300 - 230) * (2 * Math.PI / 1920))");
+          await sleep(300);
+          got.caption = await p.evaluate("document.getElementById('tcaption').textContent");
+          if (/Clock Tower/.test(got.caption)) break;
+        }
         if (shots) await p.shot(path.join(shots, `${dev.name}-town-clock.png`));
         // Each way of showing the depth draws, and Cardboard is left by its button.
         for (const mode of ['sway', 'anaglyph', 'cardboard']) {

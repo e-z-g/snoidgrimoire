@@ -535,6 +535,7 @@ function townSet(people, rewards, keepHash) {
 /* Called by page-browse's route() when the address is #town. */
 async function townRoute() {
   const entry = ARCHIVES.get('TOWN');
+  $('crumbs').innerHTML = '<a href="#scenario">Scenario</a><span class="sep">›</span><a href="#scenario/town">The town</a><span class="sep">›</span><span>All round</span>';
   $('tstatus').textContent = '';
   if (!entry) { $('tstatus').textContent = 'TOWN.MHK is not among the files opened.'; return; }
   if (!entry.bytes && !entry.error) { $('tstatus').textContent = 'Fetching town.mhk from archive.org…'; await ensureBytes(entry); $('tstatus').textContent = ''; }

@@ -49,8 +49,67 @@ function galleryThumb(frame, pal, transparent, w = 160, h = 120) {
 }
 
 function galleryHead(view, title, sub, what) {
-  view.innerHTML = `<h1>${title}</h1><p class="sub">${sub}</p>` + unfetchedNote(what);
+  const key = Object.keys(ZB_GALLERIES).find(k => ZB_TABS.components.subs.some(s => s[0] === k && s[1] === title));
+  view.innerHTML = `<h1>${title}</h1><p class="sub">${sub}</p>` + unfetchedNote(what)
+    + (GALLERY_FILES[key] ? '<div class="tools"><button id="saveall">Save all as .zip</button></div>' : '');
   wireFetchAll(view);
+  const b = view.querySelector('#saveall');
+  if (b) b.addEventListener('click', () => gallerySaveAll(key, b));
+}
+
+/* A whole gallery saved, as grimoire saves one: every item of the archives
+   open as the file its own view saves (PNG, WAV, .mid, text), in one zip, a
+   folder an archive. Each gallery's files, made one at a time. */
+const GALLERY_FILES = {
+  async *pictures() {
+    for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP')) {
+      if (gallerySheet(entry.name, arc, id)) continue;
+      const f = decodeTbmp(arc.get('tBMP', id));
+      yield { name: `${entry.name}/${entry.name.toLowerCase()}-tbmp-${id}.png`, bytes: await encodeIndexedPNG(f.width, f.height, f.pixels, paletteFor(entry, arc, id).pal, null) };
+    }
+  },
+  async *sheets() {
+    for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP')) {
+      if (!gallerySheet(entry.name, arc, id)) continue;
+      const d = decodeBitmapResource(arc.get('tBMP', id)), pal = paletteFor(entry, arc, id).pal;
+      for (let i = 0; i < d.frames.length; i++) {
+        const f = d.frames[i];
+        if (f.width && f.height) yield { name: `${entry.name}/${entry.name.toLowerCase()}-tbmp-${id}/frame-${String(i).padStart(4, '0')}.png`, bytes: await encodeIndexedPNG(f.width, f.height, f.pixels, pal, 0) };
+      }
+    }
+  },
+  async *sounds() {
+    for (const { entry, arc } of openArchives()) for (const { id } of arc.list('\0SND')) {
+      const w = parseMohawkWave(arc.get('\0SND', id));
+      yield { name: `${entry.name}/${entry.name.toLowerCase()}-snd-${id}.wav`, bytes: wavFromPcmBytes(w.samples, w.rate, w.bits, w.channels) };
+    }
+  },
+  async *music() {
+    for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tMID'))
+      yield { name: `${entry.name}/${entry.name.toLowerCase()}-tmid-${id}.mid`, bytes: parseMohawkMidi(arc.get('tMID', id)).file };
+  },
+  async *text() {
+    for (const { entry, arc } of openArchives()) for (const { id } of arc.list('STRL'))
+      yield { name: `${entry.name}/${entry.name.toLowerCase()}-strl-${id}.txt`, bytes: new TextEncoder().encode(parseStringList(arc.get('STRL', id)).join('\n') + '\n') };
+  },
+};
+/* What could not be made is listed in the zip, not left out in silence. */
+async function gallerySaveAll(key, button) {
+  const files = [], failed = [], label = button.textContent;
+  button.disabled = true;
+  let last = 0;
+  const it = GALLERY_FILES[key]()[Symbol.asyncIterator]();
+  for (;;) {
+    let r;
+    try { r = await it.next(); } catch (e) { failed.push(e.message); break; }
+    if (r.done) break;
+    files.push({ name: `${key}/${r.value.name}`, bytes: r.value.bytes });
+    if (Date.now() - last > 100) { button.textContent = `${files.length} made…`; await new Promise(res => setTimeout(res, 0)); last = Date.now(); }
+  }
+  if (failed.length) files.push({ name: `${key}/NOT-SAVED.txt`, bytes: new TextEncoder().encode('Stopped at: ' + failed.join('\n') + '\n') });
+  if (files.length) dlBlob(buildZip(files), `zoombinis-${key}.zip`);
+  button.textContent = failed.length ? `Stopped after ${files.length - 1}: ${failed[0]}` : label;
+  button.disabled = false;
 }
 
 /* A ZOOMBINI sound a Zoombini says: which kind of thing, for which hair and
