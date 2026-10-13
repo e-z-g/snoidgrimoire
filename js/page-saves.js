@@ -1,4 +1,10 @@
-/* page-saves.js -- saved games, read (zb-save.js, as ScummVM reads them):
+/* page-saves.js -- saved games, read (zb-save.js, as ScummVM reads them),
+   and one thing in them changed: a route's level (routeLevels, the four
+   words the map's colours and a puzzle's level are taken from), written
+   back with zbSaveWrite, which is held to write an unchanged save byte for
+   byte, and saved under the file's own name to put where it came from. The
+   page says the game has not been run on one.
+   Read:
    under Data, open a game's ZOOM####.TXT, with its roster ZOOMBINI.WHO
    for its name, and see what it holds: where the band is, every Zoombini
    and where it waits, each route's places and the levels they were crossed
@@ -23,7 +29,7 @@ async function savesOpen(files) {
     const state = zbSaveRead(bytes);
     const at = SAVES.findIndex(s => s.file === f.name);
     if (at >= 0) SAVES.splice(at, 1);
-    SAVES.push({ file: f.name, bytes, state });
+    SAVES.push({ file: f.name, bytes, state, was: [...state.routeLevels] });
   }
 }
 
@@ -57,8 +63,10 @@ function renderSaves() {
     }
     // The routes.
     html += '<div class="wide"><table class="plain"><tr><th>route</th><th>at level</th><th>its places, crossed at</th></tr>'
-      + f.routes.map(r => `<tr><td>${esc(r.name)}</td><td class="num">${r.level}</td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
+      + f.routes.map((r, k) => `<tr><td>${esc(r.name)}</td><td><select data-save-level="${esc(s.file)}" data-route="${k}" title="The route’s level">${ZB_LEVELS.map((n, i) => `<option value="${i}"${i + 1 === r.level ? ' selected' : ''}>${i + 1}: ${esc(n)}</option>`).join('')}</select></td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
     html += `<p><b>The town</b> <span class="note">${plural(f.population, 'Zoombini')}, ${plural(f.rewards.length, 'reward building')}</span></p>`;
+    const changed = s.state.routeLevels.some((v, k) => v !== s.was[k]);
+    if (changed) html += `<p class="note">A route’s level is changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> writes the save with only those words changed, to put back in the game’s folder over a copy of the old one. The game has not been run on a save edited here.</p>`;
     html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads</button>`
       + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town</a>` : '') + '</div>';
   }
@@ -71,6 +79,17 @@ function renderSaves() {
     const s = SAVES.find(x => x.file === b.dataset.saveMap);
     JSAVE = { name: saveName(s), levels: saveRoadLevels(s.state) };
     location.hash = '#journey';
+  });
+  for (const sel of view.querySelectorAll('[data-save-level]')) sel.addEventListener('change', () => {
+    const s = SAVES.find(x => x.file === sel.dataset.saveLevel);
+    s.state.routeLevels[+sel.dataset.route] = +sel.value;
+    // the views again, from the fields as they now are
+    s.state = zbSaveRead(zbSaveWrite(s.state));
+    renderSaves();
+  });
+  for (const b of view.querySelectorAll('[data-save-out]')) b.addEventListener('click', () => {
+    const s = SAVES.find(x => x.file === b.dataset.saveOut);
+    downloadBlob(zbSaveWrite(s.state), s.file);
   });
   const fetchZ = view.querySelector('[data-sact="sprites"]');
   if (fetchZ) fetchZ.addEventListener('click', () => ensureBytes(z).then(() => { SSPRITES.clear(); if (isSavesHash()) renderSaves(); }));

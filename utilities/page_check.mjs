@@ -331,6 +331,26 @@ try {
           }
           results.push({ hash: `components/${key} saved whole`, met: !note, ms: Date.now() - t0, wide: false, note });
         }
+        // A save edited: the test one's first route at level 3, and what is
+        // saved differs from the file in that one word alone.
+        if (!dev.mobile && fs.existsSync(path.join(REF, 'saves', 'test-2026-10-01', 'ZOOM0000.TXT'))) {
+          await p.evaluate("location.hash = '#saves'");
+          const t0 = Date.now();
+          const until = async cond => { while (Date.now() - t0 < 20000 && !(await p.evaluate(cond))) await new Promise(res => setTimeout(res, 200)); return p.evaluate(cond); };
+          let note = 'the save was not listed';
+          if (await until("!!document.querySelector('[data-save-level][data-route=\"0\"]')")) {
+            note = await p.evaluate(`(() => {
+              const sel = document.querySelector('[data-save-level][data-route="0"]'); sel.value = '2'; sel.dispatchEvent(new Event('change'));
+              const b = document.querySelector('[data-save-out]'); if (!b) return 'no Save button after the change';
+              let got = null; const d = downloadBlob; window.downloadBlob = (bytes, name) => { got = { bytes, name }; }; b.click(); window.downloadBlob = d;
+              const s = SAVES[0], diff = []; for (let i = 0; i < s.bytes.length; i++) if (got.bytes[i] !== s.bytes[i]) diff.push(i);
+              const at = zbSaveOffsets(s.state.layout.name).offsets.routeLevels;
+              const ok = got.name === 'ZOOM0000.TXT' && got.bytes.length === s.bytes.length && diff.join() === String(at) && got.bytes[at] === 2 && /it was 1, 1, 1, 1/.test(document.getElementById('view').textContent) && document.querySelector('[data-save-level][data-route="0"]').value === '2';
+              return ok ? '' : 'bytes changed at ' + diff.join(',') + ', the levels at ' + at + ', saved as ' + got.name;
+            })()`);
+          }
+          results.push({ hash: 'saves, a route at level 3 and saved', met: !note, ms: Date.now() - t0, wide: false, note });
+        }
         // A tune played: the instruments from the copy in reference/ (the
         // page's own fetch is archive.org's), the sound in an <audio>.
         if (!dev.mobile && fs.existsSync(path.join(REF, 'quicktime', 'QUICKTIM.EXE'))) {
