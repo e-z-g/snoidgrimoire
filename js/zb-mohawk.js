@@ -250,3 +250,15 @@ function parseRegs(bytes) {
   for (let i = 0; i < out.length; i++) out[i] = i16be(b, i * 2);
   return out;
 }
+
+/* The REGS pair that holds a sheet's registration points: ids n and n + 1,
+   each one longer than the sheet has frames (ScummVM's offsets are
+   one-based). */
+function regsFor(arc, frameCount) {
+  for (const r of arc.list('REGS')) {
+    if (!arc.has('REGS', r.id + 1)) continue;
+    const xs = parseRegs(arc.get('REGS', r.id)), ys = parseRegs(arc.get('REGS', r.id + 1));
+    if (xs.length === frameCount + 1 && ys.length === frameCount + 1) return { id: r.id, xs, ys };
+  }
+  return null;
+}

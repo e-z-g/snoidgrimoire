@@ -331,18 +331,6 @@ function renderResource(entry, arc, tag, id) {
   view.insertAdjacentHTML('beforeend', xrefHtml(entry, arc, tag, id));
 }
 
-/* The REGS pair that holds a sheet's registration points: ids n and n + 1,
-   each one longer than the sheet has frames (ScummVM's offsets are
-   one-based). */
-function regsFor(arc, frameCount) {
-  for (const r of arc.list('REGS')) {
-    if (!arc.has('REGS', r.id + 1)) continue;
-    const xs = parseRegs(arc.get('REGS', r.id)), ys = parseRegs(arc.get('REGS', r.id + 1));
-    if (xs.length === frameCount + 1 && ys.length === frameCount + 1) return { id: r.id, xs, ys };
-  }
-  return null;
-}
-
 function showBitmap(entry, arc, id, bytes, body) {
   const d = decodeBitmapResource(bytes);
   const pf = paletteFor(entry, arc, id);
@@ -652,7 +640,7 @@ function showScript(entry, arc, tag, id, bytes, body) {
   let sub = `${plural(s.frameCount, 'frame')}, one a tick.`;
   if (tag === 'SCRS') sub += s.layout === -1 ? ' A table of positions, not an animation (header 0xffff).'
     : ` The five layers in the order they are drawn (header ${s.layout}): ${order.join(', ')}.`;
-  let html = `<p class="sub">${sub}</p>${tag === 'SCRS' && ZB_SNOID_KIND_OF_LAYOUT[s.layout] ? '<div id="snoid"></div>' : ''}`
+  let html = `<p class="sub">${sub}</p>${tag === 'SCRS' && ZB_SNOID_KIND_OF_LAYOUT[s.layout] ? '<div id="snoid"></div>' : tag === 'SCRB' ? '<div id="feature"></div>' : ''}`
     + '<table class="plain frames"><tr><th>frame</th><th>records: shape (x, y)</th><th>event</th><th>sound</th></tr>';
   s.frames.forEach((f, i) => {
     const recs = f.records.map((r, k) => {
@@ -663,6 +651,7 @@ function showScript(entry, arc, tag, id, bytes, body) {
   });
   body.innerHTML = html + '</table>';
   if ($('snoid')) snoidPlayer(entry, arc, id, s, $('snoid'));
+  if ($('feature')) featurePlayer(entry, arc, id, s, $('feature'));
 }
 
 /* ---- a snoid script played ------------------------------------------------- */

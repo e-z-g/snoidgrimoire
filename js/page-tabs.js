@@ -20,12 +20,13 @@ const ZB_TABS = {
 };
 let DATA_LAST = null;   // the archive Data was last on, for its tab's link
 
-/* { tab, sub } for a Scenario or Components address, else null. */
+/* { tab, sub, item } for a Scenario or Components address, else null; item
+   is one thing of the pane's (a place: #scenario/places/PIZZA), or null. */
 function tabOfHash() {
-  const m = /^#(scenario|components)(?:\/(\w+))?$/.exec(location.hash);
+  const m = /^#(scenario|components)(?:\/(\w+))?(?:\/(\w+))?$/.exec(location.hash);
   if (!m) return null;
-  const T = ZB_TABS[m[1]];
-  return { tab: m[1], sub: T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0] };
+  const T = ZB_TABS[m[1]], sub = T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0];
+  return { tab: m[1], sub, item: sub === 'places' && ZB_PLACE_BY_KEY.has(m[3]) ? m[3] : null };
 }
 /* Which of the four the address is under. */
 function topTabOfHash() {
@@ -50,11 +51,12 @@ function renderTopTabs() {
    side, the pane in the view. */
 function renderTab(t) {
   const T = ZB_TABS[t.tab], sub = T.subs.find(s => s[0] === t.sub);
-  $('crumbs').innerHTML = `<a href="#${t.tab}">${T.name}</a><span class="sep">›</span><span>${esc(sub[1])}</span>`;
+  $('crumbs').innerHTML = `<a href="#${t.tab}">${T.name}</a><span class="sep">›</span>`
+    + (t.item ? `<a href="#${t.tab}/${t.sub}">${esc(sub[1])}</a><span class="sep">›</span><span>${esc(ZB_PLACE_BY_KEY.get(t.item).name)}</span>` : `<span>${esc(sub[1])}</span>`);
   const view = $('view');
   view.scrollTop = 0;
   try {
-    (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES)[t.sub](view);
+    (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES)[t.sub](view, t.item);
   } catch (e) {
     view.innerHTML += `<p class="bad">Could not show it: ${esc(e.message)}</p>`;
     console.error(e);
@@ -103,12 +105,13 @@ function wireFetchAll(view) {
 /* ---- Scenario --------------------------------------------------------------- */
 
 const SCENARIO_PANES = {
-  places(view) {
-    let html = '<h1>Places</h1><p class="sub">The journey’s places in the order it meets them, each with its archive, its picture and its help.</p>'
+  places(view, item) {
+    if (item) return roomPage(view, item);
+    let html = '<h1>Places</h1><p class="sub">The journey’s places in the order it meets them, each with its archive, its picture and its help. A place’s name opens what its archive holds for it.</p>'
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>route</th><th>archive</th><th></th></tr>';
     for (const p of ZB_PLACES) {
       const routes = zbPlaceRoutes(p.key).map(r => ZB_ROUTES[r.route].name);
-      html += `<tr><td>${esc(p.name)}</td><td class="note">${esc(p.kind)}</td><td class="note">${esc([...new Set(routes)].join('; '))}</td>`
+      html += `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td class="note">${esc([...new Set(routes)].join('; '))}</td>`
         + `<td>${ARCHIVES.has(p.key) ? `<a href="#${p.key}">${p.key}</a>` : p.key}</td>`
         + `<td>${journeyAvailable() ? `<a href="#place=${p.key}">Map</a>` : ''}${ZB_PUZZLES.has(p.key) ? ` · <a href="#solve=${p.key}">Taken apart</a>` : ''}${p.key === 'TOWN' ? ' · <a href="#town">All round</a>' : ''}</td></tr>`;
     }

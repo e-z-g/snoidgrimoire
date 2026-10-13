@@ -24,6 +24,7 @@ const CHECKS = [
   ['recolour', 'a part recoloured, against mod_red_shaggy.py byte for byte, every part read back'],
   ['xref', 'the cross-references, every one there, and search across the disc'],
   ['save', 'a saved game and its roster, read as ScummVM reads them, against one made in the game'],
+  ['feature', 'every feature script\'s sheet told by the numbering, and its sprites on the room'],
   ['music', 'every tune made into what QuickTime\'s instruments play, nothing left out, and two rendered'],
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
   ['page', 'index.html in headless Chrome: the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],

@@ -95,6 +95,9 @@ const VIEWS = [
     const h = puzzlePanel(k); return /class="dealt"/.test(h) && !/class="bad"/.test(h); }))`],
   // Grimoire's tabs: Scenario's panes and Components' galleries, across every archive.
   ['scenario/places', "document.querySelectorAll('#view table tr').length === 17 && document.querySelector('#views a.on').dataset.view === 'scenario'"],
+  ['scenario/places/PIZZA', "document.querySelector('#roomPic canvas') && document.querySelectorAll('#view a[data-script]').length === 224 && document.querySelectorAll('#view button.play').length > 10 && /^Scenario›Places›Pizza Pass$/.test(document.getElementById('crumbs').textContent) && (document.querySelector('#view a[data-script]').dispatchEvent(new Event('pointerenter')), /SCRB 7000: 33 ticks/.test(document.getElementById('roomNote').textContent))"],
+  ['CAVES/SCRB/9025', "document.querySelector('#feature .feature canvas') && /tBMP 9025/.test(document.getElementById('feature').textContent)"],
+  ['ZOOMBINI/SCRB/1', "document.querySelector('#feature .feature canvas') && /tBMP 1,/.test(document.getElementById('feature').textContent)"],
   ['scenario/puzzles', "document.querySelectorAll('#view details.sec').length === 12"],
   ['scenario/snoids', "document.querySelectorAll('#view .trow canvas').length === 20 && document.querySelectorAll('#view .ids a').length >= 717"],
   ['scenario/town', "/Zoombiniville/.test(document.getElementById('view').textContent)"],
