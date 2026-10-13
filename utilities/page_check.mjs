@@ -69,10 +69,10 @@ const VIEWS = [
   ['solve=BRIDGE&level=2&deal=12345', `/of 16 can cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('#sdiagram svg image').length >= 16 && document.querySelectorAll('.szb').length === 16 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are sure to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
   // The scene: the place's picture with the band waiting, near and far off.
-  // Very, Very, VERY Hard: a search for the hardest deal, which the ferry
+  // VVH Max: a search for the hardest deal, which the ferry
   // ends at once (it deals nothing at random), and a dealt one linked.
-  ['solve=FERRY&level=5&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=5&deal=4242&size=9', `/Level 4’s rules/.test(document.getElementById('spanel').textContent) && /sure to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
+  ['solve=FERRY&level=max&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
+  ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /Level 4’s rules/.test(document.getElementById('spanel').textContent) && /sure to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
   ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
   ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],

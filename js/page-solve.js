@@ -18,7 +18,7 @@
      &set=<json>                            the puzzle's fields as changed
      &view=unknown&knows=form&path=0.1      the strategy, walked
      &pick=2                                a solution other than the first
-     #solve=BRIDGE&level=5&band=...&deal=N  Very, Very, VERY Hard: level 4
+     #solve=BRIDGE&level=max&band=...&deal=N  VVH Max: level 4
                                             dealt from N, the puzzle's own
                                             seed (zbDealOne); with no deal,
                                             the hardest is searched for
@@ -29,20 +29,20 @@
 
 const SVIEW = { key: null, level: 1, seed: 1, size: 16, band: null, set: null, view: 'known', knows: 'program', path: [], pick: 0, stage: 'diagram' };
 let SDEALT = null, SSOLVED = null, SSTRAT = null, SNODES = [], SERROR = null, SPUZZLE = null;
-/* Very, Very, VERY Hard: the search under way ({ search, token }), the
+/* VVH Max: the search under way ({ search, token }), the
    last one's progress, and the dealt puzzle's score. */
 let SHARD = null, SHARDLAST = null, SHARDSCORE = null;
 const SSPRITES = new Map();       // 'z:2552' or 't:hair:1' -> { url, width, height, ox, oy }
 
 function isSolveHash() { return /^#solve=/.test(location.hash); }
-/* The level whose rules are played: Very, Very, VERY Hard is the fourth's. */
+/* The level whose rules are played: VVH Max is the fourth's. */
 function solveRules() { return SVIEW.level === 5 ? ZB_HARDEST_LEVEL : SVIEW.level; }
 
 /* ---- the address --------------------------------------------------------- */
 
 function solveHashFor() {
   const v = SVIEW, q = [`solve=${v.key}`];
-  if (v.level !== 1) q.push(`level=${v.level}`);
+  if (v.level !== 1) q.push(`level=${v.level === 5 ? 'max' : v.level}`);
   if (v.seed) q.push(`deal=${v.seed}`);
   if (v.band) q.push(`band=${zbBandCode(v.band)}`);
   else if (v.size !== 16) q.push(`size=${v.size}`);
@@ -63,7 +63,9 @@ function solveApplyHash() {
   const q = new URLSearchParams(location.hash.slice(1));
   const key = (q.get('solve') || '').toUpperCase();
   SVIEW.key = ZB_PUZZLES.has(key) ? key : 'BRIDGE';
-  const level = +q.get('level');
+  // (VVH Max is level=max; level=5 was its address until 13 October 2026,
+  // and is still read, though the name level 5 is now the variants')
+  const level = q.get('level') === 'max' ? 5 : +q.get('level');
   SVIEW.level = level >= 1 && level <= 5 ? level : 1;
   const seed = +q.get('deal');
   SVIEW.seed = seed > 0 && seed < 2 ** 32 ? seed : SVIEW.level === 5 ? 0 : 1 + Math.floor(Math.random() * 0x7fffffff);
@@ -314,7 +316,7 @@ function solveScene() {
   $('sdiagram').appendChild(c);
 }
 
-/* ---- Very, Very, VERY Hard ---------------------------------------------------------- */
+/* ---- VVH Max ---------------------------------------------------------- */
 
 /* The band a fifth level is dealt for: the one given, or one dealt from
    the seed as the Isle's dice would. */

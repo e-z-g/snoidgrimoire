@@ -1,4 +1,6 @@
-/* zb-hardest.js -- Very, Very, VERY Hard: of the puzzles the program could
+/* zb-hardest.js -- VVH Max (the maintainer's name, 13 October 2026; it was
+   labelled Very, Very, VERY Hard, which with "level 5" and "VVVH" now names
+   the new-mechanic variants of the workbench's VARIANTS.md, not this): of the puzzles the program could
    deal a band at level 4, the hardest, found by dealing it many times.
    =========================================================================
    Needs zb-puzzle.js and the puzzles. Nothing here is the game's: it has
@@ -36,7 +38,7 @@
        the whole search's milliseconds; each a deal's own (a solve's and a
        strategy's). */
 
-const ZB_HARDEST_NAME = 'Very, Very, VERY Hard';
+const ZB_HARDEST_NAME = 'VVH Max';
 const ZB_HARDEST_LEVEL = 4;
 
 /* One puzzle dealt alone, from the generator's state as it starts. */
