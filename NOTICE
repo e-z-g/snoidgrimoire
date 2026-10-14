@@ -4,7 +4,7 @@ The work in this repository — `index.html`, `js/`, `utilities/` and the
 documentation beside them — is licensed under the GNU General Public License,
 version 3 or (at your option) any later version. `LICENSE` holds the full text.
 
-`js/mac-*.js` are copied from mac-files (`e-z-g/mac-files`), which is under
+`js/mac-*.js` are copied from mac-files (`ratlizard/mac-files`), which is under
 the same licence, and are kept identical to it by `utilities/copies_check.mjs`;
 its NOTICE says what in them came from elsewhere.
 

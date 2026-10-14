@@ -10,7 +10,7 @@ import path from 'node:path';
 import { ROOT } from './load.mjs';
 
 const CHECKS = [
-  ['copies', 'js/mac-*.js are e-z-g/mac-files\', byte for byte'],
+  ['copies', 'js/mac-*.js are ratlizard/mac-files\', byte for byte'],
   ['archive', 'the container against mohawk_archive.py'],
   ['bitmap', 'every tBMP frame against mohawk_bmp.py, pixel for pixel'],
   ['script', 'every SCRS and SCRB against mohawk_script.py, record for record'],
