@@ -130,13 +130,16 @@ function inflateBuildTable(lengths, n) {
  *
  *   storedAlign   8 for RFC 1951; 16 for VISE, whose STORED blocks begin on a
  *                 16-bit word boundary.
+ *   distBits      the width of a dynamic block's count of distance codes: 5
+ *                 for RFC 1951; 6 for StuffIt X's Deflate, the one way it
+ *                 differs (XADMaster's XADStuffItXDeflateVariant).
  *
  * Stops as soon as `expected` bytes exist, whatever the bitstream still
  * holds. Runs on past a final block if the output is still short and input
  * remains -- systemless found installers whose streams are several finished
  * DEFLATE members back to back, each starting on a word. Throws on a
  * malformed stream or on running out of input. */
-function inflateRaw(input, expected, storedAlign) {
+function inflateRaw(input, expected, storedAlign, distBits = 5) {
   const out = new Uint8Array(expected);
   let outPos = 0;
   let inPos = 0, bitBuf = 0, bitCnt = 0;
@@ -228,9 +231,9 @@ function inflateRaw(input, expected, storedAlign) {
       }
       done = codes(fixedLen, fixedDist);
     } else if (type === 2) {
-      const nlen = bits(5) + 257, ndist = bits(5) + 1, ncode = bits(4) + 4;
-      if (nlen > 286 || ndist > 30) throw new Error('bad dynamic block counts');
-      const lengths = new Uint8Array(320);
+      const nlen = bits(5) + 257, ndist = bits(distBits) + 1, ncode = bits(4) + 4;
+      if (nlen > 286 || ndist > (distBits === 5 ? 30 : 64)) throw new Error('bad dynamic block counts');
+      const lengths = new Uint8Array(352);
       for (let i = 0; i < ncode; i++) lengths[INFLATE_CLEN_ORDER[i]] = bits(3);
       const lencode0 = inflateBuildTable(lengths, 19);
       let index = 0;
