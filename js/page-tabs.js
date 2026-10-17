@@ -107,7 +107,7 @@ function wireFetchAll(view) {
 const SCENARIO_PANES = {
   places(view, item) {
     if (item) return roomPage(view, item);
-    let html = '<h1>Places</h1><p class="sub">The journey’s places in order, each with its archive, its picture and its help. Choose a place to see its resources in the archive.</p>'
+    let html = '<h1>Places</h1><p class="sub">The journey’s places, each with its archive, its picture and its help. Choose a place to see its resources in the archive.</p>'
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>route</th><th>archive</th><th></th></tr>';
     for (const p of ZB_PLACES) {
       const routes = zbPlaceRoutes(p.key).map(r => ZB_ROUTES[r.route].name);
