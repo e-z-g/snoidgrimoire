@@ -184,7 +184,7 @@ const ZB_MAZE2_WAYS = ['up', 'right', 'down', 'left'];
 function zbMaze2ParseLayout(id, w) {
   const bad = what => new Error(`Bubblewonder Abyss: MAZE2 REGS ${id} ${what}`);
   if (w.length < 10 || (w.length - 10) % 10) throw bad(`is ${w.length} words, not a ten-word header and ten-word records`);
-  if (w[0] !== (w.length - 10) / 10) throw bad(`declares ${w[0]} records and holds ${(w.length - 10) / 10}`);
+  if (w[0] !== (w.length - 10) / 10) throw bad(`the count is ${w[0]} records, but there are ${(w.length - 10) / 10}`);
   const seats = [];
   for (let i = 1; i <= 9; i++) {
     if (w[i] < 0 || w[i] > 14) throw bad(`names launcher seat ${w[i]}`);
@@ -765,7 +765,7 @@ ZB_PUZZLES.set('MAZE2', {
         options: layouts.map((id, k) => ({ value: id, label: `REGS ${id}${layouts.length > 1 ? `, the ${nth[k]}` : ', for a band under five'} (${zbMaze2Layout(arc, id).cells.filter(c => c.type === 2).length} feature arrows)` })) },
       ...arrows.map((c, k) => ({ key: `a${k + 1}`, label: `Arrow ${ZB_MAZE2_LETTERS[k]}, ${c.row + 1} across and ${c.col + 1} down, pointing ${ZB_MAZE2_WAYS[c.dir]}, shows`,
         kind: 'choice', value: zbMaze2SlotOption(state.selectedPathSlots[k] || 0), options: [{ value: 'none', label: 'No feature' }, ...zbTraitOptions()] })),
-      { key: 'note', kind: 'note', note: 'The rest of each layout, its launchers and its colours stay as they are. Another layout takes the arrows’ features in order, and an arrow past those given shows none.' },
+      { key: 'note', kind: 'note', note: 'The rest of each layout, its launchers and its colours stay as they are. In another layout the features are given to its arrows in order, and an arrow past those given shows none.' },
     ];
   },
   edit(level, band, state, values, arc) {

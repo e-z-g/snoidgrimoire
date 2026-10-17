@@ -157,8 +157,8 @@ ZB_PUZZLES.set('CAVES', {
     { rule: 'One trait is drawn at random and its five values shuffled; the band must stand along the path in groups by that trait, in that order, so each Zoombini has a run of stones as long as the number like it. The wall shows all five values, in order.',
       chances: 'Four mistakes. A Zoombini put on a wrong stone is walked to a right one and still goes on, but it counts; after the fourth no more may be placed, and the rest stay behind.',
       notes: [
-        'The first Lion’s Lair after the program starts is by nose, at any level: the trait is drawn and then set to the nose, once. ScummVM keeps this.',
-        'A band of fewer than sixteen stands on the last stones of the path, and the stones before them fit no one: the program’s judge takes a Zoombini only on the band’s own stones, so in ScummVM one put on an earlier stone is moved on and counted a mistake.',
+        'The first Lion’s Lair after the program starts is by nose, at any level: the trait is drawn and then set to the nose, once. ScummVM does the same.',
+        'A band of fewer than sixteen stands on the last stones of the path, and the stones before them fit no one: the program accepts a Zoombini only on the band’s stones, so in ScummVM one put on an earlier stone is moved on and counted a mistake.',
       ] },
     { rule: 'As at level 1, but the wall shows only two of the five values, drawn at random, each in its place in the order; the others have worn away.',
       chances: 'Five mistakes, counted as at level 1.',
@@ -664,7 +664,7 @@ function zbCavesStrategy(level, band, opts = {}) {
     hypotheses: hyp, sure, exact, knows,
     root: node(H0, 0, full, limit, []),
     notes: [
-      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so it is taken as unseen.'} The rules the program could deal that agree with it number ${hyp}, ${H0.length} different to this band.`,
+      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so it is taken as unseen.'} Of the rules the program could deal, ${hyp} fit it, ${H0.length} different to this band.`,
       'The player who knows only the level’s form has the same hypotheses: the program draws every trait and order alike. (The first Lion’s Lair after the program starts is by nose, which a player could know; this does not assume it.)',
       'Each placement goes on even when it is a mistake, so as many placements as there are mistakes allowed are sure whatever happens; the question is how many more can be made without a mistake.',
       'A Zoombini every hypothesis left puts on some free stone goes there first, at no cost; otherwise the move is the one whose worst outcome still places the most, a mistake’s stone (which the game draws at random) taken as the worst for the player.',

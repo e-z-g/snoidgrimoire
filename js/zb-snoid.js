@@ -342,7 +342,7 @@ function zbWalkLeg(x, y, tx, ty, feet, facing = 0) {
     x += Math.sign(tx - x) * Math.min(vx, Math.abs(tx - x));
     y += Math.sign(ty - y) * Math.min(vy, Math.abs(ty - y));
     steps.push({ x, y });
-    if (steps.length > 10000) throw new Error('a walk that never arrives');
+    if (steps.length > 10000) throw new Error('the walk never reaches its goal');
   }
   return { dir, script: 100 + 5 * feet + dir, facing, vx, vy, steps };
 }

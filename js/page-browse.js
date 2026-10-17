@@ -457,7 +457,7 @@ function showMidi(entry, id, bytes, body) {
   body.innerHTML = `<p class="sub">A standard MIDI file of format ${m.header.format}, ${plural(m.header.tracks, 'track')}, ${m.header.division} ticks a beat. Its chunks: ${m.chunks.map(esc).join(', ')}.</p>`
     + `<div class="tools"><button id="save">Save as .mid</button></div><div id="tune" class="tools"></div>`
     + `<p class="note">On a Mac the game played its tunes through QuickTime’s instruments; on Windows through whatever MIDI device the machine had. Play is the first, with QuickTime 3’s set, which is larger than the set a Mac of 1996 had.</p>`
-    + (m.programs ? `<p class="note">Its Prg# chunk, which a MIDI file does not carry: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
+    + (m.programs ? `<p class="note">Its Prg# chunk, which has no place in a MIDI file: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
     + `<p class="note">${entry.name === 'MIDIMAC' ? 'Authored for the Mac and QuickTime' : 'Authored for Windows'}, as ScummVM's branch describes the two music archives.</p>`;
   $('save').addEventListener('click', () => downloadBlob(m.file, `${entry.name.toLowerCase()}-tmid-${id}.mid`));
   tunePlayer(entry, openedArchive(entry), id, $('tune'));
@@ -470,7 +470,7 @@ function showPalette(tag, bytes, body) {
     const c = i >= p.start && i < p.start + p.colours.length ? p.colours[i - p.start] : null;
     cells += c ? `<div style="background:rgb(${c[0]},${c[1]},${c[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colours.length, 'colour')} from index ${p.start}${p.id != null ? `; its own id ${p.id}, flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
+  body.innerHTML = `<p class="sub">${plural(p.colours.length, 'colour')} from index ${p.start}${p.id != null ? `; its id ${p.id}, flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
 }
 
 function showStrings(entry, id, bytes, body) {
@@ -619,7 +619,7 @@ function showRegs(entry, arc, id, bytes, body) {
   let html = `<p class="sub">${plural(v.length, 'number')}.`;
   if (xs) {
     const x = Math.min(id, partner);
-    html += ` With <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a>, the registration points of a sheet of ${xs.length - 1} frames: REGS ${x} the x, ${x + 1} the y, one-based (entry 0 holds ${xs[0]}, ${ys[0]}).</p>`;
+    html += ` With <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a>, the registration points of a sheet of ${xs.length - 1} frames: REGS ${x} the x, ${x + 1} the y, one-based (entry 0 is ${xs[0]}, ${ys[0]}).</p>`;
     html += '<div class="regs">' + [...xs].slice(1).map((vx, i) => `${i}: ${vx}, ${ys[i + 1]}`).join('<br>') + '</div>';
   } else {
     html += '</p><div class="regs">' + [...v].map((n, i) => `${i}: ${n}`).join('<br>') + '</div>';

@@ -574,7 +574,7 @@ function dealtPanel(key) {
     + `<details${JVIEW.answerOpen ? ' open' : ''}><summary>The answer, and the band</summary>`
     + d.answer.map(l => `<p>${esc(l)}</p>`).join('')
     + `<table class="plain band"><tr><th></th><th>hair</th><th>eyes</th><th>nose</th><th>feet</th><th></th></tr>${rows}</table></details>`
-    + `<p class="note">Dealt with the program's own random numbers from seed ${seed}; the address deals it again.</p></div>`;
+    + `<p class="note">Dealt by the program's random-number generator from seed ${seed}; opening this address again gives the same deal.</p></div>`;
 }
 
 function helpPanel(p) {

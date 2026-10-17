@@ -49,7 +49,7 @@ function memoryTx(mode, fn) {
     req.onsuccess = () => {
       const db = req.result, tx = db.transaction(MEMORY_STORE, mode), r = fn(tx.objectStore(MEMORY_STORE));
       tx.oncomplete = () => { db.close(); resolve(r && r.result); };
-      tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('IndexedDB refused it')); };
+      tx.onerror = tx.onabort = () => { db.close(); reject(tx.error || new Error('IndexedDB transaction failed')); };
     };
   });
 }

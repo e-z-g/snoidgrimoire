@@ -2,9 +2,9 @@
  *
  * Needs mac-bytes.js (crc32, safeFileName). Load it first.
  *
- * Both pages grew a bulk "save everything as .zip", and each wrote its own
- * store-only ZIP writer with the same field layout, its own download helper,
- * and its own version of the Firefox workaround below.
+ * Both pages grew a bulk "save everything as .zip", and each wrote a
+ * store-only ZIP writer with the same field layout, a download helper,
+ * and a version of the Firefox workaround below.
  */
 
 /* Store-only, method 0. Deflate would need a compressor, the point is getting

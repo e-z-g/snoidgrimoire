@@ -594,7 +594,7 @@ function zbPizzaNode(e, band, st) {
     if (!st.idx.every(i => e.wish(t, i) === w0)) continue;
     const meal = mealSlots(w0), { lost, waiting } = people();
     return {
-      move: `Serve ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, meal)}: every hypothesis left agrees it is ${ZB_PIZZA_TROLLS[t]}’s wish.`,
+      move: `Serve ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, meal)}: it is ${ZB_PIZZA_TROLLS[t]}’s wish under every hypothesis left.`,
       zoombini: st.lost, left: st.idx.length, crossed: 0, meal, hungry: st.hungry,
       diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left; ${ZB_PIZZA_TROLLS[t]}’s wish is known` }),
       outcomes: [{ label: `${ZB_PIZZA_TROLLS[t]} eats it`, left: st.idx.length, eaten: t,
@@ -656,8 +656,8 @@ function zbPizzaStrategy(level, band, opts = {}) {
         ? `The player knows only the level’s form: each topping wanted by one troll or none, and no two trolls wanting the same meal; ${e.count} hypotheses.`
         : e.pit.length ? `Of the sets of wishes the program could deal at this level, ${e.count} give the pit it shows; the player knows that.`
           : `The program could deal ${e.count} sets of wishes at this level, whatever the band; the player knows that.`,
-      'Each meal goes to the trolls still hungry in turn, Arno, Willa, Shyler, and the first whose wish it is eats it; the others’ reactions (a topping hated, more than one hated, none hated but some missing) are the feedback. A troll whose wish every hypothesis left agrees on is served it at once, for nothing.',
-      `Played so, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play is sure of fewer' : '; fewer may do, but the search ran out of time before it could tell'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini need be lost: every one of any band crosses.`}`,
+      'Each meal goes to the trolls still hungry in turn, Arno, Willa, Shyler, and the first whose wish it is eats it; the others’ reactions (a topping hated, more than one hated, none hated but some missing) are the feedback. A troll whose wish is the same under every hypothesis left is served it at once, for nothing.',
+      `Played so, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play is sure of fewer' : '; fewer may do, but the search ran out of time before that was known'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini need be lost: every one of any band crosses.`}`,
       `How it plays: first the rule of thumb, the meal whose worst reaction leaves fewest hypotheses, every time; then a search for fewer meals wasted, ${e.mode === 'search' ? 'which found them' : 'which found none within its time'}.`,
       ...(level === 4 ? [e.pit.length
         ? `The four meals in the pit are read, as tried meals never to serve${knows === 'program' ? ', and as the program makes them: two toppings of the troll who wants the most, each crossed with one of each other troll’s' : ''}.`

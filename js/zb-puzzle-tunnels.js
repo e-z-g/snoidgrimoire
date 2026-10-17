@@ -451,7 +451,7 @@ function zbTunnelsStrategy(level, band, opts = {}) {
         : `The program could deal this band ${hyp} hidden parts at this level (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} different to this band. The player knows that${level === 1 ? (split ? `, and that the Allergic Cliffs left a count of ${split}` : ', and is taken not to know of a count left by the Allergic Cliffs') : ''}.`,
       ...(level === 1 ? ['Which pair of tunnels is closed does not show until a Zoombini is turned back from one, so it is among the hypotheses.'] : []),
       'A Zoombini turned back is turned back by one guardian, and the game shows which: the one on its tunnel\'s side, so it belongs on the other side, or the upper or lower one, so it belongs in the other tunnel on this side.',
-      'Any Zoombini whose tunnel every hypothesis left agrees on goes first, which costs nothing; otherwise the most lopsided move, and where that is not sure of everyone, the move whose worst outcome still gets the most through.',
+      'Any Zoombini whose tunnel is the same under every hypothesis left goes first, which costs nothing; otherwise the most lopsided move, and where that is not sure of everyone, the move whose worst outcome still gets the most through.',
       exact ? 'The search is complete: no way of playing is sure of more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are sure, and perhaps more could be.',
       ...(Number.isFinite(worstBack) && sure === band.length ? [`Played so, no more than ${worstBack} ${worstBack === 1 ? 'is' : 'are'} ever turned back, of the ${C} the caves allow.`] : []),
     ],
@@ -461,17 +461,17 @@ function zbTunnelsStrategy(level, band, opts = {}) {
 ZB_PUZZLES.set('TUNNELS', {
   about: 'Each Zoombini is sent into one of four tunnels, two either side of the band. Every tunnel passes two Cave Guardians, who let through only Zoombinis with, or without, certain traits.',
   levels: [
-    { rule: 'Only the left and right guardians have a rule: one trait value, such as a propeller, one of 20 chosen as at the Allergic Cliffs to send as near half the band one way as it can, though not the number the cliffs’ own rule sent if no other rule there sent it. The left guardian takes the Zoombinis with it or those without, the right the others, and two of the tunnels, the outer pair or the inner pair, are closed to everyone.',
+    { rule: 'Only the left and right guardians have a rule: one trait value, such as a propeller, one of 20 chosen as at the Allergic Cliffs to send as near half the band one way as it can, though not the number the cliffs’ rule sent if no other rule there sent it. The left guardian takes the Zoombinis with it or those without, the right the others, and two of the tunnels, the outer pair or the inner pair, are closed to everyone.',
       chances: 'Sixteen Zoombinis may be turned back; with four left, rocks begin to fall, and when none are left no one else may go in.' },
     { rule: 'The left and right guardians have one trait value and the upper and lower another, so each tunnel takes one of four kinds of Zoombini. The pair is one of 380, chosen to sort the band into as many of the four kinds, and as evenly, as it can.',
       chances: 'Eighteen Zoombinis may be turned back, with the rocks falling at four left.',
-      notes: ['The help for this level says to look for two features for each pair of guardians; the program deals one.'] },
+      notes: ['According to the help for this level, there are two features to look for in each pair of guardians; the program deals one.'] },
     { rule: 'Each pair of guardians has one trait with either of two values, such as a red or a blue nose. The pair of rules is one of 1,560, chosen the same way.',
       chances: 'Twenty Zoombinis may be turned back, with the rocks falling at four left.' },
     { rule: 'Each pair of guardians has either of two traits’ values, such as sleepy eyes or a cap. The pair of rules is one of 22,350, chosen the same way.',
       chances: 'Twenty-two Zoombinis may be turned back, with the rocks falling at four left.',
-      notes: ['The help for this level says to look for three features for each pair of guardians; the program deals two.',
-        'ScummVM lists this level’s rules in another order than the program does, so from the same random numbers it picks another pair of them.'] },
+      notes: ['According to the help for this level, there are three features to look for in each pair of guardians; the program deals two.',
+        'In ScummVM this level’s rules are listed in another order than in the program, so from the same random numbers another pair of them is picked.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     /* Drawn at every level; it closes two tunnels at level 1 only. */

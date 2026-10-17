@@ -168,7 +168,7 @@ function parseMohawkMidi(bytes) {
   const tracks = smf.filter(c => c.tag === 'MTrk').length;
   const hd = smf[0].offset;
   const header = { format: u16be(b, hd), tracks: u16be(b, hd + 2), division: u16be(b, hd + 4) };
-  if (header.tracks !== tracks) throw new Error(`MIDI: MThd says ${header.tracks} tracks and there are ${tracks}`);
+  if (header.tracks !== tracks) throw new Error(`MIDI: MThd gives ${header.tracks} tracks, but there are ${tracks}`);
   const total = smf.reduce((n, c) => n + 8 + c.size, 0);
   const file = new Uint8Array(total);
   let p = 0;
@@ -234,7 +234,7 @@ function parseWalkPaths(bytes, waypointCount) {
   const out = [];
   for (let i = 0; i < n; i++) {
     const slots = [...b.subarray(2 + i * 24, 2 + (i + 1) * 24)];
-    if (waypointCount != null && slots.some(w => w > waypointCount)) throw new Error(`PATH: path ${i} names a waypoint past ${waypointCount}`);
+    if (waypointCount != null && slots.some(w => w > waypointCount)) throw new Error(`PATH: a waypoint in path ${i} is past ${waypointCount}`);
     out.push(slots);
   }
   return out;

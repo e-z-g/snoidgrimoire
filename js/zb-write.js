@@ -92,12 +92,12 @@ function zbCp1252(s) {
 }
 /* A string list's bytes. */
 function zbStringListBytes(lines) {
-  if (lines.length > 255) throw new Error('a string list holds at most 255 strings');
+  if (lines.length > 255) throw new Error('too many strings: a string list has room for 255');
   const parts = lines.map(zbCp1252);
   const out = new Uint8Array(1 + parts.reduce((n, p) => n + p.length + 1, 0));
   out[0] = lines.length;
   let p = 1;
-  for (const b of parts) { if (b.includes(0)) throw new Error('a string cannot hold a NUL'); out.set(b, p); p += b.length + 1; }
+  for (const b of parts) { if (b.includes(0)) throw new Error('a NUL byte cannot go in a string'); out.set(b, p); p += b.length + 1; }
   return out;
 }
 

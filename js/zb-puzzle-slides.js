@@ -466,7 +466,7 @@ function zbSlidesEntrance(f, baseCell) {
     }
     break;
   }
-  if (!f.data[first]) f.quirk = 'no two Zoombinis next to each other on its sorted list share a trait, so no one is stood on the first stone, and it then asks for the traits of a Zoombini it has not got; ScummVM, and this page, leave the stone empty';
+  if (!f.data[first]) f.quirk = 'no two Zoombinis next to each other on its sorted list share a trait, so no one is stood on the first stone, and the stone is then set to the traits of a Zoombini that is not there; ScummVM, and this page, leave the stone empty';
   let result = zbSlidesReach(f, first);
   if (result !== 0) {
     if (result !== -1) zbSlidesReach(f, result);
@@ -1364,7 +1364,7 @@ ZB_PUZZLES.set('SLIDES', {
   levels: [
     { rule: 'Pairs, one to a row: the band paired off, each Zoombini with the first later one that shares a trait, trying the traits in turn from one drawn at random; a pair is two stones joined by one showing a trait they share, and a Zoombini left over has a stone to itself.',
       chances: 'As many tries as it takes: Zoombinis can be moved as often as the player likes, and the band may go once one stone has risen.',
-      notes: ['The program pairs the band up to ten times, putting the Zoombinis left single first each time; it never resets its count of singles, so after a first try that leaves two or more single it makes all ten tries and keeps the last.'] },
+      notes: ['The program pairs the band up to ten times, putting the Zoombinis left single first each time. Its count of singles is never reset, so after a first try that leaves two or more single, all ten tries are made and the last is used.'] },
     { rule: 'Chains of up to three stones, one to a row, the stones between them each showing a trait or plain. Each chain follows Zoombinis that share a trait with the one before, trying the traits from one drawn at random for each; a plain stone asks nothing. The rise stops at the first joining stone the band does not satisfy.',
       chances: 'As many tries as it takes, as at every level.' },
     { rule: 'Three rings of up to six stones, each entered at its right-hand stone, and the rise goes both ways round. The band is sorted by how many it shares a trait with; each ring’s two ends take the two most sociable left, in one of three orders of the rings drawn at random, and their neighbours are found from the least sociable up; stones no one was found for are dropped, or kept with plain stones either side if the band needs them.',
@@ -1375,8 +1375,8 @@ ZB_PUZZLES.set('SLIDES', {
       notes: ['A coin toss first picks one of two looks for the stones; it does not change the rule.',
         'A stone rises if any way to it from the entrance is satisfied.',
         'The program’s own, not in ScummVM: when exactly four Zoombinis stand on the network, on the four stones of the entrance’s row, and all four rise, it writes “You have entered the psychedelic ZB Zone!” on the screen and cycles the colours, once a visit (0x4451a3 from 0x4452b6, 0x448d00). A band of four at this level always meets it when it succeeds. ScummVM cycles the colours but writes nothing.',
-        'In a few bands in ten thousand, no two Zoombinis next to each other on the program’s sorted list share a trait, and its first search goes wrong: it either stands a Zoombini on the entrance stone while still finding it a stone of its own, or stands no one there and asks for the traits of a Zoombini it has not got. ScummVM leaves the stone empty in the second case.',
-        'For three to five Zoombinis the program marks each stone of the chain for two Zoombinis it finds by looking its sorted list up in itself, and stands the band on the stones in their own order, which need not satisfy the marks; the marks can always be satisfied, and the arrangement given here does.'] },
+        'In a few bands in ten thousand, no two Zoombinis next to each other on the program’s sorted list share a trait, and its first search goes wrong: it either stands a Zoombini on the entrance stone while still finding it another stone, or stands no one there and sets the stone to the traits of a Zoombini that is not there. ScummVM leaves the stone empty in the second case.',
+        'For three to five Zoombinis the program marks each stone of the chain for two Zoombinis it finds by looking its sorted list up in itself, and stands the band on the stones in the band’s order, which need not satisfy the marks; the marks can always be satisfied, and the arrangement given here does.'] },
   ],
   deal(level, band, rnd) {
     const { f, solution, groups } = zbSlidesBuild(level, band, rnd);

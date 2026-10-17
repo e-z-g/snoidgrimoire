@@ -142,7 +142,7 @@ function zbLillyRouteMaps(arc) {
   const maps = ZB_LILLY_ROUTE_REGS.map((id, g) => {
     if (!arc.has('REGS', id)) throw new Error(`Titanic Tattooed Toads: this LILLY has no REGS ${id}, one of the pond's route maps`);
     const v = parseRegs(arc.get('REGS', id));
-    if (v.length !== 144) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} holds ${v.length} numbers, not 12 x 12`);
+    if (v.length !== 144) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} is ${v.length} numbers long, not 12 x 12`);
     const [first, last] = ZB_LILLY_MAP_ROUTES[g];
     const bad = v.find(k => k && (k < first || k > last));
     if (bad !== undefined) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} names route ${bad}, not one of ${first}-${last}`);
@@ -157,7 +157,7 @@ function zbLillyRouteMaps(arc) {
    given route (0 for none, else one of the map's own). */
 function zbLillyEditMap(words, map, row, col, route) {
   const [first, last] = ZB_LILLY_MAP_ROUTES[map];
-  if (route && (route < first || route > last)) throw new Error(`Titanic Tattooed Toads: map ${map + 1} holds routes ${first}-${last}, not ${route}`);
+  if (route && (route < first || route > last)) throw new Error(`Titanic Tattooed Toads: map ${map + 1}’s routes are ${first}-${last}, not ${route}`);
   const w = Array.from(words);
   w[row * 12 + col] = route;
   return w;
@@ -828,7 +828,7 @@ ZB_PUZZLES.set('LILLY', {
       most: cross, exact, ways: null, solutions,
       notes: [
         'To cross is to be carried to the far bank; a toad carries two Zoombinis at most, so half the band, rounded up, of toads with a way across takes everyone.',
-        'A toad is taken to cross when pads of its tattoo join its row to the far bank. The game’s toad walks by a greedy search of its own, and the crabs of levels 3 and 4 only hold it up.',
+        'A toad is taken to cross when pads of its tattoo join its row to the far bank. In the game a toad finds its way by a greedy search, and the crabs of levels 3 and 4 only hold it up.',
         'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference; ways that differ only so are one way, and the ways are not counted.',
         level === 1 ? 'At level 1 there is no wand, so the most is two for each toad with a way across: exact.'
           : `Simplest is the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first; then, one toad at a time, the fewest swaps that let another across without shutting out one already across: the fewest the search found, not proven the fewest.`,

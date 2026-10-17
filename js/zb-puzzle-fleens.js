@@ -278,7 +278,7 @@ function zbFleensStrategy(level, band, opts = {}) {
   const cost = sent => Math.max(0, sent - ZB_FLEENS_WAITING);
   const notesHead = knows === 'form'
     ? `The player knows only the level’s form: ${level <= 2 ? 'trait for trait' : 'the traits mixed in any way at all (24 mixings)'}, any turns of the values.`
-    : `The player knows how the program deals: ${level <= 2 ? 'trait for trait' : 'hair never to hair, the rest in any order (18 mixings)'}, any turns of the values${state && state.rotationsKept && level % 2 ? ', but this visit keeps the last one’s, which the player remembers' : ''}.`;
+    : `The player knows how the program deals: ${level <= 2 ? 'trait for trait' : 'hair never to hair, the rest in any order (18 mixings)'}, any turns of the values${state && state.rotationsKept && level % 2 ? ', but on this visit they are the last visit’s, which the player remembers' : ''}.`;
   if (!state) {
     // Nothing seen: any `want` of the band may be the beehive's.
     const choose = (a, b) => { let c = 1; for (let k = 0; k < b; k++) c = c * (a - k) / (k + 1); return Math.round(c); };
@@ -393,10 +393,10 @@ ZB_PUZZLES.set('FLEENS', {
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.' },
     { rule: 'The traits are mixed as well: Zoombini hair goes with the Fleen’s eyes, nose or feet, drawn at random, and eyes, nose and feet with the other three in a random order. Values turn as at level 1; both are kept from visit to visit, but a visit at level 1 or 2 clears the mixing, and the next visit here draws it anew.',
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
-      notes: ['The help says one trait goes with its like at this level. The program does not see to it: hair never does, and eyes, nose and feet each may, so none, one or two of them do.'] },
+      notes: ['According to the help, one trait goes with its like at this level. The program does not see to it: hair never does, and eyes, nose and feet each may, so none, one or two of them do.'] },
     { rule: 'Mixed as at level 3, and the traits and the values’ turns are drawn anew on every visit.',
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
-      notes: ['The help says every trait is mixed at this level, but the program deals as at level 3: eyes, nose or feet may still go with their like.'] },
+      notes: ['According to the help, every trait is mixed at this level, but the program deals as at level 3: eyes, nose or feet may still go with their like.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     const s = zbFleensDeal(level, band, rnd, journey);

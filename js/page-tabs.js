@@ -107,7 +107,7 @@ function wireFetchAll(view) {
 const SCENARIO_PANES = {
   places(view, item) {
     if (item) return roomPage(view, item);
-    let html = '<h1>Places</h1><p class="sub">The journey’s places in the order it meets them, each with its archive, its picture and its help. A place’s name opens what its archive holds for it.</p>'
+    let html = '<h1>Places</h1><p class="sub">The journey’s places in the order it meets them, each with its archive, its picture and its help. A place’s name opens its resources in the archive.</p>'
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>route</th><th>archive</th><th></th></tr>';
     for (const p of ZB_PLACES) {
       const routes = zbPlaceRoutes(p.key).map(r => ZB_ROUTES[r.route].name);
@@ -234,7 +234,7 @@ function renderSearch(q) {
   $('side').innerHTML = '<h2>Search</h2>' + kinds.map(([k, n]) => `<div class="arc" data-kind="${k}"><span class="name">${n}</span><span class="place">${hits.filter(h => h.doc.kind === k).length || ''}</span></div>`).join('');
   const view = $('view');
   view.scrollTop = 0;
-  let html = `<h1>“${esc(q)}”</h1><p class="sub">${total ? plural(total, 'match', 'matches') + (total > hits.length ? `, the first ${hits.length} shown` : '') : 'Nothing holds every word of it.'}</p>` + unfetchedNote('Searched');
+  let html = `<h1>“${esc(q)}”</h1><p class="sub">${total ? plural(total, 'match', 'matches') + (total > hits.length ? `, the first ${hits.length} shown` : '') : 'Nothing found with every word of it.'}</p>` + unfetchedNote('Searched');
   for (const [k, n] of kinds) {
     const list = hits.filter(h => h.doc.kind === k);
     if (!list.length) continue;
