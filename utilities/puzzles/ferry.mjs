@@ -25,7 +25,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
   // ---- the raft for a level and band -----------------------------------------
   const base = Number(need(/kResScrb1510_SeatingBase = (\d+),/, h, 'kResScrb1510_SeatingBase')[1]);
-  const per = Number(need(/kResScrb1510_SeatingBase \+ \(\(_difficultyLevel - 1\) \* (\d+)\)/, cpp, 'the raft\'s script')[1]);
+  const per = Number(need(/kResScrb1510_SeatingBase \+ \(\(_puzzleLevel - 1\) \* (\d+)\)/, cpp, 'the raft\'s script')[1]);
   const [lo, hi, dflt] = need(/if \(zmbCount < (\d+) \|\| (\d+) < zmbCount\)\s*zmbCount = (\d+);/, cpp, 'the band\'s clamp').slice(1).map(Number);
   need(/_seatLayoutScrbId = scrbBase \+ \(zmbCount - 16\);/, cpp, 'the raft\'s script');
   for (let level = 1; level <= 4; level++) for (let n = 1; n <= 22; n++) {
@@ -73,7 +73,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const coeff = t => t === '' ? 0 : t === ' + halfHeight' ? 1 : t === ' - halfHeight' ? -1 : NaN;
   const tests = [...cpp.matchAll(/Common::Rect expandedK\(rectK\.left((?: [+-] halfHeight)?), rectK\.top((?: [+-] halfHeight)?), rectK\.right((?: [+-] halfHeight)?), rectK\.bottom((?: [+-] halfHeight)?)\);/g)].map(m => m.slice(1, 5).map(coeff));
   if (tests.length !== 3 || tests.flat().some(Number.isNaN)) fail(`read ${tests.length} stretched rectangles from buildAdjacencyMatrix, not 3`);
-  need(/if \(!adjacent && kPuzzleLevel4 <= _difficultyLevel\) \{\s*Common::Rect expandedK/, cpp, 'the third rectangle\'s level');
+  need(/if \(!adjacent && kPuzzleLevel4 <= _puzzleLevel\) \{\s*Common::Rect expandedK/, cpp, 'the third rectangle\'s level');
   const most = Number(need(/if \(adjacent && slotCount < (\d+)\)/, cpp, 'the most neighbours')[1]);
   if (most !== S.ZB_FERRY_SEAT.neighbours) fail(`ScummVM keeps ${most} neighbours a seat, the port ${S.ZB_FERRY_SEAT.neighbours}`);
   const edges = [];
@@ -140,6 +140,62 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     }
   }
   if (firstBad) fail(firstBad);
+
+  // ---- the proof (zbFerryMatch, ScummVM's solver ported) -----------------------
+  // Each answer it gives is held to the plain search tried to the end
+  // (zbFerryEngine, where that finishes in 0.3 s), each seating it
+  // gives to the rule written here and to the number it is given, on every
+  // level's raft for 16 and the twenty-seat one, for the whole band and
+  // two fewer, each band also with a Zoombini sharing nothing put in, which
+  // cannot sit on a raft it fills. Then the bands no plain search settles quickly: the split
+  // band (eight using three values of each trait, eight the other two) and
+  // level 4's seeds 1026 and 1051, which seat 15 and not 16.
+  let proofs = 0, settled = 0, noes = 0, pbad = null;
+  const byRule = (band, nb, seating) => seating.every((z, k) => z < 0 || nb[k].every(m => seating[m] < 0 || share(band[z], band[seating[m]])));
+  const pfail = m => { if (!pbad) pbad = m; };
+  const proofOk = (level, band, nb, want, m) => {
+    if (m.answer === 'yes') {
+      const z = m.seating.filter(x => x >= 0);
+      if (z.length < want || new Set(z).size !== z.length || z.some(x => x >= band.length) || !byRule(band, nb, m.seating)) pfail(`level ${level}: zbFerryMatch's seating of ${want} of ${band.length} breaks the rule or the count`);
+    } else if (m.seating) pfail(`level ${level}: zbFerryMatch answers ${m.answer} with a seating`);
+  };
+  for (let level = 1; level <= 4 && !pbad; level++) {
+    for (const seats of [16, 20]) {
+      const nb = S.zbFerryNeighbours(S.zbFerryRaft(arc, base + per * (level - 1) + seats - 16), level);
+      const some = bands(8, 700 + level * 10 + seats, seats === 16 ? [16, 14, 10, 6] : [20, 17]);
+      /* and each of those with its first Zoombini made one who shares nothing (trait values 0, which no other has) */
+      for (const { band, loner } of [...some, ...some.map(({ band }) => ({ band: [{ hair: 0, eyes: 0, nose: 0, feet: 0 }, ...band.slice(1)], loner: true }))]) {
+        for (let want = band.length; want >= band.length - 2 && !pbad; want--) {
+          const m = S.zbFerryMatch(band, nb, want, Date.now() + 5000);
+          proofOk(level, band, nb, want, m);
+          proofs++;
+          /* A raft filled with one who shares nothing: every seat has a neighbour, so no. */
+          if (loner && want === nb.length && m.answer !== 'no') pfail(`level ${level}: ${want} on ${nb.length} seats, one sharing nothing, and zbFerryMatch answers ${m.answer}`);
+          let found = false;
+          const r = S.zbFerryEngine(band, nb).run(want, Infinity, Date.now() + 300, () => { found = true; return true; });
+          if (r.gaveUp) continue;
+          settled++;
+          if (!found) noes++;
+          if (m.answer !== (found ? 'yes' : 'no')) pfail(`level ${level}, ${seats} seats: ${want} of a band of ${band.length} ${found ? 'can' : 'cannot'} sit, zbFerryMatch answers ${m.answer}`);
+        }
+      }
+    }
+  }
+  const sixteen = [1, 2, 3, 4].map(level => S.zbFerryNeighbours(S.zbFerryRaft(arc, base + per * (level - 1)), level));
+  const splitBand = [];
+  for (let v = 0; splitBand.length < 8; v++) splitBand.push({ hair: 1 + v % 3, eyes: 1 + (v / 3 | 0) % 3, nose: 1 + (v / 9 | 0) % 3, feet: 1 + (v + 1) % 3 });
+  for (let v = 0; splitBand.length < 16; v++) splitBand.push({ hair: 4 + (v & 1), eyes: 4 + (v >> 1 & 1), nose: 4 + (v >> 2 & 1), feet: 4 });
+  sixteen.forEach((nb, l) => {
+    const m = S.zbFerryMatch(splitBand, nb, 16, Date.now() + 5000);
+    if (m.answer !== 'no') pfail(`level ${l + 1}: the split band can sit whole, zbFerryMatch answers ${m.answer}`);
+  });
+  for (const seed of [1026, 1051]) {
+    const band = S.zbDealBand(S.zbRandom(seed), 16), whole = S.zbFerryMatch(band, sixteen[3], 16, Date.now() + 5000), less = S.zbFerryMatch(band, sixteen[3], 15, Date.now() + 5000);
+    proofOk(4, band, sixteen[3], 15, less);
+    if (whole.answer !== 'no' || less.answer !== 'yes') pfail(`level 4, seed ${seed}: zbFerryMatch answers ${whole.answer} to 16 and ${less.answer} to 15, where 15 is the most`);
+  }
+  if (pbad) fail(pbad);
+  else say(`zbFerryMatch: ${proofs} answers, ${settled} of them also settled by the plain search with the same answer (${noes} that cannot sit), every seating by the rule, no to every raft filled with one sharing nothing; the split band cannot sit whole at any level, seeds 1026 and 1051 seat 15 at level 4 and not 16`);
 
   // ---- the workbench -----------------------------------------------------------
   // Nothing to choose: the form is a note and gives back nothing. Each

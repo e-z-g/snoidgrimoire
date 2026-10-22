@@ -24,4 +24,6 @@ Archive, or takes a copy you supply, in your browser.
 **`reference/`**, which is gitignored: the game, the extraction project's
 tools and output, and the programs the checks compare against, among them
 ScummVM's Zoombinis branch (`ied206/scummvm-zoombini`, GPL-3.0). None of their
-code is in this repository unless a file says it was ported, and from where.
+code is in this repository unless a file says it was ported, and from where. So
+far: the ferry's solver, `zbFerryMatch` in `js/zb-puzzle-ferry.js`, from
+the branch's `zoombini_pages/puzzle_ferry.cpp` (GPL-3.0).

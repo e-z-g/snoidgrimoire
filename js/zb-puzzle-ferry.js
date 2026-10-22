@@ -35,9 +35,11 @@
 
    So a band's answer is a seating in which every two neighbours share a
    trait; there is often more than one, and a band may have none that
-   seats everyone. The deal searches for a seating of as many as it can,
-   giving up after ZB_FERRY_SEARCH steps for each size, and says whether
-   what it found is the most possible or only the most it found.
+   seats everyone. The deal looks for a seating of as many as it can, each
+   size first by a quick search (ZB_FERRY_QUICK steps) and then by
+   ScummVM's solver, ported (zbFerryMatch), which proves whether that many
+   can sit; the deal also reports whether what was found is the most
+   possible or only the most found before the time ran out.
 
    On the workbench nothing is hidden from the player, who sees the raft
    and the band, so there is no strategy to find, and nothing is the
@@ -75,8 +77,9 @@
    from tBMP 1500's frame k - 1. The most seats a raft registers, and the
    most neighbours a seat keeps. */
 const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbours: 8 };
-/* How many steps the search takes for each size of seating. */
-const ZB_FERRY_SEARCH = 200000;
+/* How many steps the quick search takes for each size of seating before
+   zbFerryMatch settles it. */
+const ZB_FERRY_QUICK = 2000;
 
 /* A raft from an opened FERRY: its seats, in the program's order, each
    { x, y, w, h }, the rectangle its seat is drawn in. The raft script's
@@ -224,6 +227,213 @@ function zbFerryEngine(band, neighbours) {
   return { run, alike, share };
 }
 
+/* Whether so many of the band can sit, proven either way, by ScummVM's
+   ferry solver (`page solvable`), ported from zoombini_pages/puzzle_ferry.cpp
+   in ied206's fork (commit fdaa2fb9fc, 21 October 2026, GPL-3.0): its
+   debugFerrySolve and what that calls, with seats left out added here. The
+   raft and the band become two graphs of one size N: the seats, and one
+   seat on the dock for each Zoombini left behind, next to no seat; the
+   band, and one rider for each seat left empty, sharing a trait with
+   everyone. A seating is a match of seats to riders, one to one, putting
+   riders who share a trait on every two neighbouring seats. Each seat's
+   candidates are narrowed first by its number of neighbours and by what
+   stays connected without it, then over and over: a rider stays a seat's
+   candidate only while every neighbouring seat has a candidate sharing a
+   trait with it, and only while some perfect matching of seats to riders
+   uses it. A raft that is one line or one ring is then a path or cycle
+   through every rider, found by a table over subsets; any other is
+   searched a seat at a time, the seat with fewest candidates first, two
+   riders interchangeable there tried once, failures remembered.
+   { answer: 'yes', 'no' or 'unknown', seating } with the seating as
+   zbFerrySeatBand's, seating at least that many. N over 32: unknown. */
+function zbFerryMatch(band, neighbours, want, deadline = Infinity) {
+  const S = neighbours.length, n = band.length, N = S + n - want;
+  if (want > n || want > S) return { answer: 'no', seating: null };
+  if (N > 32) return { answer: 'unknown', seating: null };
+  const bit = v => 1 << v, all = N === 32 ? -1 : (1 << N) - 1;
+  /* Kept here: a global looked up in a hot loop is slow inside node's vm, where the checks run. */
+  const { clz32, imul } = Math;
+  const count = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return imul((x + (x >>> 4)) & 0x0f0f0f0f, 0x01010101) >>> 24; };
+  const first = x => 31 - clz32(x & -x);
+  const seatAdj = new Int32Array(N), riderAdj = new Int32Array(N);
+  neighbours.forEach((out, s) => out.forEach(t => { seatAdj[s] |= bit(t); seatAdj[t] |= bit(s); }));
+  for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++) {
+    if (a >= n || b >= n || zbFerryShare(band[a], band[b])) { riderAdj[a] |= bit(b); riderAdj[b] |= bit(a); }
+  }
+  const component = (adj, start, out = 0) => {
+    let seen = bit(start), frontier = seen;
+    while (frontier) {
+      const v = first(frontier);
+      frontier &= frontier - 1;
+      const fresh = adj[v] & ~seen & ~out;
+      seen |= fresh; frontier |= fresh;
+    }
+    return seen;
+  };
+  /* Without vertex v: how many pieces the rest falls into, and the largest. */
+  const without = (adj, v) => {
+    let left = all & ~bit(v), pieces = 0, largest = 0;
+    while (left) {
+      const c = component(adj, first(left), bit(v));
+      left &= ~c;
+      pieces++;
+      largest = Math.max(largest, count(c));
+    }
+    return [pieces, largest];
+  };
+  let steps = 0;
+  const late = () => (++steps & 63) === 0 && Date.now() > deadline;
+  const done = mapping => {
+    const seating = Array(S).fill(-1);
+    for (let s = 0; s < S; s++) if (mapping[s] < n) seating[s] = mapping[s];
+    return { answer: 'yes', seating };
+  };
+
+  const cand = new Int32Array(N);
+  const riderWithout = [...Array(N).keys()].map(p => without(riderAdj, p));
+  const riderComponent = [...Array(N).keys()].map(p => count(component(riderAdj, p)));
+  let line = component(seatAdj, 0) === all, ring = line;
+  for (let s = 0; s < N; s++) {
+    const deg = count(seatAdj[s]), order = count(component(seatAdj, s)), [pieces, largest] = without(seatAdj, s);
+    line = line && deg <= 2;
+    ring = ring && deg === 2;
+    for (let p = 0; p < N; p++) {
+      if (deg <= count(riderAdj[p]) && order <= riderComponent[p] && riderWithout[p][0] <= pieces && largest <= riderWithout[p][1]) cand[s] |= bit(p);
+    }
+    if (!cand[s]) return { answer: 'no', seating: null };
+  }
+
+  if (line) {
+    /* ends[subset]: the riders a path through exactly that subset can end on. */
+    const ends = new Int32Array(2 ** N);
+    for (let p = 0; p < N; p++) if (!ring || p === 0) ends[bit(p)] = bit(p);
+    let answer = 'no';
+    for (let sub = 1; sub <= all >>> 0; sub++) {
+      if ((sub & 1023) === 0 && Date.now() > deadline) return { answer: 'unknown', seating: null };
+      if (!ends[sub]) continue;
+      if (sub === all >>> 0) { if (!ring || (ends[sub] & riderAdj[0])) answer = 'yes'; break; }
+      let rest = all & ~sub;
+      while (rest) {
+        const v = first(rest);
+        rest &= rest - 1;
+        if (riderAdj[v] & ends[sub]) ends[(sub | bit(v)) >>> 0] |= bit(v);
+      }
+    }
+    if (answer === 'no') return { answer, seating: null };
+    /* Walk the path back, along the line of seats from one end. */
+    const mapping = Array(N).fill(-1);
+    let left = all, end = ends[all >>> 0];
+    if (ring) end &= riderAdj[0];
+    let p = first(end), s = 0, visited = 0;
+    if (!ring && N > 1) while (count(seatAdj[s]) !== 1) s++;
+    for (;;) {
+      mapping[s] = p;
+      left &= ~bit(p);
+      visited |= bit(s);
+      if (!left) break;
+      p = first(ends[left >>> 0] & riderAdj[p]);
+      s = first(seatAdj[s] & ~visited);
+    }
+    return done(mapping);
+  }
+
+  const augment = (s, c, matched, seen) => {
+    let opts = c[s] & ~seen[0];
+    while (opts) {
+      const p = first(opts);
+      opts &= opts - 1;
+      if (seen[0] & bit(p)) continue;
+      seen[0] |= bit(p);
+      if (matched[p] < 0 || augment(matched[p], c, matched, seen)) { matched[p] = s; return true; }
+    }
+    return false;
+  };
+  /* Keep only the candidates some perfect matching uses: a matched pair,
+     or an unmatched one on an alternating cycle. */
+  const matching = c => {
+    const matched = new Int32Array(N).fill(-1);
+    for (let s = 0; s < N; s++) if (!augment(s, c, matched, [0])) return null;
+    const reach = new Int32Array(N);
+    for (let s = 0; s < N; s++) for (let p = 0; p < N; p++) if (c[s] & bit(p)) reach[s] |= bit(matched[p]);
+    for (let k = 0; k < N; k++) for (let s = 0; s < N; s++) if (reach[s] & bit(k)) reach[s] |= reach[k];
+    let changed = false;
+    for (let s = 0; s < N; s++) {
+      const was = c[s];
+      for (let p = 0; p < N; p++) if (!(reach[matched[p]] & bit(s))) c[s] &= ~bit(p);
+      if (c[s] !== was) changed = true;
+    }
+    return changed;
+  };
+  const prune = c => {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let s = 0; s < N; s++) {
+        let opts = c[s];
+        while (opts) {
+          const p = first(opts);
+          opts &= opts - 1;
+          let near = seatAdj[s], support = 0, held = true;
+          while (near) {
+            const t = first(near);
+            near &= near - 1;
+            const fit = c[t] & riderAdj[p];
+            if (!fit) { held = false; break; }
+            support |= fit;
+          }
+          if (!held || count(support) < count(seatAdj[s])) { c[s] &= ~bit(p); changed = true; }
+        }
+        if (!c[s]) return false;
+      }
+      const m = matching(c);
+      if (m === null) return false;
+      if (m) changed = true;
+    }
+    return true;
+  };
+  const failed = new Set();
+  let mapping = null;
+  const search = c => {
+    if (late()) return 'unknown';
+    if (!prune(c)) return 'no';
+    let branch = -1, fewest = N + 1, most = -1;
+    for (let s = 0; s < N; s++) {
+      const k = count(c[s]), deg = count(seatAdj[s]);
+      if (k > 1 && (k < fewest || (k === fewest && deg > most))) { branch = s; fewest = k; most = deg; }
+    }
+    if (branch < 0) { mapping = [...c].map(first); return 'yes'; }
+    const key = c.join(',');
+    if (failed.has(key)) return 'no';
+    let opts = c[branch];
+    while (opts) {
+      /* The rider leaving the neighbouring seats the most candidates first. */
+      let pick = -1, best = -1;
+      for (let p = 0; p < N; p++) {
+        if (!(opts & bit(p))) continue;
+        let score = 0;
+        for (let t = 0; t < N; t++) if (seatAdj[branch] & bit(t)) score += count(c[t] & riderAdj[p]);
+        if (score > best) { pick = p; best = score; }
+      }
+      opts &= ~bit(pick);
+      /* A rider interchangeable with the pick, here, need not be tried. */
+      for (let q = 0; q < N; q++) {
+        const pair = bit(pick) | bit(q);
+        if (!(opts & bit(q)) || ((riderAdj[pick] ^ riderAdj[q]) & ~pair)) continue;
+        if (c.every(x => !(x & pair) || (x & pair) === pair)) opts &= ~bit(q);
+      }
+      const next = Int32Array.from(c);
+      next[branch] = bit(pick);
+      const r = search(next);
+      if (r !== 'no') return r;
+    }
+    if (failed.size > 1 << 16) failed.clear();
+    failed.add(key);
+    return 'no';
+  };
+  const r = search(cand);
+  return r === 'yes' ? done(mapping) : { answer: r, seating: null };
+}
+
 /* The most of the band that can sit together: { seating (band index or
    -1 by seat), seated, proven }, proven false when a larger seating was
    given up on rather than ruled out. */
@@ -232,9 +442,12 @@ function zbFerrySeatBand(band, neighbours, deadline = Infinity) {
   let proven = true;
   for (let want = Math.min(band.length, neighbours.length); want > 0; want--) {
     let seating = null;
-    const r = engine.run(want, ZB_FERRY_SEARCH, deadline, s => { seating = s; return true; });
+    const r = engine.run(want, ZB_FERRY_QUICK, deadline, s => { seating = s; return true; });
     if (seating) return { seating, seated: want, proven };
-    if (r.gaveUp) proven = false;
+    if (!r.gaveUp) continue;
+    const m = zbFerryMatch(band, neighbours, want, deadline);
+    if (m.seating) return { seating: m.seating, seated: neighbours.length - m.seating.filter(x => x < 0).length, proven };
+    if (m.answer === 'unknown') proven = false;
   }
   return { seating: Array(neighbours.length).fill(-1), seated: 0, proven };
 }
