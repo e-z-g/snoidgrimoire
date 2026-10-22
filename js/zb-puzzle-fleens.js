@@ -63,13 +63,13 @@
 const ZB_FLEENS_TRAIT_SHORT = {
   hair: ['Blue quiff', 'Grass tuft', 'Red bandana', 'Mohawk', 'Horned helmet'],
   eyes: ['Lashes', 'Bandit mask', 'Stacked eyes', 'Pink glasses', 'Visor'],
-  nose: ['Grey', 'Peach', 'Yellow', 'Teal', 'Lilac'],
+  nose: ['Gray', 'Peach', 'Yellow', 'Teal', 'Lilac'],
   feet: ['Bare feet', 'Red shoes', 'Wheels', 'Tank treads', 'Rockets'],
 };
 const ZB_FLEENS_TRAIT_WITH = {
   hair: ['a blue quiff', 'a grass tuft', 'a red bandana', 'a mohawk', 'a horned helmet'],
   eyes: ['lashes', 'a bandit mask', 'stacked eyes', 'pink glasses', 'a visor'],
-  nose: ['a grey nose', 'a peach nose', 'a yellow nose', 'a teal nose', 'a lilac nose'],
+  nose: ['a gray nose', 'a peach nose', 'a yellow nose', 'a teal nose', 'a lilac nose'],
   feet: ['bare feet', 'red shoes', 'wheels', 'tank treads', 'rockets'],
 };
 /* The beehive branch's places, and how many Zoombinis fit on a waiting branch. */
