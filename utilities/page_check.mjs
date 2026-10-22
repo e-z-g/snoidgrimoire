@@ -72,8 +72,8 @@ const VIEWS = [
   // VVH Max: a search for the hardest deal, which the ferry
   // ends at once (it deals nothing at random), and a dealt one linked.
   ['solve=FERRY&level=max&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /Level 4’s rules/.test(document.getElementById('spanel').textContent) && /guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
+  ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /level 4’s rules/.test(document.getElementById('spanel').textContent) && /guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
+  ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waits at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
   ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
   ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],
   ['solve=LILLY&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /off the screen/.test(document.getElementById('scaption').textContent)"],
@@ -95,7 +95,7 @@ const VIEWS = [
     const h = puzzlePanel(k); return /class="dealt"/.test(h) && !/class="bad"/.test(h); }))`],
   // Grimoire's tabs: Scenario's panes and Components' galleries, across every archive.
   ['scenario/places', "document.querySelectorAll('#view table tr').length === 17 && document.querySelector('#views a.on').dataset.view === 'scenario'"],
-  ['scenario/places/PIZZA', "document.querySelector('#roomPic canvas') && document.querySelectorAll('#view a[data-script]').length === 224 && document.querySelectorAll('#view button.play').length > 10 && /^Scenario›Places›Pizza Pass$/.test(document.getElementById('crumbs').textContent) && (document.querySelector('#view a[data-script]').dispatchEvent(new Event('pointerenter')), /SCRB 7000: 33 ticks/.test(document.getElementById('roomNote').textContent))"],
+  ['scenario/places/PIZZA', "document.querySelector('#roomPic canvas') && document.querySelectorAll('#view a[data-script]').length === 224 && document.querySelectorAll('#view button.play').length > 10 && /^Scenario›Places›Pizza Pass$/.test(document.getElementById('crumbs').textContent) && (document.querySelector('#view a[data-script]').dispatchEvent(new Event('pointerenter')), /SCRB 7000 has 33 ticks/.test(document.getElementById('roomNote').textContent))"],
   ['CAVES/SCRB/9025', "document.querySelector('#feature .feature canvas') && /tBMP 9025/.test(document.getElementById('feature').textContent)"],
   ['ZOOMBINI/SCRB/1', "document.querySelector('#feature .feature canvas') && /tBMP 1,/.test(document.getElementById('feature').textContent)"],
   ['scenario/puzzles', "document.querySelectorAll('#view details.sec').length === 12"],
@@ -162,7 +162,7 @@ const VIEWS = [
     const e = EDITS.get('PICKER');
     if (!e || !e.changes.get('tBMP/4000')) return false;
     const f = decodeTbmp(openedArchive(ARCHIVES.get('PICKER')).get('tBMP', 4000));
-    return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /64 × 48 where it was 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
+    return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /now 64 × 48 instead of 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
   })()`],
   ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
   // The recolour maker: Shaggy hair, purples into reds, put in with the maker's buttons and read back, then undone.
@@ -193,7 +193,7 @@ const VIEWS = [
     if (window.__mod !== 'done') return false;
     const z = EDITS.get('ZOOMBINI'), p = EDITS.get('PICKER');
     return z && ['tBMP/3000', 'tBMP/3100', 'tBMP/3200', 'REGS/100'].every(k => z.changes.has(k)) && p && p.changes.has('tBMP/4400') && p.changes.has('tBMP/4300')
-      && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /As the archive has them now:/.test(document.getElementById('modShow').textContent)
+      && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /how they look in the archive now\./.test(document.getElementById('modShow').textContent)
       && document.querySelectorAll('#modShow canvas').length === 5 && openedArchive(ARCHIVES.get('ZOOMBINI')).list('tBMP').length === 6;
   })()`],
   ['changes', "/Fleen parts, lime green/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],
@@ -210,7 +210,7 @@ const VIEWS = [
     const t = document.getElementById('view').textContent;
     return /“Test” \\(ZOOM0000.TXT\\)/.test(t) && /WaitingonZoombiniIsle16/.test(t.replace(/\\s+/g, '')) && /at the map/.test(t) && document.querySelectorAll('#view .szb img').length === 16 && (document.querySelector('[data-save-map]').click(), true);
   })()`],
-  ['journey', "JSAVE && JSAVE.levels.get(17) === 1 && JSAVE.levels.get(18) === 1 && JSAVE.levels.get(19) === 0 && /as “Test”/.test(document.getElementById('jpanel').textContent) && (document.querySelector('#jpanel [data-nosave]').click(), !JSAVE)"],
+  ['journey', "JSAVE && JSAVE.levels.get(17) === 1 && JSAVE.levels.get(18) === 1 && JSAVE.levels.get(19) === 0 && /in “Test”/.test(document.getElementById('jpanel').textContent) && (document.querySelector('#jpanel [data-nosave]').click(), !JSAVE)"],
   ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods]):not([data-arc=saves])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
@@ -224,11 +224,11 @@ const VIEWS = [
   ['ZOOMBINI/STRL/1700', "/Allergic Cliffs/.test(document.getElementById('view').textContent) && /level 1/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/CURS/1', "document.querySelector('#cur canvas')"],
   ['HOTEL/NODE/1000', "document.querySelector('#walk canvas') && /21 waypoints/.test(document.getElementById('view').textContent) && document.querySelector('#walker select') && (document.getElementById('walkGo').click(), true)"],
-  ['FLEENS/REGS/4000', "/registration points of a sheet of 740 frames/.test(document.getElementById('view').textContent)"],
-  ['FLEENS/SCRS/4000', "document.querySelectorAll('.frames tr').length > 1 && /body, feet, nose, eyes, hair/.test(document.getElementById('view').textContent)"],
+  ['FLEENS/REGS/4000', "/registration points for a sheet of 740 frames/.test(document.getElementById('view').textContent)"],
+  ['FLEENS/SCRS/4000', "document.querySelectorAll('.frames tr').length > 1 && /body, feet, nose, eyes and hair/.test(document.getElementById('view').textContent)"],
   ['PICKER/SCRB/1000', "document.querySelectorAll('.frames tr').length > 1"],
   // Snoid scripts played: a Zoombini walking, a Fleen running, a tumble, a walk over its room.
-  ['ZOOMBINI/SCRS/112', "document.querySelector('#snoid canvas') && /tick [1-9]/.test(document.getElementById('snoidTick').textContent) && /written for roller skates/.test(document.getElementById('snoid').textContent)"],
+  ['ZOOMBINI/SCRS/112', "document.querySelector('#snoid canvas') && /tick [1-9]/.test(document.getElementById('snoidTick').textContent) && /made for Zoombinis with roller skates/.test(document.getElementById('snoid').textContent)"],
   ['FLEENS/SCRS/4028', "document.querySelector('#snoid canvas') && /A Fleen,/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
   ['FLEENS/SCRS/6000', "document.querySelector('#snoid canvas') && /tumbling/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
   ['BRIDGE/SCRS/2002', "document.querySelector('#snoid canvas') && document.getElementById('snoidRoom') && !document.querySelector('#snoid .warn')"],
@@ -367,13 +367,13 @@ try {
         return results;
       },
     });
-    for (const e of pageErrors(r.console)) fail(`${dev.name}: ${describe(e)}`);
+    for (const e of pageErrors(r.console)) fail(`${dev.name} (${describe(e)})`);
     if (!r.met) { fail(`${dev.name}: the map did not come up first from the CD image`); continue; }
     for (const v of r.more) {
       if (!v.met) fail(`${dev.name} #${v.hash}: did not come up${v.note ? ' (' + v.note + ')' : ''}`);
       if (v.wide) fail(`${dev.name} #${v.hash}: wider than the screen`);
     }
-    console.log(`${dev.name}: the CD image read, the map first; ${r.more[0].note}; ${r.more.slice(1).filter(v => v.met).length} of ${r.more.length - 1} views up (slowest ${Math.max(...r.more.map(v => v.ms))} ms)`);
+    console.log(`${dev.name}: the CD image read, the map first. ${r.more[0].note}. ${r.more.slice(1).filter(v => v.met).length} of ${r.more.length - 1} views up (slowest ${Math.max(...r.more.map(v => v.ms))} ms)`);
   }
 
   // ---- the town, in WebGL ------------------------------------------------
@@ -384,7 +384,7 @@ try {
         const sleep = ms => new Promise(res => setTimeout(res, ms));
         const got = {};
         await sleep(300);
-        got.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›All round$/.test(document.getElementById('crumbs').textContent)");
+        got.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›Full view$/.test(document.getElementById('crumbs').textContent)");
         if (shots) await p.shot(path.join(shots, `${dev.name}-town.png`));
         // (the caption is set as a frame is drawn, and SwiftShader's frames
         // can be slower than any one wait: looked at until it is named)
@@ -415,7 +415,7 @@ try {
         return got;
       },
     });
-    for (const e of pageErrors(r.console)) fail(`${dev.name} #town: ${describe(e)}`);
+    for (const e of pageErrors(r.console)) fail(`${dev.name} #town (${describe(e)})`);
     if (!r.met) { fail(`${dev.name}: #town did not come up with WebGL`); continue; }
     const g = r.more;
     if (!g.full) fail(`${dev.name} #town: not 80 things, 8 inhabitants and the clock`);

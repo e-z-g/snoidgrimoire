@@ -1,4 +1,4 @@
-// Recolouring a part (js/zb-recolour.js) against the extraction project's
+// Recoloring a part (js/zb-recolour.js) against the extraction project's
 // tools/mod_red_shaggy.py, and over every part:
 //
 //   - Shaggy hair's purples made the red nose's reds, written into ZOOMBINI
@@ -8,7 +8,7 @@
 //     darkest and lightest to lightest, into the shared range only;
 //   - every part's variant (and skin) names frames inside its sheets, and
 //     each recoloured sheet reads back with only those frames changed, and
-//     only in the colours mapped.
+//     only in the colors mapped.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -27,7 +27,7 @@ const map = S.zbRecolourMap('purples', 'reds');
 if (JSON.stringify([...map]) !== JSON.stringify([[21, 38], [22, 39], [23, 40]])) fail(`purples onto reds is ${JSON.stringify([...map])}`);
 const red = S.zbRecolour(archives, 'hair', 1, map);
 const o = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'redshaggy'], { encoding: 'utf8' });
-if (o.status !== 0) console.log('SKIP the comparison: the oracle did not run: ' + (o.stderr || '').split('\n').slice(-2).join(' '));
+if (o.status !== 0) console.log('SKIP the comparison: the oracle did not run, ' + (o.stderr || '').split('\n').slice(-2).join(' '));
 else {
   const want = JSON.parse(o.stdout);
   for (const name of ['ZOOMBINI', 'PICKER']) if (sha1(S.zbWriteArchive(bytes[name], red[name])) !== want[name]) fail(`red Shaggy's ${name} is not mod_red_shaggy.py's`);
@@ -36,7 +36,7 @@ else {
 // Every family onto every other.
 for (const a of S.ZB_RECOLOUR_FAMILIES) for (const b of S.ZB_RECOLOUR_FAMILIES) {
   const m = S.zbRecolourMap(a.key, b.key), vals = a.shades.map(c => m.get(c));
-  if (vals[0] !== b.shades[0] || vals[vals.length - 1] !== b.shades[b.shades.length - 1] || vals.some(v => v < 10 || v > 45)) fail(`${a.key} onto ${b.key}: ${vals}`);
+  if (vals[0] !== b.shades[0] || vals[vals.length - 1] !== b.shades[b.shades.length - 1] || vals.some(v => v < 10 || v > 45)) fail(`${a.key} onto ${b.key} (${vals})`);
 }
 
 // Every part, read back.
@@ -60,5 +60,5 @@ for (const part of ['hair', 'eyes', 'nose', 'feet', 'skin']) for (const v of par
   }
   parts++;
 }
-if (!fails) console.log(`red Shaggy as mod_red_shaggy.py makes it, byte for byte; ${S.ZB_RECOLOUR_FAMILIES.length ** 2} family maps shade for shade; ${parts} parts and skin recoloured and read back, only their frames and colours changed`);
+if (!fails) console.log(`red Shaggy as mod_red_shaggy.py makes it, byte for byte. ${S.ZB_RECOLOUR_FAMILIES.length ** 2} family maps shade for shade. ${parts} parts and skin recolored and read back, only their frames and colors changed`);
 process.exit(fails ? 1 : 0);

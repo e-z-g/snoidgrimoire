@@ -29,7 +29,7 @@ for (const name of archiveNames()) {
           note('tMID', `format ${m.header.format}, ${m.header.tracks} track(s), ${m.programs ? 'Prg#' : 'no Prg#'}`);
         } else if (tag === 'SHPL' || tag === 'tPAL') {
           const p = S.parsePaletteResource(b, tag);
-          note(tag, `from ${p.start}, ${p.colours.length} colours`);
+          note(tag, `from ${p.start}, ${p.colours.length} colors`);
         } else if (tag === 'STRL') {
           note('STRL', `${S.parseStringList(b).length} string(s)`);
         } else if (tag === 'CURS') {
@@ -48,11 +48,11 @@ for (const name of archiveNames()) {
         seen[tag] = (seen[tag] || 0) + 1;
       } catch (e) {
         bad++;
-        console.log(`FAIL ${name} ${S.mohawkTagLabel(tag)} ${r.id}: ${e.message}`);
+        console.log(`FAIL ${name} ${S.mohawkTagLabel(tag)} ${r.id} (${e.message})`);
       }
     }
   }
 }
 for (const [k, m] of Object.entries(facts)) console.log(`  ${k}: ${[...m].map(([v, c]) => `${v} x${c}`).join('; ')}`);
-console.log(`${Object.entries(seen).map(([t, c]) => `${c} ${S.mohawkTagLabel(t)}`).join(', ')}: ${bad ? bad + ' failed' : 'every one read to its last byte'}`);
+console.log(`${Object.entries(seen).map(([t, c]) => `${c} ${S.mohawkTagLabel(t)}`).join(', ')} (${bad ? bad + ' failed' : 'every one read to its last byte'})`);
 process.exit(bad ? 1 : 0);

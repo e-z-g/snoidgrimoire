@@ -1,5 +1,5 @@
 /* zb-hardest.js -- VVH Max (the maintainer's name, 13 October 2026; it was
-   labelled Very, Very, VERY Hard, which with "level 5" and "VVVH" now names
+   labeled Very, Very, VERY Hard, which with "level 5" and "VVVH" now names
    the new-mechanic variants of the workbench's VARIANTS.md, not this): of the puzzles the program could
    deal a band at level 4, the hardest, found by dealing it many times.
    =========================================================================
@@ -48,7 +48,7 @@ function zbDealOne(key, level, seed, band, open = () => null, journey = {}) {
 }
 
 /* A deal judged: { all, most, crossed, spent, guaranteed, ways, steps, exact }, or null
-   for one the program would not go on with. */
+   for one the program would not accept. */
 function zbHardestScore(key, band, deal, open = () => null, each = 400) {
   const P = ZB_PUZZLES.get(key), level = ZB_HARDEST_LEVEL, state = deal.state;
   if (!state || state.stuck) return null;

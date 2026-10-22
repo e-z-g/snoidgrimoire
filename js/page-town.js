@@ -9,7 +9,7 @@
 
    Then it is given depth, which the game never had, so that a headset or
    the ways of showing depth on a flat screen have something to show. The
-   land's rows below the horizon are laid down as a floor EYE metres below
+   land's rows below the horizon are laid down as a floor EYE meters below
    the eye, each as far off as it must be to be seen at its height, out to
    FAR; the rest of the land is a wall FAR off. Each thing standing on it
    -- a house, a reward building, a lamp post, an inhabitant, the clock's
@@ -21,9 +21,9 @@
    where its camera stood, so HORIZON, EYE and FAR are this file's
    estimates.
 
-   Depth on a screen (TV.depth): none; Sway, the eye swinging SWAY metres
+   Depth on a screen (TV.depth): none; Sway, the eye swinging SWAY meters
    either side every SWAY_S seconds, turning to hold still what is FOCUS
-   metres ahead; Red-cyan, two eyes STEREO apart drawn in red and in green
+   meters ahead; Red-cyan, two eyes STEREO apart drawn in red and in green
    and blue, for the glasses, meeting at FOCUS; Cardboard, the two eyes
    side by side, IPD apart, for a phone in a viewer, full screen and moved
    by the phone. A headset (WebXR) draws the two eyes itself and follows the
@@ -74,7 +74,7 @@ function tFoot(id, shape) {
   if (!TFEET.has(k)) TFEET.set(k, zbSpriteFoot(TWORLD.sheets[id][shape - 1]));
   return TFEET.get(k);
 }
-// A vertex: the picture's point (x, y), rho metres off horizontally, keeping
+// A vertex: the picture's point (x, y), rho meters off horizontally, keeping
 // its direction from the middle; u, v into the texture; fade into the average.
 function tPush(out, x, y, rho, u, v, fade) {
   const t = tTheta(x);
@@ -336,10 +336,10 @@ function tQuatMul(a, b) {
     a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
 }
 const tQuatAxis = (ax, ay, az, a) => [ax * Math.sin(a / 2), ay * Math.sin(a / 2), az * Math.sin(a / 2), Math.cos(a / 2)];
-// An eye d metres to the right of the middle, looking the same way.
+// An eye d meters to the right of the middle, looking the same way.
 function tEye(view, d) { const m = view.slice(); m[12] -= d; return m; }
 /* The projection for that eye, its frustum shifted so that what is focus
-   metres straight ahead stays in the middle of the screen (no shift for
+   meters straight ahead stays in the middle of the screen (no shift for
    focus 0: the eyes look parallel, as in a viewer). */
 function tShift(proj, d, focus) { const p = proj.slice(); if (focus) p[8] = -d * p[0] / focus; return p; }
 
@@ -413,7 +413,7 @@ function townLook() {
 }
 function townLookYaw() { return townLook().yaw; }
 /* The reward building straight ahead, if one is: the topmost with a
-   painted pixel within a few of the point of the picture looked at. */
+   painted pixel within a few pixels of the point the viewer faces. */
 function townCaption() {
   const look = townLook();
   const x = ((320 + look.yaw / T_A) % ZB_TOWN_WIDTH + ZB_TOWN_WIDTH) % ZB_TOWN_WIDTH;
@@ -460,7 +460,7 @@ async function townEnterVR() {
   let session;
   try {
     session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
-  } catch (e) { $('tstatus').textContent = 'The headset could not start: ' + e.message; return; }
+  } catch (e) { $('tstatus').textContent = 'The headset could not start (' + e.message + ').'; return; }
   TV.xr = session;
   $('tvr').textContent = 'Leave VR';
   townSound(true);
@@ -536,9 +536,9 @@ function townSet(people, rewards, keepHash) {
 /* Called by page-browse's route() when the address is #town. */
 async function townRoute() {
   const entry = ARCHIVES.get('TOWN');
-  $('crumbs').innerHTML = '<a href="#scenario">Scenario</a><span class="sep">›</span><a href="#scenario/town">The town</a><span class="sep">›</span><span>All round</span>';
+  $('crumbs').innerHTML = '<a href="#scenario">Scenario</a><span class="sep">›</span><a href="#scenario/town">The town</a><span class="sep">›</span><span>Full view</span>';
   $('tstatus').textContent = '';
-  if (!entry) { $('tstatus').textContent = 'TOWN.MHK is not among the files opened.'; return; }
+  if (!entry) { $('tstatus').textContent = 'TOWN.MHK is not open.'; return; }
   if (!entry.bytes && !entry.error) { $('tstatus').textContent = 'Fetching town.mhk from archive.org…'; await ensureBytes(entry); $('tstatus').textContent = ''; }
   const arc = openedArchive(entry);
   if (!arc) { $('tstatus').textContent = entry.error || 'TOWN could not be read.'; return; }
@@ -552,8 +552,8 @@ async function townRoute() {
     TATLAS = townAtlas();
   }
   if (!TGL) {
-    try { TGL = townGL($('tcanvas')); } catch (e) { $('tstatus').textContent = 'WebGL: ' + e.message; return; }
-    if (!TGL) { $('tstatus').textContent = 'This browser has no WebGL, which the town needs.'; return; }
+    try { TGL = townGL($('tcanvas')); } catch (e) { $('tstatus').textContent = 'WebGL could not start (' + e.message + ').'; return; }
+    if (!TGL) { $('tstatus').textContent = 'The town needs WebGL, and this browser does not have it.'; return; }
     townLandMeshes();
     townTextures();
   } else if (fresh) townTextures();

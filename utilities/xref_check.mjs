@@ -56,5 +56,5 @@ const help = S.zbSearch(docs, 'Arno');
 if (!help.hits.some(h => h.doc.kind === 'text' && /Pizza Pass/.test(h.doc.title))) fail('searching "Arno" does not find Pizza Pass’s help');
 if (S.zbSearch(docs, 'qqzzxx').total) fail('a word on no page found something');
 
-if (!fails) console.log(`${refs} references among ${archives.size} archives, every one there (${Object.entries(whys).map(([w, n]) => `${n} ${w}`).join(', ')}); ${reads.length} resources the site reads, all there; ${pairs.size} of ${sheets} sheets paired with their REGS, the snoids' and the clock's as the site has them; ${docs.length} documents searched`);
+if (!fails) console.log(`${refs} references among ${archives.size} archives, every one there (${Object.entries(whys).map(([w, n]) => `${n} ${w}`).join(', ')}). ${reads.length} resources the site reads, all there. ${pairs.size} of ${sheets} sheets paired with their REGS, the snoids' and the clock's as the site has them. ${docs.length} documents searched`);
 process.exit(fails ? 1 : 0);

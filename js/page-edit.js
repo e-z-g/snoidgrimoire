@@ -33,7 +33,7 @@ function editRebuild(entry) {
   entry.size = entry.bytes.length;
   entry.arc = null; entry.error = null;
   openedArchive(entry);
-  if (entry.error) throw new Error(`the rebuilt archive does not read back: ${entry.error}`);
+  if (entry.error) throw new Error(`the rebuilt archive could not be read back (${entry.error})`);
   // What was worked out from the old bytes is worked out again.
   SEARCH_SIG = ''; XREF_SIG = ''; SHARED_COLOURS = null;
   for (const k of [...GALLERY_SHEET.keys()]) if (k.startsWith(entry.name + ' ')) GALLERY_SHEET.delete(k);
@@ -60,8 +60,8 @@ function renderChanges() {
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Changes</span>';
   renderSide({ name: '#changes' }, { archive: null, tag: null, id: null });
   const view = $('view');
-  let html = '<h1>Changes</h1><p class="sub">What has been edited. The edits are in this page only, and reloading it discards them. Saving a changed archive writes a new .MHK with the edited resources added at the end and the index pointed at them; every other byte stays as it was.</p>';
-  if (!EDITS.size && !EXE_EDIT) html += '<p class="note">Nothing is edited. A string list, a picture, a frame or a sound can be edited from its view in Data, and a mod put in from Mods.</p>';
+  let html = '<h1>Changes</h1><p class="sub">Everything you have edited. The edits live only in this page, and reloading it throws them away. Saving a changed archive writes a new .MHK file. The edited resources are added at the end, the index points to them, and every other byte stays the same.</p>';
+  if (!EDITS.size && !EXE_EDIT) html += '<p class="note">Nothing has been edited. You can edit a string list, a picture, a frame or a sound from its view in “Data”, or add a mod from “Mods”.</p>';
   for (const [name, e] of EDITS) {
     html += `<h2 class="h">${esc(name)}</h2><ul>` + [...e.changes.values()].map(c => `<li><a href="#${name}/${mohawkTagLabel(c.tag)}/${c.id}">${mohawkTagLabel(c.tag)} ${c.id}</a> <span class="note">${esc(c.what)}</span> <a data-undo="${esc(name)}|${esc(c.tag)}|${c.id}">undo</a></li>`).join('') + '</ul>'
       + `<div class="tools"><button data-save="${esc(name)}">Save ${esc(name)}.MHK</button> <a data-undo="${esc(name)}||">undo all</a></div>`;
@@ -78,7 +78,7 @@ function renderChanges() {
 /* ---- editing a string list --------------------------------------------------- */
 
 function editStrings(entry, id, lines, body) {
-  body.innerHTML = '<p class="sub">Each string as the game shows it. The number of strings is fixed, and the characters are Windows-1252.</p>'
+  body.innerHTML = '<p class="sub">Each string as the game shows it. You cannot add or remove strings, and the characters are Windows-1252.</p>'
     + lines.map((t, i) => `<div class="field"><span class="label">${i}</span><textarea data-line="${i}" rows="${Math.min(12, 1 + Math.ceil(t.length / 70) + (t.match(/\n/g) || []).length)}">${esc(t)}</textarea></div>`).join('')
     + '<div class="tools"><button id="strApply">Apply</button> <button id="strCancel">Cancel</button> <span id="strErr" class="bad"></span></div>';
   $('strCancel').addEventListener('click', () => route());
@@ -95,9 +95,9 @@ function editStrings(entry, id, lines, body) {
 
 /* ---- replacing a picture, a frame, a sound ------------------------------------ */
 
-/* The colours a replacement may use: ZOOMBINI's art only the shared range,
+/* The colors a replacement may use: ZOOMBINI's art only the shared range,
    10-45, which is the same in every scene's palette; anything else, those
-   and whatever its palette gives, bar the Windows colours at 0-9 and 246-255. */
+   and whatever its palette gives, bar the Windows colors at 0-9 and 246-255. */
 function editAllowed(entry, pf) {
   const set = new Set(Array.from({ length: 36 }, (_, i) => 10 + i));
   if (entry.name !== 'ZOOMBINI' && pf.chosen) {
@@ -147,7 +147,7 @@ function pictureTools(entry, arc, id, pf, box) {
     const im = await editReadImage(file), old = decodeTbmp(arc.get('tBMP', id));
     const px = zbQuantize(im.data, pf.pal, editAllowed(entry, pf), false);
     editApply(entry, 'tBMP', id, zbPictureBytes(im.width, im.height, px),
-      `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? `, ${im.width} × ${im.height} where it was ${old.width} × ${old.height}` : ''}`);
+      `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? `, now ${im.width} × ${im.height} instead of ${old.width} × ${old.height}` : ''}`);
   });
 }
 
@@ -193,12 +193,12 @@ function renderMods() {
   const missing = need.filter(e => !e.bytes);
   const view = $('view');
   let html = '<h1>Mods</h1><div id="recolour"></div><h2 class="h">Fleen parts on the Zoombinis</h2>'
-    + '<p>Every Zoombini’s hair, eyes, nose and feet become a Fleen’s, variant for variant, in every frame the game draws them: walking, tumbling, far off, and in the builder’s tiles. With Lime green ticked, their skin turns a Fleen’s lemon-lime too. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK; the big Zoombini in the builder also needs ZOOMBINI.EXE, whose table places its parts.</p>';
-  if (missing.length) html += `<p class="note">The mod reads every snoid script on the disc to find which parts the game draws together, so it needs every archive: ${missing.length} more from archive.org. <a data-fetchall>Fetch</a> (about 100 MB in all).</p>`;
+    + '<p>This mod gives every Zoombini a Fleen’s hair, eyes, nose and feet, matching variant for variant. It changes every frame where the game draws them, including walking, tumbling, far away and in the builder’s tiles. With “Lime green” ticked, their skin turns a Fleen’s lemon-lime color too. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK. The big Zoombini in the builder also needs ZOOMBINI.EXE, because a table in it places that Zoombini’s parts.</p>';
+  if (missing.length) html += `<p class="note">To find which parts the game draws together, the mod reads every snoid script on the disc. So it needs every archive, and ${missing.length} more must come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
   html += `<div class="tools"><label><input type="checkbox" id="modGreen"${MOD_FLEEN.green ? ' checked' : ''}> Lime green</label>`
     + `<label class="btn">${MOD_EXE ? esc(MOD_EXE.name) : 'ZOOMBINI.EXE…'}<input type="file" id="modExe" accept=".exe,.EXE" hidden></label>`
-    + `<button id="modApply"${missing.length ? ' disabled' : ''}>Put in</button> <span id="modErr" class="bad"></span></div>`
-    + `<p class="note">${MOD_EXE ? 'The big Zoombini on the isle is modded too.' : 'Without the EXE, every Zoombini but the big one on the isle is modded. ZOOMBINI.EXE is in the game’s folder once installed, or on the CD.'}</p>`
+    + `<button id="modApply"${missing.length ? ' disabled' : ''}>Apply</button> <span id="modErr" class="bad"></span></div>`
+    + `<p class="note">${MOD_EXE ? 'The big Zoombini on Zoombini Isle is modded too.' : 'Without the EXE, every Zoombini except the big one on Zoombini Isle is modded. ZOOMBINI.EXE is in the game’s folder after installing, or on the CD.'}</p>`
     + '<div id="modShow"></div>';
   view.innerHTML = html;
   wireFetchAll(view);
@@ -210,7 +210,7 @@ function renderMods() {
   });
   $('modApply').addEventListener('click', () => {
     $('modErr').textContent = '';
-    setStatus('Putting the Fleen parts in…');
+    setStatus('Applying the Fleen parts…');
     setTimeout(() => {
       try { modFleenApply(); } catch (x) { $('modErr').textContent = x.message; console.error(x); }
       setStatus('');
@@ -229,7 +229,7 @@ function modFleenApply() {
     for (const c of out[name]) EDITS.get(name).changes.set(editKey(c.tag, c.id), { tag: c.tag, id: c.id, bytes: c.bytes, what });
     editRebuild(entry);
   }
-  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: 'the big Zoombini’s anchors, for the Fleen parts' } : null;
+  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: 'the big Zoombini’s anchor points, moved for the Fleen parts' } : null;
   SSPRITES.clear();
 }
 /* Five Zoombinis as the archive now draws them, one of each variant. */
@@ -237,7 +237,7 @@ function modShow() {
   const z = ARCHIVES.get('ZOOMBINI'), arc = z && z.bytes ? openedArchive(z) : null, box = $('modShow');
   if (!arc || !box) return;
   const sheet = zbSnoidSheet(arc), pal = paletteFor(z, arc, 1 << 30).pal;
-  box.innerHTML = `<p class="note">${isEdited('ZOOMBINI', 'tBMP', 3000) ? 'As the archive has them now:' : 'As the archive has them now, unmodded:'}</p>`;
+  box.innerHTML = `<p class="note">${isEdited('ZOOMBINI', 'tBMP', 3000) ? 'This is how they look in the archive now.' : 'This is how they look in the archive now, without the mod.'}</p>`;
   const row = document.createElement('div');
   row.className = 'trow';
   for (let v = 1; v <= 5; v++) {
@@ -258,10 +258,10 @@ const RECOLOUR_PARTS = [['hair', 'Hair'], ['eyes', 'Eyes'], ['nose', 'Nose'], ['
 function recolourMaker(box) {
   const z = ARCHIVES.get('ZOOMBINI'), p = ARCHIVES.get('PICKER');
   const missing = [z, p].filter(e => e && !e.bytes);
-  box.innerHTML = '<h2 class="h">Recolour a part</h2><p>One part in other colours wherever the game draws it: walking, tumbling, far off and in the builder. Shaggy hair could be red, for example. Only the colours that every scene shares can be used, so one family of shades replaces another, darkest for darkest.</p>';
+  box.innerHTML = '<h2 class="h">Recolor a part</h2><p>Change one part’s colors everywhere the game draws it, including walking, tumbling, far away and in the builder. For example, Shaggy hair could be red. Only colors that every scene shares can be used, so one family of shades replaces another, with each shade matched by brightness.</p>';
   if (!z || !p) { box.innerHTML += '<p class="note">This needs zoombini.mhk and picker.mhk, and they are not both open.</p>'; return; }
   if (missing.length) {
-    box.innerHTML += `<p class="note">${missing.map(e => e.name.toLowerCase() + '.mhk').join(' and ')}: <a id="rcFetch">Fetch</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;
+    box.innerHTML += `<p class="note">${missing.map(e => e.name.toLowerCase() + '.mhk').join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not open. <a id="rcFetch">Fetch ${missing.length > 1 ? 'them' : 'it'}</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;
     $('rcFetch').addEventListener('click', () => Promise.all(missing.map(ensureBytes)).then(() => { if (isModsHash()) renderMods(); }));
     return;
   }
@@ -277,13 +277,13 @@ function recolourMaker(box) {
   const swatch = f => `<span class="strip">${f.shades.map(c => `<i style="background:rgb(${pal[c].join(',')})"></i>`).join('')}</span>`;
   const chip = (f, on, attr) => `<button class="fam${on ? ' on' : ''}" ${attr}="${f.key}">${swatch(f)} ${esc(f.name)}</button>`;
   let html = '<div class="tools">' + ZB_TRAIT_KINDS.map(k => `<label>${k[0].toUpperCase() + k.slice(1)} <select data-rz="${k}">${ZB_TRAIT_SHORT[k].map((n, i) => `<option value="${i + 1}"${i + 1 === R.z[k] ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('') + '</div>'
-    + `<div class="tools"><span class="note">Recolour its</span> ${RECOLOUR_PARTS.map(([k, n]) => `<button class="fam${k === R.part ? ' on' : ''}" data-rpart="${k}">${n}</button>`).join(' ')}</div>`;
+    + `<div class="tools"><span class="note">Recolor its</span> ${RECOLOUR_PARTS.map(([k, n]) => `<button class="fam${k === R.part ? ' on' : ''}" data-rpart="${k}">${n}</button>`).join(' ')}</div>`;
   html += own.length
-    ? `<div class="tools"><span class="note">Its colours</span> ${own.map(k => chip(ZB_RECOLOUR_FAMILIES.find(f => f.key === k), k === R.from, 'data-rfrom')).join(' ')}</div>`
+    ? `<div class="tools"><span class="note">Its colors</span> ${own.map(k => chip(ZB_RECOLOUR_FAMILIES.find(f => f.key === k), k === R.from, 'data-rfrom')).join(' ')}</div>`
       + `<div class="tools"><span class="note">Into</span> ${ZB_RECOLOUR_FAMILIES.filter(f => f.key !== R.from).map(f => chip(f, f.key === R.to, 'data-rto')).join(' ')}</div>`
-    : '<p class="note">This part uses none of the shared colour families except its skin and outline.</p>';
+    : '<p class="note">This part has no shared color families other than its skin and outline.</p>';
   html += '<div class="trow" id="rcShow"></div>'
-    + `<div class="tools"><button id="rcApply"${R.from ? '' : ' disabled'}>Put in</button> <span id="rcErr" class="bad"></span></div>`;
+    + `<div class="tools"><button id="rcApply"${R.from ? '' : ' disabled'}>Apply</button> <span id="rcErr" class="bad"></span></div>`;
   box.innerHTML += html;
   const map = R.from ? zbRecolourMap(R.from, R.to) : new Map();
   // Before and after: the Zoombini standing, the part's sprites mapped.

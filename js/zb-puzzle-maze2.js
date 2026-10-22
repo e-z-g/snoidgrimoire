@@ -11,14 +11,14 @@
    white arrows turn a quarter once a bubble has passed. A feature arrow
    shows a feature, such as a red nose: a Zoombini with that feature goes
    the arrow's way and one without it carries straight on. From level 2's
-   second layout a coloured square, when a bubble crosses it, turns the
-   arrows of its colour; at level 4 a sticky square traps a bubble until a
-   square of its colour is crossed or another bubble knocks it on, and the
+   second layout a colored square, when a bubble crosses it, turns the
+   arrows of its color; at level 4 a sticky square traps a bubble until a
+   square of its color is crossed or another bubble knocks it on, and the
    band may have to go by way of the upper left or the lower right.
 
    Nothing is hidden: every arrow is on show. What the program deals is
    which features the feature arrows show, chosen from the band in front
-   of it, and the colours. The grid itself is one of two fixed layouts a
+   of it, and the colors. The grid itself is one of two fixed layouts a
    level, REGS 16600-16609 in MAZE2, the program taking each level's two
    in turn over a session, the first first; at level 4 a third layout
    serves a band of fewer than five. The layouts are read from the
@@ -40,8 +40,8 @@
    turns no one. The feature arrows take the slots in the order of the
    layout's records.
 
-   Before the features, seven draws give the colour groups 2-8 each one of
-   seven colours, all different; group 1 is white. After them, the
+   Before the features, seven draws give the color groups 2-8 each one of
+   seven colors, all different; group 1 is white. After them, the
    program draws a frame interval (20-25) for each square, which only
    paces the animation and is left out here.
 
@@ -55,7 +55,7 @@
    (0x431695: REGS 16600 + the level's counter, the counters at 0x4a1aca,
    0x4a1acc, 0x4a1ace and 0x4a1ad0 starting at 0, level 4's stepping by
    two, 16609 for a band under five at level 4). 0x431754 shuffles the
-   colours (random(2, 8), then (2, 7) and down to (2, 2), from the pool at
+   colors (random(2, 8), then (2, 7) and down to (2, 2), from the pool at
    0x4a1faa) and calls the level's selector: 0x43302b at level 1; 0x4332bb
    and 0x43356d for level 2's first and second layouts; 0x43356d and
    0x4339fc for level 3's; 0x433e25 at level 4, and 0x4339fc for the
@@ -90,11 +90,11 @@
    script at 0x431020, BUBBLEFLOATINGCALLBACK), by the square's type
    (0x42f974): nothing and type 7 go on (0x434948, CONTINUEONPATH); a
    whirlpool loses it (0x434c57, PROCESSBLACKHOLE); a feature arrow as
-   above; a white or coloured arrow sends it its way, then turns to its
+   above; a white or colored arrow sends it its way, then turns to its
    next way if it turns once passed, at that moment (0x434f5c,
    PROCESSPLAINDIVERTER); a sticky square traps it, keeping the way it
-   came (0x4351a4, PROCESSSTICKYSPOT); a coloured square turns every arrow
-   of its colour and frees every captive of its colour, which goes on the
+   came (0x4351a4, PROCESSSTICKYSPOT); a colored square turns every arrow
+   of its color and frees every captive of its color, which goes on the
    way it came, and the bubble goes on (0x434ae9, PROCESSSWITCH); at an
    exit it leaves the grid at the exit's corner, the upper right across (0x42fd15,
    DROPSNOIDONLEDGE). Going on means the next square, or the same square
@@ -132,7 +132,7 @@ const ZB_MAZE2_THRESHOLDS = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 
 /* kScoreToLoopCount: level 4's count of Zoombinis to set aside, by how
    many are left. */
 const ZB_MAZE2_LOOPS = [1, 1, 1, 1, 4, 4, 4, 7, 7, 7, 10, 10, 10, 13, 13, 13, 16];
-/* kStaticPathPool: each colour group's first shape in tBMP 5100; 31 is
+/* kStaticPathPool: each color group's first shape in tBMP 5100; 31 is
    white, group 1's, and 52-178 the seven shuffled among groups 2-8. */
 const ZB_MAZE2_COLOUR_POOL = [0, 31, 52, 73, 94, 115, 136, 157, 178, 0, 0];
 /* ScummVM's names for them (MazeColorShapeBase). */
@@ -162,10 +162,10 @@ const ZB_MAZE2_EXITS = [
    it), read from the archive as loadAndParseRegsData reads them: a
    header of ten words, the number of records and nine launcher seats
    (1-14, or 0 for none), then ten-word records: type, row, column,
-   colour group, the four ways it may point (0-3, as 1 or 0), the way it
+   color group, the four ways it may point (0-3, as 1 or 0), the way it
    points, and whether it turns once a bubble has passed. Types: 1
-   whirlpool, 2 feature arrow, 3 white arrow, 4 coloured arrow (white,
-   and like a white arrow, in group 1), 5 sticky square, 6 coloured
+   whirlpool, 2 feature arrow, 3 white arrow, 4 colored arrow (white,
+   and like a white arrow, in group 1), 5 sticky square, 6 colored
    square; 0 and 7 do nothing. A direction is 0 up the screen (a column
    less), 1 right (a row more), 2 down (a column more), 3 left (a row
    less): the rows run left to right on the screen and the columns top to
@@ -196,7 +196,7 @@ function zbMaze2ParseLayout(id, w) {
     const [type, row, col, group] = r;
     if (!((type >= 0 && type <= 7) || (type >= 20 && type <= 23)) || row < 0 || row > 12 || col < 0 || col > 12
       || group < 0 || group > 8 || r[8] < 0 || r[8] > 3 || r.slice(4, 8).concat(r[9]).some(f => f !== 0 && f !== 1)) {
-      throw bad(`has a record out of range at ${i}: ${r.join(' ')}`);
+      throw bad(`has a record out of range at ${i} (${r.join(' ')})`);
     }
     cells.push({ type, row, col, group: group >= 1 ? group : 1, ways: r.slice(4, 8).map(Boolean), dir: r[8], turns: !!r[9] });
   }
@@ -233,7 +233,7 @@ function zbMaze2EditSeats(words, seats) {
    needs it. */
 const ZB_MAZE2_READ = new WeakMap();
 function zbMaze2Layouts(arc) {
-  if (!arc || typeof arc.has !== 'function') throw new Error('Bubblewonder Abyss: its deal needs MAZE2 opened, for its layouts');
+  if (!arc || typeof arc.has !== 'function') throw new Error('Bubblewonder Abyss needs MAZE2 opened, for its layouts');
   if (!ZB_MAZE2_READ.has(arc)) {
     const out = {};
     for (const id of ZB_MAZE2_LAYOUT_IDS) if (arc.has('REGS', id)) out[id] = zbMaze2ParseLayout(id, parseRegs(arc.get('REGS', id)));
@@ -247,7 +247,7 @@ function zbMaze2Layout(arc, id) {
   return layout;
 }
 
-/* The colours: groups 2-8 each take one of the pool's seven, drawn in
+/* The colors: groups 2-8 each take one of the pool's seven, drawn in
    turn from those left (initGridAndSelectPaths, 0x431754). Returns
    waveGroupShapeBase, groups 0-8. */
 function zbMaze2Colours(rnd) {
@@ -609,7 +609,7 @@ function zbMaze2Grid(layout, slots, shapes) {
   for (const [type, row, col] of ZB_MAZE2_EXITS) grid[row][col] = { type, row, col };
   let next = 0;
   const cells = layout.cells.map((c, i) => {
-    const cell = { ...c, index: i, colour: ZB_MAZE2_COLOURS[shapes[c.group]] || null };
+    const cell = { ...c, index: i, color: ZB_MAZE2_COLOURS[shapes[c.group]] || null };
     if (c.type === 2 && next < slots.length) Object.assign(cell, zbMaze2SlotTrait(slots[next]), { slot: slots[next++] });
     grid[c.row][c.col] = cell;
     return cell;
@@ -619,8 +619,8 @@ function zbMaze2Grid(layout, slots, shapes) {
 
 /* One Zoombini sent first from a seat, the rest of the band waiting: where
    its bubble ends (ScummVM's simulateNextLaunch, with the program's edge).
-   A white or coloured arrow that turns once passed turns on a copy of the
-   directions; a coloured square turns its colour's arrows. 'across',
+   A white or colored arrow that turns once passed turns on a copy of the
+   directions; a colored square turns its color's arrows. 'across',
    'back' (the lower left), 'upper left', 'lower right', 'whirlpool',
    'held' (a sticky square) or 'loops'. */
 function zbMaze2Launch(dealt, z, seat) {
@@ -654,7 +654,7 @@ function zbMaze2Launch(dealt, z, seat) {
 
 
 const ZB_MAZE2_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-/* The groups' colours as a diagram paints them: different enough to see which is which,
+/* The groups' colors as a diagram paints them: different enough to see which is which,
    by ScummVM's names for tBMP 5100's banks, not read from its pixels. */
 const ZB_MAZE2_HEX = { white: '#e8ecf2', red: '#e0483c', orange: '#f0902a', yellow: '#eed23a', green: '#52c04c', cyan: '#3ec6d6', purple: '#9058d4', magenta: '#dc4cb8' };
 
@@ -666,7 +666,7 @@ function zbMaze2LevelLayouts(level, band) {
 }
 
 /* A puzzle's state, by ScummVM's names, from its layout, the slots its
-   feature arrows take and the colours: what deal and edit both return. */
+   feature arrows take and the colors: what deal and edit both return. */
 function zbMaze2State(level, band, layout, variant, slots, shapes) {
   const dealt = zbMaze2Grid(layout, slots, shapes);
   const lowerLeft = layout.seats.filter(s => s < 6);
@@ -689,18 +689,18 @@ function zbMaze2OptionSlot(v) {
 }
 
 ZB_PUZZLES.set('MAZE2', {
-  about: 'Each Zoombini floats across a grid of squares in a bubble, launched from the lower left. White arrows send every bubble their way; an arrow showing a feature, such as a red nose, turns only the Zoombinis with that feature. The order the band is sent in matters, since some arrows turn once a bubble has passed.',
+  about: 'Each Zoombini floats across a grid of squares in a bubble, launched from the lower left. White arrows push every bubble their way. An arrow showing a feature, such as a red nose, only turns Zoombinis with that feature. The order matters, because some arrows turn after a bubble passes.',
   levels: [
-    { rule: 'Four feature arrows. The first two show one feature, the commonest that two to five of the band share; the other two show features of the rest of the band, each held by no more than half of those left, or, if the rest are all alike, features nobody has, drawn at random. The two layouts (REGS 16600 and 16601) take turns.',
-      chances: 'None counted. A Zoombini whose bubble falls into a whirlpool, or meets another bubble, does not cross; one that floats back to the lower left may be sent again.',
-      notes: ['The program starts every session on each level’s first layout and alternates; ScummVM has an option to start on either.'] },
-    { rule: 'On the first layout (REGS 16602) the shared feature goes on three of five feature arrows. The second (16603) has coloured squares, which turn the arrows of their colour, and eight feature arrows: the shared feature on two, three features of the Zoombinis that have it, each the rarest left and the first of them twice, and two of the rest, as at level 1.',
-      chances: 'None counted, as at every level.' },
-    { rule: 'Seven feature arrows on the first layout (REGS 16604), dealt as level 2’s second but with the first of the three once; eight on the second (16605), where one rare feature is set aside first and goes on two arrows beside the shared feature’s two, then two features of the shared feature’s holders and two of the rest.',
-      chances: 'None counted, as at every level.' },
-    { rule: 'Nine feature arrows (REGS 16606 and 16608 in turn; 16609, with eight dealt as level 3’s second, for a band of fewer than five): three rare features, each of a Zoombini without the ones before, a feature that one of the rest alone has (else one of the three again), a fourth rare feature, two features of Zoombinis sharing none with those set aside, and two of all twenty drawn at random. Sticky squares hold a bubble, and the band may have to go by way of the upper left or the lower right.',
-      chances: 'None counted, as at every level.',
-      notes: ['ScummVM can restore a third layout, REGS 16607, which the program never picks: its level-4 counter steps by two.'] },
+    { rule: 'Four feature arrows. The first two show one feature, the most common one that two to five of the band share. The other two show features of the rest of the band, each one held by no more than half of those left. If the rest all look alike, they show features nobody has, picked at random. The two layouts (REGS 16600 and 16601) take turns.',
+      chances: 'None are counted. A Zoombini whose bubble falls into a whirlpool or hits another bubble does not cross. One that floats back to the lower left can be sent again.',
+      notes: ['The program starts every session on each level’s first layout and then alternates. ScummVM has an option to start on either one.'] },
+    { rule: 'On the first layout (REGS 16602), the shared feature goes on three of five feature arrows. The second layout (16603) has colored squares, which turn the arrows of their color, and eight feature arrows. The shared feature is on two of them. Three features of the Zoombinis that have it are on the next ones, each the rarest left, with the first one used twice. The last two show features of the rest, as at level 1.',
+      chances: 'None are counted, as at every level.' },
+    { rule: 'The first layout (REGS 16604) has seven feature arrows, dealt like level 2’s second layout but with the first of the three used just one time. The second (16605) has eight. On it, one rare feature is set aside first and goes on two arrows next to the shared feature’s two. Then come two features of the Zoombinis with the shared feature, and two of the rest.',
+      chances: 'None are counted, as at every level.' },
+    { rule: 'Nine feature arrows, on REGS 16606 and 16608 in turn. For a band of fewer than five, there are eight on 16609, dealt like level 3’s second layout. The arrows show three rare features, each from a Zoombini that has none of the earlier ones. Then come a feature that only one of the rest has (or one of the three again), a fourth rare feature, two features of Zoombinis that share none with those set aside, and two of all twenty picked at random. Sticky squares hold a bubble, and the band may have to go by way of the upper left or the lower right.',
+      chances: 'None are counted, as at every level.',
+      notes: ['ScummVM can restore a third layout, REGS 16607, which the program never picks, because its level 4 counter steps by two.'] },
   ],
   archive: 'MAZE2',
   deal(level, band, rnd, journey = {}, arc) {
@@ -722,35 +722,35 @@ ZB_PUZZLES.set('MAZE2', {
     const count = t => dealt.cells.filter(c => c.type === t).length;
     const white = dealt.cells.filter(c => (c.type === 3 || c.type === 4) && c.group <= 1);
     const coloured = dealt.cells.filter(c => c.type === 4 && c.group > 1);
-    const colours = [...new Set(dealt.cells.filter(c => c.group > 1 && c.type >= 4 && c.type <= 6).map(c => c.colour))];
+    const colours = [...new Set(dealt.cells.filter(c => c.group > 1 && c.type >= 4 && c.type <= 6).map(c => c.color))];
     const lowerLeft = layout.seats.filter(s => s < 6), others = layout.seats.filter(s => s >= 6);
     const where = c => `${c.row + 1} across and ${c.col + 1} down`;
     const many = (n, one) => `${n || 'no'} ${one}${n === 1 ? '' : 's'}`;
     const parts = [many(arrows.length, 'feature arrow'),
-      `${many(white.length, 'white arrow')} (${white.filter(c => c.turns).length || 'none'} turning once a bubble has passed)`];
-    if (coloured.length) parts.push(many(coloured.length, 'coloured arrow'), many(count(6), 'coloured square'));
+      `${many(white.length, 'white arrow')} (${white.filter(c => c.turns).length || 'none'} turning after a bubble passes)`];
+    if (coloured.length) parts.push(many(coloured.length, 'colored arrow'), many(count(6), 'colored square'));
     if (count(5)) parts.push(many(count(5), 'sticky square'));
     parts.push(many(count(1), 'whirlpool'));
     const setup = [
-      `Layout REGS ${id}, ${small ? 'level 4’s third, for a band under five' : `the ${variant ? 'second' : 'first'} of level ${level}’s two`}: ${zbWordsOr(parts, 'and')}.`,
+      `Layout REGS ${id}, ${small ? 'level 4’s third layout, for a band under five' : `the ${variant ? 'second' : 'first'} of level ${level}’s two layouts`}, with ${zbWordsOr(parts, 'and')}.`,
       `${many(band.length, 'Zoombini')} wait${band.length === 1 ? 's' : ''} at the lower left, with ${many(lowerLeft.length, 'launcher')} there`
         + (others.length ? ` and one more at the ${others.map(s => (s < 9 ? 'upper left' : 'lower right')).join(' and ')}.` : '.'),
     ];
-    if (colours.length) setup.push(`Its colours are ${zbWordsOr(colours, 'and')}.`);
+    if (colours.length) setup.push(`Its colors are ${zbWordsOr(colours, 'and')}.`);
 
     const launches = state.launches;
-    const answer = ['Nothing is hidden: each feature arrow shows its feature. The deal set these features.'];
+    const answer = ['Nothing is hidden, because each feature arrow shows its feature. The deal set these features.'];
     arrows.forEach((c, i) => {
       const n = band.filter(z => zbMaze2Turns(z, c)).length;
-      answer.push(`${ZB_MAZE2_LETTERS[i]}, ${where(c)}, pointing ${ZB_MAZE2_WAYS[c.dir]}: `
-        + (c.value ? `Zoombinis with ${zbTraitWith(c.kind, c.value)} (${n || 'none'} of this band).` : 'no feature, so it turns nobody.'));
+      answer.push(`${ZB_MAZE2_LETTERS[i]}, ${where(c)}, pointing ${ZB_MAZE2_WAYS[c.dir]}, `
+        + (c.value ? `turns Zoombinis with ${zbTraitWith(c.kind, c.value)} (${n || 'none'} of this band).` : 'shows no feature, so it turns nobody.'));
     });
     const across = lowerLeft.map((s, j) => launches.filter(l => l[j] === 'across').length);
-    answer.push(`Sent first, ${lowerLeft.map((s, j) => `${across[j]} of ${band.length} would cross from launcher ${j + 1}`).join(', and ')}.`);
+    answer.push(`If sent first, ${lowerLeft.map((s, j) => `${across[j]} of ${band.length} would cross from launcher ${j + 1}`).join(', and ')}.`);
     const marks = band.map((z, i) => {
       const by = arrows.map((c, k) => (zbMaze2Turns(z, c) ? ZB_MAZE2_LETTERS[k] : '')).filter(Boolean);
-      return `turned by ${by.length ? zbWordsOr(by, 'and') : 'no feature arrow'}; sent first: `
-        + launches[i].map((o, j) => `${j + 1} ${o}`).join(', ');
+      return `turned by ${by.length ? zbWordsOr(by, 'and') : 'no feature arrow'}. If sent first, `
+        + launches[i].map((o, j) => `from launcher ${j + 1} ${o}`).join(', ');
     });
     return { setup, answer, marks, state };
   },
@@ -766,7 +766,7 @@ ZB_PUZZLES.set('MAZE2', {
         options: layouts.map((id, k) => ({ value: id, label: `REGS ${id}${layouts.length > 1 ? `, the ${nth[k]}` : ', for a band under five'} (${zbMaze2Layout(arc, id).cells.filter(c => c.type === 2).length} feature arrows)` })) },
       ...arrows.map((c, k) => ({ key: `a${k + 1}`, label: `Arrow ${ZB_MAZE2_LETTERS[k]}, ${c.row + 1} across and ${c.col + 1} down, pointing ${ZB_MAZE2_WAYS[c.dir]}, shows`,
         kind: 'choice', value: zbMaze2SlotOption(state.selectedPathSlots[k] || 0), options: [{ value: 'none', label: 'No feature' }, ...zbTraitOptions()] })),
-      { key: 'note', kind: 'note', note: 'The rest of each layout, its launchers and its colours stay as they are. In another layout the features are given to its arrows in order, and an arrow past those given shows none.' },
+      { key: 'note', kind: 'note', note: 'The rest of each layout, including its launchers and colors, stays the same. In another layout, the features go to its arrows in order, and any extra arrows show none.' },
     ];
   },
   edit(level, band, state, values, arc) {
@@ -814,7 +814,7 @@ function zbMaze2Corner(seat) { return seat < 6 ? 0 : seat < 9 ? 1 : 2; }
    -1 for an empty square, -2 to -5 for an exit, lower left to upper
    right), the Zoombinis in kinds (those the same feature arrows turn go
    the same ways), the arrows whose way can change, the sticky squares,
-   and each colour's arrows and sticky squares. */
+   and each color's arrows and sticky squares. */
 function zbMaze2Board(band, state, arc) {
   const layout = zbMaze2Layout(arc, state.mazeLayoutRegsId);
   const dealt = zbMaze2Grid(layout, state.selectedPathSlots, state.waveGroupShapeBase);
@@ -851,7 +851,7 @@ const ZB_MAZE2_CLAIM = 3;
    loop, the Mac's MODULEDELAYPROC, dispatching as 0x42f974 does), and one
    that goes on starts its next square on the following frame. A captive knocked
    off a sticky square by a bubble setting out for it, or freed by a
-   coloured square, starts a frame later still (the move queue, 0x4afe98),
+   colored square, starts a frame later still (the move queue, 0x4afe98),
    so it moves along with the bubble that set it going. A step off the
    grid stays on its square and meets it again (0x434948). The world w
    has the arrows' ways and the captives, and its callbacks receive
@@ -986,8 +986,8 @@ function zbMaze2RunAlone(B, w, t, start) {
    at a corner it can come out at, with every arrow that might turn free to
    point any way it can at every visit, and a sticky square letting it go
    again any way. An arrow might turn only if some bubble of the band can
-   reach it (one that turns once passed) or reach a coloured square of its
-   colour, so arrows no bubble can get at are held to the way they start,
+   reach it (one that turns once passed) or reach a colored square of its
+   color, so arrows no bubble can get at are held to the way they start,
    and that is worked out again until it settles. No play does better,
    whether bubbles float one at a time or together, since other bubbles
    only ever turn those arrows, knock a captive on or end in a collision. */
@@ -1262,8 +1262,8 @@ function zbMaze2SeatWords(B, seat) {
 function zbMaze2FateWords(B, f) {
   if (!f) return 'goes nowhere';
   if (f.lost) return 'falls into a whirlpool';
-  if (f.collided) return 'meets another bubble, and both are lost';
-  if (f.held != null) return `is held on the ${B.cells[f.held].colour} sticky square`;
+  if (f.collided) return 'hits another bubble, and both are lost';
+  if (f.held != null) return `is held on the ${B.cells[f.held].color} sticky square`;
   return ['floats back to the lower left', 'comes out at the upper left', 'comes out at the lower right', 'floats across'][f.corner];
 }
 
@@ -1323,11 +1323,11 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
     const crosses = band.map((_, i) => i).filter(i => r.where[i] === 3);
     const steps = r.launches.map((l, k) => {
       const z = band[l.i];
-      let s = `${k + 1}. Send ${l.i + 1} (${zbZoombiniWords(z).toLowerCase()}) from ${zbMaze2SeatWords(B, l.seat)}: it ${zbMaze2FateWords(B, l.fate.get(l.i))}`;
-      for (const mv of l.moved) s += `; ${mv.t + 1}, ${mv.how === 'knocked' ? `knocked off the ${B.cells[mv.a].colour} sticky square` : `freed from the ${B.cells[mv.a].colour} sticky square by a coloured square`}, ${zbMaze2FateWords(B, l.fate.get(mv.t))}`;
+      let s = `${k + 1}. Send ${l.i + 1} (${zbZoombiniWords(z).toLowerCase()}) from ${zbMaze2SeatWords(B, l.seat)}, and it ${zbMaze2FateWords(B, l.fate.get(l.i))}`;
+      for (const mv of l.moved) s += `. Zoombini ${mv.t + 1}, ${mv.how === 'knocked' ? `knocked off the ${B.cells[mv.a].color} sticky square` : `freed from the ${B.cells[mv.a].color} sticky square by a colored square`}, ${zbMaze2FateWords(B, l.fate.get(mv.t))}`;
       return s + '.';
     });
-    if (!r.launches.length) steps.push(best.acc ? 'No launch.' : 'No order gets anyone across: every launcher sends every Zoombini into a whirlpool, round for ever or back, whatever has gone before.');
+    if (!r.launches.length) steps.push(best.acc ? 'No launch.' : 'No order works. Every launcher sends every Zoombini into a whirlpool, around in an endless loop, or back, no matter what happened earlier.');
     solutions.push({
       title: `${crosses.length} of ${band.length} across in ${r.launches.length} launch${r.launches.length === 1 ? '' : 'es'}`
         + (solutions.length ? `, starting with ${r.launches[0].i + 1} from ${zbMaze2SeatWords(B, r.launches[0].seat)}` : ''),
@@ -1341,21 +1341,21 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
   const upper = X.bound(X.init), proven = exact;
   exact = proven && most >= upper;
   const notes = [
-    'Crossing is floating out at the upper right. A Zoombini lost in a whirlpool, or in a collision with another bubble, does not cross; one that floats back to the lower left, or comes out at the upper left or lower right, may be launched again from a launcher there.',
-    'The orders searched send one Zoombini at a time and wait until every bubble has stopped. Each launch is played frame by frame as the program plays it: a captive knocked off a sticky square, or freed by a coloured square, floats along with the bubble that set it going, and two bubbles entering one square together are both lost.',
+    'To cross, a bubble must float out at the upper right. A Zoombini lost in a whirlpool, or in a collision with another bubble, does not cross. One that floats back to the lower left, or comes out at the upper left or lower right, may be launched again from a launcher there.',
+    'The orders searched send one Zoombini at a time and wait until every bubble has stopped. Each launch is played frame by frame, as the program plays it. A captive knocked off a sticky square, or freed by a colored square, floats along with the bubble that freed it. Two bubbles that enter one square together are both lost.',
     'Zoombinis turned by the same feature arrows go the same ways, so orders that differ only in which of them is sent are counted as one.',
-    'The simplest order has the fewest launches for the most across; the others listed start with a different launch, and lose no more to whirlpools.',
+    'The simplest order has the fewest launches for the most Zoombinis across. The others listed start with a different launch and lose no more to whirlpools.',
   ];
   if (!shortest) notes.push(proven
-    ? `The full search did not finish in its time, but the order found gets across everyone who could ever cross, so it is the most; it may not be the fewest launches, and no other orders are listed.`
-    : `The search stopped after ${budget} ms: this is the best order found (best first, or the rule of thumb of making the nearest launch that sends more across than it loses), and it may not be the most possible one at a time.`);
-  if (most < upper) notes.push(`${proven ? `One at a time, ${most} is the most.` : `One at a time, ${most} is the best found.`} The program lets a Zoombini be launched while others still float, and then two bubbles can both pass an arrow before either reaches the square that turns it; that is not searched here. However it is timed, no more than ${upper} can cross: those whose bubbles could reach the far side with every turning arrow pointing any way it can.`);
+    ? `The full search did not finish in time, but the order found brings everyone across who could ever cross, so it is the most. It may not use the fewest launches, and no other orders are listed.`
+    : `The search stopped after ${budget} ms. This is the best order it found, using a rule of thumb that makes the nearest launch that sends more across than it loses. It may not be the most possible one at a time.`);
+  if (most < upper) notes.push(`${proven ? `One at a time, ${most} is the most.` : `One at a time, ${most} is the best found.`} The program lets a Zoombini launch while others are still floating. Then two bubbles can both pass an arrow before either one reaches the square that turns it. This page does not search that. However the launches are timed, no more than ${upper} can cross. Those are the Zoombinis whose bubbles could reach the far side with every turning arrow pointing any way it can.`);
   return { most, exact, ways: null, solutions, notes, ms: Date.now() - t0, oneAtATime: { most, proven }, upper };
 }
 
 /* The grid drawn: rows left to right, columns top to bottom, as the game
    shows them; its arrows as they start, a feature arrow with its feature,
-   the coloured squares in their colours, and each launch's route; those
+   the colored squares in their colors, and each launch's route; those
    across at the upper right, the rest at the lower left, faded. */
 /* Where the diagram puts the grid: square (row, col) is C across with its
    top left at GX + row x C, GY + col x C (the page's layout editor clicks
@@ -1364,7 +1364,7 @@ const ZB_MAZE2_DRAWN = { C: 34, GX: 180, GY: 44 };
 function zbMaze2Diagram(B, band, replay, caption) {
   const W = 800, H = 500, { C, GX, GY } = ZB_MAZE2_DRAWN, items = [];
   const cx = r => GX + r * C + C / 2, cy = c => GY + c * C + C / 2;
-  const hex = c => ZB_MAZE2_HEX[c.colour] || 'ink';
+  const hex = c => ZB_MAZE2_HEX[c.color] || 'ink';
   items.push({ t: 'rect', x: GX - 4, y: GY - 4, w: 13 * C + 8, h: 13 * C + 8, fill: 'panel', stroke: 'line' });
   for (let k = 1; k < 13; k++) {
     items.push({ t: 'line', x1: GX + k * C, y1: GY, x2: GX + k * C, y2: GY + 13 * C, stroke: 'line', width: 0.5 });
@@ -1380,7 +1380,7 @@ function zbMaze2Diagram(B, band, replay, caption) {
     items.push(Object.assign({ t: 'poly', points: [x + vx * len, y + vy * len, x - vx * len * 0.5 + px * len * 0.7, y - vy * len * 0.5 + py * len * 0.7,
       x - vx * len * 0.5 - px * len * 0.7, y - vy * len * 0.5 - py * len * 0.7], fill, stroke: 'panel' }, extra));
   };
-  /* The routes, each once, coloured by how the bubble ended, under the
+  /* The routes, each once, colored by how the bubble ended, under the
      squares. */
   if (replay) {
     const drawn = new Set();

@@ -85,11 +85,11 @@ async function render() {
   }
   const arc = openedArchive(entry);
   if (!arc) {
-    view.innerHTML = `<h1>${esc(entry.name)}</h1><p class="bad">${esc(entry.error || 'Not read.')}</p>`;
+    view.innerHTML = `<h1>${esc(entry.name)}</h1><p class="bad">${esc(entry.error || 'This archive could not be read.')}</p>`;
     return;
   }
   renderSide(entry, h);
-  // Pictures need the colours every scene shares; in archive.org's copy
+  // Pictures need the colors every scene shares; in archive.org's copy
   // they come from the map, the smallest archive that has them.
   if (!sharedColours() && entry.remote && ARCHIVES.has('RODMAP') && !ARCHIVES.get('RODMAP').bytes && !ARCHIVES.get('RODMAP').error
       && (h.tag === 'tBMP' || h.tag === 'NODE' || h.tag === 'PATH' || !h.tag)) {
@@ -102,7 +102,7 @@ async function render() {
     if (!h.tag || !arc.has(h.tag, h.id)) renderArchive(entry, arc, h);
     else renderResource(entry, arc, h.tag, h.id);
   } catch (e) {
-    view.innerHTML += `<p class="bad">Could not show it: ${esc(e.message)}</p>`;
+    view.innerHTML += `<p class="bad">This could not be shown (${esc(e.message)}).</p>`;
     console.error(e);
   }
 }
@@ -127,7 +127,7 @@ function renderSide(entry, h) {
   const edits = [...EDITS.values()].reduce((n, e) => n + e.changes.size, 0);
   html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits || EXE_EDIT ? plural(edits + (EXE_EDIT ? 1 : 0), 'edit') : 'nothing edited'}</span></div>`;
   html += `<div class="arc${isSavesHash() ? ' on' : ''}" data-arc="saves"><span class="name">Saves</span><span class="place">${SAVES.length ? plural(SAVES.length, 'game') + ' open' : 'saved games'}</span></div>`;
-  html += `<div class="arc${isModsHash() ? ' on' : ''}" data-arc="mods"><span class="name">Mods</span><span class="place">recolour, Fleen parts</span></div>`;
+  html += `<div class="arc${isModsHash() ? ' on' : ''}" data-arc="mods"><span class="name">Mods</span><span class="place">recolor, Fleen parts</span></div>`;
   for (const e of sortedArchives()) {
     html += `<div class="arc${e === entry ? ' on' : ''}${e.remote && !e.bytes ? ' unfetched' : ''}" data-arc="${esc(e.name)}">`
       + `<span class="name">${esc(e.name)}</span><span class="place">${esc(placeOf(e.name))}</span></div>`;
@@ -157,8 +157,8 @@ function renderSide(entry, h) {
 
 /* ---- palettes -------------------------------------------------------------- */
 
-/* Indices 10-45: the Zoombinis' own colours, the same in every palette on
-   the disc (tools/README.md), and the only colours ZOOMBINI's art uses.
+/* Indices 10-45: the Zoombinis' own colors, the same in every palette on
+   the disc (tools/README.md), and the only colors ZOOMBINI's art uses.
    They come from whichever open archive has a palette covering them. */
 function sharedColours() {
   if (SHARED_COLOURS) return SHARED_COLOURS;
@@ -188,7 +188,7 @@ function paletteChoices(arc) {
 /* A bitmap's palette: the one picked for this archive, or else the full
    palette with the largest id at or below the bitmap's (a room's palette
    has its background's id, and the sprites drawn over it come after), or
-   else the first. Over the shared colours, over Windows's. */
+   else the first. Over the shared colors, over Windows's. */
 function paletteFor(entry, arc, bitmapId) {
   const choices = paletteChoices(arc);
   const full = choices.filter(c => c.full);
@@ -206,9 +206,9 @@ function paletteFor(entry, arc, bitmapId) {
 
 function paletteControl(entry, pf) {
   if (!pf.choices.length) {
-    return `<span class="note">This archive has no palette: ${pf.shared ? `the shared colours are from ${esc(pf.shared.from)}` : '<span class="warn">open another archive for its colours</span>'}.</span>`;
+    return `<span class="note">This archive has no palette. ${pf.shared ? `The shared colors are from ${esc(pf.shared.from)}` : '<span class="warn">Open another archive for its colors</span>'}.</span>`;
   }
-  const opts = pf.choices.map(c => `<option value="${esc(c.key)}"${pf.chosen && c.key === pf.chosen.key ? ' selected' : ''}>${esc(c.key)}${c.full ? '' : ' (one colour)'}</option>`);
+  const opts = pf.choices.map(c => `<option value="${esc(c.key)}"${pf.chosen && c.key === pf.chosen.key ? ' selected' : ''}>${esc(c.key)}${c.full ? '' : ' (one color)'}</option>`);
   return `<label>Palette <select id="palPick">${opts.join('')}</select></label>`;
 }
 
@@ -265,7 +265,7 @@ function renderArchive(entry, arc, h) {
   const view = $('view');
   const place = placeOf(entry.name);
   const onMap = (ZB_PLACE_BY_KEY.has(entry.name) && journeyAvailable() ? ` · <a href="#place=${entry.name}">Map</a>` : '')
-    + (entry.name === 'TOWN' ? ' · <a href="#town">All round</a>' : '');
+    + (entry.name === 'TOWN' ? ' · <a href="#town">Full view</a>' : '');
   let html = `<h1>${esc(entry.name)}</h1><p class="sub">${esc(place)}${place ? ' · ' : ''}${fmtBytes(entry.size)}${onMap}</p>`;
   if (h.tag && !arc.has(h.tag, h.id)) html += `<p class="warn">${esc(entry.name)} has no ${esc(tagLabel(h.tag))}${h.id != null ? ' ' + h.id : ''}.</p>`;
   html += '<table class="plain"><tr><th>type</th><th>resources</th><th>bytes</th><th>what</th></tr>';
@@ -282,7 +282,7 @@ function renderArchive(entry, arc, h) {
   }
   html += '</table>';
   const room = roomPicture(arc, entry.name);
-  if (room != null) html += `<p class="note">The room, <a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>:</p><div id="room" class="picture"></div>`;
+  if (room != null) html += `<p class="note">The room is <a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>.</p><div id="room" class="picture"></div>`;
   html += helpHtml(entry.name);
   view.innerHTML = html;
   if (room != null) {
@@ -297,7 +297,7 @@ function helpHtml(name) {
   if (!a || !a.help) return '';
   const z = ARCHIVES.get('ZOOMBINI');
   const arc = z && z.bytes ? openedArchive(z) : null;
-  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? '; open <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
+  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? '. Open <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
   let html = '<h2 style="font-size:15px;margin:22px 0 6px">The help</h2><div class="strings">';
   for (let k = 0; k < 4; k++) {
     const id = a.help + k * 20;
@@ -351,7 +351,7 @@ function showBitmap(entry, arc, id, bytes, body) {
   const regs = regsFor(arc, d.frames.length);
   const biggest = Math.max(...d.frames.map(f => Math.max(f.width, f.height)));
   const zc = zoomControl('sheet', biggest <= 64 ? 2 : 1);
-  body.innerHTML = `<p class="sub">A sprite sheet of ${plural(d.frames.length, 'frame')}${regs ? `, registered by <a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a> and ${regs.id + 1}` : ''}. Index 0 is transparent.</p>`
+  body.innerHTML = `<p class="sub">A sprite sheet of ${plural(d.frames.length, 'frame')}.${regs ? ` Its registration points are in <a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a> and ${regs.id + 1}.` : ''} Color 0 is transparent.</p>`
     + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as .zip</button></div>`
     + '<div id="focus"></div><div id="sheet" class="sheet"></div>';
   wirePaletteControl(entry); wireZoom('sheet');
@@ -421,7 +421,7 @@ function showFrame(f, k, pal, regs) {
     g.strokeStyle = '#ff5c7a'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(x - 8, y); g.lineTo(x + 8, y); g.moveTo(x, y - 8); g.lineTo(x, y + 8); g.stroke();
   }
-  focus.innerHTML = `<p class="note">Frame ${k}: ${f.width} × ${f.height}${reg ? `, registration point (${reg.x}, ${reg.y}), marked` : ''}.</p>`;
+  focus.innerHTML = `<p class="note">Frame ${k}: ${f.width} × ${f.height}${reg ? `, with its registration point (${reg.x}, ${reg.y}) marked` : ''}.</p>`;
   const wrap = document.createElement('div');
   wrap.className = 'picture';
   wrap.appendChild(c);
@@ -454,11 +454,11 @@ function showSound(entry, arc, id, bytes, body) {
 
 function showMidi(entry, id, bytes, body) {
   const m = parseMohawkMidi(bytes);
-  body.innerHTML = `<p class="sub">A standard MIDI file of format ${m.header.format}, ${plural(m.header.tracks, 'track')}, ${m.header.division} ticks a beat. Its chunks: ${m.chunks.map(esc).join(', ')}.</p>`
+  body.innerHTML = `<p class="sub">A standard MIDI file (format ${m.header.format}) with ${plural(m.header.tracks, 'track')} and ${m.header.division} ticks per beat. Its chunks are ${zbWordsOr(m.chunks.map(esc), 'and')}.</p>`
     + `<div class="tools"><button id="save">Save as .mid</button></div><div id="tune" class="tools"></div>`
-    + `<p class="note">On a Mac the game played its tunes through QuickTime’s instruments, and on Windows through the machine’s MIDI device. Play here uses QuickTime 3’s instruments, a larger set than a Mac of 1996 had.</p>`
-    + (m.programs ? `<p class="note">Its Prg# chunk, which is not part of the MIDI standard: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
-    + `<p class="note">${entry.name === 'MIDIMAC' ? 'Written for the Mac and QuickTime' : 'Written for Windows'}, according to ScummVM's branch.</p>`;
+    + `<p class="note">On a Mac the game played its music through QuickTime’s instruments. On Windows it used the computer’s MIDI device. “Play” here uses the instruments from QuickTime 3, which has more of them than a Mac had in 1996.</p>`
+    + (m.programs ? `<p class="note">Its Prg# chunk, which is not part of the MIDI standard, is <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code>.</p>` : '')
+    + `<p class="note">${entry.name === 'MIDIMAC' ? 'Written for the Mac and QuickTime' : 'Written for Windows'}, according to ScummVM’s branch.</p>`;
   $('save').addEventListener('click', () => downloadBlob(m.file, `${entry.name.toLowerCase()}-tmid-${id}.mid`));
   tunePlayer(entry, openedArchive(entry), id, $('tune'));
 }
@@ -470,7 +470,7 @@ function showPalette(tag, bytes, body) {
     const c = i >= p.start && i < p.start + p.colours.length ? p.colours[i - p.start] : null;
     cells += c ? `<div style="background:rgb(${c[0]},${c[1]},${c[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colours.length, 'colour')} from index ${p.start}${p.id != null ? `; its id ${p.id}, flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
+  body.innerHTML = `<p class="sub">${plural(p.colours.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
 }
 
 function showStrings(entry, id, bytes, body) {
@@ -501,7 +501,7 @@ function showCursor(entry, id, bytes, body) {
   }
   g.strokeStyle = '#ff5c7a'; g.lineWidth = 2;
   g.strokeRect(c.hotX * z + 1, c.hotY * z + 1, z - 2, z - 2);
-  body.innerHTML = `<p class="sub">16 × 16, the hot spot at (${c.hotX}, ${c.hotY}), outlined. Black is the image, white the mask around it.</p><div id="cur" class="picture"></div>`;
+  body.innerHTML = `<p class="sub">16 × 16 pixels, with the hot spot at (${c.hotX}, ${c.hotY}) outlined. Black is the image, and white is the mask around it.</p><div id="cur" class="picture"></div>`;
   $('cur').appendChild(cv);
 }
 
@@ -511,8 +511,8 @@ function showWalks(entry, arc, id, body) {
   const nodes = arc.has('NODE', id) ? parseWalkNodes(arc.get('NODE', id)) : [];
   const paths = arc.has('PATH', id) ? parseWalkPaths(arc.get('PATH', id), nodes.length) : [];
   const room = roomPicture(arc, entry.name);
-  body.innerHTML = `<p class="sub"><a href="${link(entry.name, 'NODE', id)}">NODE ${id}</a>: ${plural(nodes.length, 'waypoint')}. `
-    + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a>: ${plural(paths.length, 'path')}, each up to 24 waypoints. Drawn over the room${room != null ? `, <a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>` : ''}.</p>`
+  body.innerHTML = `<p class="sub"><a href="${link(entry.name, 'NODE', id)}">NODE ${id}</a> has ${plural(nodes.length, 'waypoint')}. `
+    + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a> has ${plural(paths.length, 'path')}, each with up to 24 waypoints. They are drawn over the room${room != null ? ` (<a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>)` : ''}.</p>`
     + '<div id="walker"></div><div id="walk" class="picture"></div>'
     + '<table class="plain" style="margin-top:14px"><tr><th>path</th><th>waypoints, in order</th></tr>'
     + paths.map((p, i) => `<tr><td style="color:${WALK_COLOURS[i % WALK_COLOURS.length]}">${i}</td><td class="mono">${p.filter(w => w).join(' → ') || '(empty)'}</td></tr>`).join('')
@@ -552,8 +552,8 @@ const WALK_PICK = { z: { hair: 1, eyes: 1, nose: 1, feet: 1 }, path: 0 };
 function walker(entry, arc, id, nodes, paths, c, box) {
   const home = ARCHIVES.get('ZOOMBINI'), zarc = home && home.bytes ? openedArchive(home) : null;
   if (!zarc) {
-    box.innerHTML = '<p class="note">A Zoombini can walk these, drawn from zoombini.mhk: '
-      + (!home ? 'that file is not open.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch</a> (24 MB).</p>');
+    box.innerHTML = '<p class="note">A Zoombini from zoombini.mhk can walk these paths. '
+      + (!home ? 'That file is not open.</p>' : FETCHING.has('ZOOMBINI') ? 'It is being fetched…</p>' : '<a id="walkFetch">Fetch it</a> (24 MB).</p>');
     if ($('walkFetch')) $('walkFetch').addEventListener('click', () => { ensureBytes(home).then(() => { if (box.isConnected) render(); }); walker(entry, arc, id, nodes, paths, c, box); });
     return;
   }
@@ -568,7 +568,7 @@ function walker(entry, arc, id, nodes, paths, c, box) {
   const cap = t => t[0].toUpperCase() + t.slice(1);
   box.innerHTML = '<div class="tools">' + ['hair', 'eyes', 'nose', 'feet'].map(k => `<label>${cap(k)} <select data-wtrait="${k}">${ZB_TRAIT_SHORT[k].map((n, i) => `<option value="${i + 1}"${i + 1 === z[k] ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`).join('')
     + (routes.length ? ` <label>Walk path <select id="walkPath">${routes.map(r => `<option value="${r.i}"${r.i === WALK_PICK.path ? ' selected' : ''}>${r.i}</option>`).join('')}</select></label> <button id="walkGo">Walk</button>` : '')
-    + '</div><p class="note">Or click the room for the Zoombini to walk there.</p>';
+    + '</div><p class="note">Or click in the room to make the Zoombini walk there.</p>';
   const back = document.createElement('canvas');
   back.width = c.width; back.height = c.height;
   back.getContext('2d').drawImage(c, 0, 0);
@@ -619,7 +619,7 @@ function showRegs(entry, arc, id, bytes, body) {
   let html = `<p class="sub">${plural(v.length, 'number')}.`;
   if (xs) {
     const x = Math.min(id, partner);
-    html += ` With <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a>, the registration points of a sheet of ${xs.length - 1} frames: REGS ${x} the x, ${x + 1} the y, one-based (entry 0 is ${xs[0]}, ${ys[0]}).</p>`;
+    html += ` Together with <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a>, these are the registration points for a sheet of ${xs.length - 1} frames. REGS ${x} has the x values and REGS ${x + 1} the y values, starting from entry 1 (entry 0 is ${xs[0]}, ${ys[0]}).</p>`;
     html += '<div class="regs">' + [...xs].slice(1).map((vx, i) => `${i}: ${vx}, ${ys[i + 1]}`).join('<br>') + '</div>';
   } else {
     html += '</p><div class="regs">' + [...v].map((n, i) => `${i}: ${n}`).join('<br>') + '</div>';
@@ -637,9 +637,9 @@ function showScript(entry, arc, tag, id, bytes, body) {
     if (z && z.arc && z.arc.has('\0SND', snd)) return `<a href="${link('ZOOMBINI', '\0SND', snd)}">ZOOMBINI SND ${snd}</a>`;
     return `SND ${snd}`;
   };
-  let sub = `${plural(s.frameCount, 'frame')}, one a tick.`;
+  let sub = `${plural(s.frameCount, 'frame')}, one per tick.`;
   if (tag === 'SCRS') sub += s.layout === -1 ? ' A table of positions, not an animation (header 0xffff).'
-    : ` The five layers in the order they are drawn (header ${s.layout}): ${order.join(', ')}.`;
+    : ` The five layers in the order they are drawn (header ${s.layout}) are ${zbWordsOr(order, 'and')}.`;
   let html = `<p class="sub">${sub}</p>${tag === 'SCRS' && ZB_SNOID_KIND_OF_LAYOUT[s.layout] ? '<div id="snoid"></div>' : tag === 'SCRB' ? '<div id="feature"></div>' : ''}`
     + '<table class="plain frames"><tr><th>frame</th><th>records: shape (x, y)</th><th>event</th><th>sound</th></tr>';
   s.frames.forEach((f, i) => {
@@ -670,10 +670,10 @@ function snoidPlayer(entry, arc, id, script, box) {
   const home = K.archive === entry.name ? entry : ARCHIVES.get(K.archive);
   const sheetArc = home ? openedArchive(home) : null;
   if (!sheetArc) {
-    box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk: `
-      + (!home ? 'that file is not open.</p>'
-        : FETCHING.has(K.archive) ? 'fetching it…</p>'
-        : `<a id="snoidFetch">fetch</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
+    box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk. `
+      + (!home ? 'That file is not open.</p>'
+        : FETCHING.has(K.archive) ? 'It is being fetched…</p>'
+        : `<a id="snoidFetch">Fetch it</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
     if ($('snoidFetch')) $('snoidFetch').addEventListener('click', () => {
       ensureBytes(home).then(() => { if (box.isConnected) snoidPlayer(entry, arc, id, script, box); });
       snoidPlayer(entry, arc, id, script, box);
@@ -700,14 +700,14 @@ function snoidPlayer(entry, arc, id, script, box) {
     return `<option value="${i + 1}"${i + 1 === traits[k] ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(cap(n))}</option>`;
   }).join('')}</select></label>`;
   const zoom = SNOID_PICK.zoom;
-  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')} at ${1000 / SNOID_TICK_MS} a second.`
-    + (own ? ` Its feet are written for ${names.feet[own - 1].toLowerCase()}.`
-      : feetFor.length < 5 ? ` Its feet’s poses fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))} only.` : '')
+  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')} at ${1000 / SNOID_TICK_MS} per second.`
+    + (own ? ` It is made for Zoombinis with ${names.feet[own - 1].toLowerCase()}.`
+      : feetFor.length < 5 ? ` Its foot poses only fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))}.` : '')
     + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} ${movie.missing.length === 1 ? 'lies' : 'lie'} past the end of ${movie.missing.length === 1 ? 'its' : 'their'} block and ${movie.missing.length === 1 ? 'is' : 'are'} not drawn.</span>` : '') + '</p>'
     + `<div class="tools">${['hair', 'eyes', 'nose', 'feet'].map(pick).join('')}</div>`
     + `<div class="tools"><button id="snoidPlay">Pause</button><button id="snoidStep">Step</button>`
     + `<input id="snoidAt" type="range" min="0" max="${ticks.length - 1}" value="0"><span id="snoidTick" class="note"></span>`
-    + `<label><input type="checkbox" id="snoidTurned"${SNOID_PICK.turned ? ' checked' : ''}> Turned round</label>`
+    + `<label><input type="checkbox" id="snoidTurned"${SNOID_PICK.turned ? ' checked' : ''}> Flipped</label>`
     + (inRoom ? `<label><input type="checkbox" id="snoidRoom"${SNOID_PICK.room ? ' checked' : ''}> Over its room</label>` : '')
     + (kind !== 'fleen' ? `<label><input type="checkbox" id="snoidSound"${SNOID_PICK.sound ? ' checked' : ''}> Sound</label>` : '')
     + `<label>Zoom <select id="snoidZoom">${[1, 2, 3, 4].map(n => `<option${n === zoom ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`

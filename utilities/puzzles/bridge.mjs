@@ -24,13 +24,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
 
   const pairs = [...need(/kLevel2AlternativeValueTable\[10\]\{([\s\S]*?)\};/, h, 'kLevel2AlternativeValueTable')[1]
     .matchAll(/\{(\d+), (\d+)\}/g)].map(m => [Number(m[1]), Number(m[2])]);
-  if (!same(pairs, S.ZB_BRIDGE_PAIRS)) fail(`level 2's pairs are not ScummVM's: ${JSON.stringify(pairs)}`);
+  if (!same(pairs, S.ZB_BRIDGE_PAIRS)) fail(`level 2's pairs are not ScummVM's (${JSON.stringify(pairs)})`);
   const kinds = body => [...body.matchAll(/ZmbTrait::(kTrait\w+)/g)].map(m => KIND[m[1]]);
   const base = kinds(need(/kLevel3BaseTable\[6\] = \{([\s\S]*?)\};/, cpp, 'kLevel3BaseTable')[1]);
   const step = kinds(need(/kLevel3StepTable\[6\] = \{([\s\S]*?)\};/, cpp, 'kLevel3StepTable')[1]);
-  if (!same(base.map((b, i) => [b, step[i]]), S.ZB_BRIDGE_L3)) fail(`level 3's pairs of traits are not ScummVM's: ${base} / ${step}`);
+  if (!same(base.map((b, i) => [b, step[i]]), S.ZB_BRIDGE_L3)) fail(`level 3's pairs of traits are not ScummVM's, ${base} / ${step}`);
   const order = kinds(need(/kRuleSlotTraitKinds\[4\] = \{([\s\S]*?)\};/, cpp, 'kRuleSlotTraitKinds')[1]);
-  if (!same(order, S.ZB_BRIDGE_ORDER)) fail(`the rules' order is not ScummVM's: ${order}`);
+  if (!same(order, S.ZB_BRIDGE_ORDER)) fail(`the rules' order is not ScummVM's (${order})`);
   const out = kinds(need(/kLevel4ExcludedTraitTable\[4\]\{([\s\S]*?)\};/, h, 'kLevel4ExcludedTraitTable')[1]);
   const l4 = S.zbBridgeRules(4);
   const l4out = [0, 125, 250, 375].map(i => S.ZB_TRAIT_KINDS.find(k => !l4[i].some(r => r.kind === k)));
@@ -95,8 +95,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       for (const knows of band.length <= 9 ? ['program', 'form'] : ['program']) {
         const st = P.strategy(level, band, null, { knows, budget: 4000 });
         const worst = walk(st.root, st.guaranteed, 0);
-        if (worst < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, but only ${worst} cross on one branch`); break; }
-        if (st.exact && worst !== st.guaranteed) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.guaranteed}, and ${worst} cross on its worst branch`); break; }
+        if (worst < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, the strategy guarantees ${st.guaranteed}, but only ${worst} cross on one branch`); break; }
+        if (st.exact && worst !== st.guaranteed) { fail(`level ${level}, knowing the ${knows}, the strategy is marked exact at ${st.guaranteed}, and ${worst} cross on its worst branch`); break; }
         walked++;
         // Played against the dealt rule, the game answering each move.
         if (knows === 'program') {
@@ -112,5 +112,5 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   try { P.edit(3, bands(1, 5)[0].band, {}, { t1: 'hair:1', t2: 'hair:2', upper: 'with' }); } catch (e) { bad = e.message; }
   if (!bad) fail('the form accepts two values of one trait at level 3');
 
-  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it guarantees, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
+  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it guarantees, ${played} played against the dealt rule. Tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}. 20, 40, 150 and 500 rules. ${dealt} deals split as the program's search does`);
 }

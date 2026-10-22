@@ -103,8 +103,8 @@
                 { t: 'zoombini', x, y, i, scale, faded } (band member i,
                   standing with its feet at x, y)
                 { t: 'trait', x, y, kind, value, scale } (the sprite of
-                  that part alone, centred on x, y)
-              with colours as roles ('ink', 'dim', 'line', 'accent',
+                  that part alone, centered on x, y)
+              with colors as roles ('ink', 'dim', 'line', 'accent',
               'good', 'bad', 'warn', 'water', 'stone', 'wood', 'grass',
               'panel', 'chip') or '#rrggbb', and x, y in the diagram's
               units. A trait is drawn on a light chip unless chip: false.
@@ -260,7 +260,7 @@ function zbDealNeeds(key) {
 /* A strategy played against a puzzle dealt (or edited): the node it ends
    at, each move answered as the game would answer it (the puzzle's
    answer), or null when the game gives an answer the strategy did not
-   look for. Its crossed is how many Zoombinis a player who plays for the
+   expect. Its crossed is how many Zoombinis a player who plays for the
    worst brings across this puzzle. */
 function zbStrategyPlay(P, level, band, state, strategy, arc) {
   let node = strategy.root;
@@ -293,7 +293,7 @@ function zbTraitOption(s) { const [kind, v] = String(s).split(':'); return { kin
 function zbDiagramRows(indices, x, y, perRow, dx = 34, dy = 52, extra = {}) {
   return indices.map((i, k) => Object.assign({ t: 'zoombini', i, x: x + (k % perRow) * dx, y: y + Math.floor(k / perRow) * dy }, extra));
 }
-/* A trait's sprites in a row, centred on x. */
+/* A trait's sprites in a row, centered on x. */
 function zbDiagramTraits(traits, x, y, gap = 64, extra = {}) {
   const x0 = x - (traits.length - 1) * gap / 2;
   return traits.map((t, k) => Object.assign({ t: 'trait', kind: t.kind, value: t.value, x: x0 + k * gap, y }, extra));

@@ -21,8 +21,8 @@ const LAYOUT_TOOL = {
 };
 let LAYOUT_TIMER = 0, LAYOUT_PAINT = null;
 
-const LAYOUT_MAZE_TYPES = [[0, 'nothing'], [1, 'a whirlpool'], [2, 'a feature arrow'], [3, 'a white arrow'], [4, 'a coloured arrow'], [5, 'a sticky square'], [6, 'a coloured square']];
-/* Route colours on a map, by place in its family. */
+const LAYOUT_MAZE_TYPES = [[0, 'nothing'], [1, 'a whirlpool'], [2, 'a feature arrow'], [3, 'a white arrow'], [4, 'a colored arrow'], [5, 'a sticky square'], [6, 'a colored square']];
+/* Route colors on a map, by place in its family. */
 const LAYOUT_ROUTE_INK = ['#e0483c', '#3ec6d6', '#eed23a', '#9058d4', '#52c04c'];
 
 function layoutEditor(key) { return key === 'MAZE2' || key === 'LILLY' ? key : null; }
@@ -61,10 +61,10 @@ function layoutMaze() {
   const colourName = g => g === 1 ? 'white' : ZB_MAZE2_COLOURS[shapes[g]] || `group ${g}`;
   const arrows = B.cells.filter(c => c.type === 2).length, dealt = st.selectedPathSlots.length;
   const edited = isEdited('MAZE2', 'REGS', id);
-  let html = `<div class="ltools"><label>Put <select data-lt="type">${LAYOUT_MAZE_TYPES.map(([v, n]) => `<option value="${v}"${v === t.type ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`
+  let html = `<div class="ltools"><label>Place <select data-lt="type">${LAYOUT_MAZE_TYPES.map(([v, n]) => `<option value="${v}"${v === t.type ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`
     + ` <label>pointing <select data-lt="dir">${ZB_MAZE2_WAYS.map((w, k) => `<option value="${k}"${k === t.dir ? ' selected' : ''}>${w}</option>`).join('')}</select></label>`
     + ` <label>in <select data-lt="group">${[1, 2, 3, 4, 5, 6, 7, 8].map(g => `<option value="${g}"${g === t.group ? ' selected' : ''}>${esc(colourName(g))}</option>`).join('')}</select></label>`
-    + ` <label><input type="checkbox" data-lt="turns"${t.turns ? ' checked' : ''}> turning when passed, to</label>`
+    + ` <label><input type="checkbox" data-lt="turns"${t.turns ? ' checked' : ''}> turns when passed, toward</label>`
     + ZB_MAZE2_WAYS.map((w, k) => ` <label><input type="checkbox" data-lt="way" value="${k}"${t.ways[k] ? ' checked' : ''}> ${w}</label>`).join('') + '</div>'
     + `<div class="ltools">Launchers: ${ZB_MAZE2_SEATS.map((s, k) => `<label title="${esc(zbMaze2Corner(k) || 'the lower left')}"><input type="checkbox" data-seat="${k}"${B.seats.includes(k) ? ' checked' : ''}> ${k + 1}</label>`).join(' ')}</div>`;
   const svg = zbDiagramSvg(zbMaze2Diagram(B, SDEALT.band, null, `MAZE2 REGS ${id}`), solveSprites(SDEALT.band));
@@ -72,8 +72,8 @@ function layoutMaze() {
   for (let row = 0; row < 13; row++) for (let col = 0; col < 13; col++) hits.push(`<rect data-sq="${row},${col}" x="${GX + row * C}" y="${GY + col * C}" width="${C}" height="${C}" fill="transparent"/>`);
   html += svg.replace(/<\/svg>$/, `<g class="lhits">${hits.join('')}</g></svg>`);
   $('sdiagram').innerHTML = html;
-  $('scaption').textContent = `MAZE2 REGS ${id}, the layout this deal uses${edited ? ', edited (in Changes, to save as MAZE2.MHK)' : ''}. Click a square to put the tool there, and click it again to turn it.`
-    + (arrows > dealt ? ` The layout has ${arrows} feature arrows, and the program deals ${dealt} features at this level. The rest are shown empty here, because what the game puts on them is not known.` : '');
+  $('scaption').textContent = `This deal uses the layout in MAZE2 REGS ${id}${edited ? '. It has been edited, and “Changes” can save it as MAZE2.MHK' : ''}. Click a square to place the tool there, and click it again to turn it.`
+    + (arrows > dealt ? ` The layout has ${arrows} feature arrows, but the program only deals ${dealt} features at this level. The rest are shown empty here, because what the game puts on them is unknown.` : '');
 }
 
 function layoutMazeClick(row, col) {
@@ -90,14 +90,14 @@ function layoutMazeClick(row, col) {
   if (cell && !cell.ways[cell.dir]) cell.ways[cell.dir] = true;
   if (!cell && !was) return;
   const what = cell ? `${LAYOUT_MAZE_TYPES[cell.type][1]} pointing ${ZB_MAZE2_WAYS[cell.dir]}` : 'nothing';
-  layoutApply('MAZE2', id, zbMaze2EditSquare(words, row, col, cell), `Bubblewonder Abyss's layout: ${what} at ${row + 1} across, ${col + 1} down`);
+  layoutApply('MAZE2', id, zbMaze2EditSquare(words, row, col, cell), `the Bubblewonder Abyss layout, with ${what} at ${row + 1} across, ${col + 1} down`);
 }
 
 function layoutMazeSeats() {
   const id = (SDEALT.edited || SDEALT.state).mazeLayoutRegsId;
   const seats = [...$('sdiagram').querySelectorAll('[data-seat]:checked')].map(x => +x.dataset.seat);
   if (seats.length > 9) { solveLayout(); return; }
-  layoutApply('MAZE2', id, zbMaze2EditSeats(layoutWords('MAZE2', id), seats), `Bubblewonder Abyss's layout: launchers ${seats.map(s => s + 1).join(', ') || 'none'}`);
+  layoutApply('MAZE2', id, zbMaze2EditSeats(layoutWords('MAZE2', id), seats), `the Bubblewonder Abyss layout, with launchers ${seats.map(s => s + 1).join(', ') || 'none'}`);
 }
 
 /* ---- Titanic Tattooed Toads ----------------------------------------------------- */
@@ -105,9 +105,9 @@ function layoutMazeSeats() {
 function layoutPond() {
   const t = LAYOUT_TOOL.pond, id = ZB_LILLY_ROUTE_REGS[t.map], [first, last] = ZB_LILLY_MAP_ROUTES[t.map];
   const words = LAYOUT_PAINT ? LAYOUT_PAINT.words : layoutWords('LILLY', id);
-  const runs = zbLillyRouteRuns(words, t.map), fam = ['patterns', 'shapes', 'colours'][t.map];
+  const runs = zbLillyRouteRuns(words, t.map), fam = ['patterns', 'shapes', 'colors'][t.map];
   const ink = r => r ? LAYOUT_ROUTE_INK[r - first] : null;
-  let html = `<div class="tabs ltabs">${['The patterns’ routes', 'The shapes’ routes', 'The colours’ routes'].map((n, k) => `<a data-lmap="${k}" class="${k === t.map ? 'on' : ''}">${n}</a>`).join('')}</div>`;
+  let html = `<div class="tabs ltabs">${['The patterns’ routes', 'The shapes’ routes', 'The colors’ routes'].map((n, k) => `<a data-lmap="${k}" class="${k === t.map ? 'on' : ''}">${n}</a>`).join('')}</div>`;
   html += `<div class="ltools">Paint <label><input type="radio" name="lroute" data-lroute="0"${t.route === 0 ? ' checked' : ''}> no route</label>`
     + runs.map(r => ` <label><input type="radio" name="lroute" data-lroute="${r.route}"${t.route === r.route ? ' checked' : ''}> <span class="swatch" style="background:${ink(r.route)}"></span> route ${r.route}</label>`).join('') + '</div>';
   const C = 30, X = 40, Y = 30, W = X + 12 * C + 220, H = Y + 12 * C + 20, out = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`];
@@ -124,7 +124,7 @@ function layoutPond() {
   out.push('</svg>');
   html += out.join('');
   $('sdiagram').innerHTML = html;
-  $('scaption').textContent = `LILLY REGS ${id}, the ${fam}’ routes ${first}-${last} as stored, before the program turns or mirrors the maps${isEdited('LILLY', 'REGS', id) ? ', edited (in Changes, to save as LILLY.MHK)' : ''}. Click or drag across the pads to paint.`;
+  $('scaption').textContent = `LILLY REGS ${id} has the ${fam}’ routes ${first}-${last}, as stored before the program rotates or mirrors the maps${isEdited('LILLY', 'REGS', id) ? '. It has been edited, and “Changes” can save it as LILLY.MHK' : ''}. Click or drag across the pads to paint them.`;
 }
 
 function layoutPondPaint(r, c) {
@@ -139,7 +139,7 @@ function layoutPondDone() {
   const p = LAYOUT_PAINT, t = LAYOUT_TOOL.pond;
   LAYOUT_PAINT = null;
   if (!p || !p.changed) return;
-  layoutApply('LILLY', ZB_LILLY_ROUTE_REGS[t.map], p.words, `the toads' ${['patterns', 'shapes', 'colours'][t.map]}' routes repainted`);
+  layoutApply('LILLY', ZB_LILLY_ROUTE_REGS[t.map], p.words, `the toads’ ${['pattern', 'shape', 'color'][t.map]} routes, repainted`);
 }
 
 /* ---- wiring --------------------------------------------------------------------- */

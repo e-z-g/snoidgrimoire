@@ -51,7 +51,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
   const [x1, x2, y] = clk.slice(1).map(Number);
   const w = S.zbTownWorld(S.openMohawk(archiveBytes('TOWN')));
   // A pixel apart from the two columns, as the layers' things are.
-  if (Math.abs(x1 + 320 - w.clock.x) > 2 || Math.abs(x2 + 640 - w.clock.x) > 2 || y !== w.clock.y) fail(`the clock is at ${w.clock.x}, ${w.clock.y}; ScummVM draws it at ${x1} from column 1 and ${x2} from column 2, y ${y}`);
+  if (Math.abs(x1 + 320 - w.clock.x) > 2 || Math.abs(x2 + 640 - w.clock.x) > 2 || y !== w.clock.y) fail(`the clock is at ${w.clock.x}, ${w.clock.y}. ScummVM draws it at ${x1} from column 1 and ${x2} from column 2, y ${y}`);
   // The hands, from ZOOMBINI.EXE's code: the hour's and the minute's
   // pointers pushed for the date call (Pascal order, the minute last, as
   // ZOOMBI32.EXE's date call at 0x410a6a fills them), then the minute
@@ -59,7 +59,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
   // minute plus 1 and the hour plus 13. ScummVM swaps the hour and the
   // minute, which is recorded so that a change there shows.
   if (!/_clockHourStep = static_cast<byte>\(td\.tm_hour\) \/ 5;/.test(cpp) || !/_clockMinuteStep = static_cast<byte>\(td\.tm_min\) % 12;/.test(cpp))
-    fail('ScummVM\'s clock no longer has the hour in fives and the minute modulo 12; see whether it now follows the program');
+    fail('ScummVM\'s clock no longer has the hour in fives and the minute modulo 12. See whether it now follows the program');
   let hands = 0, handsFrom = 'SKIP the hands: no ZOOMBINI.EXE';
   if (fs.existsSync(EXE)) {
     const code = fs.readFileSync(EXE).toString('latin1');
@@ -100,9 +100,9 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
   }
   const table = [...need(/kInhabitantScrbTable\[16\]\{([\s\S]*?)\};/, hdr, 'kInhabitantScrbTable')[1].matchAll(/(\d+)/g)].map(m => +m[1]);
   const scripts = [...new Set(table)].sort((a, b) => a - b);
-  if (scripts.join() !== w.inhabitants.map(i => i.script).join()) fail(`the inhabitants are SCRB ${w.inhabitants.map(i => i.script).join(',')}; ScummVM's table has ${scripts.join(',')}`);
+  if (scripts.join() !== w.inhabitants.map(i => i.script).join()) fail(`the inhabitants are SCRB ${w.inhabitants.map(i => i.script).join(',')}. ScummVM's table has ${scripts.join(',')}`);
   for (const id of [3000, 3001, 3002, 3003]) if (!arc.has('\0SND', id)) fail(`TOWN has no SND ${id}`);
-  console.log(`the world: 6 strips, ${houses.length} houses, ${rewards.length} reward buildings, ${w.things.length - houses.length - rewards.length} always there; all ${records} records of SCRB 1001-1003 placed; inhabitants SCRB ${scripts[0]}-${scripts[scripts.length - 1]}`);
+  console.log(`the world: 6 strips, ${houses.length} houses, ${rewards.length} reward buildings, ${w.things.length - houses.length - rewards.length} always there. All ${records} records of SCRB 1001-1003 placed. Inhabitants SCRB ${scripts[0]}-${scripts[scripts.length - 1]}`);
 }
 
 // ---- the buildings' names, against the program ------------------------------
@@ -117,7 +117,7 @@ else {
   if (plaques.length !== 16) fail(`read ${plaques.length} plaques, not 16`);
   S.ZB_TOWN_REWARDS.forEach((name, slot) => {
     const plaque = plaques[bySlot[slot]] || '';
-    if (!plaque.toLowerCase().includes('this ' + name.toLowerCase() + ' ')) fail(`slot ${slot} is the ${name}; its plaque reads "${plaque}"`);
+    if (!plaque.toLowerCase().includes('this ' + name.toLowerCase() + ' ')) fail(`slot ${slot} is the ${name}. Its plaque reads "${plaque}"`);
     else n++;
   });
   console.log(`names: ${n} of 16 reward buildings named as their plaques name them`);

@@ -42,7 +42,7 @@
    Unknown, a move gives a Zoombini a room and it is let in or turned
    away (zbHotelStrategy). At levels 1, 2 and 4 the player can always
    guarantee the whole band; at level 3 the player must settle floors and trunks
-   before knowing which traits they go by, and may settle them so that a
+   before knowing which traits they go by, so they may settle them so that a
    Zoombini's room is boarded, so with a large band fewer are guaranteed.
 
    WHERE IT CAME FROM
@@ -87,7 +87,7 @@ const ZB_HOTEL_LAST_STEP = 12;
 /* Most rooms boarded up at level 3. */
 const ZB_HOTEL_MOST_BOARDED = 8;
 /* ScummVM's reading, not checked in the program. */
-const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped. ScummVM’s option “Hotel Dimensia: Fix MIDI background music halt bug” fixes this; the option is on by default, and with it off the music stops as in the original. In ScummVM the music plays on in the 2001 release with the option on or off.';
+const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped. ScummVM’s option “Hotel Dimensia: Fix MIDI background music halt bug” fixes this. The option is on by default. With it off, the music stops as it did in the original game. In ScummVM, the music continues in the 2001 release whether the option is on or off.';
 
 /* How many of the five values of each trait (in ZB_HOTEL_AXES order) the
    band shows: the program's COUNTBODYPARTS. */
@@ -224,7 +224,7 @@ function zbHotelDiagram(band, { level, traits = null, maps = null, place, boards
    The play is worked out first by a rule of thumb, a move every
    hypothesis lets in if there is one (at level 3 the one that leaves the
    most room round the boards), else the one fewest hypotheses turn away;
-   and where that does not guarantee everyone, by minimax, memoised on the
+   and where that does not guarantee everyone, by minimax, memoized on the
    placings, the hypotheses left and the chances, within the budget. */
 function zbHotelStrategy(level, band, opts = {}) {
   const knows = opts.knows === 'form' ? 'form' : 'program', state = opts.state || null;
@@ -245,7 +245,7 @@ function zbHotelStrategy(level, band, opts = {}) {
   const hyps = [], byKey = new Map();
   for (const t of tuples) {
     if (knows === 'program' && (!suits(t) || (boards.length && !fitsBoards(t)))) continue;
-    /* Each Zoombini's class for each trait: who it is alike with. */
+    /* Each Zoombini's class for each trait: the Zoombinis it matches. */
     const lab = t.map(a => { const seen = []; return band.map(z => { const v = z[ZB_HOTEL_AXES[a]]; if (!seen.includes(v)) seen.push(v); return seen.indexOf(v); }); });
     const key = lab.map(l => l.join('')).join('|');
     if (byKey.has(key)) { byKey.get(key).weight++; byKey.get(key).tuples.push(t); continue; }
@@ -346,12 +346,14 @@ function zbHotelStrategy(level, band, opts = {}) {
     const free = ms.filter(m => m.acc.length === H.length);
     const least = Math.min(...ms.map(m => H.length - m.acc.length));
     if (level !== 3) return free.length ? free[0] : ms.find(m => H.length - m.acc.length === least);
-    /* At level 3 the boards matter, so each move is judged one step
-       ahead: by how many Zoombinis would have a room (fit) if the traits
-       became known straight after it, taking the worse of being let in
-       and being turned away. A
-       free move is tried for the first two kinds of Zoombini that have
-       one; otherwise the moves fewest hypotheses turn away, a dozen or two. */
+    /* At level 3 the boards matter, so the rule of thumb looks one move
+       ahead. For each move it counts how many Zoombinis would end up with
+       a room (fit) if the traits were known right after the move. It
+       counts this twice, once for the Zoombini being let in and once for
+       it being turned away, and scores the move by the smaller count.
+       Where some moves are let in under every hypothesis, only those for
+       the first two kinds of Zoombini are tried. Otherwise the 20 moves
+       that the fewest hypotheses turn away are tried. */
     const kinds = [...new Set(free.map(m => m.i))].slice(0, 2);
     const cands = free.length ? free.filter(m => kinds.includes(m.i))
       : ms.slice().sort((x, y) => y.acc.length - x.acc.length).slice(0, 20);
@@ -390,7 +392,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     /* No play does better than the worst hypothesis's best, known. */
     const ub = Math.min(...H.map(h => fit(h, P).count));
     if (b.v < ub) {
-      /* The most promising first: at level 3 by the step-ahead judgement
+      /* The most promising first: at level 3 by the step-ahead judgment
          of the rule of thumb, elsewhere those fewest would turn away. */
       const ms = moves(P, H), ahead = new Map();
       if (level === 3) for (const m of ms) {
@@ -425,16 +427,16 @@ function zbHotelStrategy(level, band, opts = {}) {
     const left = weight(H), u = unplaced(P), inside = n - u.length;
     const end = (move, lostCaption) => ({ move, zoombini: null, left, crossed: inside, spent: C - c, place: P, outcomes: [],
       diagram: zbHotelDiagram(band, { level, place: posList(P), boards, chances: c, lost: !!u.length, caption: lostCaption }) });
-    if (!u.length) return end(`Every Zoombini has a room: all ${inside} are in.`, `All ${inside} in rooms`);
-    if (!c) return end(`The counter is full and the hotel closes: ${u.length} without a room.`, `${inside} in rooms, ${u.length} left out`);
+    if (!u.length) return end(`Every Zoombini has a room, so all ${inside} are in.`, `All ${inside} in rooms`);
+    if (!c) return end(`The counter is full and the hotel closes, leaving ${u.length} without a room.`, `${inside} in rooms, ${u.length} left out`);
     const pl = plan || planFor(P, H, c);
-    if (pl.end && !pl.complete) return end(`No room is left that ${u.length === 1 ? 'the last Zoombini' : `the last ${u.length}`} could take: ${level === 3 ? 'the boards are in the way' : 'none would be let in'}.`, `${inside} in rooms, ${u.length} left out`);
+    if (pl.end && !pl.complete) return end(`${u.length === 1 ? 'The last Zoombini has' : `The last ${u.length} have`} no room left to take, because ${level === 3 ? 'the boards are in the way' : 'no room would let them in'}.`, `${inside} in rooms, ${u.length} left out`);
     let i, code, outcomes;
     if (pl.complete) {
       /* One hypothesis left: each to the room it must have. */
       const f = fit(H[0], P);
       i = u.find(k => !zbHotelBoarded(level, places.map((_, j) => f.maps[j].get(H[0].lab[j][k])), boards));
-      if (i == null) return end(`The traits are known now, and ${u.length} can have no room: theirs ${u.length === 1 ? 'is' : 'are'} boarded up.`, `${inside} in rooms, ${u.length} left out`);
+      if (i == null) return end(`The traits are known now, and ${u.length} can have no room, because ${u.length === 1 ? 'its room is' : 'their rooms are'} boarded up.`, `${inside} in rooms, ${u.length} left out`);
       code = codeOf(places.map((_, j) => f.maps[j].get(H[0].lab[j][i])));
       outcomes = [{ label: `It is let in (the traits are known)`, left, next: () => node(place(P, i, code), H, c, null) }];
     } else {
@@ -448,7 +450,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     return {
       move: `Give Zoombini ${i + 1} ${zbHotelRoomName(level, pos)}.`,
       zoombini: i, room: pos, rooms: posList(P), left, crossed: inside, place: P,
-      diagram: zbHotelDiagram(band, { level, place: posList(P), boards, sent: { i, pos }, chances: c, caption: `${left} hypotheses left; ${inside} in rooms` }),
+      diagram: zbHotelDiagram(band, { level, place: posList(P), boards, sent: { i, pos }, chances: c, caption: `${left} hypotheses left, ${inside} in rooms` }),
       outcomes,
     };
   };
@@ -462,28 +464,28 @@ function zbHotelStrategy(level, band, opts = {}) {
     hypotheses: hyp, guaranteed: plan0.v, exact, knows,
     root: node(P0, H0, C, plan0),
     notes: [
-      `${knows === 'form' ? 'The player knows only the level’s form: any' : 'The program could draw, for this band,'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}, ${H0.length} of them different for this band${knows === 'program' && level === 3 ? (boards.length ? ', counting only those the band fits round the boards (the program boards only rooms an arrangement leaves empty, so a puzzle set otherwise is not one it could deal)' : '; the boards were not given, so none are taken into account') : level === 3 && !boards.length ? '; the boards were not given, so none are taken into account' : ''}. Which floor, trunk or door takes which value is not hidden: the first Zoombini into each settles it.`,
-      'A move gives a Zoombini a room; it is let in or turned away, and each turning away moves the counter on.',
-      'A room every hypothesis would let it into is taken first; otherwise the one fewest hypotheses would turn it away from, and where that does not guarantee everyone, the move whose worse outcome still gets the most in.',
-      exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are guaranteed, and perhaps more could be.',
+      `${knows === 'form' ? 'The player knows only the level’s form. That allows' : 'For this band, the program could pick'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}. ${H0.length} of them are different for this band.${knows === 'program' && level === 3 ? (boards.length ? ' This counts only those that fit the band around the boards. The program only boards up rooms that an arrangement leaves empty, so a puzzle set up any other way is not one it could deal.' : ' The boards were not given, so they are left out.') : level === 3 && !boards.length ? ' The boards were not given, so they are left out.' : ''} The value of each floor, trunk or door is not hidden. The first Zoombini into each one sets it.`,
+      'A move gives a Zoombini a room. It is let in or turned away, and each time it is turned away the counter moves on.',
+      'If every hypothesis would let a Zoombini into a room, that room is used first. Otherwise the move is the room where the fewest hypotheses would turn it away. When that does not guarantee everyone a room, the move is the one that still fits the most Zoombinis when things go badly.',
+      exact ? 'The search is complete, so no way of playing guarantees more.' : 'The search ran out of time and played the rest by its rule of thumb. So at least this many are guaranteed, and maybe more could be.',
     ],
   };
 }
 
 ZB_PUZZLES.set('HOTEL', {
-  about: 'The band is given rooms in a hotel built in five tree trunks. Only Zoombinis alike in the traits that matter tonight may share a room, and which traits those are is hidden.',
+  about: 'The band is given rooms in a hotel built in five tree trunks. Only Zoombinis that match in tonight’s traits may share a room, and which traits those are is hidden.',
   levels: [
-    { rule: 'One trait, such as the nose: five rooms, one to a trunk, each for one of its values, whichever the first Zoombini in it has. The trait is drawn at random; if the band shows all five values of two or more traits, the trait drawn is one of which the band shows at least four values.',
-      chances: 'Seven Zoombinis may be turned away, the hotel growing darker each time; the seventh closes it to the rest of the band.',
+    { rule: 'One trait, such as the nose. There are five rooms, one in each trunk, and each room is for one value of the trait, set by the first Zoombini in it. The trait is picked at random. If the band shows all five values of two or more traits, the trait picked is one where the band has at least four of its values.',
+      chances: 'Seven Zoombinis may be turned away, and the hotel grows darker each time. The seventh closes it to the rest of the band.',
       notes: [ZB_HOTEL_MIDI] },
-    { rule: 'Two different traits, one for the floor and the other for the trunk: 25 rooms, one for each pair of values. Both are drawn as at level 1.',
-      chances: 'Ten Zoombinis may be turned away; the tenth closes the hotel.',
+    { rule: 'Two different traits, one for the floor and the other for the trunk, so there are 25 rooms, one for each pair of values. Both are picked as at level 1.',
+      chances: 'Ten Zoombinis may be turned away, and the tenth closes the hotel.',
       notes: [ZB_HOTEL_MIDI] },
-    { rule: 'Two traits for floor and trunk, as at level 2, except that the test is whether the band shows four values or more of two traits or more; and between 1 and 8 rooms are boarded up, rooms that a random arrangement of the band left empty.',
-      chances: 'Eight Zoombinis may be turned away; the eighth closes the hotel.',
+    { rule: 'Two traits for floor and trunk, as at level 2, but the test is whether the band shows four or more values of two or more traits. Between 1 and 8 rooms are boarded up. They are picked from rooms that a random arrangement of the band left empty.',
+      chances: 'Eight Zoombinis may be turned away, and the eighth closes the hotel.',
       notes: [ZB_HOTEL_MIDI] },
-    { rule: 'Three different traits, one each for floor, trunk and door: 125 rooms. Any three will do, whatever the band.',
-      chances: 'Ten Zoombinis may be turned away; the tenth closes the hotel.',
+    { rule: 'Three different traits, one each for floor, trunk and door, so there are 125 rooms. Any three will do, whatever the band.',
+      chances: 'Ten Zoombinis may be turned away, and the tenth closes the hotel.',
       notes: [ZB_HOTEL_MIDI] },
   ],
   deal(level, band, rnd) {
@@ -491,7 +493,7 @@ ZB_PUZZLES.set('HOTEL', {
     let axes, tries = 0;
     do {
       axes = [rnd.range(0, 3), rnd.range(0, 3), rnd.range(0, 3)];
-      if (++tries > 10000) return { setup: ['No traits suit this band; the program would keep drawing.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
+      if (++tries > 10000) return { setup: ['No traits suit this band, so the program would keep trying.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
     } while (!zbHotelAxesSuit(level, axes, variants));
     const used = axes.slice(0, level === 1 ? 1 : level === 4 ? 3 : 2).map(a => ZB_HOTEL_AXES[a]);
     const chances = ZB_HOTEL_LAST_STEP - ZB_HOTEL_FIRST_STEP[level - 1];
@@ -530,25 +532,25 @@ ZB_PUZZLES.set('HOTEL', {
       level === 1 ? `Five rooms, the lowest in each of five tree trunks.`
         : level === 4 ? `125 rooms: five tree trunks, five floors to a trunk and five doors to a floor.`
           : `25 rooms: five tree trunks, five floors to a trunk${level === 3 ? `, and ${boarded.length} of the rooms boarded up` : ''}.`,
-      `${band.length} Zoombinis to give rooms to, and ${chances} may be turned away.`,
+      `${band.length} Zoombinis need rooms, and ${chances} may be turned away.`,
     ];
     const place = ['room', 'floor', 'trunk', 'door'];
     const answer = [];
-    if (level === 1) answer.push(`Tonight the rooms go by ${used[0]}: each room takes Zoombinis with one kind of ${used[0]}, whichever the first one in it has.`);
+    if (level === 1) answer.push(`Tonight the rooms go by ${used[0]}. Each room is for one kind of ${used[0]}, set by the first Zoombini in it.`);
     else {
       const parts = used.map((k, i) => `the ${place[i + 1]}${i ? '' : ' goes'} by ${k}`);
-      answer.push(`Tonight ${zbWordsOr(parts, 'and')}: each ${zbWordsOr(place.slice(1, used.length + 1), 'and')} takes one kind, whichever the first Zoombini in it has, so Zoombinis share a room only if alike in ${used.length === 2 ? 'both' : 'all three'}.`);
+      answer.push(`Tonight ${zbWordsOr(parts, 'and')}. Each ${zbWordsOr(place.slice(1, used.length + 1), 'and')} is for one kind, set by the first Zoombini in it, so Zoombinis share a room only if they are alike in ${used.length === 2 ? 'both' : 'all three'}.`);
     }
     const kinds = new Map();
     for (const z of band) {
       const key = used.map(k => z[k]).join();
       kinds.set(key, (kinds.get(key) || 0) + 1);
     }
-    answer.push(`This band needs ${kinds.size} room${kinds.size === 1 ? '' : 's'}: ${zbWordsOr([...kinds.values()].sort((a, b) => b - a).map(String), 'and')} to a room.`);
+    answer.push(`This band needs ${kinds.size} room${kinds.size === 1 ? '' : 's'}. ${kinds.size === 1 ? 'It is for' : 'They are for'} ${zbWordsOr([...kinds.values()].sort((a, b) => b - a).map(String), 'and')} Zoombini${band.length === 1 ? '' : 's'}.`);
     if (level === 3) {
-      answer.push(`Boarded up, counting trunks from the left and floors from the top: ${boarded.slice().sort((a, b) => a - b).map(zbHotelRoomWords).join('; ')}.`);
-      answer.push(`One arrangement that fits round them: the floors from the top for Zoombinis with ${zbWordsOr(state.level3GeneratedRows.map(v => zbTraitWith(used[0], v)), 'and')}, `
-        + `the trunks from the left for ${zbWordsOr(state.level3GeneratedColumns.map(v => zbTraitWith(used[1], v)), 'and')}.`);
+      answer.push(`The boarded-up rooms, counting trunks from the left and floors from the top, are ${zbWordsOr(boarded.slice().sort((a, b) => a - b).map(zbHotelRoomWords), 'and')}.`);
+      answer.push(`One arrangement that fits around them puts Zoombinis with ${zbWordsOr(state.level3GeneratedRows.map(v => zbTraitWith(used[0], v)), 'and')} on the floors from the top, `
+        + `and Zoombinis with ${zbWordsOr(state.level3GeneratedColumns.map(v => zbTraitWith(used[1], v)), 'and')} in the trunks from the left.`);
     }
     const marks = band.map(z => used.map((k, i) => `${ZB_TRAIT_SHORT[k][z[k] - 1]} ${place[i === 0 && level === 1 ? 0 : i + 1]}`).join(', '));
     return { setup, answer, marks, state };
@@ -564,9 +566,9 @@ ZB_PUZZLES.set('HOTEL', {
       fields.push({ key: 'boarded', label: 'Boarded up', kind: 'several', min: 1, max: ZB_HOTEL_MOST_BOARDED, value: state.boarded.slice().sort((a, b) => a - b),
         options: Array.from({ length: 25 }, (_, slot) => ({ value: slot, label: zbHotelRoomWords(slot) })) });
     }
-    fields.push({ key: 'note', kind: 'note', note: `Which floor, trunk or door takes which value is not part of the puzzle: the first Zoombini into each settles it. `
-      + (level === 4 ? 'Any three different traits.' : level === 1 ? `For this band the program’s test lets it draw ${zbWordsOr(could, 'or')}.` : `The two must differ; for this band the program’s test lets it draw ${pairs} of the 12 pairs.`)
-      + (level === 3 ? ' The boards may be any 1 to 8 rooms; the program boards only rooms an arrangement of the band leaves empty, so with others the band may not all fit.' : '') });
+    fields.push({ key: 'note', kind: 'note', note: `The puzzle does not fix the value of each floor, trunk or door. The first Zoombini into each one sets it. `
+      + (level === 4 ? 'Any three different traits.' : level === 1 ? `For this band the program’s test lets it draw ${zbWordsOr(could, 'or')}.` : `The two must differ. For this band the program’s test lets it draw ${pairs} of the 12 pairs.`)
+      + (level === 3 ? ' The boards may be on any 1 to 8 rooms. The program boards up only rooms that an arrangement of the band leaves empty, so with other boards the band may not all fit.' : '') });
     return fields;
   },
   edit(level, band, state, values) {
@@ -618,10 +620,10 @@ ZB_PUZZLES.set('HOTEL', {
       const inside = band.map((_, i) => i).filter(i => !zbHotelBoarded(level, pos[i], boards)), out = band.map((_, i) => i).filter(i => !inside.includes(i));
       const rooms = new Map();
       for (const i of inside) { const key = pos[i].join(); if (!rooms.has(key)) rooms.set(key, []); rooms.get(key).push(i); }
-      const steps = places.map((pl, j) => `${level === 1 ? 'Rooms' : pl[0].toUpperCase() + pl.slice(1) + 's'} ${level === 1 ? 'from the left' : order[j]} by ${traits[j]}: ${byPos(j, p.maps[j]).join(', ')}.`);
+      const steps = places.map((pl, j) => `${level === 1 ? 'Rooms' : pl[0].toUpperCase() + pl.slice(1) + 's'} ${level === 1 ? 'from the left' : order[j]} go by ${traits[j]}, in the order ${byPos(j, p.maps[j]).join(', ')}.`);
       steps.push('Rooms: ' + [...rooms.entries()].sort((a, b) => a[1][0] - b[1][0]).map(([key, who]) => `${zbPlacesWords(who)} in ${zbHotelRoomName(level, key.split(',').map(Number))}`).join('; ') + '.');
-      if (out.length) steps.push(`No room for ${zbPlacesWords(out)}: under this arrangement ${out.length === 1 ? 'its' : 'theirs'} would be boarded up, and no arrangement does better.`);
-      steps.push('In any order, and no one is turned away.');
+      if (out.length) steps.push(`No room for ${zbPlacesWords(out)}, because under this arrangement ${out.length === 1 ? 'its room' : 'their rooms'} would be boarded up, and no arrangement does better.`);
+      steps.push('They can go in any order, and no one is turned away.');
       return {
         title: `${inside.length === n ? `All ${n}` : `${inside.length} of ${n}`} in rooms${k ? ', another arrangement' : ', the simplest arrangement'}`,
         steps, crosses: inside,
@@ -632,10 +634,10 @@ ZB_PUZZLES.set('HOTEL', {
       most, exact: true, ways,
       solutions,
       notes: [
-        'Being in means having a room; a Zoombini left without one does not go on.',
-        'With the traits known, each Zoombini has the room of its values once an arrangement is chosen: which value each floor, trunk or door takes, settled by the first Zoombini into it. Each arrangement is one way; the order of placing does not matter.',
-        `Simplest: the band's values in the order of each trait (${zbWordsOr(traits.map(k => ZB_TRAIT_SHORT[k][0].toLowerCase() + ' first'), 'and')}) from the top floor and the leftmost trunk${level === 4 ? ' and door' : ''}; then the others by how far their values stray from that.`,
-        ...(level === 3 ? [most === n ? `Round the boards ${ways} of the arrangements fit the whole band.` : `No arrangement fits the whole band round these boards: the most is ${most}, in ${ways} arrangement${ways === 1 ? '' : 's'}.`] : []),
+        'Being in means having a room. A Zoombini without one does not go on.',
+        'With the traits known, each Zoombini has the room that matches its values once an arrangement is chosen. An arrangement sets the value of each floor, trunk or door, and the first Zoombini into each one sets it. Each arrangement is one way, and the order of placing does not matter.',
+        `The simplest arrangement puts the band’s values in the order of each trait (${zbWordsOr(traits.map(k => ZB_TRAIT_SHORT[k][0].toLowerCase() + ' first'), 'and')}) from the top floor and the leftmost trunk${level === 4 ? ' and door' : ''}. The others are ordered by how far their values are from that.`,
+        ...(level === 3 ? [most === n ? `Around the boards, ${ways} of the arrangements fit the whole band.` : `No arrangement fits the whole band around these boards. The most is ${most}, in ${ways} arrangement${ways === 1 ? '' : 's'}.`] : []),
       ],
     };
   },

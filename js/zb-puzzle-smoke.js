@@ -6,12 +6,12 @@
 
    One at a time, each Zoombini rides a cart in from the left, and a
    reflection of a Zoombini is set in the mirror at the far end. The two
-   are compared in the centre crystal between them: the Zoombini as seen
+   are compared in the center crystal between them: the Zoombini as seen
    through the filters on the cart's side, the reflection as seen through
    the filters on the mirror's side. If they look the same the Zoombini
    crosses; if not it is knocked back to the Shade Tree camp. Each
    Zoombini rides once, and no other count is kept. (The words
-   reflection, mirror and centre crystal are from the game's help;
+   reflection, mirror and center crystal are from the game's help;
    ScummVM calls the reflections crystals.)
 
    A filter sets one or two traits (a cap, a red nose), and at levels 3
@@ -36,7 +36,7 @@
    mirror is fixed; six filters are dealt for the player to place, up to
    three on each side, in order. They are made from the first Zoombini
    (at level 4 the first two, each with a separate reflection) as a
-   grid of rows: rows 1 and 2 bring it from the cart to the centre
+   grid of rows: rows 1 and 2 bring it from the cart to the center
    crystal, rows 3 and 4 bring the reflection there to the same image,
    and the reflection is worked out backwards through rows 4 and 3; rows
    5 and 6 are decoys. Each row sets one or two traits, drawing values
@@ -90,7 +90,7 @@
    (kGridRunnerPositions 0-5), two rows of three, among them. */
 const ZB_SMOKE_REFLECTIONS = [
   { x: 459, y: 26, name: 'top left' }, { x: 535, y: 25, name: 'top right' },
-  { x: 429, y: 80, name: 'middle left' }, { x: 500, y: 84, name: 'centre' }, { x: 619, y: 76, name: 'middle right' },
+  { x: 429, y: 80, name: 'middle left' }, { x: 500, y: 84, name: 'center' }, { x: 619, y: 76, name: 'middle right' },
   { x: 423, y: 168, name: 'bottom left' }, { x: 525, y: 167, name: 'bottom middle' }, { x: 605, y: 163, name: 'bottom right' },
 ];
 const ZB_SMOKE_FILTER_HOMES = [
@@ -98,9 +98,9 @@ const ZB_SMOKE_FILTER_HOMES = [
   { x: 421, y: 160, name: 'bottom left' }, { x: 483, y: 153, name: 'bottom middle' }, { x: 612, y: 153, name: 'bottom right' },
 ];
 /* Level 2's four fixed filters (kLevel2RunnerPositions), left to right:
-   0 next to the cart, 1 next to the centre crystal, 2 past it, 3 next to
+   0 next to the cart, 1 next to the center crystal, 2 past it, 3 next to
    the mirror. */
-const ZB_SMOKE_L2_PLACES = ['next to the cart', 'between it and the centre crystal', 'past the centre crystal', 'next to the mirror'];
+const ZB_SMOKE_L2_PLACES = ['next to the cart', 'between it and the center crystal', 'past the center crystal', 'next to the mirror'];
 /* How many of each the stacks are dealt (buildRunnerStacks). */
 const ZB_SMOKE_REFLECTION_COUNT = 8;
 const ZB_SMOKE_L2_FILTERS = 4;
@@ -130,12 +130,12 @@ function zbSmokeThrough(image, filters) {
   return out;
 }
 
-/* What a filter does, in a few words: "steps the nose on and gives a cap". */
+/* What a filter does, in a few words: "moves the nose to its next value and gives a cap". */
 function zbSmokeFilterWords(f) {
   const gives = [];
   for (let c = 0; c < 4; c++) if (c !== f.cycle && f.traits[c]) gives.push(zbTraitWith(ZB_TRAIT_KINDS[c], f.traits[c]));
   const parts = [];
-  if (f.cycle >= 0) parts.push(`steps the ${ZB_TRAIT_KINDS[f.cycle]} on`);
+  if (f.cycle >= 0) parts.push(`moves the ${ZB_TRAIT_KINDS[f.cycle]} to its next value`);
   if (gives.length) parts.push(`gives ${zbWordsOr(gives, 'and')}`);
   return parts.join(' and ');
 }
@@ -171,7 +171,7 @@ function zbSmokeLevel2Filter(idx, rnd, s) {
       }
     } else {
       /* The mirror's side: a trait at random, given the value the
-         Zoombini has in the centre crystal; one a cart-side filter set is
+         Zoombini has in the center crystal; one a cart-side filter set is
          given only on a roll above 65, or on the last try if nothing is
          set. */
       const slot = rnd.range(0, 3);
@@ -190,7 +190,7 @@ function zbSmokeLevel2Filter(idx, rnd, s) {
     valueBound--;
     if (slotBound < 0 || valueBound < 0) break;
   }
-  /* The picked Zoombini as it reaches the centre crystal; after the last
+  /* The picked Zoombini as it reaches the center crystal; after the last
      filter, the traits the mirror's side covers are cleared, and the
      matching reflection draws them at random. */
   for (let c = 0; c < 4; c++) if (s.seenA[c]) s.question[c] = s.seenA[c];
@@ -242,9 +242,9 @@ function zbSmokeGrid(level, q0, q1, rnd) {
     }
   }
   const carryP = lastP.slice(), carryS = lastS.slice();
-  /* Rows 3 and 4, the mirror's side, next to the centre crystal and next
+  /* Rows 3 and 4, the mirror's side, next to the center crystal and next
      to the mirror: each hands back the value the Zoombini has in the
-     centre crystal, by stepping from one below it or setting it again. */
+     center crystal, by stepping from one below it or setting it again. */
   for (let row = 3; row < 5; row++) {
     const pool = [0, 1, 2, 3, 4, 5, 6, 7];
     let filled = 0, made = false, last = 5;
@@ -352,7 +352,7 @@ function zbSmokeGridFilter(grid, row) {
    (source, reflection) pair look the same, as ScummVM's debugGetAnswer
    searches: by count, then cart-side count, then the filters in
    lexicographic order. Returns { left, right } as indices into filters,
-   left from the cart and right from the centre crystal, or null. */
+   left from the cart and right from the center crystal, or null. */
 function zbSmokeSearch(filters, pairs) {
   const nextPermutation = a => {
     let i = a.length - 2;
@@ -380,29 +380,29 @@ function zbSmokeSearch(filters, pairs) {
 }
 
 ZB_PUZZLES.set('SMOKE', {
-  about: 'One at a time, each Zoombini rides a cart towards the centre crystal, and a reflection of a Zoombini is set in the mirror at the far end. Seen through the filters on each side, the Zoombini and the reflection must look the same in the centre crystal, or the Zoombini is knocked back to the Shade Tree camp.',
+  about: 'One at a time, each Zoombini rides a cart toward the center crystal, and a reflection of a Zoombini is placed in the mirror at the far end. Seen through the filters on each side, the Zoombini and the reflection must look the same in the center crystal. If they do not, the Zoombini is knocked back to the Shade Tree camp.',
   levels: [
-    { rule: 'One Zoombini still to cross is picked at random, and one of eight reflections on the wall, also at random, shows it exactly; the other seven show random Zoombinis. The player puts a Zoombini in the cart and a reflection in the mirror, and each ride is followed by a new pick and a new set of reflections.',
-      chances: 'None are counted: each Zoombini rides the cart once, and one that does not match is knocked back to the Shade Tree camp.',
+    { rule: 'One Zoombini still waiting to cross is picked at random. One of the eight reflections on the wall, also picked at random, shows it exactly, and the other seven show random Zoombinis. The player puts a Zoombini in the cart and a reflection in the mirror. After each ride there is a new pick and a new set of reflections.',
+      chances: 'None are counted. Each Zoombini rides the cart one time, and one that does not match is knocked back to the Shade Tree camp.',
       notes: [
-        'From the second ride on, the seven other reflections take only the first four of each trait’s values, so one with a cap, sunglasses, a blue nose or a propeller is the match.',
-        'From the second ride on, while fewer than eight Zoombinis are left to go, the program puts the matching reflection among the first that many, counted along the rows from the top left; ScummVM puts it among all eight.',
+        'From the second ride on, the seven other reflections only use the first four values of each trait. So a reflection with a cap, sunglasses, a blue nose or a propeller is the match.',
+        'From the second ride on, when fewer than eight Zoombinis are left, the program puts the matching reflection in one of the first few places, as many places as there are Zoombinis left, counted along the rows from the top left. ScummVM can put it in any of the eight.',
       ] },
-    { rule: 'As at level 1, with four filters in fixed places, each giving one or two traits: two between the cart and the centre crystal, two between it and the mirror. They are made from the Zoombini picked, so that it looks through the first two as its reflection looks through the other two; the reflection’s traits the second pair covers are random.',
-      chances: 'None are counted, as at level 1: one ride each, and a Zoombini that does not match is knocked back.',
+    { rule: 'As at level 1, with four filters in fixed places, each one showing one or two traits. Two are between the cart and the center crystal, and two are between the crystal and the mirror. They are made from the Zoombini picked, so it looks the same through the first two as its reflection does through the other two. The reflection’s traits that the second pair covers are random.',
+      chances: 'None are counted, as at level 1. Each Zoombini has one ride, and one that does not match is knocked back.',
       notes: [
-        'As at level 1, after the first ride a reflection with a value the others cannot have (a cap, sunglasses, a blue nose or a propeller) is the match, and the match is among the first few places while fewer than eight Zoombinis are left.',
+        'As at level 1, after the first ride a reflection with a value the others cannot have (a cap, sunglasses, a blue nose or a propeller) is the match. While fewer than eight Zoombinis are left, the match is in one of the first few places.',
       ] },
-    { rule: 'The Zoombinis go in line and the reflection in the mirror is fixed; six filters are dealt to be placed, up to three on each side of the centre crystal, in order. Each gives one or two traits, and some step one trait on instead, to the next value in the maker’s order, the fifth back to the first. Four are made to work for the Zoombini, two on each side; two are random.',
-      chances: 'None are counted: each Zoombini rides once, and one that does not match is knocked back.',
+    { rule: 'The Zoombinis go in line, and the reflection in the mirror is fixed. Six filters are dealt to be placed in order, up to three on each side of the center crystal. Each filter shows one or two traits, or moves one trait to its next value in the maker’s order (the fifth goes back to the first). Four filters are made to work for the Zoombini, two on each side, and two are random.',
+      chances: 'None are counted. Each Zoombini has one ride, and one that does not match is knocked back.',
       notes: [
-        'The first Zoombini’s filters are laid out in the order they were made, so the top left then top middle filters on the cart’s side, and the top right then bottom left on the mirror’s side counting from the centre crystal, always work. Later sets are shuffled.',
+        'The first Zoombini’s filters are laid out in the order they were made. So the top left and top middle filters on the cart’s side, and the top right and bottom left on the mirror’s side (counting from the center crystal), always work. Later sets are shuffled.',
         'In the program’s debug mode, F4 stops the shuffle for the sets that follow and F5 starts it again.',
       ] },
-    { rule: 'As at level 3, but the Zoombinis go two at a time, the first two in line first, each with a reflection of its own, and the four working filters are made to serve both at once. Of the other two, one copies a working filter with its given values moved on one, and the other gives one trait at random.',
-      chances: 'None are counted: each Zoombini rides once, and one that does not match is knocked back.',
+    { rule: 'As at level 3, but the Zoombinis go two at a time, the first two in line first, each with a reflection. The four working filters are made to work for both together. Of the other two filters, one copies a working filter with its values moved on by one, and the other shows one random trait.',
+      chances: 'None are counted. Each Zoombini has one ride, and one that does not match is knocked back.',
       notes: [
-        'As at level 3, the first pair’s filters are laid out in the order they were made: top left then top middle on the cart’s side, top right then bottom left on the mirror’s.',
+        'As at level 3, the first pair’s filters are laid out in the order they were made. These are top left and top middle on the cart’s side, and top right and bottom left on the mirror’s side.',
       ] },
   ],
   form(level, band, state) { return zbSmokeForm(level, band, state); },
@@ -429,11 +429,11 @@ ZB_PUZZLES.set('SMOKE', {
       const cart = z => zbSmokeThrough(z, filters.slice(0, 2));
       const matches = zbSmokeMatches(band, filters, reflections);
       const named = list => zbWordsOr(list.map(c => ZB_SMOKE_REFLECTIONS[c].name));
-      const setup = [`Eight reflections on the wall. ${n} Zoombini${n === 1 ? '' : 's'} to cross, one cart ride each.`,
-        `The reflections: ${reflections.map((c, i) => `${ZB_SMOKE_REFLECTIONS[i].name}: ${zbZoombiniWords(zbSmokeObj(c))}`).join('; ')}.`];
-      if (level === 2) setup.push(`The filters: ${filters.map((f, i) => `${ZB_SMOKE_L2_PLACES[i]}, one that ${zbSmokeFilterWords(f)}`).join('; ')}.`);
+      const setup = [`Eight reflections on the wall. ${n} Zoombini${n === 1 ? ' needs' : 's need'} to cross, with one cart ride each.`,
+        reflections.map((c, i) => `The ${ZB_SMOKE_REFLECTIONS[i].name} reflection shows ${zbZoombiniWords(zbSmokeObj(c))}.`).join(' ')];
+      if (level === 2) setup.push(filters.map((f, i) => `The filter ${ZB_SMOKE_L2_PLACES[i]} ${zbSmokeFilterWords(f)}.`).join(' '));
       const answer = [`The Zoombini picked is ${zbZoombiniWords(band[pick])}, and the ${ZB_SMOKE_REFLECTIONS[target].name} reflection is its match`
-        + (level === 2 ? `: both look ${zbZoombiniWords(zbSmokeObj(cart(images[pick])))} in the centre crystal.` : '.')];
+        + (level === 2 ? `. Both look ${zbZoombiniWords(zbSmokeObj(cart(images[pick])))} in the center crystal.` : '.')];
       const chance = band.map((z, i) => i).filter(i => matches[i].length && !matches[i].includes(target));
       if (chance.length) answer.push(`By chance, ${zbWordsOr(chance.map(i => `${zbZoombiniWords(band[i])} matches the ${named(matches[i])} reflection`), 'and')}.`);
       return {
@@ -456,14 +456,14 @@ ZB_PUZZLES.set('SMOKE', {
     const names = list => zbWordsOr(list.map(i => ZB_SMOKE_FILTER_HOMES[i].name), 'then');
     const placing = p => !p.left.length && !p.right.length ? 'no filters at all'
       : `${p.left.length ? `the ${names(p.left)} filter${p.left.length > 1 ? 's' : ''} on the cart’s side` : 'none on the cart’s side'}`
-        + ` and ${p.right.length ? `the ${names(p.right)} on the mirror’s side, from the centre crystal out` : 'none on the mirror’s side'}`;
+        + ` and ${p.right.length ? `the ${names(p.right)} on the mirror’s side, counting out from the center crystal` : 'none on the mirror’s side'}`;
     const setup = [
       pair ? `The first two in line, ${zbZoombiniWords(band[0])} and ${zbZoombiniWords(band[1])}, ride first, with reflections of ${zbZoombiniWords(zbSmokeObj(grid.primary[7]))} and ${zbZoombiniWords(zbSmokeObj(grid.secondary[8]))}.`
-        : `The first in line, ${zbZoombiniWords(band[0])}, rides first; the mirror shows ${zbZoombiniWords(zbSmokeObj(grid.primary[7]))}.`,
-      `The filters: ${filters.map((f, i) => `${ZB_SMOKE_FILTER_HOMES[i].name} ${zbSmokeFilterWords(f)}`).join('; ')}.`,
+        : `The first in line, ${zbZoombiniWords(band[0])}, rides first, and the mirror shows ${zbZoombiniWords(zbSmokeObj(grid.primary[7]))}.`,
+      filters.map((f, i) => `The ${ZB_SMOKE_FILTER_HOMES[i].name} filter ${zbSmokeFilterWords(f)}.`).join(' '),
     ];
     const answer = found ? [`${pair ? 'Both match their reflections' : 'The first matches its reflection'} with ${placing(found)}.`]
-      : ['No placement of the filters makes it match; the program would turn it away.'];
+      : ['No placement of the filters makes it match, so the program would turn it away.'];
     const made = { left: [0, 1], right: [2, 3] };
     if (found && JSON.stringify(found) !== JSON.stringify(made)) answer.push(`The filters were made for ${placing(made)}.`);
     const marks = band.map(() => null);
@@ -499,7 +499,7 @@ function zbSmokeDisplay(filters) {
 
 function zbSmokeForm(level, band, state) {
   if (level >= 3) {
-    return [{ key: 'note', kind: 'note', note: `The six filters and the reflection${level === 4 ? 's' : ''} in the mirror are made together from the first ${level === 4 ? 'two' : 'Zoombini'} in line by the program’s recipe, and cannot be edited here; change the band or deal again instead.` }];
+    return [{ key: 'note', kind: 'note', note: `The six filters and the reflection${level === 4 ? 's' : ''} in the mirror are made together from the first ${level === 4 ? 'two' : 'Zoombini'} in line using the program’s method. They cannot be edited here, but you can change the band or deal again.` }];
   }
   return [
     { key: 'picked', label: 'The program picks', kind: 'choice', value: state.questionIndex,
@@ -507,8 +507,8 @@ function zbSmokeForm(level, band, state) {
     { key: 'place', label: 'Its reflection is', kind: 'choice', value: state.questionCrystalIdx,
       options: ZB_SMOKE_REFLECTIONS.map((r, i) => ({ value: i, label: r.name })) },
     { key: 'note', kind: 'note', note: level === 2
-      ? 'The four filters are made from the Zoombini picked: picking another deals them again from it (from a fixed seed), and its reflection with them. The other seven reflections are as dealt.'
-      : 'The other seven reflections are as dealt; moving the match swaps it with the one in its new place.' },
+      ? 'The four filters are made from the Zoombini picked. Picking another one deals them again for it (from a fixed seed), along with its reflection. The other seven reflections stay as dealt.'
+      : 'The other seven reflections stay as dealt. Moving the match swaps it with the reflection in its new place.' },
   ];
 }
 
@@ -533,13 +533,13 @@ function zbSmokeEdit(level, band, state, values) {
       const rnd = zbRandom(seed >>> 0), s2 = { question, display: Array.from({ length: 8 }, () => [0, 0, 0, 0]) };
       filters = [0, 1, 2, 3].map(i => zbSmokeLevel2Filter(i, rnd, s2));
     } else {
-      /* As the filters left it: the picked Zoombini at the centre crystal,
+      /* As the filters left it: the picked Zoombini at the center crystal,
          with the traits the mirror's side covers cleared. */
       const s2 = { question };
       for (const f of filters.slice(0, 2)) for (let c = 0; c < 4; c++) if (f.traits[c]) s2.question[c] = f.traits[c];
       for (const f of filters.slice(2)) for (let c = 0; c < 4; c++) if (f.traits[c] && f.traits[c] === s2.question[c]) s2.question[c] = 0;
     }
-    /* The reflection: the picked Zoombini as it reaches the centre
+    /* The reflection: the picked Zoombini as it reaches the center
        crystal, and where the mirror's filters cover a trait, the dealt
        reflection's value, which the program draws at random. */
     reflections[place] = question.map((v, c) => v || base[c]);
@@ -550,7 +550,7 @@ function zbSmokeEdit(level, band, state, values) {
 
 /* Every placement of the six filters, up to three a side in order, that
    makes each (source, reflection) pair look the same: { left, right },
-   left from the cart and right from the centre crystal, fewest filters
+   left from the cart and right from the center crystal, fewest filters
    first, then fewest on the cart's side, then by the filters' places. */
 function zbSmokePlacements(filters, pairs) {
   const out = [], idx = [0, 1, 2, 3, 4, 5];
@@ -571,12 +571,12 @@ function zbSmokePlacements(filters, pairs) {
 function zbSmokeSolve(level, band, state) {
   const n = band.length, all = band.map((_, i) => i);
   const later = n > 1
-    ? `The rides after the first are dealt as the band goes: after each ride the program ${level <= 2 ? 'picks another of those left and deals the reflections again, one of them its match' : 'makes a new set of filters, and a reflection, from the next in line'}, so each can be matched in its turn, and all ${n} cross.`
+    ? `The rides after the first are dealt as the band goes. After each ride the program ${level <= 2 ? 'picks another Zoombini and deals the reflections again, with one of them its match' : 'makes a new set of filters and a reflection from the next in line'}. So each Zoombini can be matched in its turn, and all ${n} cross.`
     : 'There is one ride.';
   const notes = [
-    'To cross here is to match: a Zoombini whose image and reflection look the same in the centre crystal crosses, and one that does not is knocked back to the Shade Tree camp; each rides only one time.',
+    'To cross here, a Zoombini must match. A Zoombini whose image and reflection look the same in the center crystal crosses, and one that does not is knocked back to the Shade Tree camp. Each Zoombini has one ride.',
     later,
-    'The rides after the first are not drawn here: the program deals them from random numbers the game’s animations share, so what they will be is not known in advance, only that they can be matched. The solutions below are for the first ride.',
+    'The rides after the first are not shown here. The program deals them from random numbers that the game’s animations also use, so they cannot be known in advance. It is only known that they can be matched. The solutions below are for the first ride.',
   ];
   if (level <= 2) {
     /* Every band member and reflection that match, alike Zoombinis once;
@@ -592,15 +592,16 @@ function zbSmokeSolve(level, band, state) {
     const filters = state.level2RunnerStates;
     const through = i => zbSmokeThrough(zbSmokeZ(band[i]), filters.slice(0, 2));
     const matching = new Set(pairs.map(p => p.i)).size;
-    notes.push(`On the first ride ${matching} of the band ${matching === 1 ? 'matches' : 'match'} a reflection: the Zoombini the program picked${matching > 1 ? ', and the others by chance' : ''}. Any of them may ride first; each way is one Zoombini and one reflection, with two alike Zoombinis counted as one.`);
+    notes.push(matching === 1 ? 'On the first ride, only the Zoombini the program picked matches a reflection.'
+      : `On the first ride, ${matching} of the band match a reflection. One is the Zoombini the program picked, and the others match by chance. Any of them may ride first. Each way is one Zoombini and one reflection, with two Zoombinis that look alike counted as one.`);
     return {
       most: n, exact: true, ways: pairs.length,
       solutions: pairs.slice(0, 12).map(({ i, r }) => ({
         title: `Zoombini ${i + 1} with the ${ZB_SMOKE_REFLECTIONS[r].name} reflection${i === state.questionIndex ? '' : ', by chance'}`,
         steps: [
           `Put Zoombini ${i + 1} in the cart and the ${ZB_SMOKE_REFLECTIONS[r].name} reflection in the mirror.`,
-          level === 2 ? `Through the filters both look ${zbZoombiniWords(zbSmokeObj(through(i)))} in the centre crystal.` : 'They are the same Zoombini.',
-          ...(n > 1 ? ['Then, ride by ride, the one the program picks next with its reflection.'] : []),
+          level === 2 ? `Through the filters both look ${zbZoombiniWords(zbSmokeObj(through(i)))} in the center crystal.` : 'They are the same Zoombini.',
+          ...(n > 1 ? ['Then each later ride uses the Zoombini the program picks next, with its reflection.'] : []),
         ],
         crosses: all,
         diagram: zbSmokeDiagram(level, band, state, { ride: [i], reflection: r, caption: `The first ride: Zoombini ${i + 1}` }),
@@ -615,35 +616,35 @@ function zbSmokeSolve(level, band, state) {
   const found = zbSmokePlacements(filters, sources.map((q, k) => [q, images[k]]));
   const names = list => zbWordsOr(list.map(i => ZB_SMOKE_FILTER_HOMES[i].name), 'then');
   const fw = i => `${ZB_SMOKE_FILTER_HOMES[i].name} (${zbSmokeFilterWords(filters[i])})`;
-  notes.push(`Every placement of the six filters that works for the first ${pair ? 'two' : 'Zoombini'} is counted: ${found.length}. The simplest has the fewest filters, then the fewest on the cart’s side.`);
-  notes.push('The program makes the filters so that the top left then top middle on the cart’s side and the top right then bottom left on the mirror’s side always work; the first set is laid out in that order.');
+  notes.push(`Every placement of the six filters that works for the first ${pair ? 'two' : 'Zoombini'} is counted, ${found.length} in all. The simplest has the fewest filters, then the fewest on the cart’s side.`);
+  notes.push('The program makes the filters so that the top left and top middle on the cart’s side, and the top right and bottom left on the mirror’s side, always work. The first set is laid out in that order.');
   return {
     most: n, exact: true, ways: found.length,
     solutions: found.slice(0, 12).map(p => {
       const k = p.left.length + p.right.length;
       return {
-        title: `${k} filter${k === 1 ? '' : 's'}${k ? `: ${p.left.length ? names(p.left) : 'none'} | ${p.right.length ? names(p.right) : 'none'}` : ''}`,
+        title: `${k} filter${k === 1 ? '' : 's'}${k ? `, ${p.left.length ? names(p.left) : 'none'} on the cart’s side and ${p.right.length ? names(p.right) : 'none'} on the mirror’s side` : ''}`,
         steps: [
-          p.left.length ? `On the cart’s side, from the cart: ${zbWordsOr(p.left.map(fw), 'then')}.` : 'On the cart’s side, no filter.',
-          p.right.length ? `On the mirror’s side, from the centre crystal: ${zbWordsOr(p.right.map(fw), 'then')}.` : 'On the mirror’s side, no filter.',
-          ...sources.map((q, s) => `${pair ? (s ? 'The second, ' : 'The first, ') : ''}${zbZoombiniWords(band[s])}, and ${pair ? 'its' : 'the'} reflection both look ${zbZoombiniWords(zbSmokeObj(zbSmokeThrough(q, p.left.map(i => filters[i]))))} in the centre crystal.`),
+          p.left.length ? `On the cart’s side, from the cart outwards, ${zbWordsOr(p.left.map(fw), 'then')}.` : 'On the cart’s side, no filter.',
+          p.right.length ? `On the mirror’s side, from the center crystal outwards, ${zbWordsOr(p.right.map(fw), 'then')}.` : 'On the mirror’s side, no filter.',
+          ...sources.map((q, s) => `${pair ? (s ? 'The second, ' : 'The first, ') : ''}${zbZoombiniWords(band[s])}, and ${pair ? 'its' : 'the'} reflection both look ${zbZoombiniWords(zbSmokeObj(zbSmokeThrough(q, p.left.map(i => filters[i]))))} in the center crystal.`),
         ],
         crosses: all,
-        diagram: zbSmokeDiagram(level, band, state, { ride: pair ? [0, 1] : [0], placement: p, caption: `The first ride${pair ? ', two at once' : ''}: ${k} filter${k === 1 ? '' : 's'}` }),
+        diagram: zbSmokeDiagram(level, band, state, { ride: pair ? [0, 1] : [0], placement: p, caption: `The first ride${pair ? ', two at once' : ''}, with ${k} filter${k === 1 ? '' : 's'}` }),
       };
     }),
     notes,
   };
 }
 
-/* An image as the game's parts, hair above feet, centred on x, y. */
+/* An image as the game's parts, hair above feet, centered on x, y. */
 function zbSmokeImageItems(t, x, y, extra = {}) {
   return ZB_TRAIT_KINDS.map((kind, c) => Object.assign({ t: 'trait', kind, value: t[c], x, y: y - 27 + c * 18, scale: 1.5 }, extra));
 }
 
 /* The machine drawn: the band waiting, the wall (the reflections at
    levels 1 and 2, the filters' homes at 3 and 4), and along the bottom
-   the cart, the filters in their places, the centre crystal with the
+   the cart, the filters in their places, the center crystal with the
    image seen there, and the mirror. ride is the band members in the
    cart; reflection the one in the mirror (levels 1 and 2); placement the
    filters placed (levels 3 and 4). */
@@ -661,7 +662,7 @@ function zbSmokeDiagram(level, band, state, { ride = [], reflection = null, plac
   items.push({ t: 'rect', x: 22, y: Y - 8, w: 88, h: 30, r: 4, fill: 'wood', stroke: 'line' });
   items.push({ t: 'text', x: 66, y: Y + 44, text: 'the cart', size: 11, anchor: 'middle', fill: 'dim' });
   items.push({ t: 'circle', x: 400, y: Y - 20, r: 44, fill: 'panel', stroke: 'accent', width: 2 });
-  items.push({ t: 'text', x: 400, y: Y + 44, text: 'the centre crystal', size: 11, anchor: 'middle', fill: 'dim' });
+  items.push({ t: 'text', x: 400, y: Y + 44, text: 'the center crystal', size: 11, anchor: 'middle', fill: 'dim' });
   const two = level === 4 && n > 1 && ride.length > 1;
   items.push(two ? { t: 'rect', x: 672, y: Y - 70, w: 120, h: 96, r: 8, fill: 'panel', stroke: 'ink', width: 2 }
     : { t: 'rect', x: 700, y: Y - 70, w: 80, h: 96, r: 8, fill: 'panel', stroke: 'ink', width: 2 });

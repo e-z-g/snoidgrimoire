@@ -62,7 +62,7 @@ if (fs.existsSync(HDR)) {
     for (const k of Object.keys(offsets)) if (!(k in want)) fail(`${k} is not a ZmbStateFile member with an offset`);
   }
   if (Object.keys(want).length < 60) fail(`only ${Object.keys(want).length} fields found in the header`);
-} else console.log('SKIP the header offsets: no reference/scummvm-zoombini');
+} else console.log('SKIP the header offsets, no reference/scummvm-zoombini');
 
 let threw = 0;
 for (const n of [0, 44558, 44560, 1606]) try { S.zbSaveRead(new Uint8Array(n)); } catch { threw++; }
@@ -86,7 +86,7 @@ const bbh = f.routes[0], at = k => bbh.places.find(p => p.key === k);
 eq([at('BRIDGE').left, at('BRIDGE').perfect], [[1], [1]], 'the Allergic Cliffs');
 eq([at('TUNNELS').left, at('TUNNELS').perfect], [[1], []], 'the Stone Cold Caves');
 eq(f.routes.flatMap(r => r.places.filter(p => p.raw).map(p => p.key)), ['BRIDGE', 'TUNNELS'], 'the places with level flags');
-eq(f.routes.map(r => r.places.map(p => p.map)), [[1, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], 'the map\'s colours');
+eq(f.routes.map(r => r.places.map(p => p.map)), [[1, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], 'the map\'s colors');
 eq(f.routes.map(r => [r.level, r.crossed, r.perfectCount]), [[1, [], 0], [1, [], 0], [1, [], 0], [1, [], 0]], 'the routes');
 eq(f.pageLevelFlags.slice(0, 3), [0, 0, 0], 'the three reserved level bytes');
 // No band; all sixteen back on the isle; nothing at the camps or in town.
@@ -151,4 +151,4 @@ eq(diff, [0x56], 'the bytes a level-flag change changes');
 
 const names = f.where.map(z => z.name).join(', ');
 if (fails) { console.log(`${fails} failure(s)`); process.exit(1); }
-console.log(`ok: ${offsetsChecked} field offsets over 4 layouts as zoombini_state.h has them; "${who[0].name}" (${who[0].file}, ${f.layout.name}) at the map, the Allergic Cliffs crossed at level 1 by all, the band given up in the caves and its 16 back on the isle (${names}); nothing at the camps or in town; traits in the site's order; save, roster and noise in 4 layouts write back byte for byte`);
+console.log(`ok: ${offsetsChecked} field offsets over 4 layouts as zoombini_state.h has them. "${who[0].name}" (${who[0].file}, ${f.layout.name}) at the map, the Allergic Cliffs crossed at level 1 by all, the band given up in the caves and its 16 back on the isle (${names}). Nothing at the camps or in town. Traits in the site's order. Save, roster and noise in 4 layouts write back byte for byte`);

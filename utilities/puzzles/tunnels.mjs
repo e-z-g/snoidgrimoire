@@ -45,12 +45,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
 
   // ---- tables, against ScummVM's text --------------------------------------
   const order = kinds(need(/kRuleSlotTraitKinds\[4\] = \{([\s\S]*?)\};/, cpp, 'kRuleSlotTraitKinds')[1]);
-  if (!same(order, S.ZB_TUNNELS_ORDER)) fail(`the rules' order is not ScummVM's: ${order}`);
+  if (!same(order, S.ZB_TUNNELS_ORDER)) fail(`the rules' order is not ScummVM's (${order})`);
   const pairs = [...need(/kAlternativeValueSetTable\[10\] = \{([\s\S]*?)\};/, cpp, 'kAlternativeValueSetTable')[1]
     .matchAll(/\{(\d+), (\d+)\}/g)].map(m => [Number(m[1]), Number(m[2])]);
-  if (!same(pairs, S.ZB_TUNNELS_PAIRS)) fail(`level 3's value pairs are not ScummVM's: ${JSON.stringify(pairs)}`);
+  if (!same(pairs, S.ZB_TUNNELS_PAIRS)) fail(`level 3's value pairs are not ScummVM's (${JSON.stringify(pairs)})`);
   const l4 = [...need(/kTraitKindPairs\[6\] = \{([\s\S]*?)\};/, cpp, 'kTraitKindPairs')[1].matchAll(/\{([^{}]*)\}/g)].map(m => kinds(m[1]));
-  if (!same(l4, S.ZB_TUNNELS_L4)) fail(`level 4's pairs of traits are not ScummVM's: ${JSON.stringify(l4)}`);
+  if (!same(l4, S.ZB_TUNNELS_L4)) fail(`level 4's pairs of traits are not ScummVM's (${JSON.stringify(l4)})`);
 
   const sizes = [20, 20, 40, 150];
   for (let level = 1; level <= 4; level++) {
@@ -67,7 +67,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const scummFastSecond = /for \(byte firstTraitValue = 1; firstTraitValue <= 5;[^{]*\{\s*for \(byte secondTraitValue = 1;/.test(cpp);
   const r4 = S.zbTunnelsRules(4);
   const portFastFirst = same(r4[1], [{ kind: 'feet', values: [2] }, { kind: 'nose', values: [1] }]) && same(r4[5], [{ kind: 'feet', values: [1] }, { kind: 'nose', values: [2] }]);
-  if (!scummFastSecond) fail('ScummVM no longer lists level 4 with the second trait fastest; see whether it now follows the program');
+  if (!scummFastSecond) fail('ScummVM no longer lists level 4 with the second trait fastest. See whether it now follows the program');
   if (!portFastFirst) fail('the port\'s level 4 list does not have the first trait fastest, as the program\'s does');
   // ScummVM's order, for the count below.
   const scumm4 = [];
@@ -96,12 +96,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const z = { hair, eyes: 1, nose: 1, feet };
     const A = (feet === 1) === sideA, B = (hair === 1) === sideB;
     const want = accepts.map(f => f(A, B)).indexOf(true);
-    if (accepts.filter(f => f(A, B)).length !== 1 || S.zbTunnelsEntrance(z, guards, false) !== want) fail(`two guards: A ${A}, B ${B}: ScummVM's zone ${want + 1}, the port's ${S.zbTunnelsEntrance(z, guards, false) + 1}`);
+    if (accepts.filter(f => f(A, B)).length !== 1 || S.zbTunnelsEntrance(z, guards, false) !== want) fail(`two guards: A ${A}, B ${B}, ScummVM's zone ${want + 1}, the port's ${S.zbTunnelsEntrance(z, guards, false) + 1}`);
     for (const toggle of [false, true]) {
       const shut = toggle ? closed.slice(0, 2) : closed.slice(2);
       const open = [1, 2, 3, 4].filter(k => !shut.includes(k) && (k <= Number(oneGuard) ? A : !A));
       const got = S.zbTunnelsEntrance(z, guards.slice(0, 1), toggle) + 1;
-      if (open.length !== 1 || got !== open[0]) fail(`one guard, A ${A}, closed ${shut}: ScummVM's open zone ${open}, the port's ${got}`);
+      if (open.length !== 1 || got !== open[0]) fail(`one guard, A ${A}, closed ${shut}, ScummVM's open zone ${open}, the port's ${got}`);
     }
     cases++;
   }
@@ -123,7 +123,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const at = find(exe, bytes).filter(o => latin(o + bytes.length, 11) === 'Tunnels.MHK');
   if (at.length !== 1) fail('the 22 words of levels 3 and 4 are not in ZOOMBINI.EXE before "Tunnels.MHK"');
   const pos = [...need(/kTunnelEntryPositions\[4\]\{([\s\S]*?)\};/, h, 'kTunnelEntryPositions')[1].matchAll(/Common::Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
-  if (pos.length !== 4 || pos.some((p, i) => i && p[0] <= pos[i - 1][0])) fail(`the entrances are not left to right: ${JSON.stringify(pos)}`);
+  if (pos.length !== 4 || pos.some((p, i) => i && p[0] <= pos[i - 1][0])) fail(`the entrances are not left to right (${JSON.stringify(pos)})`);
   const posAt = find(exe, pos.flatMap(([x, y]) => [x & 255, x >> 8, y & 255, y >> 8]));
   if (posAt.length !== 1) fail(`the entrances' positions are in ZOOMBINI.EXE ${posAt.length} times, not once`);
 
@@ -241,7 +241,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const nodeOk = (band, nd) => {
     const zs = nd.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
     if (zs.join() !== band.map((_, i) => i).join()) return 'a diagram does not draw each Zoombini once';
-    if (nd.outcomes.length && (nd.zoombini == null || nd.where[nd.zoombini] >= 0 || !(nd.tunnel >= 0 && nd.tunnel < 4) || nd.move !== `Send Zoombini ${nd.zoombini + 1} into the ${S.ZB_TUNNELS_ENTRANCES[nd.tunnel]} tunnel.`)) return `a move is not one the game allows: ${nd.move}`;
+    if (nd.outcomes.length && (nd.zoombini == null || nd.where[nd.zoombini] >= 0 || !(nd.tunnel >= 0 && nd.tunnel < 4) || nd.move !== `Send Zoombini ${nd.zoombini + 1} into the ${S.ZB_TUNNELS_ENTRANCES[nd.tunnel]} tunnel.`)) return `a move is not one the game allows (${nd.move})`;
     return null;
   };
   const walk = (band, nd, depth) => {
@@ -288,8 +288,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const sol = P.solve(level, band, d.state);
       const s0 = sol.solutions[0], through = [];
       for (let k = 0; k < 4; k++) {
-        const m = s0.steps.find(x => x.startsWith(`Into the ${S.ZB_TUNNELS_ENTRANCES[k]} tunnel`));
-        if (m) for (const i of m.split(': ')[1].replace(/\.$/, '').split(/, | and /).map(x => Number(x) - 1)) {
+        const m = s0.steps.map(x => x.match(/^Zoombinis? (.+?) go(?:es)? into the (.+?) tunnel /)).find(x => x && x[2] === S.ZB_TUNNELS_ENTRANCES[k]);
+        if (m) for (const i of m[1].split(/, | and /).map(x => Number(x) - 1)) {
           if (judgeOf(level, d.state.guardRules, d.state.level1BlockedPairToggle, band[i], k) != null) { fail(`level ${level}: the solution sends Zoombini ${i + 1} into a tunnel that turns it back`); break; }
           through.push(i);
         }
@@ -310,13 +310,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 6 && (knows === 'program' || level <= 2)) {
             const worst = walk(band, st.root, 0);
-            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, and ${worst} go through on its worst branch`); break; }
+            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}, the strategy guarantees ${st.guaranteed}, and ${worst} go through on its worst branch`); break; }
             walked++;
           }
           const got = play(level, band, st, d.state);
-          if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: played against the dealt rules, ${got} through, fewer than the ${st.guaranteed} guaranteed`); break; }
+          if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt rules, ${got} through, fewer than the ${st.guaranteed} guaranteed`); break; }
           played++;
-        } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
+        } catch (e) { fail(`level ${level}, knowing the ${knows} (${e.message})`); break; }
       }
     }
   }
@@ -330,8 +330,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const st = P.strategy(1, band, null, { state: d.state });
     const H = S.zbTunnelsHypotheses(1, band, 'program', d.state.bridgeSplit || 0);
     const dk = S.zbTunnelsKey(...[0, 1].map(bit => band.reduce((m, z, i) => { const t = S.zbTunnelsEntrance(z, d.state.guardRules, d.state.level1BlockedPairToggle); return (bit ? t === 0 || t === 3 : t < 2) ? m | 1 << i : m; }, 0)));
-    if (st.hypotheses !== d.state.candidates * 4 || !H.has(dk)) { fail(`level 1 after the cliffs: ${st.hypotheses} hypotheses, the deal's ${d.state.candidates} candidates each way, the dealt one ${H.has(dk) ? '' : 'not '}among them`); break; }
-    try { if (play(1, band, st, d.state) < st.guaranteed) { fail('level 1 after the cliffs: fewer through than guaranteed'); break; } } catch (e) { fail(`level 1 after the cliffs: ${e.message}`); break; }
+    if (st.hypotheses !== d.state.candidates * 4 || !H.has(dk)) { fail(`level 1 after the cliffs, ${st.hypotheses} hypotheses, the deal's ${d.state.candidates} candidates each way, the dealt one ${H.has(dk) ? '' : 'not '}among them`); break; }
+    try { if (play(1, band, st, d.state) < st.guaranteed) { fail('level 1 after the cliffs, fewer through than guaranteed'); break; } } catch (e) { fail(`level 1 after the cliffs (${e.message})`); break; }
     splits++;
   }
   // Values the form must throw on.
@@ -367,8 +367,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (keys.length > 40) continue;
         for (let c = 1; c <= 3; c++) {
           const st = P.strategy(level, band, null, { knows, chances: c, budget: 5000 }), want = plain(band, keys, c);
-          if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
-          if (walk(band, st.root, 0) < st.guaranteed) { fail(`level ${level}, ${c} chances: a branch has fewer through than the strategy guarantees`); break; }
+          if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+          if (walk(band, st.root, 0) < st.guaranteed) { fail(`level ${level}, ${c} chances, a branch has fewer through than the strategy guarantees`); break; }
           brute++;
         }
       }
@@ -377,8 +377,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowRoot > 2000) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
   const bench = `workbench: ${trips} forms given back; ${walked} strategies walked down every branch (${ends} ends) and ${played} played against dealt rules, none short of what they guarantee; the puzzle's answer the judge's at every move of ${answered} plays; ${brute} held to a plain minimax with fewer chances; ${splits} dealt after the Allergic Cliffs, their count read from the state; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
-  say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}, the entrances at 0x${(posAt[0] || 0).toString(16)}; chances ${chances}; `
-    + `${cases} guard cases as evaluateRule; ${dealt} deals as ScummVM deals them (level 4 in the program's order: ScummVM's picks another rule in ${other4} of ${dealt4}); `
+  say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}, the entrances at 0x${(posAt[0] || 0).toString(16)}. Chances ${chances}; `
+    + `${cases} guard cases as evaluateRule. ${dealt} deals as ScummVM deals them (level 4 in the program's order, ScummVM's picks another rule in ${other4} of ${dealt4}); `
     + `the Allergic Cliffs' count avoided in ${avoided}`);
   say(bench);
 }

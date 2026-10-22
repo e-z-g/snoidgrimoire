@@ -3,8 +3,8 @@
    =========================================================================
    Needs zb-puzzle.js.
 
-   The band waits behind a wall. The player picks a mudball's colour and
-   the shape on it (at levels 3 and 4 also the shape's colour) and fires
+   The band waits behind a wall. The player picks a mudball's color and
+   the shape on it (at levels 3 and 4 also the shape's color) and fires
    it; where it lands is fixed by what was picked, by a rule hidden from
    the player. A few sections of the wall are marked with dots, 1, 2 or 3,
    and a mudball that lands on one sends that many Zoombinis over, the
@@ -18,17 +18,17 @@
    rule gives each row a value and each column a value, and at levels 3
    and 4 each square within a column too; each is a value of one of the
    mudball's choices, dealt as orders of the five values:
-     level 1: the mudball's colour picks the row and its shape the
+     level 1: the mudball's color picks the row and its shape the
               column, or the other way round (a coin toss);
      level 2: the same, but each row down moves the column's values 2 or
-              3 places to the right, wrapping round;
-     level 3: the mudball's colour picks the row, its shape the column and
-              the shape's colour the square within it; the shape and the
-              shape's colour follow the same order;
+              3 places to the right, wrapping around;
+     level 3: the mudball's color picks the row, its shape the column and
+              the shape's color the square within it; the shape and the
+              shape's color follow the same order;
      level 4: which choice picks the row, the column and the square is
               one of six ways, drawn at random, and each square to the
               right within a column moves the row's values 2 or 3 places
-              down, wrapping round.
+              down, wrapping around.
    The marks are drawn at random, one for each group of the band: groups
    of 3, 2 and 1 in turn, taken off the first groups of two or more until
    they add up to the band, so 16 Zoombinis make eight marks.
@@ -62,11 +62,11 @@
 */
 
 /* A mudball's three choices, as the program numbers them: 0 the shape's
-   colour (levels 3 and 4), 1 the shape, 2 the mudball's colour; each a
+   color (levels 3 and 4), 1 the shape, 2 the mudball's color; each a
    value 0-4, named as ScummVM's kMudballSelectorValueNames. */
 const ZB_NET_COLOURS = ['yellow', 'blue', 'green', 'red', 'purple'];
 const ZB_NET_SHAPES = ['rectangle', 'triangle', 'star', 'circle', 'diamond'];
-const ZB_NET_CHOICES = ['the shape’s colour', 'the shape', 'the mudball’s colour'];
+const ZB_NET_CHOICES = ['the shape’s color', 'the shape', 'the mudball’s color'];
 /* Levels 3 and 4: the six ways, as the choice (0-2) that picks the row,
    the column and the square within the column. Level 3 uses the first. */
 const ZB_NET_WAYS = [[2, 1, 0], [1, 2, 0], [0, 2, 1], [2, 0, 1], [1, 0, 2], [0, 1, 2]];
@@ -207,7 +207,7 @@ function zbNetAxes(rule) {
 
 /* Where a mudball lands, as the first section whose values are its
    choices (findTargetSlotForSelection, 0x438920); choice is [shape's
-   colour, shape, mudball's colour], each 0-4. */
+   color, shape, mudball's color], each 0-4. */
 function zbNetLands(rule, choice) {
   const [ra, ca, sa] = zbNetAxes(rule);
   for (let i = 0; i < rule.rows.length; i++) {
@@ -216,8 +216,8 @@ function zbNetLands(rule, choice) {
   return -1;
 }
 
-/* The mudball that lands on a section: [shape's colour, shape, mudball's
-   colour], the unused choice null. */
+/* The mudball that lands on a section: [shape's color, shape, mudball's
+   color], the unused choice null. */
 function zbNetMudball(rule, cell) {
   const [ra, ca, sa] = zbNetAxes(rule), choice = [null, null, null];
   choice[ra] = rule.rows[cell];
@@ -243,8 +243,8 @@ function zbNetValueWord(k, v) { return k === 1 ? ZB_NET_SHAPES[v] : ZB_NET_COLOU
    gives each mark's mudball, one shot each, and the tank always has
    more than there are marks, so everyone crosses. Unknown, see zbNetStrategy. */
 
-/* The game's colours for the mudballs, and the shapes as outlines about a
-   centre, for the diagrams. */
+/* The game's colors for the mudballs, and the shapes as outlines about a
+   center, for the diagrams. */
 const ZB_NET_PAINT = ['#e8cf3a', '#3d6fe0', '#3fae4f', '#d9433a', '#8f4fcf'];
 function zbNetMudballItems(choice, x, y, r) {
   const [inner, shape, colour] = choice, s = r * 0.62, ink = inner == null ? '#20242c' : ZB_NET_PAINT[inner];
@@ -257,7 +257,7 @@ function zbNetMudballItems(choice, x, y, r) {
     [0, -s, 0.75 * s, 0, 0, s, -0.75 * s, 0],
   ][shape];
   if (shape == null) return items;
-  // Outlined, so that a shape in the mudball's colour still shows.
+  // Outlined, so that a shape in the mudball's color still shows.
   if (pts) items.push({ t: 'poly', points: pts.map((v, k) => Math.round((k % 2 ? y : x) + v)), fill: ink, stroke: '#15181e', width: 1 });
   else items.push({ t: 'circle', x, y, r: Math.round(0.62 * s), fill: ink, stroke: '#15181e', width: 1 });
   return items;
@@ -428,10 +428,10 @@ function zbNetStrategy(level, band, opts = {}) {
   };
   const node = (B, hit, crossed, shots, k, misses) => {
     const left = weight(B), unhit = markCells.filter(m => !hit.has(m));
-    const caption = `${crossed} across, ${n - crossed} to go; ${plural(shots, 'mudball')} left`;
+    const caption = `${crossed} across, ${n - crossed} to go, ${plural(shots, 'mudball')} left`;
     if (!unhit.length || !shots) {
       return {
-        move: !unhit.length ? `Every mark is hit: all ${n} across.` : `The tank is empty: ${crossed} across, ${n - crossed} left behind.`,
+        move: !unhit.length ? `Every mark is hit, so all ${n} are across.` : `The tank is empty, with ${crossed} across and ${n - crossed} left behind.`,
         zoombini: null, left, crossed, spent: misses.length, outcomes: [],
         diagram: zbNetDiagram(level, band, marks, { hits: hit, misses, crossed, over: true, caption: !unhit.length ? `All ${n} across` : `${crossed} across, ${n - crossed} left behind` }),
       };
@@ -446,7 +446,7 @@ function zbNetStrategy(level, band, opts = {}) {
       const where = zbNetCellWords({ level }, cell), l = weight(next);
       outs.push({
         hit: isMark, cell,
-        label: isMark ? `It lands on the mark at ${where}: ${going.length === 1 ? 'Zoombini' : 'Zoombinis'} ${zbPlacesWords(going)} ${going.length === 1 ? 'goes' : 'go'} over (${l} left)`
+        label: isMark ? `It lands on the mark at ${where}, and ${going.length === 1 ? 'Zoombini' : 'Zoombinis'} ${zbPlacesWords(going)} ${going.length === 1 ? 'goes' : 'go'} over (${l} left)`
           : marks.dots[cell] ? `It lands on the mark at ${where}, already hit (${l} left)` : `It lands at ${where}, where there is no mark (${l} left)`,
         left: l,
         next: () => node(next, isMark ? new Set([...hit, cell]) : hit, crossed + size, shots - 1, phase === 'learn' ? k + 1 : k, isMark ? misses : [...misses, cell]),
@@ -454,9 +454,9 @@ function zbNetStrategy(level, band, opts = {}) {
     }
     outs.sort((p, q) => p.hit - q.hit);
     return {
-      move: `Fire ${words(x)}${phase === 'learn' ? ', to learn where each value goes' : phase === 'test' ? ', to tell apart the ways the wall could be' : ''}.`,
+      move: `Fire ${words(x)}${phase === 'learn' ? ', to learn where each value goes' : phase === 'test' ? ', to find out which wall it is' : ''}.`,
       zoombini: null, left, crossed, shot: x,
-      diagram: zbNetDiagram(level, band, marks, { hits: hit, misses, next: x, crossed, caption: `${caption}; ${plural(left, 'rule')} left` }),
+      diagram: zbNetDiagram(level, band, marks, { hits: hit, misses, next: x, crossed, caption: `${caption}, ${plural(left, 'rule')} left` }),
       outcomes: outs.map(({ label, left, next, cell }) => ({ label, left, cell, next })),
     };
   };
@@ -465,12 +465,12 @@ function zbNetStrategy(level, band, opts = {}) {
     hypotheses, guaranteed: n, exact: true, knows,
     root: node(H0, new Set(), 0, shots0, 0, []),
     notes: [
-      level <= 2 ? `The player knows which way the rule could be (the colour or the shape for the rows${level === 2 ? ', a rotation of 2 or 3' : ''}) and nothing of the orders: ${hypotheses} rules. The program can deal every one of them, so knowing the program or only the level’s form is the same here.`
+      level <= 2 ? `The player knows which way the rule could be (the color or the shape for the rows${level === 2 ? ', a rotation of 2 or 3' : ''}) and nothing about the orders, which makes ${hypotheses} rules. The program can deal every one of them, so knowing the program is the same as knowing only the level’s form here.`
         : knows === 'form'
-          ? `The player knows only the level’s form: ${level === 4 ? 'any of six ways for the three choices, a rotation of 2 or 3, and ' : 'the colour for the rows, the shape for the columns and its colour for the squares, and '}any order for each of the three: ${hypotheses} rules.`
-          : `The player knows the program: ${level === 4 ? 'any of six ways for the three choices and a rotation of 2 or 3, with ' : 'the first way (the program’s at the start of a session), with '}the squares in the columns’ order, as the program always deals them: ${hypotheses} rules.`,
-      'First a mudball with the same value in every choice, for each of the values 0 to 3 in turn, which shows where each value goes whatever the rule; then, if the ways the wall could be are still not distinguished, one mudball of different values, which lands somewhere different under each; then the mudball for each mark.',
-      `That is at most five mudballs that may hit nothing, and the tank has ${ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0)} more than the marks, so every mark is hit and all ${n} are guaranteed to cross.`,
+          ? `The player knows only the level’s form, which allows ${level === 4 ? 'any of six ways for the three choices, a rotation of 2 or 3, and ' : 'the color for the rows, the shape for the columns and its color for the squares, and '}any order for each of the three. That makes ${hypotheses} rules.`
+          : `The player knows the program, which deals ${level === 4 ? 'any of six ways for the three choices and a rotation of 2 or 3, with ' : 'the first way (the program’s at the start of a session), with '}the squares in the columns’ order. That makes ${hypotheses} rules.`,
+      'First, for each value from 0 to 3, fire a mudball with that value in every choice. It shows where each value goes, whatever the rule. Then, if more than one wall is still possible, fire one mudball of different values, which lands somewhere different on each. Then fire the mudball for each mark.',
+      `That is at most five mudballs that may hit nothing, and the tank has ${ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0)} more than there are marks. So every mark is hit and all ${n} are guaranteed to cross.`,
       ...(opts.state && opts.state.rule ? [] : ['No deal was given, so the marks here are dealt from seed 1.']),
     ],
   };
@@ -480,19 +480,19 @@ const ZB_NET_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth',
   'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth'];
 
 ZB_PUZZLES.set('NET', {
-  about: 'The band has to get over a wall. The player fires mudballs of a chosen colour and shape at it, and each marked section of the wall a mudball lands on sends 1 to 3 Zoombinis over; where a mudball lands follows a hidden rule.',
+  about: 'The band has to get over a wall. The player fires mudballs of a chosen color and shape at it. Each marked section a mudball hits sends 1 to 3 Zoombinis over. Where a mudball lands follows a hidden rule.',
   levels: [
-    { rule: 'A wall of 5 by 5 sections. The mudball’s colour picks the row and its shape the column, or the other way round, a coin toss; each in an order of the five drawn at random. One marked section for each group of the band (3, 2, 1, 3, ...), each drawn at random.',
-      chances: 'The tank holds a mudball for each marked section and seven more; each launch uses one, hit or miss, and a section counts only the first time it is hit.' },
-    { rule: 'As at level 1, but each row down moves the column’s values 2 or 3 places (drawn once) to the right, wrapping round, so the pattern runs diagonally.',
+    { rule: 'A wall of 5 by 5 sections. The mudball’s color picks the row and its shape picks the column, or the other way around, on a coin toss. Each uses an order of the five values picked at random. There is one marked section for each group of the band (3, 2, 1, 3, ...), each placed at random.',
+      chances: 'The tank holds a mudball for each marked section and seven more. Each launch uses one, hit or miss, and a section counts only the first time it is hit.' },
+    { rule: 'As at level 1, but each row down shifts the column values 2 or 3 places to the right (picked one time), wrapping around, so the pattern runs diagonally.',
       chances: 'A mudball for each marked section and seven more, as at level 1.' },
-    { rule: 'A wall of 5 rows and 5 columns, each column 5 squares wide. The mudball’s colour picks the row, its shape the column and the shape’s colour the square within the column, each in an order drawn at random; the shape and the shape’s colour follow the same order. One marked square for each group of the band.',
+    { rule: 'A wall of 5 rows and 5 columns, with each column 5 squares wide. The mudball’s color picks the row, its shape picks the column, and the shape’s color picks the square within the column, each in an order picked at random. The shape and the shape’s color use the same order. There is one marked square for each group of the band.',
       chances: 'A mudball for each marked square and seven more, as at level 1.',
-      notes: ['The program draws a third order and checks it for repeats, then never uses it: the squares within a column go in the column’s order. ScummVM does the same.',
-        'Which choice picks the row, the column and the square follows the way last drawn at level 4 in the same session (the first way if there has been none), since the program never resets it; ScummVM always uses the first way: colour for the row, shape for the column, the shape’s colour for the square.'] },
-    { rule: 'As at level 3, but which of the three choices picks the row, the column and the square is one of six ways drawn at random, and each square to the right within a column moves the row’s values 2 or 3 places (drawn once) down, wrapping round.',
+      notes: ['The program picks a third order and checks it for repeats, but never uses it. So the squares within a column go in the column’s order. ScummVM does the same.',
+        'Which choice picks the row, the column and the square follows the way last picked at level 4 in the same session (or the first way if there was none), because the program never resets it. ScummVM always uses the first way, with color for the row, shape for the column and the shape’s color for the square.'] },
+    { rule: 'As at level 3, but which of the three choices picks the row, the column and the square is one of six ways picked at random. Each square to the right within a column shifts the row values 2 or 3 places down (picked one time), wrapping around.',
       chances: 'The tank holds a mudball for each marked square and eight more.',
-      notes: ['The program also tosses a coin here that it zeroes before testing, so the other branch, which would move the square’s values instead, never runs. ScummVM draws the coin and ignores it.'] },
+      notes: ['The program also tosses a coin here but sets it to zero before checking it. So the other branch, which would shift the square’s values instead, never runs. ScummVM tosses the coin and ignores it.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     const n = band.length, groups = zbNetGroups(n);
@@ -506,24 +506,24 @@ ZB_PUZZLES.set('NET', {
     const order = (k, values, stride) => [0, 1, 2, 3, 4].map(i => zbNetValueWord(k, values[i * stride])).join(', ');
     const answer = [];
     if (level <= 2) {
-      answer.push(`${cap(ZB_NET_CHOICES[ra])} picks the row, from the top: ${order(ra, rule.rows, 5)}.`);
-      answer.push(`${cap(ZB_NET_CHOICES[ca])} picks the column, from the left${level === 2 ? ' in the top row' : ''}: ${order(ca, rule.cols, 1)}.`);
-      if (level === 2) answer.push(`Each row down, the columns move ${rule.step} places to the right, wrapping round.`);
+      answer.push(`${cap(ZB_NET_CHOICES[ra])} picks the row, from the top, in the order ${order(ra, rule.rows, 5)}.`);
+      answer.push(`${cap(ZB_NET_CHOICES[ca])} picks the column, from the left${level === 2 ? ' in the top row' : ''}, in the order ${order(ca, rule.cols, 1)}.`);
+      if (level === 2) answer.push(`Each row down, the columns shift ${rule.step} places to the right, wrapping around.`);
     } else {
-      answer.push(`${cap(ZB_NET_CHOICES[ra])} picks the row, from the top${level === 4 ? ' in each column’s first square' : ''}: ${order(ra, rule.rows, 25)}.`);
-      answer.push(`${cap(ZB_NET_CHOICES[ca])} picks the column, from the left: ${order(ca, rule.cols, 5)}.`);
-      answer.push(`${cap(ZB_NET_CHOICES[sa])} picks the square within the column, from the left: ${order(sa, rule.subs, 1)}.`);
-      if (level === 4) answer.push(`Each square to the right within a column, the rows move ${rule.step} places down, wrapping round.`);
+      answer.push(`${cap(ZB_NET_CHOICES[ra])} picks the row, from the top${level === 4 ? ' in each column’s first square' : ''}, in the order ${order(ra, rule.rows, 25)}.`);
+      answer.push(`${cap(ZB_NET_CHOICES[ca])} picks the column, from the left, in the order ${order(ca, rule.cols, 5)}.`);
+      answer.push(`${cap(ZB_NET_CHOICES[sa])} picks the square within the column, from the left, in the order ${order(sa, rule.subs, 1)}.`);
+      if (level === 4) answer.push(`Each square to the right within a column, the rows shift ${rule.step} places down, wrapping around.`);
     }
     for (const t of targets) {
-      answer.push(`The mark at ${zbNetCellWords(rule, t)}, for ${rule.dots[t]} Zoombini${rule.dots[t] === 1 ? '' : 's'}: ${zbNetMudballWords(zbNetMudball(rule, t))}.`);
+      answer.push(`The mark at ${zbNetCellWords(rule, t)}, for ${rule.dots[t]} Zoombini${rule.dots[t] === 1 ? '' : 's'}, is hit by ${zbNetMudballWords(zbNetMudball(rule, t))}.`);
     }
     return {
       setup: [
         level <= 2 ? `A wall of 25 sections, 5 rows by 5 columns, ${targets.length} of them marked with dots.`
           : `A wall of 125 squares, in 5 rows and 5 columns each 5 squares wide, ${targets.length} of them marked with dots.`,
-        groups.length === 1 ? `The mark sends ${n} Zoombini${n === 1 ? '' : 's'} over; the tank holds ${shots} mudballs.`
-          : `The marks send ${zbWordsOr(groups.map(String), 'and')} Zoombinis over, ${n} in all; the tank holds ${shots} mudballs.`,
+        groups.length === 1 ? `The mark sends ${n} Zoombini${n === 1 ? '' : 's'} over. The tank has ${shots} mudballs.`
+          : `The marks send ${zbWordsOr(groups.map(String), 'and')} Zoombinis over, ${n} in all. The tank has ${shots} mudballs.`,
       ],
       answer,
       marks: band.map((z, i) => `goes over ${ZB_NET_ORDINALS[i]}`),
@@ -548,8 +548,8 @@ ZB_PUZZLES.set('NET', {
     const [ra, ca, sa] = zbNetAxes(rule);
     const named = k => [0, 1, 2, 3, 4].map(v => ({ value: v, label: zbNetValueWord(k, v) }));
     if (!high) {
-      fields.push({ key: 'rows', label: 'The row is picked by', kind: 'choice', value: ra === 2 ? 'colour' : 'shape',
-        options: [{ value: 'colour', label: 'the mudball’s colour (the shape picks the column)' }, { value: 'shape', label: 'the shape (the colour picks the column)' }] });
+      fields.push({ key: 'rows', label: 'The row is picked by', kind: 'choice', value: ra === 2 ? 'color' : 'shape',
+        options: [{ value: 'color', label: 'the mudball’s color (the shape picks the column)' }, { value: 'shape', label: 'the shape (the color picks the column)' }] });
       fields.push({ key: 'rowOrder', label: 'Rows, from the top', kind: 'order', options: named(ra), value: [0, 1, 2, 3, 4].map(k => rule.rows[5 * k]) });
       fields.push({ key: 'colOrder', label: `Columns, from the left${level === 2 ? ', in the top row' : ''}`, kind: 'order', options: named(ca), value: [0, 1, 2, 3, 4].map(k => rule.cols[k]) });
     } else {
@@ -562,7 +562,7 @@ ZB_PUZZLES.set('NET', {
     if (level === 2 || level === 4) fields.push({ key: 'step', label: level === 2 ? 'Each row down, the columns move right by' : 'Each square to the right, the rows move down by', kind: 'choice', value: rule.step, options: [2, 3].map(v => ({ value: v, label: `${v} places` })) });
     const cellOptions = [...Array(high ? 125 : 25).keys()].map(c => ({ value: c, label: zbNetCellWords(rule, c) }));
     groups.forEach((size, i) => fields.push({ key: `mark${i + 1}`, label: `Mark ${i + 1}, for ${size}`, kind: 'choice', value: rule.at[i], options: cellOptions }));
-    fields.push({ key: 'note', kind: 'note', note: `The marks send the band over in groups of ${zbWordsOr(groups.map(String), 'and')}, which follow its size and cannot be changed.${high ? ' The squares within each column follow the columns’ order, as the program’s rule always has them.' : ''}${level === 3 ? ' The program uses the first way at level 3 unless a level 4 visit earlier in the session drew another.' : ''}` });
+    fields.push({ key: 'note', kind: 'note', note: `The marks send the band over in groups of ${zbWordsOr(groups.map(String), 'and')}, which depend on its size and cannot be changed.${high ? ' The squares within each column follow the columns’ order, as the program’s rule always does.' : ''}${level === 3 ? ' The program uses the first way at level 3 unless a level 4 visit earlier in the session picked another.' : ''}` });
     return fields;
   },
   edit(level, band, state, values) {
@@ -574,8 +574,8 @@ ZB_PUZZLES.set('NET', {
     };
     let labels = rule.labels, way = rule.way;
     if (!high) {
-      if (values.rows !== 'colour' && values.rows !== 'shape') throw new Error('The row must be picked by the mudball’s colour or by its shape.');
-      labels = values.rows === 'colour' ? [2, 1, 0] : [1, 2, 0];
+      if (values.rows !== 'color' && values.rows !== 'shape') throw new Error('The row must be picked by the mudball’s color or by its shape.');
+      labels = values.rows === 'color' ? [2, 1, 0] : [1, 2, 0];
     } else {
       way = Number(values.way);
       if (!(way >= 0 && way <= 5)) throw new Error('Pick one of the six ways.');
@@ -606,7 +606,7 @@ ZB_PUZZLES.set('NET', {
     const steps = marks.map(m => {
       const going = band.map((_, i) => i).slice(done, done + rule.dots[m]);
       done += going.length;
-      return `Fire ${zbNetMudballWords(zbNetMudball(rule, m))}: it lands on the mark at ${zbNetCellWords(rule, m)}, and ${going.length === 1 ? 'Zoombini' : 'Zoombinis'} ${zbPlacesWords(going)} ${going.length === 1 ? 'goes' : 'go'} over.`;
+      return `Fire ${zbNetMudballWords(zbNetMudball(rule, m))}. It lands on the mark at ${zbNetCellWords(rule, m)}, and ${going.length === 1 ? 'Zoombini' : 'Zoombinis'} ${zbPlacesWords(going)} ${going.length === 1 ? 'goes' : 'go'} over.`;
     });
     steps.push(`That is ${marks.length} of the ${state.initialShotAllowance} mudballs in the tank.`);
     const mudballs = {};
@@ -616,10 +616,10 @@ ZB_PUZZLES.set('NET', {
       solutions: [{
         title: `All ${n} cross, one mudball for each of the ${marks.length} mark${marks.length === 1 ? '' : 's'}`,
         steps, crosses: band.map((_, i) => i),
-        diagram: zbNetDiagram(level, band, { dots: rule.dots, at: rule.at }, { hits: new Set(marks), mudballs, crossed: n, over: true, caption: `All ${n} across: a mudball for each mark` }),
+        diagram: zbNetDiagram(level, band, { dots: rule.dots, at: rule.at }, { hits: new Set(marks), mudballs, crossed: n, over: true, caption: `All ${n} across, one mudball for each mark` }),
       }],
       notes: [
-        'A Zoombini crosses when a mudball lands on a mark: the mark sends as many over as it has dots, in the band’s order. A mark counts only the first time it is hit.',
+        'A Zoombini crosses when a mudball lands on a mark. The mark sends as many over as it has dots, in the band’s order. A mark counts only the first time it is hit.',
         'With the rule known, each mark has its mudball, and the tank always has more mudballs than there are marks, so the whole band crosses.',
         'The simplest solution fires each mark’s mudball once and nothing else. The order the marks are hit in only changes which Zoombinis go with which mark, so every order is counted as one way.',
       ],

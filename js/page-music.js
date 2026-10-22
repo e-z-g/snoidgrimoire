@@ -29,17 +29,17 @@ function qtCache(mode, fn) {
 }
 function qtAdoptInstruments(lib) {
   QT_LIB = lib;
-  qtCache('readwrite', s => s.put(lib.forkBytes, QT_KEY)).catch(e => console.warn('The instruments were not remembered:', e));
+  qtCache('readwrite', s => s.put(lib.forkBytes, QT_KEY)).catch(e => console.warn('The instruments were not remembered', e));
 }
 async function qtLoadInstruments() {
   if (QT_LIB) return QT_LIB;
   let fork = null;
-  try { fork = await qtCache('readonly', s => s.get(QT_KEY)); } catch (e) { console.warn('The remembered instruments were not read:', e); }
+  try { fork = await qtCache('readonly', s => s.get(QT_KEY)); } catch (e) { console.warn('The remembered instruments were not read', e); }
   if (fork) {
-    try { QT_LIB = qtInstrumentsFromFile(new Uint8Array(fork)); return QT_LIB; } catch (e) { console.warn('The remembered instruments could not be opened:', e); }
+    try { QT_LIB = qtInstrumentsFromFile(new Uint8Array(fork)); return QT_LIB; } catch (e) { console.warn('The remembered instruments could not be opened', e); }
   }
   const res = await fetch(QT_INSTALLER_URL);
-  if (!res.ok) throw new Error('archive.org answered ' + res.status);
+  if (!res.ok) throw new Error('archive.org returned ' + res.status);
   qtAdoptInstruments(qtInstrumentsFromFile(new Uint8Array(await res.arrayBuffer())));
   return QT_LIB;
 }
@@ -50,7 +50,7 @@ async function tuneRendered(entry, arc, id) {
   if (TUNES.has(key)) return TUNES.get(key);
   setStatus('Fetching QuickTime 3’s instruments…');
   const lib = await qtLoadInstruments();
-  setStatus(`Making ${entry.name} ${id} into sound…`);
+  setStatus(`Turning ${entry.name} ${id} into audio…`);
   await new Promise(res => setTimeout(res, 30));   // paint the status before the render blocks the page
   const r = zbTuneWav(parseMohawkMidi(arc.get('tMID', id)).file, lib);
   const t = { url: URL.createObjectURL(new Blob([r.wav], { type: 'audio/wav' })), wav: r.wav, seconds: r.seconds, missing: r.missing, tune: r.tune };
@@ -74,19 +74,19 @@ function tunePlayer(entry, arc, id, into) {
       into.querySelector('.tplay').disabled = false;
       note.innerHTML = fetching
         ? `QuickTime 3’s instruments could not be fetched (${esc(e.message)}). <label class="btn">Choose QUICKTIM.EXE or the .qtx<input type="file" hidden></label>`
-        : `The tune could not be played: ${esc(e.message)}`;
+        : `The tune could not be played (${esc(e.message)}).`;
       const pick = note.querySelector('input');
       if (pick) pick.addEventListener('change', async () => {
         const f = pick.files && pick.files[0];
         if (!f) return;
         try { qtAdoptInstruments(qtInstrumentsFromFile(new Uint8Array(await f.arrayBuffer()))); note.textContent = ''; play(); }
-        catch (err) { note.textContent = `No instruments in ${f.name}: ${err.message}`; }
+        catch (err) { note.textContent = `No instruments in ${f.name} (${err.message}).`; }
       });
       return;
     }
     const parts = t.tune.parts.map(p => QT_LIB.has(p.instrument) ? QT_LIB.get(p.instrument).name : 'instrument ' + p.instrument);
     into.innerHTML = `<audio controls autoplay src="${t.url}"></audio> <button class="twav">Save as WAV</button>`
-      + `<p class="note">${t.seconds.toFixed(1)} s through QuickTime 3’s instruments: ${esc([...new Set(parts)].join(', '))}.`
+      + `<p class="note">${t.seconds.toFixed(1)} s through QuickTime 3’s instruments, using ${esc(zbWordsOr([...new Set(parts)], 'and'))}.`
       + (t.missing.length ? ` No instrument for part ${t.missing.join(', ')}.` : '') + '</p>';
     into.querySelector('.twav').addEventListener('click', () => downloadBlob(t.wav, `${entry.name.toLowerCase()}-tmid-${id}.wav`));
   };

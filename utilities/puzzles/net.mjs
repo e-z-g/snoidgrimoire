@@ -1,7 +1,7 @@
 // Mudball Wall (js/zb-puzzle-net.js) against ScummVM's puzzle_net.cpp and
 // .h and the 1996 program:
 //
-//   - the names of the mudball's colours and shapes, the six ways of
+//   - the names of the mudball's colors and shapes, the six ways of
 //     levels 3 and 4 (kHighAxisSelectorIndices, and the six cases of
 //     findTargetSlotForSelection, which must match), and the tank's seven
 //     spare mudballs, are ScummVM's, read from its text;
@@ -29,12 +29,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- names, ways and the tank, as ScummVM has them -----------------------
   const names = [...need(/kMudballSelectorValueNames\[3\]\[5\]\{([\s\S]*?)\};\n/, h, 'kMudballSelectorValueNames')[1].matchAll(/\{([^}]*)\}/g)]
     .map(m => [...m[1].matchAll(/"(\w+)"/g)].map(x => x[1].toLowerCase()));
-  if (!same(names, [S.ZB_NET_COLOURS, S.ZB_NET_SHAPES, S.ZB_NET_COLOURS])) fail(`the mudball's names are not ScummVM's: ${JSON.stringify(names)}`);
+  if (!same(names, [S.ZB_NET_COLOURS, S.ZB_NET_SHAPES, S.ZB_NET_COLOURS])) fail(`the mudball's names are not ScummVM's (${JSON.stringify(names)})`);
   const button = Object.fromEntries([...need(/enum MudballSelectButtonIndex \{([\s\S]*?)\};/, cpp, 'MudballSelectButtonIndex')[1].matchAll(/(kMudballSelectButton\w+) = (\d)/g)].map(m => [m[1], Number(m[2])]));
-  if (button.kMudballSelectButtonSubColor !== 0 || button.kMudballSelectButtonShape !== 1 || button.kMudballSelectButtonColor !== 2) fail('the mudball\'s choices are not numbered shape\'s colour 0, shape 1, colour 2');
+  if (button.kMudballSelectButtonSubColor !== 0 || button.kMudballSelectButtonShape !== 1 || button.kMudballSelectButtonColor !== 2) fail('the mudball\'s choices are not numbered shape\'s color 0, shape 1, color 2');
   const ways = [...need(/kHighAxisSelectorIndices\[6\]\[3\] = \{([\s\S]*?)\};/, cpp, 'kHighAxisSelectorIndices')[1].matchAll(/\{([^}]*)\}/g)]
     .map(m => m[1].split(',').map(t => button[t.trim()]));
-  if (!same(ways, S.ZB_NET_WAYS)) fail(`the six ways are not kHighAxisSelectorIndices: ${JSON.stringify(ways)}`);
+  if (!same(ways, S.ZB_NET_WAYS)) fail(`the six ways are not kHighAxisSelectorIndices (${JSON.stringify(ways)})`);
   const lookup = need(/switch \(_axisSelectorPermutationIdx\) \{([\s\S]*?)default:/, cpp, 'findTargetSlotForSelection\'s cases')[1];
   const cases = [...lookup.matchAll(/case (\d):\s*match = \(_rowAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_columnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_subcolumnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\]\);/g)];
   if (cases.length !== 6 || cases.some(m => !same([m[2], m[3], m[4]].map(Number), S.ZB_NET_WAYS[Number(m[1])]))) fail('findTargetSlotForSelection\'s six cases are not the six ways');
@@ -77,7 +77,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const trimmed = out.slice();
       for (let e = excess, i = 0; e > 0 && i < trimmed.length; i++) if (trimmed[i] >= 2) { trimmed[i]--; e--; }
       if (!same(st.targetLaunchBatchSizes, n === 1 ? [1] : trimmed) || st.targetLaunchBatchSizes.reduce((a, b) => a + b, 0) !== n) why.push(`groups ${st.targetLaunchBatchSizes}`);
-      if (st.initialShotAllowance !== st.targetCount + 7 + (level === 4 ? 1 : 0) || !d.setup.some(s => s.includes(`holds ${st.initialShotAllowance} mudballs`))) why.push('the tank');
+      if (st.initialShotAllowance !== st.targetCount + 7 + (level === 4 ? 1 : 0) || !d.setup.some(s => s.includes(`has ${st.initialShotAllowance} mudballs`))) why.push('the tank');
       // The marks.
       const marks = [...Array(cells).keys()].filter(i => rule.dots[i]);
       if (rule.dots.length !== cells || !same(marks.map(i => rule.dots[i]).sort(), st.targetLaunchBatchSizes.slice().sort())) why.push('the marks are not the groups');
@@ -124,7 +124,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       } else if (rule.way !== 0) why.push(`level ${level} looks through way ${rule.way}`);
       if (level <= 2 && !(same(rule.labels, [2, 1, 0]) || same(rule.labels, [1, 2, 0]))) why.push('the labels');
       if (d.marks.some((m, i) => m !== `goes over ${S.ZB_NET_ORDINALS[i]}`)) why.push('the marks are not the band\'s order');
-      if (why.length && bad++ < 3) fail(`level ${level}, ${n} Zoombinis, seed ${seed}: ${why.join('; ')}`);
+      if (why.length && bad++ < 3) fail(`level ${level}, ${n} Zoombinis, seed ${seed} (${why.join('; ')})`);
     }
   }
   if (seenWays.size !== 6) fail(`level 4 drew ${seenWays.size} of the six ways`);
@@ -179,7 +179,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       problem = lemma(level, knows, ruleOf(level, h, ro, co, untied ? perms[rnd.number(119)] : null), h);
       bench.lemma++;
     }
-    if (problem) fail(`level ${level}, knowing the ${knows}: ${problem}`);
+    if (problem) fail(`level ${level}, knowing the ${knows} (${problem})`);
   }
   for (let level = 1; level <= 4; level++) {
     let bad = 0;
@@ -197,7 +197,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const marks = d.state.rule.at;
       for (const m of marks) {
         const ball = S.zbNetMudball(d.state.rule, m);
-        if (S.zbNetLands(d.state.rule, ball.map(v => v ?? 0)) !== m || !x.steps.some(t => t.includes(S.zbNetMudballWords(ball) + ': it lands on the mark at ' + S.zbNetCellWords(d.state.rule, m)))) why.push(`no step lands on the mark at ${m}`);
+        if (S.zbNetLands(d.state.rule, ball.map(v => v ?? 0)) !== m || !x.steps.some(t => t.includes(S.zbNetMudballWords(ball) + '. It lands on the mark at ' + S.zbNetCellWords(d.state.rule, m)))) why.push(`no step lands on the mark at ${m}`);
       }
       bench.solved++;
       for (const knows of ['program', 'form']) {
@@ -241,7 +241,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           bench.followed++;
         }
       }
-      if (why.length && bad++ < 3) fail(`workbench, level ${level}, ${band.length} Zoombinis, seed ${seed}: ${[...new Set(why)].join('; ')}`);
+      if (why.length && bad++ < 3) fail(`workbench, level ${level}, ${band.length} Zoombinis, seed ${seed} (${[...new Set(why)].join('; ')})`);
     }
   }
   {
@@ -255,7 +255,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   if (bench.slowest > 500) fail(`a strategy step took ${bench.slowest} ms`);
 
-  say(`names, ways and tank as ScummVM's (the program has no table of this rule); ${dealt} deals over bands of 16 to 1: groups, tank and orders of each level as the program's, `
+  say(`names, ways and tank as ScummVM's (the program has no table of this rule). ${dealt} deals over bands of 16 to 1, groups, tank and orders of each level as the program's, `
     + `workbench: ${bench.trips} forms given back, ${bench.solved} solved, the strategy's proof held for ${bench.lemma} whole rules (every one the program can deal at levels 1 to 3), ${bench.walks} random branches and ${bench.followed} rules' branches (the dealt one among them) all taking the whole band, the puzzle's answer the check's at every move and ${bench.played} played to the end, slowest step ${bench.slowest} ms; `
     + `every mudball on a different section, the answer's mudball on each of ${landed} marks`);
 }

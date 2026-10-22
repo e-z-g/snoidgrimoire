@@ -44,11 +44,11 @@ else {
   for (const [k, arch] of Object.entries(KEY)) {
     const p = S.ZB_PLACE_BY_KEY.get(arch), want = at.get(k);
     if (!want) { fail(`kV11US_NETextEntries has no k${k}`); continue; }
-    if (!same(p.name, want)) fail(`${arch} is "${p.name}"; the program has "${want}"`); else n++;
+    if (!same(p.name, want)) fail(`${arch} is "${p.name}". The program has "${want}"`); else n++;
     if (S.ZB_ARCHIVES[arch].place !== p.name) fail(`ZB_ARCHIVES calls ${arch} "${S.ZB_ARCHIVES[arch].place}", the journey "${p.name}"`);
   }
-  S.ZB_ROUTES.forEach((r, i) => { const want = at.get('Route' + (i + 1)); if (!same(r.name, want)) fail(`route ${i + 1} is "${r.name}"; the program has ${JSON.stringify(want)}`); else n++; });
-  S.ZB_LEVELS.forEach((l, i) => { const want = at.get('Level' + (i + 1)); if (!same(l, want)) fail(`level ${i + 1} is "${l}"; the program has ${JSON.stringify(want)}`); else n++; });
+  S.ZB_ROUTES.forEach((r, i) => { const want = at.get('Route' + (i + 1)); if (!same(r.name, want)) fail(`route ${i + 1} is "${r.name}". The program has ${JSON.stringify(want)}`); else n++; });
+  S.ZB_LEVELS.forEach((l, i) => { const want = at.get('Level' + (i + 1)); if (!same(l, want)) fail(`level ${i + 1} is "${l}". The program has ${JSON.stringify(want)}`); else n++; });
   console.log(`names: ${n} of 24 are the program's`);
 }
 
@@ -64,7 +64,7 @@ const ROUTE_WORD = ['BigBadHungry', 'WhosBayou', 'DeepDarkForest', 'MontDespair'
 
 for (const name of ['RODMAP', 'MAP']) {
   let m;
-  try { m = S.zbJourneyMap(S.openMohawk(archiveBytes(name))); } catch (e) { fail(`${name}: ${e.message}`); continue; }
+  try { m = S.zbJourneyMap(S.openMohawk(archiveBytes(name))); } catch (e) { fail(`${name} (${e.message})`); continue; }
   let ok = 0;
   for (let i = 0; i < 16; i++) {
     const p = S.ZB_PLACE_BY_KEY.get(types[i]);

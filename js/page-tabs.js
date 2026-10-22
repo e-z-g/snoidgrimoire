@@ -58,7 +58,7 @@ function renderTab(t) {
   try {
     (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES)[t.sub](view, t.item);
   } catch (e) {
-    view.innerHTML += `<p class="bad">Could not show it: ${esc(e.message)}</p>`;
+    view.innerHTML += `<p class="bad">This could not be shown (${esc(e.message)}).</p>`;
     console.error(e);
   }
   // The side after the pane, since drawing a gallery may have just sorted its pictures from its sheets.
@@ -91,7 +91,7 @@ function openArchives() {
 function unfetchedNote(what) {
   const left = sortedArchives().filter(e => !e.bytes && e.remote);
   if (!left.length) return '';
-  return `<p class="note">${what} from the ${plural(openArchives().length, 'archive')} open; ${left.length} more ${left.length === 1 ? 'is' : 'are'} still to come from archive.org: <a data-fetchall>fetch</a> (about 100 MB in all).</p>`;
+  return `<p class="note">${what} from the ${plural(openArchives().length, 'open archive')}. ${left.length} more ${left.length === 1 ? 'is' : 'are'} still to come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
 }
 function wireFetchAll(view) {
   const a = view.querySelector('[data-fetchall]');
@@ -107,19 +107,19 @@ function wireFetchAll(view) {
 const SCENARIO_PANES = {
   places(view, item) {
     if (item) return roomPage(view, item);
-    let html = '<h1>Places</h1><p class="sub">Every place on the journey: what it is, the routes it is on, and its archive.</p>'
+    let html = '<h1>Places</h1><p class="sub">Every place on the journey, with what kind of place it is, the routes it is on, and its archive.</p>'
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>route</th><th>archive</th><th></th></tr>';
     for (const p of ZB_PLACES) {
       const routes = zbPlaceRoutes(p.key).map(r => ZB_ROUTES[r.route].name);
-      html += `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td class="note">${esc([...new Set(routes)].join('; '))}</td>`
+      html += `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td class="note">${esc(zbWordsOr([...new Set(routes)], 'and'))}</td>`
         + `<td>${ARCHIVES.has(p.key) ? `<a href="#${p.key}">${p.key}</a>` : p.key}</td>`
-        + `<td>${journeyAvailable() ? `<a href="#place=${p.key}">Map</a>` : ''}${ZB_PUZZLES.has(p.key) ? ` · <a href="#solve=${p.key}">Taken apart</a>` : ''}${p.key === 'TOWN' ? ' · <a href="#town">All round</a>' : ''}</td></tr>`;
+        + `<td>${journeyAvailable() ? `<a href="#place=${p.key}">Map</a>` : ''}${ZB_PUZZLES.has(p.key) ? ` · <a href="#solve=${p.key}">Taken apart</a>` : ''}${p.key === 'TOWN' ? ' · <a href="#town">Full view</a>' : ''}</td></tr>`;
     }
     view.innerHTML = html + '</table></div>';
   },
 
   puzzles(view) {
-    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles: the rule the program deals for each at every level, and the chances it gives.</p>';
+    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles, with the rules the program deals for each level and the chances each one gives.</p>';
     for (const [key, P] of ZB_PUZZLES) {
       const place = ZB_PLACE_BY_KEY.get(key);
       html += `<details class="sec"><summary><b>${esc(place.name)}</b> <span class="note">${esc(key)}</span></summary>`
@@ -132,7 +132,7 @@ const SCENARIO_PANES = {
 
   snoids(view) {
     const z = ARCHIVES.get('ZOOMBINI'), zarc = z && z.bytes ? openedArchive(z) : null;
-    let html = '<h1>Snoids</h1><p class="sub">Brøderbund’s word for a character put together from parts: a sheet of parts, five to a snoid, and the scripts that move them.</p>';
+    let html = '<h1>Snoids</h1><p class="sub">Snoid is Brøderbund’s word for a character built from five parts. The parts come from a sprite sheet, and scripts move them.</p>';
     // Which scripts draw which snoid, from every archive open.
     const scripts = {};
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('SCRS')) {
@@ -144,8 +144,8 @@ const SCENARIO_PANES = {
     for (const [kind, K] of Object.entries(ZB_SNOID_KINDS)) {
       const by = scripts[kind] || {}, n = Object.values(by).reduce((a, l) => a + l.length, 0);
       html += `<h2 class="h">${esc(K.name[0].toUpperCase() + K.name.slice(1))}</h2>`
-        + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}, registration points <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
-        + (n ? `${plural(n, 'script')} draw it:` : kind === 'small' ? 'No script uses it; the band waiting at Hotel Dimensia is drawn as this kind.' : 'Its scripts are in archives that are not open.') + '</p>';
+        + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}, with registration points in <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
+        + (n ? `${plural(n, 'script')} draw it.` : kind === 'small' ? 'No script uses it. The band waiting at Hotel Dimensia is drawn as this kind of snoid.' : 'Its scripts are in archives that are not open.') + '</p>';
       if (kind === 'zoombini' || kind === 'fleen') html += `<div class="traits" data-kind="${kind}"></div>`;
       for (const [arch, ids] of Object.entries(by)) html += `<div class="ids"><span class="note">${arch}</span>${ids.map(id => `<a href="#${arch}/SCRS/${id}">${id}</a>`).join('')}</div>`;
     }
@@ -169,8 +169,8 @@ const SCENARIO_PANES = {
   },
 
   town(view) {
-    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville, where the band ends up: houses for the Zoombinis who have arrived, a reward building for each route crossed at each level.</p>'
-      + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">All round</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">Map</a> · ' : ''}<a href="#TOWN">Archive</a></p>`;
+    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville, where the band ends up. It has houses for the Zoombinis who have arrived and a reward building for each route crossed at each level.</p>'
+      + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">Full view</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">Map</a> · ' : ''}<a href="#TOWN">Archive</a></p>`;
   },
 };
 
@@ -194,7 +194,7 @@ function xrefLink(key) {
 /* A resource's references, for the foot of its view. */
 function xrefHtml(entry, arc, tag, id) {
   let x;
-  try { x = siteXref(); } catch (e) { return `<p class="bad">Its references could not be worked out: ${esc(e.message)}</p>`; }
+  try { x = siteXref(); } catch (e) { return `<p class="bad">Its references could not be worked out (${esc(e.message)}).</p>`; }
   const key = zbXrefKey(entry.name, tag, id), out = (x.out.get(key) || []).slice(), back = (x.back.get(key) || []).slice();
   if (tag === 'tBMP' || tag === 'REGS') {
     if (!XREF_PAIRS.has(arc)) XREF_PAIRS.set(arc, zbXrefSheetRegs(arc));

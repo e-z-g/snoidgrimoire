@@ -38,40 +38,40 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const enumBody = need(/enum PadAttrType : byte \{([\s\S]*?)\};/, h, 'PadAttrType')[1];
   const attr = Object.fromEntries([...enumBody.matchAll(/(kPadAttr\w+) = (\d+)/g)].map(m => [m[1], Number(m[2])]));
   const types = [...need(/kPatternAttrType\[13\]\{([\s\S]*?)\};/, h, 'kPatternAttrType')[1].matchAll(/ZmbLillyGridWalker::(kPadAttr\w+)/g)].map(m => attr[m[1]]);
-  if (!same(types, S.ZB_LILLY_TATTOO_TYPE)) fail(`the tattoos' families are not ScummVM's: ${types}`);
-  if (!same([null, attr.kPadAttrPattern, attr.kPadAttrShape, attr.kPadAttrColor].map(v => v === null ? null : S.ZB_LILLY_FAMILY[v]), [null, 'pattern', 'shape', 'colour'])) fail('the families are not numbered as ScummVM numbers them');
+  if (!same(types, S.ZB_LILLY_TATTOO_TYPE)) fail(`the tattoos' families are not ScummVM's (${types})`);
+  if (!same([null, attr.kPadAttrPattern, attr.kPadAttrShape, attr.kPadAttrColor].map(v => v === null ? null : S.ZB_LILLY_FAMILY[v]), [null, 'pattern', 'shape', 'color'])) fail('the families are not numbered as ScummVM numbers them');
   const values = table('kPatternAttrValue', 13), extra = table('kPatternAttrExtra', 13);
-  if (!same(values, S.ZB_LILLY_TATTOO_VALUE)) fail(`the tattoos' values are not ScummVM's: ${values}`);
-  if (!same(extra, S.ZB_LILLY_TATTOO_EXTRA)) fail(`the tattoos' numbers are not ScummVM's: ${extra}`);
+  if (!same(values, S.ZB_LILLY_TATTOO_VALUE)) fail(`the tattoos' values are not ScummVM's (${values})`);
+  if (!same(extra, S.ZB_LILLY_TATTOO_EXTRA)) fail(`the tattoos' numbers are not ScummVM's (${extra})`);
   if (extra.slice(0, 12).some((v, i) => v !== i)) fail('a tattoo\'s number is not its place in the table, which the port assumes');
   const needed = table('kZmbToRowCount', 21), cuttable = table('kRowColValidity', 13);
-  if (!same(needed, S.ZB_LILLY_ROUTES_NEEDED)) fail(`the routes a band needs are not ScummVM's: ${needed}`);
+  if (!same(needed, S.ZB_LILLY_ROUTES_NEEDED)) fail(`the routes a band needs are not ScummVM's (${needed})`);
   if (needed.some((v, n) => n && v !== Math.ceil(n / 2))) fail('kZmbToRowCount is not half the band rounded up, as the rules say');
-  if (!same(cuttable, S.ZB_LILLY_CUTTABLE)) fail(`the rows and columns that may be cut are not ScummVM's: ${cuttable}`);
+  if (!same(cuttable, S.ZB_LILLY_CUTTABLE)) fail(`the rows and columns that may be cut are not ScummVM's (${cuttable})`);
   // The pictures the names come from: a pad's shape drawn as shape + 1,
-  // its mark as 5 + 3 x colour + pattern.
-  if (!same(table('kCombinedAttrBase', 5), [5, 8, 11, 14, 17])) fail('the marks are not drawn as 5 + 3 x colour + pattern, as the names assume');
+  // its mark as 5 + 3 x color + pattern.
+  if (!same(table('kCombinedAttrBase', 5), [5, 8, 11, 14, 17])) fail('the marks are not drawn as 5 + 3 x color + pattern, as the names assume');
   need(/int16 padShapeIdx = _padShape\[row\]\[col\] \+ 1;/, cpp, 'the pad\'s shape as drawn');
   const col = table('kSwapPairCol', 20), row = table('kSwapPairRow', 20);
   const init = fn('initGridWithAttributes');
   const idx = [...init.matchAll(/_(first|second)SwapCellCol = kSwapPairCol\[(\d+)\];\s*_\1SwapCellRow = kSwapPairRow\[(\d+)\];/g)].map(m => Number(m[2]));
   const demo = [[[col[idx[0]], row[idx[0]]], [col[idx[1]], row[idx[1]]]], [[col[idx[2]], row[idx[2]]], [col[idx[3]], row[idx[3]]]]];
-  if (idx.length !== 4 || !same(demo, S.ZB_LILLY_DEMO_SWAPS)) fail(`the demonstration swaps are not ScummVM's: ${JSON.stringify(demo)}`);
+  if (idx.length !== 4 || !same(demo, S.ZB_LILLY_DEMO_SWAPS)) fail(`the demonstration swaps are not ScummVM's (${JSON.stringify(demo)})`);
 
-  // The maps: which REGS, and which route numbers each has and wraps to.
+  // The maps: which REGS, which route numbers each has, and where each wraps around.
   const regs = [...init.matchAll(/loadGridPatternRegs\((\d), (\d+)\);/g)].map(m => Number(m[2]));
   if (!same(regs, [15000, 15001, 15002])) fail(`ScummVM loads the maps from REGS ${regs}`);
   const first = nums(need(/kFirstPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kFirstPatternIndex')[1]);
   const last = nums(need(/kLastPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kLastPatternIndex')[1]);
   const wraps = [...init.matchAll(/if \((\d+) < adjustedIdx\)\s*adjustedIdx = (\d+);/g)].map(m => [Number(m[2]), Number(m[1])]);
-  if (!same(first.map((f, i) => [f, last[i]]), S.ZB_LILLY_MAP_ROUTES) || !same(wraps, S.ZB_LILLY_MAP_ROUTES)) fail(`the maps' routes are not ScummVM's: ${first} to ${last}, wrapping ${JSON.stringify(wraps)}`);
+  if (!same(first.map((f, i) => [f, last[i]]), S.ZB_LILLY_MAP_ROUTES) || !same(wraps, S.ZB_LILLY_MAP_ROUTES)) fail(`the maps' routes are not ScummVM's, ${first} to ${last}, wrapping ${JSON.stringify(wraps)}`);
   const pools = fn('generateChallengePatterns');
   const poolTop = [...pools.matchAll(/int16 pool([ABC])Size = (\d+);/g)].map(m => Number(m[2]));
-  if (!same(poolTop, S.ZB_LILLY_MAP_ROUTES.map(([a, b]) => b - a))) fail(`the pools' sizes are not ScummVM's: ${poolTop}`);
+  if (!same(poolTop, S.ZB_LILLY_MAP_ROUTES.map(([a, b]) => b - a))) fail(`the pools' sizes are not ScummVM's (${poolTop})`);
 
   // The rules the deal and the chances lean on, as ScummVM writes them.
   const cut = need(/_challengeEnabledMarkers\[rawVal\] == 0 && _challengePlacementCounts\[rawVal\] < (\d+)\) \{\s*int16 rndCheck = _vm->_rnd->getRandomNumber\(0, (\d+)\);\s*if \((\d+) < rndCheck \|\| \(gridColIdx == 11 && _challengePlacementCounts\[rawVal\] == 0\)\)/, init, 'the cut');
-  if (!same([cut[1], cut[2], cut[3]].map(Number), [S.ZB_LILLY_CUT.most, S.ZB_LILLY_CUT.draw, S.ZB_LILLY_CUT.above])) fail(`a cut is tried and made as ScummVM does not: ${cut.slice(1)}`);
+  if (!same([cut[1], cut[2], cut[3]].map(Number), [S.ZB_LILLY_CUT.most, S.ZB_LILLY_CUT.draw, S.ZB_LILLY_CUT.above])) fail(`a cut is tried and made as ScummVM does not (${cut.slice(1)})`);
   need(/slotsToEnable = 12 - kZmbToRowCount\[_pageLoadedZmbCount\];/, init, 'the routes spared at level 1');
   need(/maxObstacleEntries = 2;[\s\S]*maxObstacleEntries = 3;/, init, 'the crabs\' entries');
   need(/const int16 swapProgressNumerator = patternPlacedCount \+ 5;\s*_swapsPerWandStage = \(swapProgressNumerator \+ 5\) \/ 6;/, init, 'the wand\'s stages');
@@ -134,7 +134,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     for (const { band, seed } of bands(250, 200 + level, [16, 12, 9, 5])) {
       const n = band.length, { log, rnd } = recording(seed);
       const d = P.deal(level, band, rnd, {}, arc);
-      const s = d.state, pads = { pattern: s.padPattern, shape: s.padShape, colour: s.padColor };
+      const s = d.state, pads = { pattern: s.padPattern, shape: s.padShape, color: s.padColor };
       const fam = s.obstacleGridFamily, need8 = S.ZB_LILLY_ROUTES_NEEDED[n] < 8;
 
       // The draws, in order.
@@ -159,7 +159,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
       // The routes' tattoos and the toads'.
       const rt = s.challengeTattooIndices;
-      for (let k = 1; k <= 12; k++) if (FAM[S.ZB_LILLY_TATTOO_TYPE[rt[k]]] !== ['pattern', 'shape', 'colour'][mapOf(k)]) bad(`level ${level}: route ${k} has a tattoo of another family`);
+      for (let k = 1; k <= 12; k++) if (FAM[S.ZB_LILLY_TATTOO_TYPE[rt[k]]] !== ['pattern', 'shape', 'color'][mapOf(k)]) bad(`level ${level}: route ${k} has a tattoo of another family`);
       if (new Set(rt.slice(1)).size !== 12 || !same(s.toads.map(t => t.tattooIdx).sort((a, b) => a - b), [...Array(12).keys()])) bad(`level ${level}: the tattoos are not twelve different`);
 
       // The pads, from the maps, the tattoos and the cuts; and the cuts.
@@ -177,7 +177,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
       // Each route not turned, cuts undone, crosses from every row it
       // starts on; at level 1 the spared ones do so as dealt, and suffice.
-      const whole = { pattern: s.padPattern.map(r => r.slice()), shape: s.padShape.map(r => r.slice()), colour: s.padColor.map(r => r.slice()) };
+      const whole = { pattern: s.padPattern.map(r => r.slice()), shape: s.padShape.map(r => r.slice()), color: s.padColor.map(r => r.slice()) };
       for (const c of s.challengePlacements) {
         const t = rt[c.route];
         whole[FAM[S.ZB_LILLY_TATTOO_TYPE[t]]][c.row][c.col] = S.ZB_LILLY_TATTOO_VALUE[t];
@@ -209,7 +209,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       const used = new Map();
       for (const m of d.marks) {
         if (!m) continue;
-        const [, slot, r, mend] = /^toad (\d+) \(.*\), from row (\d+)( once mended)?$/.exec(m) || [];
+        const [, slot, r, mend] = /^toad (\d+) \(.*\), from row (\d+)( after it is mended)?$/.exec(m) || [];
         const t = s.toads[slot - 1];
         used.set(slot, (used.get(slot) || 0) + 1);
         if (!t || used.get(slot) > 2 || (mend ? !t.routeRows.includes(r - 1) : !S.zbLillyCrosses(pads, t.attrType, t.attrValue, r - 1))) { bad(`level ${level}: the mark "${m}" is wrong`); break; }
@@ -256,7 +256,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       if (ms > 1200) slow++;
       if (!sol.solutions.length || sol.solutions.length > 12) { wbad(`level ${level}: ${sol.solutions.length} solutions`); break; }
       for (const so of sol.solutions) {
-        const pads = { pattern: st.padPattern.map(r => r.slice()), shape: st.padShape.map(r => r.slice()), colour: st.padColor.map(r => r.slice()) };
+        const pads = { pattern: st.padPattern.map(r => r.slice()), shape: st.padShape.map(r => r.slice()), color: st.padColor.map(r => r.slice()) };
         let swaps = 0;
         const riders = new Map(), crossed = [];
         for (const line of so.steps) {
@@ -267,7 +267,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
             swaps++;
             continue;
           }
-          m = /^Toad (\d+), with .* tattoo, from row (\d+): Zoombinis? ([\d, and]+)\.$/.exec(line);
+          m = /^Toad (\d+), with .* tattoo, from row (\d+), carries Zoombinis? ([\d, and]+)\.$/.exec(line);
           if (m) {
             const t = st.toads[m[1] - 1], who = m[3].split(/, | and /).map(x => x - 1);
             if (!t || !S.zbLillyCrosses(pads, t.attrType, t.attrValue, m[2] - 1)) wbad(`level ${level}: "${line}", and it has no way from that row`);
@@ -284,7 +284,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       }
       if (sol.solutions[0].crosses.length !== sol.most) wbad(`level ${level}: the simplest has fewer across than the most`);
       if (level === 1) {
-        const T = st.toads.filter(t => reachRows({ pattern: st.padPattern, shape: st.padShape, colour: st.padColor }, t.attrType, t.attrValue).length).length;
+        const T = st.toads.filter(t => reachRows({ pattern: st.padPattern, shape: st.padShape, color: st.padColor }, t.attrType, t.attrValue).length).length;
         if (!sol.exact || sol.most !== Math.min(n, 2 * T)) wbad(`level 1: most ${sol.most}, and ${T} toads have a way across`);
       }
       if (sol.exact && sol.most !== n && level > 1) wbad(`level ${level}: exact is claimed for ${sol.most} of ${n}`);
@@ -296,8 +296,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (P.strategy) fail('Titanic Tattooed Toads hides nothing from the player, and has a strategy');
   if (slow) fail(`${slow} solves took more than 1.2 s on a budget of 0.6 s`);
   if (wb) fail(wb);
-  say(`${trips} forms given back and dealt again as dealt; ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms; bands of 16 as level:most/swaps ${summary.join(' ')})`);
-  say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}); maps as REGS 15000-15002; ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 every band crosses by the ${spared} spared routes`);
+  say(`${trips} forms given back and dealt again as dealt. ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms. Bands of 16 as level:most/swaps ${summary.join(' ')})`);
+  say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}). Maps as REGS 15000-15002. ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 every band crosses by the ${spared} spared routes`);
 
   // ---- a route map edited (the page's layout editor) ----------------------
   // Every route on the disc runs from the first column to the last, a pad
@@ -308,7 +308,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     for (let g = 0; g < 3; g++) {
       const words = Array.from(S.parseRegs(arc.get('REGS', S.ZB_LILLY_ROUTE_REGS[g])));
       const runs = S.zbLillyRouteRuns(words, g);
-      if (runs.some(r => !r.across || !r.pads)) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: a route that does not run across: ${JSON.stringify(runs)}`);
+      if (runs.some(r => !r.across || !r.pads)) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: a route that does not run across (${JSON.stringify(runs)})`);
       const k = words.findIndex(v => v), back = S.zbLillyEditMap(S.zbLillyEditMap(words, g, Math.floor(k / 12), k % 12, 0), g, Math.floor(k / 12), k % 12, words[k]);
       if (JSON.stringify(back) !== JSON.stringify(words)) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: a pad repainted and painted back changes the map`);
       const route = runs[0].route, cut = words.map((v, i) => (i % 12 === 11 && v === route ? 0 : v));

@@ -60,17 +60,17 @@ add(`${K} level ${level}, seed ${seed}, band ${S.zbBandCode(band)}`, [...dealt.s
 const t0 = Date.now();
 const sol = P.solve(level, band, state, arc, {});
 add(`Known: ${sol.most} of ${band.length} can cross${sol.exact ? '' : ' (the best found)'}${sol.ways != null ? `, ${sol.ways} way${sol.ways === 1 ? '' : 's'}` : ''} (${Date.now() - t0} ms)`, sol.notes || [], null);
-sol.solutions.slice(0, 3).forEach((s, k) => add(`${k ? 'Solution' : 'Simplest'}: ${s.title}`, s.steps, s.diagram));
+sol.solutions.slice(0, 3).forEach((s, k) => add(`${k ? 'Solution' : 'Simplest'} (${s.title})`, s.steps, s.diagram));
 if (P.strategy) {
   const t1 = Date.now();
   const st = P.strategy(level, band, arc, { knows: flag('knows'), state });
   add(`Unknown: ${st.guaranteed} of ${band.length} guaranteed, over ${st.hypotheses} hypotheses${st.exact ? '' : ' (a bound)'} (${Date.now() - t1} ms)`, st.notes || [], null);
   let nd = st.root;
   for (let k = 0; k < (+flag('steps') || 3) && nd; k++) {
-    add(`Step ${k + 1}: ${nd.move}`, nd.outcomes.map(o => '→ ' + o.label), nd.diagram || null);
+    add(`Step ${k + 1} (${nd.move})`, nd.outcomes.map(o => '→ ' + o.label), nd.diagram || null);
     nd = nd.outcomes.length ? nd.outcomes[0].next() : null;
   }
-  if (nd) add(`Then: ${nd.move}`, [], nd.diagram || null);
+  if (nd) add(`Then (${nd.move})`, [], nd.diagram || null);
 }
 const html = `<!doctype html><meta charset="utf-8"><style>body{background:#0e131c;color:#d9dfe8;font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;margin:16px;width:920px}h2{font-size:15px;margin:18px 0 4px}p{margin:2px 0;color:#b8c2d0}svg{display:block;margin:8px 0;background:#070a10;max-width:100%;height:auto}</style>${sections.join('')}`;
 const base = path.join(out, `${K.toLowerCase()}-${level}-${seed}`);

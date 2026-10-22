@@ -48,7 +48,7 @@ for (const name of archiveNames()) {
   }
 }
 if (nearer.join() !== 'CAVES 9025,CAVES 9026,CAVES 9027,CAVES 9028,FERRY 1450,FERRY 1451,FERRY 1452') fail(`a nearer sheet than the hundred's for ${nearer.join(', ')}`);
-if (total !== 1796 || draws !== 1789 || noHundred !== 192) fail(`${total} scripts, ${draws} drawing, ${noHundred} with no sheet at their hundred: zb-feature.js has 1,796, 1,789 and 192`);
+if (total !== 1796 || draws !== 1789 || noHundred !== 192) fail(`${total} scripts, ${draws} drawing, ${noHundred} with no sheet at their hundred, zb-feature.js has 1,796, 1,789 and 192`);
 if (onRoom < draws * 0.97) fail(`only ${onRoom} of ${draws} fall on the room`);
 {
   const town = S.openMohawk(archiveBytes('TOWN')), pizza = S.openMohawk(archiveBytes('PIZZA'));
@@ -56,5 +56,5 @@ if (onRoom < draws * 0.97) fail(`only ${onRoom} of ${draws} fall on the room`);
   const there = S.zbFeatureSheet(pizza, id, script), wrong = S.zbFeatureSheet(town, 1, script);
   if (!there || wrong) fail('a script with no sheet at or below it was given one');
 }
-console.log(`${total} feature scripts, ${draws} drawing: each has its sheet, the hundred's where there is one (${noHundred} where there is not, ${nearer.length} with a nearer one); ${onRoom} fall on the room` + (off.length ? `, not ${off.slice(0, 12).join(', ')}${off.length > 12 ? ' and ' + (off.length - 12) + ' more' : ''}` : ''));
+console.log(`${total} feature scripts, ${draws} drawing, each has its sheet, the hundred's where there is one (${noHundred} where there is not, ${nearer.length} with a nearer one). ${onRoom} fall on the room` + (off.length ? `, not ${off.slice(0, 12).join(', ')}${off.length > 12 ? ' and ' + (off.length - 12) + ' more' : ''}` : ''));
 process.exit(fails ? 1 : 0);

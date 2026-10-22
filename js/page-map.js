@@ -1,5 +1,5 @@
 /* page-map.js -- the journey's map: the land the Zoombinis cross, their
-   sixteen places on it and the roads between, as one picture to zoom into.
+   sixteen places on it and the roads between them, as one picture you can zoom.
    =========================================================================
 
    The map is one picture, as StarGrimoire's universe and grimoire's World
@@ -24,10 +24,10 @@
    Everything drawn comes from zb-journey.js and the archives, and this
    file chooses only how it looks. These choices are the file's, not the
    game's, and appear only here: a place's
-   window is 4:3, like its picture, centred on its icon, and 0.8 of the way
-   to its nearest neighbour across, at most 60 map pixels, so no two meet;
+   window is 4:3, like its picture, centered on its icon, and 0.8 of the way
+   to its nearest neighbor across, at most 60 map pixels, so no two meet;
    the land round the place you are in darkens as it fills the screen; the
-   roads are drawn in one level's colours at a time, the level the tools
+   roads are drawn in one level's colors at a time, the level the tools
    pick, where the game draws each in the level it was crossed at; the map
    is drawn pixel for pixel when magnified and smoothed when shrunk. From
    archive.org, a place's archive is fetched only when you are in it or
@@ -66,7 +66,7 @@ function isJourneyHash() { return /^#(journey|place=)/.test(location.hash); }
    fetches it before reading it. */
 async function journeyLoad() {
   const entry = ARCHIVES.get('RODMAP') || ARCHIVES.get('MAP');
-  if (!entry) { JMAP_ERROR = 'There is no RODMAP or MAP archive among the files opened.'; return false; }
+  if (!entry) { JMAP_ERROR = 'No RODMAP or MAP archive is open.'; return false; }
   if (JMAP && JMAP_FROM === entry) return true;
   if (!entry.bytes && !entry.error) {
     $('jpanel').innerHTML = `<h2>The journey</h2><p class="note">Fetching the map from archive.org…</p>`;
@@ -85,7 +85,7 @@ async function journeyLoad() {
   if (shared) shared.colours.forEach((c, i) => { JPAL[10 + i] = [c[0], c[1], c[2]]; });
   JMAP.palette.colours.forEach((c, i) => { if (JMAP.palette.start + i < 256) JPAL[JMAP.palette.start + i] = [c[0], c[1], c[2]]; });
   JGROUND = indexedCanvas(JMAP.background, JPAL, false);
-  // Each level's colour: the commonest in its line in the map's legend.
+  // Each level's color: the commonest in its line in the map's legend.
   JLEVEL_RGB = JMAP.levels.map(i => {
     const f = JMAP.sheet[i], n = new Map();
     for (const v of f.pixels) if (v) n.set(v, (n.get(v) || 0) + 1);
@@ -489,14 +489,14 @@ function levelLegend() {
 }
 
 function journeyPanel() {
-  let html = `<h2>The journey</h2><div class="sub">${esc(JMAP_FROM.name)}, tBMP 300: the map the game shows between places</div>`;
-  html += `<p>A band of sixteen Zoombinis sets out from Zoombini Isle to Zoombiniville over four routes and twelve puzzles, three to a route; at Shelter Rock the way divides and at Shade Tree it meets again. Zoom into a place to see it.</p>`;
+  let html = `<h2>The journey</h2><div class="sub">${esc(JMAP_FROM.name)}, tBMP 300, the map the game shows between places</div>`;
+  html += `<p>A band of sixteen Zoombinis travels from Zoombini Isle to Zoombiniville. The journey has four routes with three puzzles each, twelve in all. The way splits at Shelter Rock and joins again at Shade Tree. Zoom in on a place to see it.</p>`;
   for (const r of ZB_ROUTES) {
     html += `<h3>${esc(r.name)}</h3><ol class="route">` + r.places.map(k => `<li>${jPlaceLink(k)}<small>${esc(jPlace(k).kind)}</small></li>`).join('') + '</ol>';
   }
-  html += `<h3>The roads, at a level</h3>${levelLegend()}`;
-  html += JSAVE ? `<p class="note">The roads as ${esc(JSAVE.name)} has them, each in the colour of the level it was crossed at; <a data-nosave>Clear</a>.</p>`
-    : `<p class="note">The game draws each stretch of road in the colour of the level it was crossed at; here they are all drawn at the level picked, and a place's help is that level's.</p>`;
+  html += `<h3>Road colors by level</h3>${levelLegend()}`;
+  html += JSAVE ? `<p class="note">The roads as they are in ${esc(JSAVE.name)}. Each road’s color shows the level the band was on when it crossed. <a data-nosave>Clear</a>.</p>`
+    : `<p class="note">In the game, each road’s color shows the level the band was on when it crossed. Here every road is drawn at the level you pick, and each place shows its help for that level.</p>`;
   return html;
 }
 
@@ -515,7 +515,7 @@ function placePanel(key) {
   let html = `<h2>${esc(p.name)}</h2><div class="sub">${esc(key)} · ${where}</div>`;
   html += '<div class="actions">'
     + (inIt ? `<button data-go="map">Map</button>` : `<button data-go="in" data-key="${key}">Go in</button>`)
-    + (key === 'TOWN' && entry ? ` <a class="btn" href="#town">All round</a>` : '')
+    + (key === 'TOWN' && entry ? ` <a class="btn" href="#town">Full view</a>` : '')
     + ` <a class="btn" href="#${key}">The archive</a>`
     + (p.panorama ? ` <a class="btn" href="#${key}/tBMP/${p.panorama.sheet}">The panorama</a>` : ` <a class="btn" href="#${key}/tBMP/${id}">The picture</a>`)
     + '</div>';
@@ -527,24 +527,24 @@ function placePanel(key) {
   }
   html += '<table class="kv">'
     + (from.length ? `<tr><td>from</td><td>${from.join(' or ')}</td></tr>` : '')
-    + (to.length ? `<tr><td>on to</td><td>${to.join(' or ')}</td></tr>` : '')
+    + (to.length ? `<tr><td>leads to</td><td>${to.join(' or ')}</td></tr>` : '')
     + `<tr><td>picture</td><td>${p.panorama ? `SCRB ${p.panorama.script}'s first view of tBMP ${p.panorama.sheet}, in SHPL ${p.background}` : `tBMP ${id} in SHPL ${id}`}${p.hard ? ` <small>(${id === p.hard ? `tBMP ${p.background} at levels 1 and 2` : `tBMP ${p.hard} at levels 3 and 4`})</small>` : ''}</td></tr>`
     + '</table>';
   const pic = jPicture(key);
-  if (!entry) html += `<p class="warn">${esc(key)}.MHK is not among the files opened, so its picture cannot be drawn.</p>`;
+  if (!entry) html += `<p class="warn">${esc(key)}.MHK is not open, so its picture cannot be drawn.</p>`;
   else if (pic === 'fetching') html += `<p class="note">Fetching ${esc(key.toLowerCase())}.mhk from archive.org…</p>`;
-  else if (pic === 'unfetched') html += `<p class="note">Its picture is in ${esc(key.toLowerCase())}.mhk, fetched from archive.org when you go in.</p>`;
-  else if (pic === 'failed') html += `<p class="bad">Its picture could not be drawn${entry.error ? ': ' + esc(entry.error) : ''}.</p>`;
+  else if (pic === 'unfetched') html += `<p class="note">Its picture is in ${esc(key.toLowerCase())}.mhk, which is fetched from archive.org when you go in.</p>`;
+  else if (pic === 'failed') html += `<p class="bad">Its picture could not be drawn${entry.error ? ' (' + esc(entry.error) + ')' : ''}.</p>`;
   if (p.kind === 'puzzle' && ZB_PUZZLES.has(key)) html += puzzlePanel(key);
   html += helpPanel(p);
-  if (p.kind === 'puzzle') html += `<h3>The roads, at a level</h3>${levelLegend()}`;
+  if (p.kind === 'puzzle') html += `<h3>Road colors by level</h3>${levelLegend()}`;
   return html;
 }
 
 /* A puzzle's rules at the level picked, and one dealt, once the visitor deals it. */
 function puzzlePanel(key) {
   const z = ZB_PUZZLES.get(key), lv = z.levels[JVIEW.level - 1];
-  let html = `<h3>The puzzle, level ${JVIEW.level}: ${esc(ZB_LEVELS[JVIEW.level - 1])}</h3><p>${esc(z.about)}</p>`
+  let html = `<h3>The puzzle, level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})</h3><p>${esc(z.about)}</p>`
     + `<table class="kv"><tr><td>hidden</td><td>${esc(lv.rule)}</td></tr><tr><td>chances</td><td>${esc(lv.chances)}</td></tr></table>`
     + (lv.notes || []).map(n => `<p class="note">${esc(n)}</p>`).join('');
   const sizes = Array.from({ length: 16 }, (_, i) => 16 - i);
@@ -562,34 +562,34 @@ function dealtPanel(key) {
   // A puzzle whose layout is in its archive is dealt once that has come.
   for (const name of zbDealNeeds(key)) {
     const entry = ARCHIVES.get(name);
-    if (!entry) return `<p class="warn">Its layout is in ${esc(name)}.MHK, which is not among the files opened.</p>`;
+    if (!entry) return `<p class="warn">Its layout is in ${esc(name)}.MHK, which is not open.</p>`;
     if (!entry.bytes && entry.remote && !entry.error) {
       ensureBytes(entry).then(() => { if (JVIEW.deal && JVIEW.deal.key === key) mapPanel(); });
-      return `<p class="note">Its layout is in ${esc(name.toLowerCase())}.mhk: fetching it from archive.org…</p>`;
+      return `<p class="note">Its layout is in ${esc(name.toLowerCase())}.mhk, which is being fetched from archive.org…</p>`;
     }
-    if (!openedArchive(entry)) return `<p class="bad">Its layout is in ${esc(name)}.MHK, which could not be read${entry.error ? ': ' + esc(entry.error) : ''}.</p>`;
+    if (!openedArchive(entry)) return `<p class="bad">Its layout is in ${esc(name)}.MHK, which could not be read${entry.error ? ' (' + esc(entry.error) + ')' : ''}.</p>`;
   }
   let d;
   try { d = zbDealAt(key, JVIEW.level, seed, size, name => openedArchive(ARCHIVES.get(name))); }
-  catch (e) { return `<p class="bad">The puzzle could not be dealt: ${esc(e.message)}</p>`; }
+  catch (e) { return `<p class="bad">The puzzle could not be dealt (${esc(e.message)}).</p>`; }
   const T = ZB_TRAIT_SHORT;
   const rows = d.band.map((b, i) => `<tr><td class="num">${i + 1}</td><td>${esc(T.hair[b.hair - 1])}</td><td>${esc(T.eyes[b.eyes - 1])}</td>`
     + `<td>${esc(T.nose[b.nose - 1])}</td><td>${esc(T.feet[b.feet - 1])}</td><td class="mark">${esc(d.marks[i] || '')}</td></tr>`).join('');
   return '<div class="dealt">' + d.setup.map(l => `<p>${esc(l)}</p>`).join('')
-    + `<details${JVIEW.answerOpen ? ' open' : ''}><summary>The answer, and the band</summary>`
+    + `<details${JVIEW.answerOpen ? ' open' : ''}><summary>The answer and the band</summary>`
     + d.answer.map(l => `<p>${esc(l)}</p>`).join('')
     + `<table class="plain band"><tr><th></th><th>hair</th><th>eyes</th><th>nose</th><th>feet</th><th></th></tr>${rows}</table></details>`
-    + `<p class="note">Dealt by the program's random-number generator from seed ${seed}; opening this address again gives the same deal.</p></div>`;
+    + `<p class="note">Dealt by the program’s random number generator from seed ${seed}. Opening this address again gives the same deal.</p></div>`;
 }
 
 function helpPanel(p) {
   const z = ARCHIVES.get('ZOOMBINI');
   const id = p.kind === 'puzzle' ? p.help + 20 * (JVIEW.level - 1) : p.help;
-  const head = p.kind === 'puzzle' ? `The help, level ${JVIEW.level}: ${esc(ZB_LEVELS[JVIEW.level - 1])}` : 'The help';
+  const head = p.kind === 'puzzle' ? `The help, level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})` : 'The help';
   if (!z) return `<h3>${head}</h3><p class="note">The help is in ZOOMBINI.MHK, STRL ${id}, and that file is not open.</p>`;
   if (!z.bytes) {
     if (FETCHING.has('ZOOMBINI')) return `<h3>${head}</h3><p class="note">Fetching zoombini.mhk from archive.org…</p>`;
-    return `<h3>${head}</h3><p class="note">The help is in zoombini.mhk, STRL ${id}: <a data-fetch="ZOOMBINI">fetch</a> (24 MB).</p>`;
+    return `<h3>${head}</h3><p class="note">The help is in zoombini.mhk, STRL ${id}. <a data-fetch="ZOOMBINI">Fetch it</a> (24 MB).</p>`;
   }
   const arc = openedArchive(z);
   if (!arc || !arc.has('STRL', id)) return `<h3>${head}</h3><p class="warn">ZOOMBINI has no STRL ${id}.</p>`;
@@ -628,7 +628,7 @@ function mapHoverAt(sx, sy) {
 }
 
 /* A tap picks a place; a second tap on it, or a double tap, goes in. From
-   inside a place, a tap on a neighbour goes straight to it. */
+   inside a place, a tap on a neighbor goes straight to it. */
 function mapTapAt(sx, sy, dbl) {
   if (JMOVING) return;
   const key = mapPlaceAt(sx, sy);

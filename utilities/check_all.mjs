@@ -17,17 +17,17 @@ const CHECKS = [
   ['resources', 'every other resource read to its last byte'],
   ['journey', 'the places, routes and names against the program and ScummVM'],
   ['town', 'Zoombiniville\'s rules, world and names against ScummVM and the program'],
-  ['snoid', 'the snoids put together from their parts, against animate.py and every snoid script; the walk against ScummVM'],
+  ['snoid', 'the snoids put together from their parts, against animate.py and every snoid script. The walk against ScummVM'],
   ['maker', 'the snoids\' idles, feet shows and walks as the Zoombini maker plays them'],
   ['write', 'writing an archive back, against mohawk_write.py byte for byte, and read back'],
   ['fleenmod', 'the Fleen-parts mod, plain and green, against mod_fleen_parts.py byte for byte, resources and EXE'],
-  ['recolour', 'a part recoloured, against mod_red_shaggy.py byte for byte, every part read back'],
+  ['recolour', 'a part recolored, against mod_red_shaggy.py byte for byte, every part read back'],
   ['xref', 'the cross-references, every one there, and search across the disc'],
   ['save', 'a saved game and its roster, read as ScummVM reads them, against one made in the game'],
   ['feature', 'every feature script\'s sheet found by the numbering, and its sprites on the room'],
   ['music', 'every tune made into what QuickTime\'s instruments play, nothing left out, and two rendered'],
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
-  ['page', 'index.html in headless Chrome: the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
+  ['page', 'index.html in headless Chrome, the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
 ];
 const want = process.argv.slice(2);
 const run = CHECKS.filter(([n]) => !want.length || want.some(w => n.includes(w)));

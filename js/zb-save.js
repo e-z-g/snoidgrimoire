@@ -43,7 +43,7 @@
    TLC's padding kept, so that zbSaveWrite(zbSaveRead(b)) is b. Beside them,
    read from them and not written: band (the band now), where (every
    Zoombini, and where it is), visits, routes (each place's levels, and the
-   level the map colours it at), rewards, page and lastPage. A pack's
+   level the map colors it at), rewards, page and lastPage. A pack's
    entries past its count, and a chunk's places with no traits, are kept:
    they are what the game left there, not Zoombinis. zbSaveOffsets(layout)
    gives where each field begins, zbSaveRoster and zbSaveRosterWrite the
@@ -57,7 +57,7 @@
    ZmbRouteId) and zoombini_state.cpp (each struct's sync, snoidId,
    getPopulatedEntryCount, setRouteCompletionFlag); the level nibbles as
    zoombini_pages/interactive_base.cpp routeNonOccupiedToRestingPack sets
-   them, the map's colours as interactive_rodmap.cpp buildPageRouteLevelMap
+   them, the map's colors as interactive_rodmap.cpp buildPageRouteLevelMap
    reads them, and which pack entries are live by the packs' skip flags
    (ZmbStateActivePack). utilities/save_check.mjs reads and writes back a
    game saved in the 1996 US program, byte for byte. */
@@ -213,7 +213,7 @@ function zbSaveSync(s, f, layout) {
 
 function zbSaveLayout(size) {
   const layout = ZB_SAVE_LAYOUTS.find(l => l.size === size);
-  if (!layout) throw new Error(`a saved game is ${ZB_SAVE_LAYOUTS.map(l => l.size.toLocaleString('en')).join(', ')} bytes; this is ${size}`);
+  if (!layout) throw new Error(`a saved game is ${ZB_SAVE_LAYOUTS.map(l => l.size.toLocaleString('en')).join(', ')} bytes, but this is ${size}`);
   return layout;
 }
 
@@ -262,7 +262,7 @@ function zbSaveViews(f) {
     hardFirst: !!(f[k] & 0x1000), hardSecond: !!(f[k] & 0x2000) }));
 
   // Each route: its three puzzles' bytes (pageLevelFlags[3 + 3r + i]) and
-  // a separate nibble for the camp or town it ends at. The map colours every
+  // a separate nibble for the camp or town where it ends. The map colors every
   // place on a route at the route's level once it is past level 1, and
   // before that at the nibble itself (buildPageRouteLevelMap).
   const ends = [f.levelFlagRouteBigBadHungry & 15, f.levelFlagLoWhosBayouHiDeepDarkForest & 15,
@@ -329,11 +329,11 @@ function zbSaveOffsets(name) {
    the header on the array (magic, next, count) and every entry's raw bytes
    in .entries. */
 function zbSaveRoster(bytes) {
-  if (bytes.length !== ZB_SAVE_ROSTER_SIZE) throw new Error(`a roster is ${ZB_SAVE_ROSTER_SIZE} bytes; this is ${bytes.length}`);
+  if (bytes.length !== ZB_SAVE_ROSTER_SIZE) throw new Error(`a roster is ${ZB_SAVE_ROSTER_SIZE} bytes, but this is ${bytes.length}`);
   const s = zbSaveSerializer(bytes, false), head = {};
   s.u16le(head, 'magic006B'); s.u16le(head, 'nextSaveFileNameCounter'); s.u16le(head, 'saveEntryCount');
   s.array(head, 'entries', 50, (a, i) => { s.bytes(a[i], 'saveName', 23); s.bytes(a[i], 'fileName', 9); });
-  if (head.magic006B !== 0x006b) throw new Error(`not a Zoombinis roster: its magic is 0x${head.magic006B.toString(16)}`);
+  if (head.magic006B !== 0x006b) throw new Error(`not a Zoombinis roster (its magic is 0x${head.magic006B.toString(16)})`);
   const str = b => { const e = b.indexOf(0); return e < 0 ? null : ZB_TEXT_DECODER.decode(b.subarray(0, e)); };
   const used = head.entries.slice(0, Math.min(head.saveEntryCount, 50)).map((e, index) => ({ index, name: str(e.saveName), file: str(e.fileName) }));
   return Object.assign(used, { magic: head.magic006B, next: head.nextSaveFileNameCounter, count: head.saveEntryCount, entries: head.entries });

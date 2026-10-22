@@ -14,7 +14,7 @@
    101xx, LILLY 101xx, NET 91xx, ZOOMBINI 1-18) there is no sheet at the
    hundred and the one below is tBMP 10000, 10000, 9000 and 1. For seven a
    sheet lies between the hundred and the script, numbered as the first of
-   them, and is plainly theirs: CAVES SCRB 9025-9028 use shapes 4, 3, 2 and
+   them and plainly theirs: CAVES SCRB 9025-9028 use shapes 4, 3, 2 and
    1 of tBMP 9025's four, FERRY SCRB 1450-1452 shapes 2, 3 and 1 of tBMP
    1450's three, where animate.py's rule gives them tBMP 9000 and 1400. No
    script anywhere draws a shape its sheet lacks (HOTEL's 101xx reach shape

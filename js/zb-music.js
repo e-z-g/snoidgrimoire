@@ -20,7 +20,7 @@
 
 /* QTMA's controller numbers, which midiToQtma writes by name. In grimoire
    they are in its page's script (page-export.js, QTC), which this site
-   does not copy; these are that table, and are not MIDI's numbers. */
+   does not copy; these are that table, not MIDI's numbers. */
 const QTC = { ModWheel: 1, Breath: 2, Foot: 4, Volume: 7, Balance: 8, Pan: 10,
   Expression: 11, PitchBend: 32, AfterTouch: 33, PartTranspose: 40,
   TuneTranspose: 41, Sustain: 64, Portamento: 65, Sostenuto: 66, SoftPedal: 67,

@@ -4,7 +4,7 @@
    Needs zb-puzzle.js, and zb-mohawk.js, with which the deal reads LILLY.
 
    The pond is 12 rows of 12 lily pads, and every pad has three things
-   about it: a mark in one of five colours (magenta, red, orange, cyan,
+   about it: a mark in one of five colors (magenta, red, orange, cyan,
    beige), the mark's pattern, one of three (diamond, cross, flower), and
    the shape of the pad itself, one of four (one notch, two notches, three leaves,
    four leaves). Each of the twelve toads on the near bank has a tattoo
@@ -20,7 +20,7 @@
    What is hidden is the pond's plan. LILLY's REGS 15000, 15001 and 15002
    are three 12 x 12 maps of routes, one a family: 15000 has routes 1-3,
    for the patterns, 15001 routes 4-7, for the shapes, and 15002 routes
-   8-12, for the colours, each a run of cells from the first column to
+   8-12, for the colors, each a run of cells from the first column to
    the last; the deal reads them from the archive it is given. The
    program turns or mirrors all three maps together at
    random, gives each route a different value of its family, and paints
@@ -84,9 +84,9 @@
    JUMPOFFPADCALLBACKPROC, and draws the same numbers in the same order.
    The values' names are from the pictures, LILLY tBMP 13000, which the
    pond draws a pad's shape with as shape 1-4 and its mark as shape 5-19
-   (5 + 3 x colour + pattern), a shape being the sheet's frame one below
+   (5 + 3 x color + pattern), a shape being the sheet's frame one below
    it: the pads have one notch, two notches, three leaves and four; the
-   marks are a diamond, a cross and a flower in each colour. ScummVM's
+   marks are a diamond, a cross and a flower in each color. ScummVM's
    debug text calls the shapes oneCut, twoCut, threeLeaf and fourLeaf,
    and pattern 0 a flower and pattern 2 a diamond, which the pictures
    have the other way round. utilities/puzzles/lilly.mjs compares the
@@ -101,12 +101,12 @@
 */
 
 /* The three families, by the program's number (ScummVM's PadAttrType):
-   1 the mark's pattern, 2 the pad's shape, 3 the mark's colour. */
-const ZB_LILLY_FAMILY = [null, 'pattern', 'shape', 'colour'];
+   1 the mark's pattern, 2 the pad's shape, 3 the mark's color. */
+const ZB_LILLY_FAMILY = [null, 'pattern', 'shape', 'color'];
 const ZB_LILLY_VALUE_WORDS = {
   pattern: ['diamond', 'cross', 'flower'],
   shape: ['one-notch', 'two-notch', 'three-leaf', 'four-leaf'],
-  colour: ['magenta', 'red', 'orange', 'cyan', 'beige'],
+  color: ['magenta', 'red', 'orange', 'cyan', 'beige'],
 };
 /* The twelve tattoos, by tattoo number 0-11, and a thirteenth, unused:
    family and value (ScummVM's kPatternAttrType, kPatternAttrValue); a
@@ -130,8 +130,8 @@ const ZB_LILLY_DEMO_SWAPS = [[[4, 4], [3, 6]], [[8, 3], [10, 5]]];
 /* The three maps of routes are LILLY's REGS 15000-15002 (ScummVM's
    loadGridPatternRegs), read from the archive, never copied here. */
 const ZB_LILLY_ROUTE_REGS = [15000, 15001, 15002];
-/* Each map's routes: the first and last route number, which the next
-   route after the last wraps to. */
+/* Each map's routes: the first and last route number. The route after
+   the last wraps around to the first. */
 const ZB_LILLY_MAP_ROUTES = [[1, 3], [4, 7], [8, 12]];
 
 /* The maps from an opened LILLY, each 12 rows of 12 route numbers, 0 where
@@ -142,7 +142,7 @@ function zbLillyRouteMaps(arc) {
   if (!arc) throw new Error('Titanic Tattooed Toads: the deal needs LILLY opened, for its route maps (REGS 15000-15002)');
   if (zbLillyMapsRead.has(arc)) return zbLillyMapsRead.get(arc);
   const maps = ZB_LILLY_ROUTE_REGS.map((id, g) => {
-    if (!arc.has('REGS', id)) throw new Error(`Titanic Tattooed Toads: this LILLY has no REGS ${id}, one of the pond's route maps`);
+    if (!arc.has('REGS', id)) throw new Error(`This LILLY has no REGS ${id}, one of the route maps for the Titanic Tattooed Toads’ pond`);
     const v = parseRegs(arc.get('REGS', id));
     if (v.length !== 144) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} is ${v.length} numbers long, not 12 x 12`);
     const [first, last] = ZB_LILLY_MAP_ROUTES[g];
@@ -213,7 +213,7 @@ function zbLillyWords(type, value) {
   return (w === 'orange' ? 'an ' : 'a ') + w;
 }
 
-/* The pad's value in a family: pads is { pattern, shape, colour }, each
+/* The pad's value in a family: pads is { pattern, shape, color }, each
    12 x 12 by row and column. */
 function zbLillyPad(pads, type, row, col) { return pads[ZB_LILLY_FAMILY[type]][row][col]; }
 
@@ -296,7 +296,7 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
   if (over.spared) for (let k = 1; k <= 12; k++) markers[k] = over.spared.includes(k) ? k : 0;
 
   /* Each route's tattoo, drawn without replacement from its family's
-     pool: routes 1-3 the patterns, 4-7 the shapes, 8-12 the colours. */
+     pool: routes 1-3 the patterns, 4-7 the shapes, 8-12 the colors. */
   const pools = [[0, 1, 2], [3, 4, 5, 6], [7, 8, 9, 10, 11]].map(p => p.map(i => ZB_LILLY_TATTOO_EXTRA[i]));
   /* (A tattoo's number is its place in the table, so its family and
      value are looked up by it below.) */
@@ -311,13 +311,13 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
      cut, of the next route's; the cut is tried where the row and column may
      be cut and the route may be cut and has been cut fewer than twice.
      The turned family's cuts change nothing but are counted. */
-  const pads = { pattern: [], shape: [], colour: [] };
+  const pads = { pattern: [], shape: [], color: [] };
   const cutCount = Array(13).fill(0), cuts = [], crabEntries = [];
   let cutTotal = 0;
   for (let row = 0; row < 12; row++) {
-    for (const f of ['pattern', 'shape', 'colour']) pads[f].push(Array(12).fill(0));
+    for (const f of ['pattern', 'shape', 'color']) pads[f].push(Array(12).fill(0));
     for (let col = 0; col < 12; col++) {
-      const set = { pattern: false, shape: false, colour: false };
+      const set = { pattern: false, shape: false, color: false };
       for (let g = 0; g < 3; g++) {
         const raw = maps[g][row][col];
         if (!raw) continue;
@@ -342,7 +342,7 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
       }
       if (!set.pattern) pads.pattern[row][col] = rnd.range(0, 2);
       if (!set.shape) pads.shape[row][col] = rnd.range(0, 3);
-      if (!set.colour) pads.colour[row][col] = rnd.range(0, 4);
+      if (!set.color) pads.color[row][col] = rnd.range(0, 4);
     }
   }
   return {
@@ -397,27 +397,27 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
   if (level > 1) {
     for (const t of toads) {
       if (t.crossRows.length || !t.routeRows.length || t.turned) continue;
-      plan.push(...[0, 1].map(() => `toad ${t.entrySlot + 1} (${t.words}), from row ${t.routeRows[0] + 1} once mended`));
+      plan.push(...[0, 1].map(() => `toad ${t.entrySlot + 1} (${t.words}), from row ${t.routeRows[0] + 1} after it is mended`));
     }
   }
 
   const rowsWords = rows => zbWordsOr(rows.map(r => String(r + 1)));
   const answer = toads.map(t => {
-    let s = `Toad ${t.entrySlot + 1}, with ${t.words}: `;
+    let s = `Toad ${t.entrySlot + 1}, with ${t.words}, `;
     if (t.crossRows.length) s += `crosses from row ${rowsWords(t.crossRows)}.`;
-    else if (t.turned) s += 'its family’s routes run from top to bottom, for the crabs, and none crosses as dealt.';
-    else if (t.routeRows.length && level > 1) s += `its route from row ${rowsWords(t.routeRows)} is cut and needs the wand.`;
-    else s += 'no way across as dealt.';
+    else if (t.turned) s += 'has no way across as dealt, because its family’s routes run from top to bottom for the crabs.';
+    else if (t.routeRows.length && level > 1) s += `has its route from row ${rowsWords(t.routeRows)} cut and needs the wand.`;
+    else s += 'has no way across as dealt.';
     return s;
   });
   const crossing = toads.filter(t => t.crossRows.length).length;
   const idle = pond.cuts.filter(c => c.shows === c.route).length;
-  answer.push(`${crossing} of the toads cross as dealt, room for ${2 * crossing} Zoombinis. ${pond.cutTotal - idle} pads were cut`
-    + (idle ? `, and ${idle} more cuts counted on the crabs’ routes, which change nothing.` : '.'));
+  answer.push(`${crossing} of the toads cross as dealt, with room for ${2 * crossing} Zoombinis. ${pond.cutTotal - idle} pads were cut`
+    + (idle ? `, and ${idle} more cuts landed on the crabs’ routes, where they change nothing.` : '.'));
 
-  const setup = [`Twelve toads on the near bank and a pond of 12 by 12 lily pads. ${n} Zoombinis to cross.`,
-    `The toads’ tattoos, from the top of the bank: ${toads.map(t => ZB_LILLY_VALUE_WORDS[ZB_LILLY_FAMILY[t.attrType]][t.attrValue]).join(', ')}.`];
-  if (level > 1) setup.push(`A wand of ${6 * pond.swapsPerWandStage} swaps, ${pond.swapsPerWandStage} a stage.`);
+  const setup = [`Twelve toads on the near bank and a pond of 12 by 12 lily pads. ${n} Zoombinis need to cross.`,
+    `The toads’ tattoos, from the top of the bank, are ${toads.map(t => ZB_LILLY_VALUE_WORDS[ZB_LILLY_FAMILY[t.attrType]][t.attrValue]).join(', ')}.`];
+  if (level > 1) setup.push(`A wand of ${6 * pond.swapsPerWandStage} swaps, ${pond.swapsPerWandStage} per stage.`);
   if (level > 2) {
     const cols = pond.crabEntries.map(e => String(e.col + 1));
     setup.push(`Crabs walk down the ${ZB_LILLY_FAMILY[pond.family - 2]} routes`
@@ -438,7 +438,7 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
       challengePlacementCounts: pond.cutCount,
       challengePlacements: pond.cuts,
       patternPlacedCount: pond.cutTotal,
-      padPattern: pads.pattern, padShape: pads.shape, padColor: pads.colour,
+      padPattern: pads.pattern, padShape: pads.shape, padColor: pads.color,
       crabEntries: pond.crabEntries,
       crabPathAttrType: pond.crabEntries.length ? pond.crabEntries[0].type : 0,
       swapsPerWandStage: level > 1 ? pond.swapsPerWandStage : 0,
@@ -454,33 +454,33 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
 
 /* ---- the workbench: the pond's choices, solving it, drawing it -------- */
 
-/* The marks' colours, as tBMP 13000 paints them. */
+/* The marks' colors, as tBMP 13000 paints them. */
 const ZB_LILLY_COLOURS = ['#ff52f6', '#fc2c44', '#ff7b00', '#4cfff3', '#f7ffbf'];
 /* The turns and mirrors the program chooses between, as the form offers
    them: transform 0 turns all three maps a half, 1 mirrors each (0 left to
    right, 1 top to bottom), 2 leaves them. */
-const ZB_LILLY_TRANSFORMS = [{ value: 'none', label: 'Left as laid' }, { value: 'half', label: 'Turned half round' },
+const ZB_LILLY_TRANSFORMS = [{ value: 'none', label: 'Unchanged' }, { value: 'half', label: 'Rotated 180°' },
   ...[0, 1, 2, 3, 4, 5, 6, 7].map(m => {
     const ms = [m >> 2 & 1, m >> 1 & 1, m & 1];
-    return { value: `mirror:${ms.join('')}`, label: `Mirrored: patterns ${ms[0] ? 'top to bottom' : 'left to right'}, shapes ${ms[1] ? 'top to bottom' : 'left to right'}, colours ${ms[2] ? 'top to bottom' : 'left to right'}` };
+    return { value: `mirror-${ms.join('')}`, label: `Mirrored (patterns ${ms[0] ? 'top to bottom' : 'left to right'}, shapes ${ms[1] ? 'top to bottom' : 'left to right'}, colors ${ms[2] ? 'top to bottom' : 'left to right'})` };
   })];
 function zbLillyTransformValue(state) {
-  return state.transformType === 0 ? 'half' : state.transformType === 2 ? 'none' : `mirror:${state.flipTypes.join('')}`;
+  return state.transformType === 0 ? 'half' : state.transformType === 2 ? 'none' : `mirror-${state.flipTypes.join('')}`;
 }
 /* A route's name, for the form: "pattern route 2". */
 function zbLillyRouteName(k) {
   const g = k <= 3 ? 0 : k <= 7 ? 1 : 2;
-  return `${['pattern', 'shape', 'colour'][g]} route ${k - ZB_LILLY_MAP_ROUTES[g][0] + 1}`;
+  return `${['pattern', 'shape', 'color'][g]} route ${k - ZB_LILLY_MAP_ROUTES[g][0] + 1}`;
 }
 function zbLillyTattooName(t) { return ZB_LILLY_VALUE_WORDS[ZB_LILLY_FAMILY[ZB_LILLY_TATTOO_TYPE[t]]][ZB_LILLY_TATTOO_VALUE[t]]; }
 
 /* The pads as a copy, and a swap of two of them, all three things at once
    as the wand swaps them (swapCellsAndUpdateRunners). */
 function zbLillyCopyPads(pads) {
-  return { pattern: pads.pattern.map(r => r.slice()), shape: pads.shape.map(r => r.slice()), colour: pads.colour.map(r => r.slice()) };
+  return { pattern: pads.pattern.map(r => r.slice()), shape: pads.shape.map(r => r.slice()), color: pads.color.map(r => r.slice()) };
 }
 function zbLillySwap(pads, a, b) {
-  for (const f of ['pattern', 'shape', 'colour']) {
+  for (const f of ['pattern', 'shape', 'color']) {
     const v = pads[f][a[0]][a[1]];
     pads[f][a[0]][a[1]] = pads[f][b[0]][b[1]];
     pads[f][b[0]][b[1]] = v;
@@ -488,7 +488,7 @@ function zbLillySwap(pads, a, b) {
 }
 /* A toad's reach on these pads: the matching pads joined to the last
    column (right), those joined to a matching pad of the first column
-   (left), both by cell, row x 12 + column, and the rows it crosses from. */
+   (left), both by cell, row x 12 + column, and the rows where it can start. */
 function zbLillyReach(pads, type, value) {
   const grid = pads[ZB_LILLY_FAMILY[type]], right = new Uint8Array(144), left = new Uint8Array(144);
   const flood = (mark, seeds) => {
@@ -544,11 +544,11 @@ function zbLillyPath(pads, type, value, row) {
    of that family. The ways chosen are kept, so no later swap
    shuts a toad out. */
 function zbLillyPlan(level, n, state, deadline, jitter = null) {
-  const FAM = ['pattern', 'shape', 'colour'];
-  const pads = zbLillyCopyPads({ pattern: state.padPattern, shape: state.padShape, colour: state.padColor });
+  const FAM = ['pattern', 'shape', 'color'];
+  const pads = zbLillyCopyPads({ pattern: state.padPattern, shape: state.padShape, color: state.padColor });
   const toads = state.toads, need = Math.ceil(n / 2), wand = state.swapWandUses || 0;
   /* By family, the cells on a chosen way: 1 + the toad's slot. */
-  const held = { pattern: new Int8Array(144), shape: new Int8Array(144), colour: new Int8Array(144) };
+  const held = { pattern: new Int8Array(144), shape: new Int8Array(144), color: new Int8Array(144) };
   /* The cheapest way for a toad: a 0-1 search, a pad not of its value
      costing a swap; null if every way is held. */
   const cheapest = t => {
@@ -655,7 +655,7 @@ function zbLillyBestPlan(level, n, state, deadline) {
   return best;
 }
 
-/* A tattoo drawn small, centred on x, y: a colour's spot, a pattern's
+/* A tattoo drawn small, centered on x, y: a color's spot, a pattern's
    figure, or a pad's outline with its notches or leaves. */
 function zbLillyTattooItems(type, value, x, y, extra = {}) {
   const it = o => Object.assign(o, extra);
@@ -676,21 +676,21 @@ function zbLillyTattooItems(type, value, x, y, extra = {}) {
   const leaves = value + 1;
   return [...Array(leaves).keys()].map(k => it({ t: 'circle', x: x + 4.2 * Math.cos(k * 2 * Math.PI / leaves - Math.PI / 2), y: y + 4.2 * Math.sin(k * 2 * Math.PI / leaves - Math.PI / 2), r: 4.2, fill: 'good', stroke: 'line' }));
 }
-/* The line a toad's way is drawn in: its colour, or a role. */
+/* The line a toad's way is drawn in: its color, or a role. */
 function zbLillyInk(type, value) { return type === 3 ? ZB_LILLY_COLOURS[value] : type === 1 ? 'accent' : 'good'; }
 
-/* The pond drawn: the pads by their marks' colours, the swaps, each
+/* The pond drawn: the pads by their marks' colors, the swaps, each
    crossing toad's way, the toads on the bank, and the band: those across
    by the toad that carried them, the rest faded below. */
 function zbLillyDiagram(band, state, plan, caption) {
   const W = 800, H = 500, items = [], X = 170, Y = 52, C = 28;
-  const pads = plan ? plan.pads : { pattern: state.padPattern, shape: state.padShape, colour: state.padColor };
+  const pads = plan ? plan.pads : { pattern: state.padPattern, shape: state.padShape, color: state.padColor };
   items.push({ t: 'rect', x: 0, y: 36, w: X - 10, h: 12 * C + 32, fill: 'grass' });
   items.push({ t: 'rect', x: X - 10, y: 36, w: 12 * C + 20, h: 12 * C + 32, fill: 'water' });
   items.push({ t: 'rect', x: X + 12 * C + 10, y: 36, w: W - X - 12 * C - 10, h: 12 * C + 32, fill: 'grass' });
   for (let r = 0; r < 12; r++) {
     items.push({ t: 'text', x: X - 16, y: Y + r * C + C / 2 + 4, text: String(r + 1), size: 10, anchor: 'end', fill: 'dim' });
-    for (let c = 0; c < 12; c++) items.push({ t: 'circle', x: X + c * C + C / 2, y: Y + r * C + C / 2, r: 10, fill: ZB_LILLY_COLOURS[pads.colour[r][c]], faded: true });
+    for (let c = 0; c < 12; c++) items.push({ t: 'circle', x: X + c * C + C / 2, y: Y + r * C + C / 2, r: 10, fill: ZB_LILLY_COLOURS[pads.color[r][c]], faded: true });
   }
   for (const e of state.crabEntries || []) {
     const x = X + e.col * C + C / 2;
@@ -727,7 +727,7 @@ function zbLillyDiagram(band, state, plan, caption) {
   const across = new Set([...riders.values()].flat());
   const behind = band.map((_, i) => i).filter(i => !across.has(i));
   items.push({ t: 'text', x: X - 10, y: Y + 12 * C + 36, size: 11, fill: 'dim',
-    text: 'Pads in their colours (patterns and shapes not drawn); swaps outlined and numbered' + ((state.crabEntries || []).length ? '; crabs enter at the red marks.' : '.') });
+    text: 'Pads in their colors (patterns and shapes not drawn), with swaps outlined and numbered' + ((state.crabEntries || []).length ? '. Crabs enter at the red marks.' : '.') });
   if (behind.length) items.push({ t: 'rect', x: X - 16, y: H - 20, w: behind.length * 34, h: 14, r: 3, fill: 'panel' });
   items.push(...zbDiagramRows(behind, X, H - 22, 18, 34, 0, { faded: true }));
   items.push({ t: 'text', x: 10, y: 24, text: caption, size: 15, fill: 'ink' });
@@ -736,17 +736,17 @@ function zbLillyDiagram(band, state, plan, caption) {
 
 ZB_PUZZLES.set('LILLY', {
   archive: 'LILLY',
-  about: 'Each Zoombini rides a toad across a pond of lily pads. A toad hops only onto pads that share its tattoo, a colour, a pattern or a pad shape, so each must be set down on a row from which such pads lead to the far bank.',
+  about: 'Each Zoombini rides a toad across a pond of lily pads. A toad only hops onto pads that share its tattoo (a color, a pattern or a pad shape). So each toad must start on a row where such pads lead to the far bank.',
   levels: [
-    { rule: 'Hidden is which toad crosses from which row. Three maps of routes, one for each of patterns, shapes and colours, are turned or mirrored at random and each route given one of the twelve tattoos; as many of the twelve routes as half the band, rounded up, are left whole and the rest may be cut, so every Zoombini can cross, two to a toad.',
-      chances: 'No wand and no count of mistakes. Each toad carries two Zoombinis at most, and one sent from a row it cannot cross stays in the pond with its rider, who is left behind when the band moves on.' },
-    { rule: 'The same pond, but every one of the twelve routes may be cut, at one or two pads, and a route still whole where it meets the bottom row is cut there. The cuts are mended with a wand that swaps two pads.',
-      chances: 'The wand makes six times (cuts + 5) / 6 swaps, rounded up, at least five more than the pads cut, and is then spent. A toad that cannot cross waits in the pond with its rider until a swap opens its way; each toad carries two at most.',
-      notes: ['Before play the wand is shown at work: two pairs of pads are swapped and then swapped back.'] },
-    { rule: 'As level 2, and one family’s map is turned a quarter first, so that its routes run from the top row to the bottom: crabs walk down them from two places on the top row and stand in the toads’ way, and that family’s toads have no route of their own. The family is the shapes, or, with 14 Zoombinis or fewer, the patterns, shapes or colours at random.',
-      chances: 'A wand of six times (cuts + 5) / 6 swaps, rounded up, as at level 2; each toad carries two at most.' },
-    { rule: 'As level 3, with crabs from three places on the top row. The turned family is the shapes, or, with 14 Zoombinis or fewer, the shapes or colours at random.',
-      chances: 'A wand of six times (cuts + 5) / 6 swaps, rounded up, as at level 2; each toad carries two at most.' },
+    { rule: 'Which toad crosses from which row is hidden. There are three maps of routes, one each for patterns, shapes and colors. They are rotated or mirrored at random, and each route is given one of the twelve tattoos. Of the twelve routes, as many as half the band (rounded up) are left whole, and the rest may be cut. So every Zoombini can cross, two to a toad.',
+      chances: 'There is no wand and no count of mistakes. Each toad carries two Zoombinis at most. A toad sent from a row it cannot cross stays in the pond with its rider, and the rider is left behind when the band moves on.' },
+    { rule: 'The same pond, but every one of the twelve routes may be cut, at one or two pads. A route that is still whole where it meets the bottom row is cut there. The cuts are fixed with a wand that swaps two pads.',
+      chances: 'The wand has six times (cuts + 5) / 6 swaps, rounded up, which is at least five more than the pads cut. Then it is used up. A toad that cannot cross waits in the pond with its rider until a swap opens its way. Each toad carries two at most.',
+      notes: ['Before play, the game shows the wand at work. It swaps two pairs of pads and then swaps them back.'] },
+    { rule: 'As at level 2, but one family’s map is first rotated a quarter turn, so its routes run from the top row to the bottom. Crabs walk down them from two places on the top row and get in the toads’ way, and that family’s toads have no route of their own. The family is the shapes, or, with 14 Zoombinis or fewer, the patterns, shapes or colors at random.',
+      chances: 'A wand of six times (cuts + 5) / 6 swaps, rounded up, as at level 2. Each toad carries two at most.' },
+    { rule: 'As level 3, with crabs from three places on the top row. The rotated family is the shapes, or, with 14 Zoombinis or fewer, the shapes or colors at random.',
+      chances: 'A wand of six times (cuts + 5) / 6 swaps, rounded up, as at level 2. Each toad carries two at most.' },
   ],
   deal(level, band, rnd, journey, arc) { return zbLillyDeal(level, band, rnd, arc); },
   /* The program's choices: the family turned for the crabs, the maps'
@@ -754,10 +754,10 @@ ZB_PUZZLES.set('LILLY', {
      tattoos. */
   form(level, band, state) {
     const n = band.length, fams = zbLillyFamilies(level, n), need = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)], fields = [];
-    const famWord = f => ['patterns', 'shapes', 'colours'][f - 3];
+    const famWord = f => ['patterns', 'shapes', 'colors'][f - 3];
     if (level >= 3) {
-      if (fams.length > 1) fields.push({ key: 'family', label: 'Routes turned for the crabs', kind: 'choice', value: state.obstacleGridFamily, options: fams.map(f => ({ value: f, label: `the ${famWord(f)}’` })) });
-      else fields.push({ key: 'familyNote', kind: 'note', note: `With ${n} Zoombinis the program always turns the shapes’ routes for the crabs.` });
+      if (fams.length > 1) fields.push({ key: 'family', label: 'Routes rotated for the crabs', kind: 'choice', value: state.obstacleGridFamily, options: fams.map(f => ({ value: f, label: `the ${famWord(f)}’` })) });
+      else fields.push({ key: 'familyNote', kind: 'note', note: `With ${n} Zoombinis the program always rotates the shapes’ routes for the crabs.` });
     }
     fields.push({ key: 'transform', label: 'The maps', kind: 'choice', value: zbLillyTransformValue(state), options: ZB_LILLY_TRANSFORMS.map(o => ({ ...o })) });
     if (level === 1) {
@@ -765,9 +765,9 @@ ZB_PUZZLES.set('LILLY', {
         value: [...Array(12).keys()].map(k => k + 1).filter(k => state.challengeEnabledMarkers[k] !== 0),
         options: [...Array(12).keys()].map(k => ({ value: k + 1, label: zbLillyRouteName(k + 1) })) });
     }
-    fields.push({ key: 'tattoos', label: 'The routes’ tattoos: the patterns’ three routes, then the shapes’ four, then the colours’ five', kind: 'order',
+    fields.push({ key: 'tattoos', label: 'The routes’ tattoos (the patterns’ three routes, then the shapes’ four, then the colors’ five)', kind: 'order',
       value: state.challengeTattooIndices.slice(1), options: [...Array(12).keys()].map(t => ({ value: t, label: zbLillyTattooName(t) })) });
-    fields.push({ key: 'note', kind: 'note', note: 'Where the cuts fall, the pads no route covers and the toads’ places on the bank are the program’s draws: changing a field deals them again from the same numbers, as the program would.' });
+    fields.push({ key: 'note', kind: 'note', note: 'Where the cuts fall, the pads no route covers, and the toads’ places on the bank are random draws by the program. Changing a field deals them again from the same numbers, as the program would.' });
     return fields;
   },
   edit(level, band, state, values, arc) {
@@ -775,20 +775,20 @@ ZB_PUZZLES.set('LILLY', {
     const n = band.length, need = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)], over = {};
     if (level >= 3 && values.family != null) {
       const f = Number(values.family);
-      if (!zbLillyFamilies(level, n).includes(f)) throw new Error(`With ${n} Zoombinis at this level the program turns only the ${zbWordsOr(zbLillyFamilies(level, n).map(x => ['patterns', 'shapes', 'colours'][x - 3]))}’ routes.`);
+      if (!zbLillyFamilies(level, n).includes(f)) throw new Error(`With ${n} Zoombinis at this level the program rotates only the ${zbWordsOr(zbLillyFamilies(level, n).map(x => ['patterns', 'shapes', 'colors'][x - 3]))}’ routes.`);
       over.family = f;
     }
     if (values.transform != null) {
-      const v = String(values.transform), m = /^mirror:([01])([01])([01])$/.exec(v);
+      const v = String(values.transform), m = /^mirror-([01])([01])([01])$/.exec(v);
       if (v === 'half') over.transform = 0;
       else if (v === 'none') over.transform = 2;
       else if (m) { over.transform = 1; over.mirrors = m.slice(1).map(Number); }
-      else throw new Error('The maps must be turned half round, mirrored, or left as laid.');
+      else throw new Error('The maps must be rotated 180°, mirrored, or left unchanged.');
     }
     if (level === 1 && values.spared != null) {
       const sp = [...new Set([].concat(values.spared).map(Number))];
       if (sp.some(k => !(k >= 1 && k <= 12))) throw new Error('There are twelve routes.');
-      if (sp.length !== need) throw new Error(`With ${n} Zoombinis the program leaves ${need} route${need === 1 ? '' : 's'} whole, one for every two.`);
+      if (sp.length !== need) throw new Error(`With ${n} Zoombinis the program leaves ${need} route${need === 1 ? '' : 's'} whole, one for every two Zoombinis.`);
       over.spared = sp;
     }
     if (values.tattoos != null) {
@@ -796,7 +796,7 @@ ZB_PUZZLES.set('LILLY', {
       if (ts.length !== 12 || new Set(ts).size !== 12 || ts.some(t => !(t >= 0 && t <= 11))) throw new Error('Each of the twelve tattoos goes to one route.');
       ts.forEach((t, k) => {
         const g = k < 3 ? 0 : k < 7 ? 1 : 2;
-        if (ZB_LILLY_TATTOO_TYPE[t] !== g + 1) throw new Error(`The ${zbLillyRouteName(k + 1)} must have a ${['pattern', 'shape', 'colour'][g]} tattoo, not ${zbLillyWords(ZB_LILLY_TATTOO_TYPE[t], ZB_LILLY_TATTOO_VALUE[t])}.`);
+        if (ZB_LILLY_TATTOO_TYPE[t] !== g + 1) throw new Error(`The ${zbLillyRouteName(k + 1)} must have a ${['pattern', 'shape', 'color'][g]} tattoo, not ${zbLillyWords(ZB_LILLY_TATTOO_TYPE[t], ZB_LILLY_TATTOO_VALUE[t])}.`);
       });
       over.tattoos = [0, ...ts];
     }
@@ -811,7 +811,7 @@ ZB_PUZZLES.set('LILLY', {
         ...plan.swaps.map(([a, b], k) => `Swap ${k + 1}: the pad in row ${a[0] + 1}, column ${a[1] + 1} with the pad in row ${b[0] + 1}, column ${b[1] + 1}.`),
         ...plan.crossers.map((c, k) => {
           const t = state.toads[c.slot];
-          return `Toad ${c.slot + 1}, with ${zbLillyWords(t.attrType, t.attrValue)} tattoo, from row ${c.row + 1}: Zoombini${riders[k].length > 1 ? 's' : ''} ${zbPlacesWords(riders[k])}.`;
+          return `Toad ${c.slot + 1}, with ${zbLillyWords(t.attrType, t.attrValue)} tattoo, from row ${c.row + 1}, carries Zoombini${riders[k].length > 1 ? 's' : ''} ${zbPlacesWords(riders[k])}.`;
         }),
         ...(behind.length ? [`Zoombini${behind.length > 1 ? 's' : ''} ${zbPlacesWords(behind)} stay${behind.length > 1 ? '' : 's'} behind.`] : []),
       ];
@@ -830,12 +830,12 @@ ZB_PUZZLES.set('LILLY', {
     return {
       most: cross, exact, ways: null, solutions,
       notes: [
-        'To cross is to be carried to the far bank; a toad carries two Zoombinis at most, so toads with a way across, as many as half the band rounded up, take everyone.',
-        'A toad counts as crossing when pads of its tattoo join its row to the far bank. In the game a toad finds its way by a greedy search, and the crabs of levels 3 and 4 only hold it up.',
-        'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference; ways that differ only in that count as one, and the ways are not counted.',
+        'To cross, a Zoombini must be carried to the far bank. A toad carries two Zoombinis at most, so toads with a way across, as many as half the band (rounded up), are enough for everyone.',
+        'A toad counts as crossing when pads of its tattoo join its row to the far bank. In the game a toad finds its path with a simple step-by-step search, and the crabs at levels 3 and 4 only slow it down.',
+        'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference. Ways that differ only in that count as one, so the ways are not counted.',
         level === 1 ? 'At level 1 there is no wand, so the most is exactly two for each toad with a way across.'
-          : `The simplest solution uses the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first; then, one toad at a time, the fewest swaps that let another across without shutting out one already across: the fewest the search found, which may not be the fewest possible.`,
-        ...(exact ? [] : [plan.gaveUp ? 'The search stopped at its budget.' : `The search found no more toads to let across within the wand’s ${state.swapWandUses} swaps; more may be possible.`]),
+          : `The simplest solution uses the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first. Then, one toad at a time, it uses the fewest swaps that let another toad across without blocking one that is already across. That is the fewest the search found, and it may not be the fewest possible.`,
+        ...(exact ? [] : [plan.gaveUp ? 'The search ran out of time.' : `The search found no more toads to let across within the wand’s ${state.swapWandUses} swaps, so more may be possible.`]),
       ],
     };
   },

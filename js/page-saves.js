@@ -1,14 +1,14 @@
 /* page-saves.js -- saved games, read (zb-save.js, as ScummVM reads them),
    and one thing in them changed: a route's level (routeLevels, the four
-   words the map's colours and a puzzle's level are taken from), written
-   back with zbSaveWrite, which is held to write an unchanged save byte for
-   byte, and saved under the file's name, to put back where it came from.
+   words the map's colors and a puzzle's level are taken from), written
+   back with zbSaveWrite, which writes an unchanged save byte for byte, and
+   saved under the file's name so it can go back in the game's folder.
    The page warns that nobody has run the game on an edited save.
    Read:
    under Data, open a game's ZOOM####.TXT, with its roster ZOOMBINI.WHO
    for its name, to see where the band is, every Zoombini
    and where it waits, each route's places and the levels they were crossed
-   at, the town; then the map with its roads coloured as the save has them,
+   at, the town; then the map with its roads colored as the save has them,
    and the town as it stands in the save.
    =========================================================================
    The page's script: DOM here. LOAD ORDER: after page-edit.js. */
@@ -33,7 +33,7 @@ async function savesOpen(files) {
   }
 }
 
-/* The roads as a save colours them: each road's level (1-4), or 0. */
+/* The roads as a save colors them: each road's level (1-4), or 0. */
 function saveRoadLevels(state) {
   const out = new Map();
   ZB_ROUTES.forEach((route, r) => route.segments.forEach((shape, i) => out.set(shape, state.routes[r].places[i].map)));
@@ -44,12 +44,12 @@ function renderSaves() {
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Saves</span>';
   renderSide({ name: '#saves' }, { archive: null, tag: null, id: null });
   const view = $('view');
-  let html = '<h1>Saves</h1><p class="sub">Saved games are ZOOM0000.TXT, ZOOM0001.TXT and so on, in the game’s folder once installed, with their names in ZOOMBINI.WHO beside them. They are read here, and nothing leaves the page.</p>'
+  let html = '<h1>Saves</h1><p class="sub">Saved games are the files ZOOM0000.TXT, ZOOM0001.TXT and so on, in the game’s folder after installing. Their names are in ZOOMBINI.WHO, in the same folder. The files are read here, and nothing leaves the page.</p>'
     + '<div class="tools"><label class="btn">Open…<input type="file" id="saveFiles" multiple hidden></label>'
     + (ROSTER ? ` <span class="note">roster: ${ROSTER.map(e => `${esc(e.name)} (${esc(e.file)})`).join(', ') || 'empty'}</span>` : '') + '</div>';
-  if (!SAVES.length) html += '<p class="note">None open yet.</p>';
+  if (!SAVES.length) html += '<p class="note">No saved games are open.</p>';
   const z = ARCHIVES.get('ZOOMBINI'), sprites = z && z.bytes;
-  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are listed by name.</p>';
+  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis’ pictures are in zoombini.mhk. <a data-sact="sprites">Fetch it</a> (24 MB). Until then they are listed by name.</p>';
   const zb = e => sprites ? solveZoombiniImg(e.traits) : '';
   for (const s of SAVES) {
     const f = s.state;
@@ -62,11 +62,11 @@ function renderSaves() {
       if (list.length) html += '<div class="sband">' + list.map(w => `<div class="szb" title="${esc(zbZoombiniWords(w.traits))}">${zb(w)}<span class="traits">${esc(w.name || '')}</span></div>`).join('') + '</div>';
     }
     // The routes.
-    html += '<div class="wide"><table class="plain"><tr><th>route</th><th>at level</th><th>its places, crossed at</th></tr>'
+    html += '<div class="wide"><table class="plain"><tr><th>route</th><th>at level</th><th>places and levels crossed</th></tr>'
       + f.routes.map((r, k) => `<tr><td>${esc(r.name)}</td><td><select data-save-level="${esc(s.file)}" data-route="${k}" title="The route’s level">${ZB_LEVELS.map((n, i) => `<option value="${i}"${i + 1 === r.level ? ' selected' : ''}>${i + 1}: ${esc(n)}</option>`).join('')}</select></td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
     html += `<p><b>The town</b> <span class="note">${plural(f.population, 'Zoombini')}, ${plural(f.rewards.length, 'reward building')}</span></p>`;
     const changed = s.state.routeLevels.some((v, k) => v !== s.was[k]);
-    if (changed) html += `<p class="note">A route’s level is changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> writes the save with only those words changed. Keep a copy of the old file before putting this one in the game’s folder in its place. The game has not been tried with a save edited here.</p>`;
+    if (changed) html += `<p class="note">A route’s level has been changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> saves a copy with only those values changed. Before putting it in the game’s folder, keep a copy of the old file. The game has not been tested with a save edited here.</p>`;
     html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads</button>`
       + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town</a>` : '') + '</div>';
   }

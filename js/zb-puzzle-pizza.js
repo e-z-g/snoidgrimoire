@@ -83,7 +83,7 @@ const ZB_PIZZA_LEVELS = [
 /* The slot never dealt at level 2, and so without a button: cheese. */
 const ZB_PIZZA_L2_LEFT_OUT = 4;
 
-/* The slots a level's machine has buttons for. */
+/* The slots that have buttons on a level's machine. */
 function zbPizzaSlots(level) {
   const p = ZB_PIZZA_LEVELS[level - 1], out = [];
   for (let i = 0; i < p.slots; i++) if (!(level === 2 && i === ZB_PIZZA_L2_LEFT_OUT)) out.push(i);
@@ -206,7 +206,7 @@ function zbPizzaDeal(level, rnd) {
 
 /* ---- the puzzle taken apart --------------------------------------------- */
 
-/* The toppings' colours for a diagram, by slot: chosen by eye to look like
+/* The toppings' colors for a diagram, by slot: chosen by eye to look like
    the toppings, not read from the art; and short names for the machine's
    buttons. */
 const ZB_PIZZA_COLOURS = ['#3a352e', '#4f9e3a', '#c43d2c', '#cfae7c', '#f1c93b', '#d8233c', '#f3ede0', '#6b3a1c'];
@@ -225,7 +225,7 @@ function zbPizzaWishes(level, state) {
 /* A troll's reaction to a meal, in words: the classifier's 0, 1, 2 or 4. */
 function zbPizzaReactionWords(t, c) {
   const name = ZB_PIZZA_TROLLS[t];
-  return c === 2 ? `${name} eats it` : c === 1 ? `${name}: none hated, some missing` : c === 0 ? `${name}: one topping hated` : `${name}: more than one hated`;
+  return c === 2 ? `${name} eats it` : c === 1 ? `${name} hates none, but some are missing` : c === 0 ? `${name} hates one topping` : `${name} hates more than one`;
 }
 /* Level 4's pit made from wishes the program did not deal (an edit): the
    troll who wants the most gives its first two toppings, each other troll
@@ -252,14 +252,14 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
   items.push({ t: 'text', x: 16, y: 24, text: caption, size: 15, fill: 'ink' });
   // The machine.
   items.push({ t: 'rect', x: 16, y: 40, w: 196, h: 312, r: 8, fill: 'panel', stroke: 'line' });
-  items.push({ t: 'text', x: 114, y: 62, text: meal ? 'the machine: the meal pressed' : 'the machine', anchor: 'middle', size: 12, fill: 'dim' });
+  items.push({ t: 'text', x: 114, y: 62, text: meal ? 'the machine, with the meal pressed' : 'the machine', anchor: 'middle', size: 12, fill: 'dim' });
   buttons.forEach((s, k) => {
     const y = 92 + k * 32, on = !meal || meal.includes(s);
     items.push({ t: 'circle', x: 38, y, r: 10, fill: ZB_PIZZA_COLOURS[s], stroke: meal && on ? 'accent' : 'line', width: meal && on ? 3 : 1.5, faded: !on });
     items.push({ t: 'text', x: 56, y: y + 4, text: ZB_PIZZA_SHORT[s], size: 12, fill: on ? 'ink' : 'dim' });
   });
   if (forgiven) {
-    items.push({ t: 'text', x: 16, y: 376, text: `meals forgiven: ${forgiven.left} of ${forgiven.of} left`, size: 12, fill: 'dim' });
+    items.push({ t: 'text', x: 16, y: 376, text: `${forgiven.left} of ${forgiven.of} forgiven meals left`, size: 12, fill: 'dim' });
     for (let k = 0; k < forgiven.of; k++) items.push({ t: 'circle', x: 24 + k * 16, y: 392, r: 5, fill: k < forgiven.left ? 'warn' : 'panel', stroke: 'line' });
   }
   if (pit) {
@@ -298,7 +298,7 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
       });
       if (line) lines.push(line);
     };
-    lines.push(!yes.length ? (maybe.length ? 'wants: none known yet' : 'wants nothing on it') : maybe.length ? 'wants, known:' : `wants ${yes.length === 1 ? 'only' : 'these'}:`);
+    lines.push(!yes.length ? (maybe.length ? 'wish not known' : 'wants nothing on it') : maybe.length ? 'known to want' : `wants ${yes.length === 1 ? 'only' : 'these'}:`);
     wrap(yes);
     if (maybe.length) lines.push(`and maybe ${maybe.length === 1 ? ZB_PIZZA_SHORT[maybe[0]].toLowerCase() : `some of ${maybe.length} more`}`);
     lines.slice(0, 4).forEach((l, j) => items.push({ t: 'text', x: cx, y: 304 + j * 14, text: l, anchor: 'middle', size: 11, fill: j === 0 || l.startsWith('and maybe') ? 'dim' : 'ink' }));
@@ -306,7 +306,7 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
   // The band.
   items.push({ t: 'line', x1: 408, y1: 440, x2: 408, y2: H - 6, stroke: 'line', dash: true });
   items.push({ t: 'text', x: 16, y: 456, text: !waiting.length && !lost.length ? 'no one on the near side'
-    : `on the near side${carrier != null ? `; Zoombini ${carrier + 1} carries the meal` : ''}${lost.length ? `; ${lost.length} lost, faded` : ''}`, size: 12, fill: 'dim' });
+    : `on the near side${carrier != null ? `, with Zoombini ${carrier + 1} carrying the meal` : ''}${lost.length ? `, and ${lost.length} lost (faded)` : ''}`, size: 12, fill: 'dim' });
   items.push({ t: 'text', x: 424, y: 456, text: across.length ? 'across the pass' : 'no one across yet', size: 12, fill: 'dim' });
   const near = [...waiting, ...lost];
   near.forEach((i, k) => {
@@ -518,7 +518,7 @@ function zbPizzaSearch(e, idx, hungry, tried, d, deadline) {
   ({ hungry, tried } = zbPizzaFeedKnown(e, idx, hungry, tried));
   if (!hungry) return true;
   // Remembered: the fewest wasted meals known to do from here, with the
-  // meal that does it, and the most known not to.
+  // meal that does it, and the most that are known not to do it.
   const key = zbPizzaKey(idx, hungry, tried);
   let got = e.memo.get(key);
   if (got && d >= got.ok) return true;
@@ -595,9 +595,9 @@ function zbPizzaNode(e, band, st) {
     if (!st.idx.every(i => e.wish(t, i) === w0)) continue;
     const meal = mealSlots(w0), { lost, waiting } = people();
     return {
-      move: `Serve ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, meal)}: it is ${ZB_PIZZA_TROLLS[t]}’s wish under every hypothesis left.`,
+      move: `Serve ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, meal)}. It is ${ZB_PIZZA_TROLLS[t]}’s wish under every hypothesis left.`,
       zoombini: st.lost, left: st.idx.length, crossed: 0, meal, hungry: st.hungry,
-      diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left; ${ZB_PIZZA_TROLLS[t]}’s wish is known` }),
+      diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left, and ${ZB_PIZZA_TROLLS[t]}’s wish is known` }),
       outcomes: [{ label: `${ZB_PIZZA_TROLLS[t]} eats it`, left: st.idx.length, eaten: t,
         next: () => { const fed = fedNow.slice(); fed[t] = true; return zbPizzaNode(e, band, { ...st, hungry: st.hungry & ~(1 << t), tried: st.tried.concat(w0).sort((x, y) => x - y), fed }); } }],
     };
@@ -605,11 +605,11 @@ function zbPizzaNode(e, band, st) {
   if (!st.hungry || st.lost >= n) {
     const { lost, waiting } = people(), crossed = st.hungry ? 0 : n - st.lost;
     return {
-      move: !st.hungry ? `Every troll has eaten: ${crossed === n ? `all ${n}` : `the ${crossed} left`} cross${crossed === 1 ? 'es' : ''}${st.lost ? `, ${st.lost} lost on the way` : ''}, with ${st.wasted} meal${st.wasted === 1 ? '' : 's'} wasted.`
-        : `Every Zoombini is lost before the trolls have all eaten: none cross.`,
+      move: !st.hungry ? `Every troll has eaten, so ${crossed === n ? `all ${n}` : `the ${crossed} left`} cross${crossed === 1 ? 'es' : ''}.${st.lost ? ` ${st.lost} ${st.lost === 1 ? 'was' : 'were'} lost on the way.` : ''} ${st.wasted} meal${st.wasted === 1 ? ' was' : 's were'} wasted.`
+        : `Every Zoombini is lost before the trolls have all eaten, so none cross.`,
       zoombini: null, left: st.idx.length, crossed, spent: st.wasted, outcomes: [],
       diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, lost, across: st.hungry ? [] : waiting, forgiven,
-        caption: !st.hungry ? `All the trolls have eaten: ${crossed} across` : 'No one left to carry a meal' }),
+        caption: !st.hungry ? `All the trolls have eaten, ${crossed} across` : 'No one left to carry a meal' }),
     };
   }
   // The searched meal, or the rule of thumb's.
@@ -626,18 +626,18 @@ function zbPizzaNode(e, band, st) {
   const parts = zbPizzaSplit(e, st.idx, st.hungry, M);
   const tried = st.tried.concat(M).sort((x, y) => x - y);
   return {
-    move: `Serve ${zbPizzaMealWords(level, meal)}; Zoombini ${st.lost + 1} carries it.`,
+    move: `Serve ${zbPizzaMealWords(level, meal)}. Zoombini ${st.lost + 1} carries it.`,
     zoombini: st.lost, left: st.idx.length, crossed: 0, meal, hungry: st.hungry,
-    diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left, ${forgiven.left} meal${forgiven.left === 1 ? '' : 's'} forgiven still` }),
+    diagram: zbPizzaDiagram(level, band, { know: know(), fed: fedNow, meal, carrier: st.lost, waiting, lost, forgiven, pit, caption: `${st.idx.length} hypotheses left, ${forgiven.left} more meal${forgiven.left === 1 ? '' : 's'} can be forgiven` }),
     outcomes: parts.map(part => {
       const seen = zbPizzaReactions(e, st.hungry, part.code), reactions = seen.map(([t, c]) => zbPizzaReactionWords(t, c));
       if (part.eaten >= 0) {
-        return { label: `${reactions.join('; ')}; ${part.idx.length} left`, left: part.idx.length, reactions: seen, eaten: part.eaten,
+        return { label: `${zbWordsOr(reactions, 'and')}, ${part.idx.length} left`, left: part.idx.length, reactions: seen, eaten: part.eaten,
           next: () => { const fed = fedNow.slice(); fed[part.eaten] = true; return zbPizzaNode(e, band, { ...st, idx: part.idx, hungry: st.hungry & ~(1 << part.eaten), tried, fed }); } };
       }
       const rock = zbPizzaReactions(e, st.hungry, part.code).find(([, c]) => c === 1);
       const wasted = st.wasted + 1, losing = wasted > a;
-      return { label: `${reactions.join('; ')}. ${rock ? `On ${ZB_PIZZA_TROLLS[rock[0]]}’s rock` : 'Into the pit'}, ${losing ? `and Zoombini ${st.lost + 1} is lost` : `forgiven (${a - wasted} more may be)`}; ${part.idx.length} left`,
+      return { label: `${zbWordsOr(reactions, 'and')}. It goes ${rock ? `on ${ZB_PIZZA_TROLLS[rock[0]]}’s rock` : 'into the pit'}, ${losing ? `and Zoombini ${st.lost + 1} is lost` : `and is forgiven (${a - wasted} more can be)`} (${part.idx.length} left)`,
         left: part.idx.length, reactions: seen, eaten: -1,
         next: () => zbPizzaNode(e, band, { ...st, idx: part.idx, tried, d: st.d - 1, wasted, lost: st.lost + (losing ? 1 : 0) }) };
     }),
@@ -654,33 +654,33 @@ function zbPizzaStrategy(level, band, opts = {}) {
     root: zbPizzaNode(e, band, { idx: root, hungry: (1 << e.T) - 1, tried: e.pit, d: e.best, wasted: 0, lost: 0, fed: [] }),
     notes: [
       knows === 'form'
-        ? `The player knows only the level’s form: each topping wanted by one troll or none, and no two trolls wanting the same meal; ${e.count} hypotheses.`
-        : e.pit.length ? `Of the sets of wishes the program could deal at this level, ${e.count} give the pit it shows; the player knows that.`
-          : `The program could deal ${e.count} sets of wishes at this level, whatever the band; the player knows that.`,
-      'Each meal goes to the trolls still hungry in turn, Arno, Willa, Shyler, and the first whose wish it is eats it; the others’ reactions (a topping hated, more than one hated, none hated but some missing) are the feedback. A troll whose wish is the same under every hypothesis left is served it immediately, at no cost.',
-      `Played so, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play guarantees fewer' : '; fewer may be enough, but the search ran out of time before finding out'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini need be lost: every one of any band crosses.`}`,
-      `How it plays: first the rule of thumb, the meal whose worst reaction leaves fewest hypotheses, every time; then a search for fewer meals wasted, ${e.mode === 'search' ? 'which found them' : 'which found none within its time'}.`,
+        ? `The player knows only the level’s form, in which each topping is wanted by one troll or none and no two trolls want the same meal. That makes ${e.count} hypotheses.`
+        : e.pit.length ? `${e.count} of the sets of wishes the program could deal at this level match the meals in the pit. The player knows this.`
+          : `The program could deal ${e.count} sets of wishes at this level, whatever the band. The player knows this.`,
+      'Each meal goes to the hungry trolls in turn (Arno, Willa, then Shyler), and the first troll whose wish it is eats it. The other trolls’ reactions (one topping hated, more than one hated, or none hated but some missing) are the clues. A troll whose wish is the same under every hypothesis left is served it right away, at no cost.',
+      `Played this way, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play guarantees fewer' : '. Fewer may be enough, but the search ran out of time before finding out'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini has to be lost and every Zoombini in any band crosses.`}`,
+      `How it plays. First, the rule of thumb picks the meal whose worst reaction leaves the fewest hypotheses, every time. Then a search looks for a way to waste fewer meals, and it ${e.mode === 'search' ? 'found one' : 'found none in the time allowed'}.`,
       ...(level === 4 ? [e.pit.length
-        ? `The four meals in the pit are read, as tried meals never to serve${knows === 'program' ? ', and as the program makes them: two toppings of the troll who wants the most, each crossed with one of each other troll’s' : ''}.`
-        : 'The four meals in the pit are not known here. So the play never serves two toppings that could be two trolls’, one each, which might be a pit meal the game would not judge; a player who reads the pit knows more, and can guarantee more.'] : []),
+        ? `The four meals in the pit are read and treated as tried meals, never to be served again${knows === 'program' ? '. The program makes them from two toppings of the troll who wants the most, each paired with a topping of another troll' : ''}.`
+        : 'The four meals in the pit are not known here. So the play never serves two toppings that could belong to two different trolls, one each, since that might be a pit meal the game would not judge. A player who reads the pit knows more and can guarantee more.'] : []),
       'This page assumes the machine can make a meal with no toppings, as ScummVM allows.',
     ],
   };
 }
 
 ZB_PUZZLES.set('PIZZA', {
-  about: 'Pizza trolls block the pass, and each lets the band by only when served the meal it wants. The player makes pizzas, and later sundaes, at a machine, choosing the toppings, and a Zoombini carries each to the trolls.',
+  about: 'Pizza trolls block the pass, and each one only lets the band by when it is served the meal it wants. The player makes pizzas, and later sundaes, at a machine by choosing the toppings. A Zoombini carries each meal to the trolls.',
   levels: [
-    { rule: 'Arno alone, and a pizza with two to five of five toppings: olives, green peppers, pepperoni, mushrooms and cheese. Each topping is picked with a chance of just under a half, round after round, until at least two are picked.',
-      chances: 'Arno forgives six pizzas he does not eat. After that each one costs the Zoombini who carried it, and the next Zoombini carries on.' },
-    { rule: 'Arno and Willa, each with a pizza and a sundae. The machine has six toppings, four for the pizza (no cheese at this level) and a cherry and whipped cream for the sundae; each is picked with a chance of 800 in 1001, round after round until at least three are picked, and each picked goes to Arno or Willa on a coin toss.',
+    { rule: 'Arno alone, and a pizza with two to five of five toppings (olives, green peppers, pepperoni, mushrooms and cheese). Each topping has just under a one-in-two chance of being picked, round after round, until at least two are picked.',
+      chances: 'Arno forgives six pizzas he does not eat. After that each one costs the Zoombini who carried it, and the next Zoombini steps up.' },
+    { rule: 'Arno and Willa, each with a pizza and a sundae. The machine has six toppings, four for the pizza (no cheese at this level) and a cherry and whipped cream for the sundae. Each topping has an 800 in 1001 chance of being picked, round after round until at least three are picked. Each picked topping goes to Arno or Willa on a coin toss.',
       chances: 'Seven meals no troll eats are forgiven. After that each costs the Zoombini who carried it.',
-      notes: ['Nothing ensures that both trolls want something at this level: when every topping picked goes to the same troll, about one deal in twelve, the other wants a meal with no toppings at all.'] },
-    { rule: 'Arno, Willa and Shyler, from seven toppings: the five pizza toppings, a cherry and whipped cream. Nearly always all seven are wanted, each by one of the three at random; a troll left wanting nothing takes one from whichever of the other two wants more.',
-      chances: 'Seven meals no troll eats are forgiven, as at level 2; after that each costs the Zoombini who carried it.' },
-    { rule: 'As level 3, from eight toppings, chocolate sauce the eighth. Four rejected meals already lie in the pit: each pairs one of two toppings of the troll who wants the most with one of another troll’s.',
-      chances: 'Seven meals no troll eats are forgiven, as at level 2; after that each costs the Zoombini who carried it.',
-      notes: ['The four meals in the pit count as tried: serving one again counts against the band like any meal no troll eats.'] },
+      notes: ['Nothing ensures that both trolls want something at this level. When every topping picked goes to the same troll, about one deal in twelve, the other wants a meal with no toppings at all.'] },
+    { rule: 'Arno, Willa and Shyler, with seven toppings (the five pizza toppings, a cherry and whipped cream). Almost always all seven are wanted, each by one of the three trolls at random. A troll left wanting nothing takes one from whichever of the other two wants more.',
+      chances: 'Seven meals no troll eats are forgiven, as at level 2. After that each costs the Zoombini who carried it.' },
+    { rule: 'As at level 3, with eight toppings, the eighth being chocolate sauce. Four rejected meals already lie in the pit. Each pairs one of two toppings of the troll who wants the most with a topping of another troll.',
+      chances: 'Seven meals no troll eats are forgiven, as at level 2. After that each costs the Zoombini who carried it.',
+      notes: ['The four meals in the pit count as tried, so serving one again counts against the band like any meal no troll eats.'] },
   ],
   deal(level, band, rnd) {
     const s = zbPizzaDeal(level, rnd);
@@ -689,14 +689,14 @@ ZB_PUZZLES.set('PIZZA', {
     const buttons = zbPizzaSlots(level);
     const pizza = buttons.filter(i => i < ZB_PIZZA_SUNDAE_FROM), sundae = buttons.filter(i => i >= ZB_PIZZA_SUNDAE_FROM);
     const setup = [
-      `${zbWordsOr(trolls, 'and')} ${trolls.length > 1 ? 'block' : 'blocks'} the pass. The machine has ${buttons.length} toppings: `
-        + `${zbPizzaWords(pizza)} for the pizza${sundae.length ? `, and ${zbPizzaWords(sundae)} for the sundae` : ''}.`,
-      `${band.length} Zoombini${band.length === 1 ? '' : 's'} to carry the meals, one at a time. ${s.initialMistakeAllowance} meals no troll eats are forgiven, `
+      `${zbWordsOr(trolls, 'and')} ${trolls.length > 1 ? 'block' : 'blocks'} the pass. The machine has ${buttons.length} toppings, `
+        + `${zbPizzaWords(pizza)} for the pizza${sundae.length ? ` and ${zbPizzaWords(sundae)} for the sundae` : ''}.`,
+      `${band.length} Zoombini${band.length === 1 ? ' carries' : 's carry'} the meals, one at a time. ${s.initialMistakeAllowance} meals that no troll eats are forgiven, `
         + `and ${s.initialMistakeAllowance + band.length} would cost the whole band.`,
     ];
-    if (s.rejectExamples) setup.push(`Four meals already lie in the reject pit: ${s.rejectExamples.map(m => zbPizzaWords(m)).join('; ')}.`);
+    if (s.rejectExamples) setup.push(`Four meals already lie in the reject pit, ${zbWordsOr(s.rejectExamples.map(m => `one with ${zbPizzaWords(m)}`), 'and')}.`);
     const answer = trolls.map((name, t) => wants[t].length
-      ? `${name} wants ${zbPizzaWords(wants[t])}, and nothing else.`
+      ? `${name} wants ${zbPizzaWords(wants[t])} and nothing else.`
       : `${name} wants a meal with no toppings at all.`);
     const nobody = buttons.filter(i => !s.generatedToppings.includes(i));
     if (nobody.length) answer.push(`No troll wants ${zbWordsOr(nobody.map(i => ZB_PIZZA_TOPPINGS[i]))}.`);
@@ -711,9 +711,9 @@ ZB_PUZZLES.set('PIZZA', {
     });
     fields.push({ key: 'note', kind: 'note', note: [
       level === 1 ? 'Arno wants at least two toppings, as the program deals.'
-        : level === 2 ? 'At least three toppings are wanted in all, as the program deals; either troll may want none. There is no cheese at this level.'
-          : `At least ${p.minimum} toppings are wanted in all, and every troll wants one at least, as the program deals.`,
-      ...(level === 4 ? ['The pit’s four meals are dealt from the wishes; changed wishes make them again from the first toppings: two of the troll who wants the most, each with one of another troll’s.'] : []),
+        : level === 2 ? 'At least three toppings are wanted in all, as the program deals. Either troll may want none. There is no cheese at this level.'
+          : `At least ${p.minimum} toppings are wanted in all, and every troll wants at least one, as the program deals.`,
+      ...(level === 4 ? ['The pit’s four meals are dealt from the wishes. Changed wishes make them again from the first toppings. Each pairs one of two toppings of the troll who wants the most with one of another troll’s.'] : []),
     ].join(' ') });
     return fields;
   },
@@ -727,9 +727,9 @@ ZB_PUZZLES.set('PIZZA', {
       want[t].push(s);
     }
     const generated = want.flat().sort((x, y) => x - y);
-    if (level === 1 && generated.length < 2) throw new Error('Arno must want two toppings at least: the program deals no fewer.');
-    if (generated.length < p.minimum) throw new Error(`At least ${p.minimum} toppings must be wanted in all: the program deals no fewer.`);
-    if (level >= 3 && want.some(w => !w.length)) throw new Error('Every troll must want a topping at this level: the program always deals one to each.');
+    if (level === 1 && generated.length < 2) throw new Error('Arno must want two toppings at least, because the program deals no fewer.');
+    if (generated.length < p.minimum) throw new Error(`At least ${p.minimum} toppings must be wanted in all, because the program deals no fewer.`);
+    if (level >= 3 && want.some(w => !w.length)) throw new Error('Every troll must want a topping at this level, because the program always deals one to each.');
     const same = JSON.stringify(want) === JSON.stringify(zbPizzaWishes(level, state).map(w => w.slice().sort((x, y) => x - y)));
     return {
       machineToppingSlotCount: p.slots, minimumGeneratedToppingCount: p.minimum, toppingGenerationThreshold: p.threshold, initialMistakeAllowance: p.forgiven,
@@ -740,7 +740,7 @@ ZB_PUZZLES.set('PIZZA', {
   solve(level, band, state) {
     const p = ZB_PIZZA_LEVELS[level - 1], wishes = zbPizzaWishes(level, state), n = band.length, all = band.map((_, i) => i);
     const steps = wishes.map((w, t) => `Zoombini 1 carries ${ZB_PIZZA_TROLLS[t]} ${zbPizzaMealWords(level, w)}, and ${ZB_PIZZA_TROLLS[t]} eats it.`);
-    steps.push(`No meal is wasted, so no one is lost: all ${n} cross once the ${p.trolls === 1 ? 'troll has' : 'trolls have'} eaten.`);
+    steps.push(`No meal is wasted, so no one is lost and all ${n} cross once the ${p.trolls === 1 ? 'troll has' : 'trolls have'} eaten.`);
     const know = wishes.map(w => { const k = new Array(8).fill('no'); w.forEach(s => { k[s] = 'yes'; }); return k; });
     return {
       most: n, exact: true, ways: 1,
@@ -748,12 +748,12 @@ ZB_PUZZLES.set('PIZZA', {
         title: `All ${n} cross, on ${p.trolls === 1 ? 'one meal' : `${p.trolls} meals`}`,
         steps, crosses: all,
         diagram: zbPizzaDiagram(level, band, { know, fed: wishes.map(() => true), across: all, pit: state.rejectExamples,
-          caption: `${p.trolls === 1 ? 'Arno has' : 'Every troll has'} eaten: all ${n} across` }),
+          caption: `${p.trolls === 1 ? 'Arno has' : 'Every troll has'} eaten, all ${n} across` }),
       }],
       notes: [
-        'Crossing: once every troll has eaten, every Zoombini not lost on the way crosses the pass.',
-        'Simplest: fewest meals, each troll served its wish once, none wasted. The order the trolls are served in, and who carries, make no difference, and count as one way.',
-        ...(wishes.some(w => !w.length) ? ['A troll who wants nothing eats a meal with no toppings; ScummVM lets the machine make one, and this page assumes the program does too.'] : []),
+        'Once every troll has eaten, every Zoombini not lost on the way crosses the pass.',
+        'The simplest solution uses the fewest meals, serving each troll its wish once with none wasted. The order the trolls are served in and who carries the meals make no difference, so they count as one way.',
+        ...(wishes.some(w => !w.length) ? ['A troll who wants nothing eats a meal with no toppings. ScummVM lets the machine make one, and this page assumes the program does too.'] : []),
       ],
     };
   },
@@ -772,7 +772,7 @@ ZB_PUZZLES.set('PIZZA', {
       if (c === 2) break;
     }
     const eaten = seen.length && seen[seen.length - 1][1] === 2 ? seen[seen.length - 1][0] : -1;
-    return node.outcomes.findIndex(o => o.reactions ? o.reactions.join(';') === seen.join(';') : o.eaten === eaten);
+    return node.outcomes.findIndex(o => o.reactions ? o.reactions.join('|') === seen.join('|') : o.eaten === eaten);
   },
   source: 'ScummVM’s puzzle_pizza.cpp, checked against the program’s code.',
 });

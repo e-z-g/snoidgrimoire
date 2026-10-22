@@ -100,29 +100,29 @@ function zbBridgeUpperMask(band, rule, upperMatches) {
 }
 
 ZB_PUZZLES.set('BRIDGE', {
-  about: 'Each Zoombini is sent over the upper bridge or the lower. The cliffs are allergic to some traits, and sneeze back a Zoombini on the wrong bridge.',
+  about: 'Each Zoombini is sent over the upper bridge or the lower bridge. The cliffs are allergic to some traits, and they sneeze a Zoombini back if it is on the wrong bridge.',
   levels: [
-    { rule: 'One trait value, such as a propeller: Zoombinis with it take one bridge, the rest the other. It is one of 20, chosen to send as close to half the band as possible over one bridge, and never more than one over half.',
+    { rule: 'One trait value, such as a propeller. Zoombinis with it take one bridge, and the rest take the other. The rule is one of 20, picked to split the band as evenly as it can, with at most one more than half on either bridge.',
       chances: 'Six pegs hold the gate, and each sneeze knocks one out. After the sixth no one else may cross.' },
-    { rule: 'One trait with either of two values, such as a red or a blue nose. One of 40, chosen the same way.',
+    { rule: 'One trait with either of two values, such as a red or a blue nose. The rule is one of 40, picked the same way.',
       chances: 'Six pegs, as at every level.' },
-    { rule: 'Either of two traits’ values, such as sleepy eyes or a cap. One of 150, chosen the same way.',
+    { rule: 'Either of two traits’ values, such as sleepy eyes or a cap. The rule is one of 150, picked the same way.',
       chances: 'Six pegs, as at every level.' },
-    { rule: 'Any of three traits’ values, such as a tuft, one eye or roller skates. One of 500, chosen the same way.',
+    { rule: 'Any of three traits’ values, such as a tuft, one eye or roller skates. The rule is one of 500, picked the same way.',
       chances: 'Six pegs, as at every level.' },
   ],
   deal(level, band, rnd, journey = {}) {
     const { count, candidates } = zbBridgeCandidates(level, band), found = candidates.length;
-    if (count == null) return { setup: ['No rule at this level sends any of this band one way, so the program would keep looking for one.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
+    if (count == null) return { setup: ['No rule at this level splits this band, so the program would keep looking.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
     const rule = candidates[rnd.range(1, found) - 1];
     delete journey.bridgeSplit;
     if (level === 1 && found === 1) journey.bridgeSplit = count;
     const upperMatches = rnd.bool();
     const withIt = upperMatches ? 'upper' : 'lower', without = upperMatches ? 'lower' : 'upper';
     return {
-      setup: [`Two bridges and a gate held by six pegs. ${band.length} Zoombinis to cross.`],
+      setup: [`Two bridges, and a gate held shut by six pegs. ${band.length} Zoombinis need to cross.`],
       answer: [
-        `Zoombinis with ${zbBridgeRuleWords(rule)} cross the ${withIt} bridge: ${count} of this band.`,
+        `Zoombinis with ${zbBridgeRuleWords(rule)} cross the ${withIt} bridge, ${count} of this band.`,
         `The other ${band.length - count} cross the ${without} bridge.`,
       ],
       marks: band.map(z => zbBridgeMatches(z, rule) ? withIt : without),
@@ -150,7 +150,7 @@ ZB_PUZZLES.set('BRIDGE', {
     if (level === 2) {
       const vs = [...new Set(values.values.map(Number))].sort((a, b) => a - b);
       if (!ZB_TRAIT_KINDS.includes(values.kind)) throw new Error('Pick a trait.');
-      if (vs.length !== 2) throw new Error('This level\u2019s rule has two values of one trait.');
+      if (vs.length !== 2) throw new Error('At this level the rule must have two values of one trait.');
       rule = [{ kind: values.kind, values: vs }];
     } else {
       const n = [1, 1, 2, 3][level - 1];
@@ -171,19 +171,19 @@ ZB_PUZZLES.set('BRIDGE', {
       solutions: [{
         title: `All ${band.length} cross`,
         steps: [
-          up.length ? `Over the upper bridge, ${up.length}: ${zbPlacesWords(up)}.` : 'No one takes the upper bridge.',
-          low.length ? `Over the lower bridge, ${low.length}: ${zbPlacesWords(low)}.` : 'No one takes the lower bridge.',
+          up.length ? `Zoombini${up.length === 1 ? '' : 's'} ${zbPlacesWords(up)} ${up.length === 1 ? 'goes' : 'go'} over the upper bridge.` : 'No one goes over the upper bridge.',
+          low.length ? `Zoombini${low.length === 1 ? '' : 's'} ${zbPlacesWords(low)} ${low.length === 1 ? 'goes' : 'go'} over the lower bridge.` : 'No one goes over the lower bridge.',
           `The Zoombinis ${state.matchingTraitsUseUpperLane ? 'with' : 'without'} ${withWord} take the upper bridge, in any order, with no sneeze.`,
         ],
         crosses: band.map((_, i) => i),
         diagram: zbBridgeDiagram(band, { rule: state.rule, upperMatches: state.matchingTraitsUseUpperLane, up, low, near: [], pegs: 6 }),
       }],
-      notes: ['With the rule known, every Zoombini can be sent over the right bridge, so all of them cross; the order does not matter.'],
+      notes: ['With the rule known, every Zoombini can be sent over the right bridge, so all of them cross, and the order does not matter.'],
     };
   },
   strategy(level, band, arc, opts = {}) { return zbBridgeStrategy(level, band, opts); },
   /* It crosses when the bridge it is sent over is the one its traits
-     give it, and is sneezed back otherwise. */
+     give it. Otherwise it is sneezed back. */
   answer(level, band, state, node) {
     return zbBridgeMatches(band[node.zoombini], state.rule) === state.matchingTraitsUseUpperLane ? (node.upper ? 0 : 1) : (node.upper ? 1 : 0);
   },
@@ -222,7 +222,7 @@ function zbBridgeDiagram(band, { rule = null, upperMatches = true, up = [], low 
 /* The cliffs with the rule unknown. The hypotheses are the rules the
    program could deal this band at this level, each with either bridge; to
    the player only which of the band each sends up matters, so they are
-   kept as that, a mask each, and counted. A Zoombini that every
+   stored as that, a mask each, with a count. A Zoombini that every
    hypothesis left puts on the same bridge goes over free; otherwise one is sent over a
    bridge, and either crosses, ruling out the hypotheses that would have it
    on the other, or is sneezed back, ruling out the rest, for a peg. The
@@ -321,7 +321,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
     const left = weight(H);
     if (!u || !p) {
       const lost = bits(u);
-      return { move: !u ? `Every Zoombini's bridge is known now: all ${across} who can cross are across.` : `The sixth peg has fallen: ${lost} left behind.`,
+      return { move: !u ? `Every Zoombini’s bridge is known now, and all ${across} who can cross are across.` : `The sixth peg has fallen, leaving ${lost} behind.`,
         zoombini: null, left, crossed: across, spent: 6 - p, outcomes: [],
         diagram: zbBridgeDiagram(band, { near, up, low, pegs: p, caption: !u ? `All ${across} across` : `${across} across, ${lost} left behind` }) };
     }
@@ -362,11 +362,11 @@ function zbBridgeStrategy(level, band, opts = {}) {
     root: node(H0, u0, 6, free0.length, [...Array(n).keys()].filter(k => !free0.includes(k)), up0, low0),
     notes: [
       knows === 'form'
-        ? `The player knows only the rule's form at this level: any of its ${rules.length} rules, each with either bridge, ${weight(H0)} hypotheses, ${H0.length} of them different for this band.`
-        : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge: ${weight(H0)} hypotheses, ${H0.length} of them different for this band. The player knows that.`,
-      'Any Zoombini whose bridge is the same under every hypothesis left goes first, which costs nothing; otherwise the one whose worse outcome still gets the most across.',
-      exact ? (guaranteed === n ? 'So the whole band is guaranteed to cross.' : 'The search is complete: no way of playing guarantees more.')
-        : 'The search stopped at its budget and played the rest by a rule of thumb: the Zoombini whose bridge is the same under most of the hypotheses goes next, over that bridge. So this many are guaranteed, and perhaps more could be.',
+        ? `The player knows only the rule’s form at this level. Any of its ${rules.length} rules is possible, each with either bridge, for ${weight(H0)} hypotheses in all. ${H0.length} of them are different for this band.`
+        : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge, for ${weight(H0)} hypotheses in all. ${H0.length} of them are different for this band. The player knows this.`,
+      'Any Zoombini whose bridge is the same under every hypothesis left goes first, since that costs nothing. Otherwise it sends the Zoombini that brings the most across even when things go badly.',
+      exact ? (guaranteed === n ? 'So the whole band is guaranteed to cross.' : 'The search is complete, so no way of playing guarantees more.')
+        : 'The search ran out of time, so it played the rest by a rule of thumb. It sent next the Zoombini whose bridge is the same under the most hypotheses, over that bridge. So at least this many are guaranteed, and maybe more could be.',
     ],
   };
 }

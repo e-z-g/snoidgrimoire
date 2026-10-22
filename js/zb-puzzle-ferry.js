@@ -25,15 +25,15 @@
    and bottom while narrowed as much at the sides, and then the other way
    round, and at level 4 also stretched top and bottom alone; seat M is
    next to K when one of those overlaps M's rectangle (strictly), up to
-   eight neighbours a seat. With sixteen seats this makes, at level 1, a
+   eight neighbors a seat. With sixteen seats this makes, at level 1, a
    single line (two rows of seven joined at the left by two more), at
    level 2 a ladder of two rows of eight, at level 3 four rows of four,
    each seat next to those beside it and one before and one behind, and
    at level 4 four rows of four set unevenly, where the third rectangle
    lets a seat touch up to two seats in each of the rows before and
-   behind: up to six neighbours.
+   behind: up to six neighbors.
 
-   So a band's answer is a seating in which every two neighbours share a
+   So a band's answer is a seating in which every two neighbors share a
    trait; there is often more than one, and a band may have none that
    seats everyone. The deal looks for a seating of as many as it can, each
    size first by a quick search (ZB_FERRY_QUICK steps) and then by
@@ -47,8 +47,8 @@
    solve gives the most that can sit, whether that is proven, the number
    of seatings (exactly, for the level-1 line filled end to end, by
    counting paths; otherwise by the search, while its budget lasts) and a
-   dozen seatings, the simplest first: the fewest neighbours sharing one
-   trait only, then the fewest neighbours at all.
+   dozen seatings, the simplest first: the fewest neighbors sharing one
+   trait only, then the fewest neighbors at all.
 
    WHERE IT CAME FROM
    ScummVM's Zoombinis branch, zoombini_pages/puzzle_ferry.cpp and .h
@@ -58,11 +58,11 @@
    raft at 0x41b992 (the same sum, with the level counted from 0 and the
    band held to 16-20; ZOOMBINI.EXE makes it at 0x1614b), lays out its
    seats at 0x41b4bd (the seat's drop point 22 right
-   and 7 up from its corner) and finds the neighbours at 0x41ba0b, with
+   and 7 up from its corner) and finds the neighbors at 0x41ba0b, with
    the three stretched rectangles as ScummVM has them, the third only at
    the last level, and an overlap that must be strict (0x4823e8); the code
    at 0x41ad8c judges a drop, allowing it only where every occupied
-   neighbour shares one of the four traits. The Mac build's INSTALLSEATSFORCURRENTLEVEL
+   neighbor shares one of the four traits. The Mac build's INSTALLSEATSFORCURRENTLEVEL
    picks the raft by the same sum, and its FINDSEATADJACENCIES does the
    same sums on the same fields (and first works out half the width,
    which it then overwrites with half the height). No draw of the random
@@ -75,7 +75,7 @@
 /* The seats' feature scripts and picture (ScummVM's kResScrb1500_SeatBase
    and kResBitmapShape1500_Seats): seat shape k is drawn by SCRB 1499 + k
    from tBMP 1500's frame k - 1. The most seats a raft registers, and the
-   most neighbours a seat has. */
+   most neighbors a seat has. */
 const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbours: 8 };
 /* The quick search's steps for each size of seating, before zbFerryMatch
    settles it. */
@@ -116,7 +116,7 @@ function zbFerryRaftScript(level, n) {
   return 1510 + 5 * (level - 1) + (n < 16 || n > 20 ? 0 : n - 16);
 }
 
-/* Each seat's neighbours, by seat index, as the program finds them. */
+/* Each seat's neighbors, by seat index, as the program finds them. */
 function zbFerryNeighbours(seats, level) {
   const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   return seats.map(({ x, y, w, h: ht }, k) => {
@@ -143,7 +143,7 @@ function zbFerryShare(a, b) { return ZB_TRAIT_KINDS.some(k => a[k] === b[k]); }
    left empty; once no seat can be spared, the open seat that the fewest
    Zoombinis fit is filled first. The Zoombinis are tried the least
    sociable first, or, strong, those sharing the most traits with their
-   seated neighbours first. */
+   seated neighbors first. */
 function zbFerryEngine(band, neighbours) {
   const n = band.length, S = neighbours.length;
   const alike = band.map(a => band.map(b => ZB_TRAIT_KINDS.filter(k => a[k] === b[k]).length));
@@ -235,10 +235,10 @@ function zbFerryEngine(band, neighbours) {
    seat on the dock for each Zoombini left behind, next to no seat; the
    band, and one rider for each seat left empty, sharing a trait with
    everyone. A seating is a match of seats to riders, one to one, putting
-   riders who share a trait on every two neighbouring seats. Each seat's
-   candidates are narrowed first by its number of neighbours and by what
+   riders who share a trait on every two neighboring seats. Each seat's
+   candidates are narrowed first by its number of neighbors and by what
    stays connected without it, then over and over: a rider stays a seat's
-   candidate only while every neighbouring seat has a candidate sharing a
+   candidate only while every neighboring seat has a candidate sharing a
    trait with it, and only while some perfect matching of seats to riders
    uses it. A raft that is one line or one ring is then a path or cycle
    through every rider, found by a table over subsets; any other is
@@ -406,7 +406,7 @@ function zbFerryMatch(band, neighbours, want, deadline = Infinity) {
     if (failed.has(key)) return 'no';
     let opts = c[branch];
     while (opts) {
-      /* The rider leaving the neighbouring seats the most candidates first. */
+      /* The rider leaving the neighboring seats the most candidates first. */
       let pick = -1, best = -1;
       for (let p = 0; p < N; p++) {
         if (!(opts & bit(p))) continue;
@@ -513,7 +513,7 @@ function zbFerrySeatPlaces(seats) {
 
 /* The traits two Zoombinis share, as { kind, value }, hair first. */
 function zbFerryShared(a, b) { return ZB_TRAIT_KINDS.filter(k => a[k] === b[k]).map(kind => ({ kind, value: a[kind] })); }
-/* A seating's neighbour pairs, both seated: [{ a, b, shared }], seat
+/* A seating's neighbor pairs, both seated: [{ a, b, shared }], seat
    indices a < b. */
 function zbFerryLinks(band, neighbours, seating) {
   const out = [];
@@ -524,8 +524,8 @@ function zbFerryLinks(band, neighbours, seating) {
 }
 
 /* The raft drawn: its seats and which are next to which, the band in
-   their seats, each two seated neighbours' link showing a trait they
-   share (in the warning colour when it is the only one), and those left
+   their seats, each two seated neighbors' link showing a trait they
+   share (in the warning color when it is the only one), and those left
    on the dock, faded. */
 function zbFerryDiagram(band, state, seating, caption) {
   const W = 800, H = 500, items = [], seats = state.seats, nb = state.seatNeighborIndices;
@@ -562,20 +562,20 @@ function zbFerryDiagram(band, state, seating, caption) {
 
 ZB_PUZZLES.set('FERRY', {
   archive: 'FERRY',
-  about: 'The band is seated on Captain Cajun’s raft, one Zoombini at a time. The captain lets a Zoombini sit only next to Zoombinis it has something in common with.',
+  about: 'The band sits on Captain Cajun’s raft, one Zoombini at a time. The captain only lets a Zoombini sit next to others that share something with it.',
   levels: [
-    { rule: 'A Zoombini may sit only where it shares at least one trait (hair, eyes, nose or feet) with every Zoombini seated next to it. The 16 seats make a single line, two rows of seven joined at one end, so each seat has one or two neighbours.',
-      chances: 'As many tries as it takes: the captain sends back a Zoombini that does not fit, and nothing is counted. The raft leaves with those seated; any the player cannot seat stay behind.' },
-    { rule: 'The same rule, on 16 seats in two rows of eight: each seat is next to those either side and the one in front or behind, up to three.',
+    { rule: 'A Zoombini may sit only where it shares at least one trait (hair, eyes, nose or feet) with every Zoombini next to it. The 16 seats form a single line, two rows of seven joined at one end, so each seat has one or two neighbors.',
+      chances: 'As many tries as it takes. The captain sends back a Zoombini that does not fit, and nothing is counted. The raft leaves with those seated. Any Zoombinis the player cannot seat stay behind.' },
+    { rule: 'The same rule, on 16 seats in two rows of eight. Each seat is next to the seats on either side and the one in front or behind, so it has up to three neighbors.',
       chances: 'As many tries as it takes, as at every level.' },
-    { rule: 'The same rule, on four rows of four: each seat is next to those either side, in front and behind, up to four.',
+    { rule: 'The same rule, on four rows of four. Each seat is next to the seats on either side, in front and behind, so it has up to four neighbors.',
       chances: 'As many tries as it takes, as at every level.' },
-    { rule: 'The same rule, on four rows of four set unevenly, and at this level the program also counts seats diagonally in front and behind as next to each other: up to six neighbours a seat.',
+    { rule: 'The same rule, on four uneven rows of four. At this level the program also counts the seats diagonally in front and behind as neighbors, so a seat has up to six.',
       chances: 'As many tries as it takes, as at every level.' },
   ],
   /* Nothing on the raft is the program's to choose. */
   form(level, band, state) {
-    return [{ key: 'note', kind: 'note', note: `The program chooses nothing here: the raft is SCRB ${state.seatLayoutScrbId}, the one for ${band.length} Zoombinis at this level, and the rule is the same at every level.` }];
+    return [{ key: 'note', kind: 'note', note: `The program chooses nothing here. The raft is SCRB ${state.seatLayoutScrbId}, the one for ${band.length} Zoombinis at this level, and the rule is the same at every level.` }];
   },
   edit(level, band, state) { return Object.assign({}, state, { edited: true }); },
   solve(level, band, state, arc, opts = {}) {
@@ -600,7 +600,7 @@ ZB_PUZZLES.set('FERRY', {
     const better = (a, b) => a.singles.length - b.singles.length || a.links.length - b.links.length;
     let scored = list.map(score).sort(better);
     /* Each of the best few made simpler while it can be: a Zoombini moved
-       to an empty seat, or two swapped, where every pair of neighbours still shares a trait. */
+       to an empty seat, or two swapped, where every pair of neighbors still shares a trait. */
     const fitsAt = (sg, z, s, gone) => nb[s].every(t => t === gone || sg[t] < 0 || zbFerryShare(band[z], band[sg[t]]));
     const improve = x => {
       for (let again = true; again && Date.now() < t0 + budget * 0.7;) {
@@ -629,7 +629,7 @@ ZB_PUZZLES.set('FERRY', {
     };
     scored = [...scored.slice(0, 24).map(improve), ...scored].sort(better);
     /* A dozen, simplest first, each unlike those before it in four seats
-       or more where there are enough to choose from. */
+       or more when there are enough seatings. */
     const seen = new Set(), pick = [];
     const apartFrom = x => pick.every(p => x.sg.filter((z, s) => z < 0 ? p.sg[s] >= 0 : p.sg[s] < 0 || zbZoombiniId(band[z]) !== zbZoombiniId(band[p.sg[s]])).length >= 4);
     for (const pass of [true, false]) {
@@ -657,13 +657,13 @@ ZB_PUZZLES.set('FERRY', {
       const steps = [];
       for (let r = 1; r <= rows; r++) {
         const inRow = [...places.keys()].filter(s => places[s].row === r).sort((a, b) => places[a].seat - places[b].seat);
-        steps.push(`Row ${r}, from the left: ${zbWordsOr(inRow.map(s => x.sg[s] < 0 ? 'an empty seat' : String(x.sg[s] + 1)), 'and')}.`);
+        steps.push(`Row ${r}, from the left, has ${zbWordsOr(inRow.map(s => x.sg[s] < 0 ? 'an empty seat' : String(x.sg[s] + 1)), 'and')}.`);
       }
-      if (!x.links.length) steps.push('No two of them sit side by side, so the captain has nothing to judge.');
-      else if (!x.singles.length) steps.push(`Each of the ${x.links.length} pairs side by side shares two traits or more.`);
+      if (!x.links.length) steps.push('No two of them sit side by side, so the captain has nothing to check.');
+      else if (!x.singles.length) steps.push(`All ${x.links.length} pairs side by side share two or more traits.`);
       else {
         const said = x.singles.slice(0, 6).map(l => `${zbTraitWith(l.shared[0].kind, l.shared[0].value)} joins ${x.sg[l.a] + 1} and ${x.sg[l.b] + 1}`);
-        steps.push(`Of the ${x.links.length} pairs side by side, ${x.singles.length} share${x.singles.length === 1 ? 's' : ''} one trait only: ${zbWordsOr(said, 'and')}${x.singles.length > 6 ? `, and ${x.singles.length - 6} more` : ''}.`);
+        steps.push(`Of the ${x.links.length} pairs side by side, ${x.singles.length} share${x.singles.length === 1 ? 's' : ''} only one trait (${zbWordsOr(said, 'and')}${x.singles.length > 6 ? `, and ${x.singles.length - 6} more` : ''}).`);
       }
       const behind = band.map((_, i) => i).filter(i => !x.sg.includes(i));
       if (behind.length) steps.push(`Zoombini${behind.length > 1 ? 's' : ''} ${zbPlacesWords(behind)} stay${behind.length > 1 ? '' : 's'} on the dock.`);
@@ -675,12 +675,12 @@ ZB_PUZZLES.set('FERRY', {
       most, exact: found.proven, ways,
       solutions: pick.map(describe),
       notes: [
-        'To cross is to be seated on the raft when it leaves; any still on the dock stay behind.',
-        'The rule is the same at every level: each two seated side by side share a trait. The order they are seated in does not matter, and swapping two alike Zoombinis gives the same seating.',
-        'The simplest seating has the fewest neighbours who share only one trait, then the fewest neighbours of any kind. A band small enough to sit with no two side by side needs no matching, and on this raft that is a band of up to ' + apart.most + '.',
-        ways != null ? `There ${ways === 1 ? 'is 1 seating' : `are ${ways} seatings`} of ${most}, counting alike Zoombinis as one.` : 'There are too many seatings to count within the budget.',
-        ...(found.proven ? (most < n ? [`No seating takes more than ${most} of the ${n}: the search ruled out every larger one.`] : [])
-          : [`The search stopped before finding a seating of more than ${most}; more may be possible.`]),
+        'To cross, a Zoombini must be seated on the raft when it leaves. Any still on the dock stay behind.',
+        'The rule is the same at every level. Every two Zoombinis seated side by side must share a trait. The seating order does not matter, and swapping two Zoombinis that look alike gives the same seating.',
+        'The simplest seating has the fewest neighbors who share only one trait, then the fewest neighbors of any kind. A band small enough to sit with no two side by side needs no matching. On this raft, that is a band of up to ' + apart.most + '.',
+        ways != null ? `There ${ways === 1 ? 'is 1 seating' : `are ${ways} seatings`} of ${most}, counting Zoombinis that look alike as one.` : 'There are too many seatings to count in the time allowed.',
+        ...(found.proven ? (most < n ? [`No seating fits more than ${most} of the ${n}, because the search ruled out every larger one.`] : [])
+          : [`The search stopped before finding a seating of more than ${most}. More may be possible.`]),
       ],
     };
   },
@@ -697,8 +697,8 @@ ZB_PUZZLES.set('FERRY', {
     const where = s => `row ${places[s].row}, seat ${places[s].seat}`;
 
     const answer = ['A Zoombini sits only where it shares a trait with every Zoombini already seated next to it.'];
-    if (found.seated === n) answer.push(`All ${n} can be seated; one way, rows counted from the back of the raft and seats from the left:`);
-    else answer.push(`${found.proven ? 'At most' : 'The search seated'} ${found.seated} of the ${n}; ${n - found.seated === 1 ? 'one stays' : `${n - found.seated} stay`} behind. One such seating, rows from the back and seats from the left:`);
+    if (found.seated === n) answer.push(`All ${n} can be seated. Here is one way, with rows counted from the back of the raft and seats from the left.`);
+    else answer.push(`${found.proven ? 'At most' : 'The search seated'} ${found.seated} of the ${n}, and ${n - found.seated === 1 ? 'one stays' : `${n - found.seated} stay`} behind. Here is one such seating, with rows from the back and seats from the left.`);
     const rows = Math.max(...places.map(p => p.row));
     for (let r = 1; r <= rows; r++) {
       const inRow = [...seats.keys()].filter(s => places[s].row === r).sort((a, b) => places[a].seat - places[b].seat);

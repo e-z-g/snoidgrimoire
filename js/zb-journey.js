@@ -7,10 +7,10 @@
    300, the painted land, with a sprite sheet, tBMP 1000, drawn over it by
    the archive's feature scripts. SCRB 1000 puts the sixteen place icons,
    shapes 1-16; SCRB 1001 the sixteen stretches of road between them,
-   shapes 17-32, each drawn in the colour of the level its place was
+   shapes 17-32, each drawn in the color of the level its place was
    crossed at by adding 16 per level (shapes 17-80: green, yellow, orange,
    red), and the legend's key, SCRB 1004 in RODMAP and 1003 in MAP, has a
-   line of each colour, shapes 84-87. A shape is the sheet's frame one
+   line of each color, shapes 84-87. A shape is the sheet's frame one
    below it. A place's icon has a
    lit version for when the pointer is over it, 93 shapes on, but the
    isle's, which is shape 109. Both scripts are one frame, and a record's
@@ -28,7 +28,7 @@
    WHERE IT CAME FROM
    Which archive is which place, which shape is which place and which
    stretch of road, the order of the routes, the backgrounds and the level
-   colours are from ScummVM's Zoombinis branch (ied206/scummvm-zoombini,
+   colors are from ScummVM's Zoombinis branch (ied206/scummvm-zoombini,
    zoombini_pages/interactive_rodmap.h and .cpp, the page classes'
    setBackgroundBitmap, zoombini_state.h ZmbRouteId). The names are the
    1996 program's, the strings the map shows (ZOOMBINI.EXE, at the
@@ -62,7 +62,7 @@ const ZB_PLACES = [
 ];
 
 /* The routes, named as on the map. Road shape segments[i] runs from
-   places[i] to places[i + 1], in the colour of the level places[i + 1]
+   places[i] to places[i + 1], in the color of the level places[i + 1]
    was crossed at (ScummVM's buildPageRouteLevelMap); the last stretch of
    each, into a camp or the town, is drawn in the route's level. Shelter
    Rock has two ways on, north and south, and both come to Shade Tree. */

@@ -41,7 +41,7 @@ const arc = S.openMohawk(archiveBytes('ZOOMBINI'));
 const sheet = S.zbSnoidSheet(arc);
 
 const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'snoids'], { encoding: 'utf8', maxBuffer: 1 << 26 });
-if (r.status !== 0) { console.log('SKIP: the oracle did not run: ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
+if (r.status !== 0) { console.log('SKIP: the oracle did not run, ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
 const want = JSON.parse(r.stdout);
 let bad = 0;
 for (let n = 0; n < 625; n++) {
@@ -58,7 +58,7 @@ for (let n = 0; n < 625; n++) {
 const small = S.zbSnoidSheet(arc, 'small');
 for (let n = 0; n < 625; n++) {
   const z = { hair: Math.floor(n / 125) + 1, eyes: Math.floor(n / 25) % 5 + 1, nose: Math.floor(n / 5) % 5 + 1, feet: n % 5 + 1 };
-  try { S.zbZoombiniImage(small, z); } catch (e) { if (bad++ < 3) fail(`Zoombini ${n} far off: ${e.message}`); }
+  try { S.zbZoombiniImage(small, z); } catch (e) { if (bad++ < 3) fail(`Zoombini ${n} far off (${e.message})`); }
 }
 
 // Every tick of the scripts in ZOOMBINI, inside the Zoombini's blocks.
@@ -78,12 +78,12 @@ for (const { id } of arc.list('SCRS')) {
     ticks++;
   }
 }
-if (!bad) console.log(`all 625 Zoombinis standing as animate.py puts them together; ${ticks} ticks of SCRS 100-150 inside the blocks`);
+if (!bad) console.log(`all 625 Zoombinis standing as animate.py puts them together. ${ticks} ticks of SCRS 100-150 inside the blocks`);
 
 // Every snoid script on the disc, tick by tick.
 const ZB_UNTRACED = { 'FLEENS/7026': [2], 'FLEENS/7027': [2], 'FLEENS/7028': [2, 3], 'FLEENS/7029': [2], 'FLEENS/7030': [1], 'NET/13003': [21, 22], 'NET/13004': [17] };
 const t = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'snoidticks'], { encoding: 'utf8', maxBuffer: 1 << 28 });
-if (t.status !== 0) { console.log('SKIP: the oracle did not run: ' + (t.stderr || '').split('\n').slice(-2).join(' ')); process.exit(fails ? 1 : 0); }
+if (t.status !== 0) { console.log('SKIP: the oracle did not run, ' + (t.stderr || '').split('\n').slice(-2).join(' ')); process.exit(fails ? 1 : 0); }
 const W = JSON.parse(t.stdout);
 for (const [kind, parts] of Object.entries(W.blocks)) {
   const K = S.ZB_SNOID_KINDS[kind];
@@ -106,13 +106,13 @@ for (const n of archiveNames()) {
     ticks.forEach((tk, i) => {
       counts.ticks++;
       const parts = S.zbSnoidParts(tk, K.effects), got = parts.map(p => [p.part, p.shape, p.x, p.y]);
-      if (parts.length && parts[0].fitted) { if (untraced.includes(i)) counts.untraced++; else if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}: fitted, not one of the untraced`); }
+      if (parts.length && parts[0].fitted) { if (untraced.includes(i)) counts.untraced++; else if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}, fitted, not one of the untraced`); }
       let exp = want[i] || [];
       if (got.length) counts.drawn++;
       if (key(got) === key(exp)) return;
       const four = exp.filter(q => q[0] === 'body' || q[0] === 'nose').every(q => q[1] <= 4);
       if (kind === 'zoombini' && four && key(got) === key(swap(exp, { body: 'nose', nose: 'body' }))) { counts.ambiguous++; return; }
-      if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}: ${JSON.stringify(got)}, animate.py ${JSON.stringify(exp)}`);
+      if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}, ${JSON.stringify(got)}, animate.py ${JSON.stringify(exp)}`);
     });
     const shown = S.zbSnoidShown(ticks, K.effects);
     if (shown.some(k => k < 0 || !S.zbSnoidParts(ticks[k], K.effects).length)) { if (bad++ < 12) fail(`${n} SCRS ${id}: a tick shows nothing`); }
@@ -131,7 +131,7 @@ for (const n of archiveNames()) {
   }
 }
 if (counts.untraced !== Object.values(ZB_UNTRACED).flat().length) fail(`${counts.untraced} ticks fitted, not ${Object.values(ZB_UNTRACED).flat().length}`);
-if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties settled by the layout word, ${counts.untraced} untraced ones fitted; ${counts.held} that draw nothing holding the last that does; ${counts.feetBound} scripts written for some feet only`);
+if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties settled by the layout word, ${counts.untraced} untraced ones fitted. ${counts.held} that draw nothing holding the last that does. ${counts.feetBound} scripts written for some feet only`);
 // The walk.
 const cpp = path.join(ROOT, 'reference', 'scummvm-zoombini', 'engines', 'mohawk', 'zoombini_scripts.cpp');
 if (fs.existsSync(cpp)) {
@@ -146,7 +146,7 @@ if (fs.existsSync(cpp)) {
   const sides = [[-1409, 0], [-1408, 1], [-332, 1], [-331, 2], [331, 2], [332, 3], [1408, 3], [1409, 4]];
   for (const [sl, d] of sides) if (at(sl) !== d) fail(`slope ${sl} walks in direction ${at(sl)}, not ${d}`);
   if (S.zbWalkDirection(0, 5) !== 0 || S.zbWalkDirection(0, -5) !== 4) fail('straight down and up are not directions 0 and 4');
-} else console.log('SKIP the walk against ScummVM: no reference/scummvm-zoombini');
+} else console.log('SKIP the walk against ScummVM, no reference/scummvm-zoombini');
 for (let f = 1; f <= 5; f++) for (let d = 0; d < 5; d++) {
   const id = 100 + 5 * f + d, sc = S.parseScript(arc.get('SCRS', id), 'SCRS');
   if (S.zbSnoidFeetOf('ZOOMBINI', id) !== f) fail(`SCRS ${id} is not taken for feet ${f}`);

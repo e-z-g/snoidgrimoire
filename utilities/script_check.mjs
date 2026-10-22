@@ -22,7 +22,7 @@ for (const name of archiveNames()) {
     count[tag]++;
     const where = `${name} ${tag} ${r.id}`;
     let s;
-    try { s = S.parseScript(arc.get(tag, r.id), tag); } catch (e) { fail(`${where}: ${e.message}`); continue; }
+    try { s = S.parseScript(arc.get(tag, r.id), tag); } catch (e) { fail(`${where} (${e.message})`); continue; }
     if (tag === 'SCRS') layouts.set(s.layout, (layouts.get(s.layout) || 0) + 1);
     for (const f of s.frames) if (f.event) events.set(f.end.toString(16), (events.get(f.end.toString(16)) || 0) + 1);
     const t = theirs.get(tag + ' ' + (r.id & 0xffff));

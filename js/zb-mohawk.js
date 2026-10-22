@@ -28,7 +28,7 @@
 function openMohawk(bytes) {
   const b = bytes;
   const need = (off, len, what) => {
-    if (off < 0 || off + len > b.length) throw new Error(`not a Mohawk archive: ${what} runs past the end`);
+    if (off < 0 || off + len > b.length) throw new Error(`not a Mohawk archive (${what} runs past the end)`);
   };
   need(0, 28, 'the header');
   if (fourcc(b, 0) !== 'MHWK' || fourcc(b, 8) !== 'RSRC') throw new Error('not a Mohawk archive');
@@ -72,7 +72,7 @@ function openMohawk(bytes) {
     for (let k = 0; k < n; k++) {
       const id = i16be(b, rt + 2 + k * 4), index = u16be(b, rt + 4 + k * 4);
       const f = files[index - 1];
-      if (!f) throw new Error(`not a Mohawk archive: ${tag} ${id} points to file ${index} of ${fileCount}`);
+      if (!f) throw new Error(`not a Mohawk archive (${tag} ${id} points to file ${index} of ${fileCount})`);
       need(f.offset, f.size, `${tag} ${id}`);
       list.push({ tag, id, index, name: names.get(index) || '', offset: f.offset, size: f.size });
     }
@@ -95,7 +95,7 @@ function openMohawk(bytes) {
 }
 
 /* How a tag is shown: the sound type is "\0SND", with a NUL for its first
-   letter, and is written "SND". */
+   letter, and it is written "SND". */
 function mohawkTagLabel(tag) { return tag.replace(/\0/g, ''); }
 
 /* ---- WAVE and MIDI: chunks inside a resource --------------------------- */

@@ -3,7 +3,7 @@
 //     out: as many notes as the MIDI file has note-ons with a velocity, none
 //     of them on a part past the 32nd, no controller dropped, and as long as
 //     the file is;
-//   - a file that does not begin as a MIDI file throws, and is not played;
+//   - a file that does not begin as a MIDI file throws and is not played;
 //   - with QuickTime 3's installer at reference/quicktime/QUICKTIM.EXE
 //     (archive.org, apple-quicktime-3; the page fetches the same file),
 //     every part of every tune has an instrument in the set, and the
@@ -27,7 +27,7 @@ for (const name of ['MIDIMAC', 'MIDIMPC']) {
   for (const { id } of arc.list('tMID')) {
     const file = S.parseMohawkMidi(arc.get('tMID', id)).file, what = `${name} ${id}`;
     let t;
-    try { t = S.zbTuneFromMidi(file, lib); } catch (e) { fail(`${what}: ${e.message}`); continue; }
+    try { t = S.zbTuneFromMidi(file, lib); } catch (e) { fail(`${what} (${e.message})`); continue; }
     tunes++;
     const midi = S.midiRead(file), ons = midi.events.filter(e => e.kind === 0x90 && e.d2 > 0).length;
     if (t.notes !== ons) fail(`${what}: ${t.notes} notes in the tune, ${ons} in the file`);
@@ -56,5 +56,5 @@ for (const name of ['MIDIMAC', 'MIDIMPC']) {
   try { S.zbTuneFromMidi(bad, lib); } catch (e) { threw = /does not begin MThd/.test(e.message); }
   if (!threw) fail('a file that does not begin MThd was made into a tune');
 }
-console.log(`${tunes} tunes made, ${notes} notes, nothing left out` + (lib ? `; every part has one of the ${lib.ids.length} instruments; ${rendered} rendered, the same twice` : '; no reference/quicktime/QUICKTIM.EXE, so nothing rendered'));
+console.log(`${tunes} tunes made, ${notes} notes, nothing left out` + (lib ? `. Every part has one of the ${lib.ids.length} instruments. ${rendered} rendered, the same twice` : '. No reference/quicktime/QUICKTIM.EXE, so nothing rendered'));
 process.exit(fails ? 1 : 0);

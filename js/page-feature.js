@@ -25,7 +25,7 @@ function featureDrawn(arc, id, script) {
 
 function featurePlayer(entry, arc, id, script, box) {
   const d = featureDrawn(arc, id, script);
-  if (!d || !d.placed.box) { box.innerHTML = `<p class="note">${d ? 'Its shapes are empty sprites: nothing is drawn.' : 'No tick has a shape.'}</p>`; return; }
+  if (!d || !d.placed.box) { box.innerHTML = `<p class="note">${d ? 'Its shapes are empty sprites, so nothing is drawn.' : 'No tick has a shape.'}</p>`; return; }
   const { placed, frames, regs, sheet } = d, b = placed.box;
   const room = roomPicture(arc, entry.name);
   const inRoom = room != null && b.x1 > 0 && b.y1 > 0 && b.x0 < 640 && b.y0 < 480;
@@ -34,9 +34,9 @@ function featurePlayer(entry, arc, id, script, box) {
   const pad = 16;
   const x0 = onRoom ? Math.max(0, Math.min(b.x0 - pad, 640 - 1)) : b.x0, y0 = onRoom ? Math.max(0, Math.min(b.y0 - pad, 480 - 1)) : b.y0;
   const x1 = onRoom ? Math.min(640, Math.max(b.x1 + pad, 1)) : b.x1, y1 = onRoom ? Math.min(480, Math.max(b.y1 + pad, 1)) : b.y1;
-  box.innerHTML = `<p class="note">Drawn with <a href="${link(entry.name, 'tBMP', sheet.id)}">tBMP ${sheet.id}</a>, the last sheet numbered at or below the script. The rule comes from how the disc is numbered and is true of every feature script on it; it is not read from the program. `
-    + (regs ? `Each sprite’s registration point (<a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a>) is put at its record’s x and y.` : 'The sheet has no registration points; each sprite’s corner is put at its record’s x and y.')
-    + ` Its drawing spans (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1})${inRoom ? '' : room != null ? ', outside the room' : ''}.</p>`
+  box.innerHTML = `<p class="note">Drawn with <a href="${link(entry.name, 'tBMP', sheet.id)}">tBMP ${sheet.id}</a>, the last sheet numbered at or below the script. That rule comes from how the disc is numbered, and every feature script on the disc follows it. It is not taken from the program’s code. `
+    + (regs ? `Each sprite’s registration point (<a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a>) is placed at its record’s x and y.` : 'The sheet has no registration points, so each sprite’s corner is placed at its record’s x and y.')
+    + ` The drawing covers (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1})${inRoom ? '' : room != null ? ', outside the room' : ''}.</p>`
     + `<div class="tools"><button id="featPlay">Pause</button><button id="featStep">Step</button>`
     + `<input id="featAt" type="range" min="0" max="${placed.ticks.length - 1}" value="0"><span id="featTick" class="note"></span>`
     + (inRoom ? `<label><input type="checkbox" id="featRoom"${FEATURE_PICK.room ? ' checked' : ''}> Over its room</label>` : '')

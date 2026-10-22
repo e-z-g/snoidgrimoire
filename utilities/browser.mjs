@@ -1,7 +1,7 @@
 // Headless Chrome over its DevTools protocol on a pipe, and a static server
 // over the repository: what a check needs to open the page in a real browser.
 // StarGrimoire's utilities/browser.mjs, which is grimoire's
-// utilities/browser_check.mjs (same authors, same licence) cut to the parts
+// utilities/browser_check.mjs (same authors, same license) cut to the parts
 // used there.
 //
 //   const srv = await serve();                    // http://127.0.0.1:<port>/

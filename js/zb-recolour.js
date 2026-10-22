@@ -5,10 +5,10 @@
    Needs zb-mohawk.js, zb-bitmap.js, zb-snoid.js and zb-write.js.
 
    Only palette entries 10-45 are the same in every scene, so a Zoombini's
-   art uses only those, and so must a recolouring, or a colour right in one
+   art uses only those, and so must a recoloring, or a color right in one
    scene is wrong in the next. They fall into families of shades
    (ZB_RECOLOUR_FAMILIES, read off the palette: each a hue, dark to light).
-   A recolouring maps one family onto another shade for shade, by place in
+   A recoloring maps one family onto another shade for shade, by place in
    the family, darkest to darkest and lightest to lightest
    (zbRecolourMap).
 
@@ -19,12 +19,12 @@
    variant, the rows hair, eyes, nose, feet). Skin is every frame of the
    three sheets and the big figure, the skin's shades being on the parts
    too (eyelids, the shading under hair); the tiles' stone is left alone.
-   A recoloured frame is written raw, as mod_red_shaggy.py writes it, and
+   A recolored frame is written raw, as mod_red_shaggy.py writes it, and
    utilities/recolour_check.mjs compares Shaggy's purples turned red with
    its output byte for byte. */
 
 const ZB_RECOLOUR_FAMILIES = [
-  { key: 'greys', name: 'Greys', shades: [11, 12, 13, 14, 10] },
+  { key: 'grays', name: 'Grays', shades: [11, 12, 13, 14, 10] },
   { key: 'skin', name: 'Zoombini blue', shades: [15, 16, 17, 18, 19, 20] },
   { key: 'purples', name: 'Purples', shades: [21, 22, 23] },
   { key: 'magentas', name: 'Magentas', shades: [24, 25, 26, 27] },
@@ -68,7 +68,7 @@ function zbRecolourFrames(part, v) {
   return out;
 }
 
-/* How often each shared colour is drawn in a part's frames of tBMP 3000:
+/* How often each shared color is drawn in a part's frames of tBMP 3000:
    Map index -> pixels. */
 function zbRecolourColours(zoombini, part, v) {
   const d = decodeBitmapResource(zoombini.get('tBMP', 3000)), counts = new Map();

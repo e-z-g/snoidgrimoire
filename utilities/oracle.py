@@ -1,5 +1,5 @@
-"""What the extraction project's Python makes of the disc, as JSON, for the
-checks to compare js/ with. It imports the tools from reference/tools, or
+"""What the extraction project's Python makes of the disc, as JSON, which
+the checks compare js/ against. It imports the tools from reference/tools, or
 from $ZB_TOOLS (a front's tools, before it lands), and never changes them.
 
     python3 utilities/oracle.py archives   # every archive's directory
@@ -90,8 +90,8 @@ def snoidticks():
     """Every snoid script on the disc (layout words 0-3), tick by tick: each
     record as [part, pose, x, y], the part being the one animate.py draws it
     as (its fitted profile swap for a Zoombini, split_effects for the
-    tumble, whose effects are 'effect'), or None for a tick it draws
-    nothing of. And animate.py's blocks, part by part: [bases, poses]."""
+    tumble, whose effects are 'effect'), or None for a tick where it draws
+    nothing. And animate.py's blocks, part by part: [bases, poses]."""
     import animate as A
     kinds = {0: A.ZOOMBINI_ATLAS, 1: A.ZOOMBINI_ATLAS, 2: A.ZOOMBINI_TUMBLE_ATLAS, 3: A.FLEENS_ATLAS}
     out = {'blocks': {}, 'scripts': {}}

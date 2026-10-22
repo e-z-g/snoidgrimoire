@@ -16,7 +16,7 @@
 
    ARCHIVES has an entry for every archive the page has, by upper-case name:
    { name, size, bytes, arc, error, remote }. `arc` is openMohawk's result,
-   made the first time the archive is looked at.
+   made the first time the archive is used.
 
    The page's script: DOM here. LOAD ORDER: after js/zb-*.js, before
    js/page-browse.js, whose browseStart it calls. */
@@ -63,7 +63,7 @@ function memoryPut(entry) {
   const bytes = entry.bytes.slice();
   return memoryTx('readwrite', s => s.put({ name: entry.name, bytes }, entry.name))
     .then(() => { REMEMBERED = true; })
-    .catch(e => setStatus(`Not remembered in this browser: ${e.message}`, true));
+    .catch(e => setStatus(`Not remembered in this browser (${e.message})`, true));
 }
 async function memoryRead() {
   const all = await memoryTx('readonly', s => s.getAll());
@@ -91,7 +91,7 @@ async function openRemembered() {
   }
   REMEMBERED = true;
   SOURCE = got.source.label;
-  setStatus(`Opened as remembered in this browser, ${fmtBytes(got.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
+  setStatus(`Opened what this browser remembered, ${fmtBytes(got.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
   browseStart();
   if (got.source.remote) fetchTheRest();
   return true;
@@ -138,11 +138,11 @@ async function takeFiles(picked, source) {
     }
   }
   if (!took) {
-    setStatus(refused.length ? 'Not a Mohawk archive or a CD image: ' + refused.join(', ') : 'Nothing to read', true);
+    setStatus(refused.length ? 'Not a Mohawk archive or a CD image (' + refused.join(', ') + ')' : 'Nothing to read', true);
     return;
   }
   SOURCE = source;
-  setStatus(refused.length ? `Read ${took} archives; not used: ${refused.slice(0, 4).join(', ')}${refused.length > 4 ? '…' : ''}` : '');
+  setStatus(refused.length ? `Read ${took} archives. Not used: ${refused.slice(0, 4).join(', ')}${refused.length > 4 ? '…' : ''}` : '');
   browseStart();
   memoryBegin(source, false).then(async () => {
     for (const e of ARCHIVES.values()) await memoryPut(e);
@@ -181,7 +181,7 @@ function fetchTheRest() {
       if (e.error) break;
     }
     FETCHING_REST = null;
-    if (!left().length) { setStatus(`Every archive is in, and remembered in this browser.`); if (ARCHIVES.size && $('start').hidden) route(); }
+    if (!left().length) { setStatus(`Every archive is loaded and remembered in this browser.`); if (ARCHIVES.size && $('start').hidden) route(); }
   })();
   return FETCHING_REST;
 }
@@ -196,7 +196,7 @@ function ensureBytes(entry) {
     setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org…`);
     try {
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`archive.org answered ${res.status}`);
+      if (!res.ok) throw new Error(`archive.org returned ${res.status}`);
       const total = +res.headers.get('Content-Length') || 0;
       const reader = res.body.getReader();
       const parts = [];
@@ -208,7 +208,7 @@ function ensureBytes(entry) {
         got += value.length;
         if (Date.now() - last > 250) {
           last = Date.now();
-          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org: ${fmtBytes(got)}${total ? ' of ' + fmtBytes(total) : ''}`);
+          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org, ${fmtBytes(got)}${total ? ' of ' + fmtBytes(total) : ''}`);
         }
       }
       const bytes = new Uint8Array(got);
@@ -218,7 +218,7 @@ function ensureBytes(entry) {
       entry.bytes = bytes;
       entry.size = bytes.length;
       const left = sortedArchives().filter(e => !e.bytes && e.remote).length;
-      setStatus(left ? `${left} more archive${left === 1 ? '' : 's'} to come from archive.org.` : '');
+      setStatus(left ? `${left} more archive${left === 1 ? ' is' : 's are'} still to come from archive.org.` : '');
       memoryPut(entry);
     } catch (e) {
       entry.error = `Could not fetch it from archive.org (${e.message}).`;

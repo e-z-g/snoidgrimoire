@@ -119,14 +119,14 @@ function zbXref(archives, { pairs = true } = {}) {
       if (kind) {
         const K = ZB_SNOID_KINDS[kind];
         link(from, zbXrefKey(K.archive, 'tBMP', K.sheet), `draws ${K.name}`);
-        link(from, zbXrefKey(K.archive, 'REGS', K.regs), 'places its parts by');
+        link(from, zbXrefKey(K.archive, 'REGS', K.regs), 'places its parts using');
       }
     }
     if (pairs) for (const { sheet, regs } of zbXrefSheetRegs(arc)) {
       link(zbXrefKey(name, 'tBMP', sheet), zbXrefKey(name, 'REGS', regs), 'its registration points, x');
       link(zbXrefKey(name, 'tBMP', sheet), zbXrefKey(name, 'REGS', regs + 1), 'its registration points, y');
     }
-    for (const { id } of arc.list('NODE')) if (arc.has('PATH', id)) link(zbXrefKey(name, 'PATH', id), zbXrefKey(name, 'NODE', id), 'joins the waypoints of');
+    for (const { id } of arc.list('NODE')) if (arc.has('PATH', id)) link(zbXrefKey(name, 'PATH', id), zbXrefKey(name, 'NODE', id), 'connects the waypoints in');
   }
   return { out, back };
 }

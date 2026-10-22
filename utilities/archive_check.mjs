@@ -24,7 +24,7 @@ for (const name of archiveNames()) {
     bad++;
     console.log(`FAIL ${name}: ${onlyOurs.length} only here, ${onlyTheirs.length} only in the Python`);
     for (const k of onlyOurs.slice(0, 3)) console.log(`    here:   ${k}`);
-    for (const k of onlyTheirs.slice(0, 3)) console.log(`    Python: ${k}`);
+    for (const k of onlyTheirs.slice(0, 3)) console.log(`    Python (${k})`);
   }
   n += a.length;
 }

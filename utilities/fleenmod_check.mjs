@@ -29,7 +29,7 @@ for (const green of [false, true]) {
   const label = green ? 'green' : 'plain';
   const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'fleenmod', ...(green ? ['--green'] : [])],
     { encoding: 'utf8', maxBuffer: 1 << 26 });
-  if (r.status !== 0) { console.log('SKIP: the oracle did not run: ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
+  if (r.status !== 0) { console.log('SKIP: the oracle did not run, ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
   const want = JSON.parse(r.stdout);
 
   const t0 = performance.now();
@@ -56,11 +56,11 @@ for (const green of [false, true]) {
   const bare = S.zbFleenMod(archives, null, green);
   if (bare.exe !== null) fail(`${label} without the EXE: an EXE came back`);
   const keys = ['ZOOMBINI', 'PICKER'].flatMap(name => bare[name].map(c => [name, `${c.tag}/${c.id}`, sha1(c.bytes)]));
-  if (keys.some(([, k]) => k === 'tBMP/4300')) fail(`${label} without the EXE: PICKER tBMP 4300 came back`);
+  if (keys.some(([, k]) => k === 'tBMP/4300')) fail(`${label} without the EXE, PICKER tBMP 4300 came back`);
   if (keys.length !== n - 1) fail(`${label} without the EXE: ${keys.length} resources, not ${n - 1}`);
   for (const [name, k, h] of keys) if (h !== want[name][k]) fail(`${label} without the EXE: ${name} ${k} is not the Python's`);
   summary.push(`${label} ${n} resources and ${Object.keys(want.EXE).length} EXE bytes in ${(ms / 1000).toFixed(1)} s`);
 }
 
 if (fails) { console.log(`${fails} failures`); process.exit(1); }
-console.log(`the Fleen-parts mod is mod_fleen_parts.py's byte for byte: ${summary.join('; ')}`);
+console.log(`the Fleen-parts mod is mod_fleen_parts.py's byte for byte (${summary.join('; ')})`);

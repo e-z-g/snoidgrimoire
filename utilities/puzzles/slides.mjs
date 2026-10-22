@@ -39,19 +39,19 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     ['kLinkCellIndices', S.ZB_SLIDES_L4_PATHS], ['kEvenRowLinkCells', S.ZB_SLIDES_L4_RISING],
     ['kOddRowLinkCells', S.ZB_SLIDES_L4_FALLING],
   ];
-  for (const [name, mine] of tables) if (!same(table(name), mine)) fail(`${name} is not ScummVM's: ${table(name)}`);
+  for (const [name, mine] of tables) if (!same(table(name), mine)) fail(`${name} is not ScummVM's (${table(name)})`);
   for (const [name, mine] of [['kCascadeCells', S.ZB_SLIDES_L4_CASCADE], ['kReassignCells', S.ZB_SLIDES_L4_SPARE], ['kChainCells', S.ZB_SLIDES_L4_JUDGED]]) {
-    if (!same(table(name, cpp), mine)) fail(`${name} is not ScummVM's: ${table(name, cpp)}`);
+    if (!same(table(name, cpp), mine)) fail(`${name} is not ScummVM's (${table(name, cpp)})`);
   }
   const cells = [...need(/kCellPositions\[117\]\{([\s\S]*?)\};/, h, 'kCellPositions')[1].matchAll(/Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
   if (cells.length !== 117 || cells.some(([x, y], c) => S.zbSlidesCellXY(c).x !== x || S.zbSlidesCellXY(c).y !== y)) fail('zbSlidesCellXY is not kCellPositions');
   const middles = [...need(/case kPuzzleLevel3:[\s\S]*?(maybeSetMatchTrait[\s\S]*?)int16 occupiedCount/, cpp, 'level 3\'s middles')[1].matchAll(/maybeSetMatchTrait\((\d+), (\d+), (\d+)\)/g)].map(m => m.slice(1).map(Number));
-  if (!same(middles, S.ZB_SLIDES_L3_MIDDLES)) fail(`level 3's middle stones are not ScummVM's: ${JSON.stringify(middles)}`);
+  if (!same(middles, S.ZB_SLIDES_L3_MIDDLES)) fail(`level 3's middle stones are not ScummVM's (${JSON.stringify(middles)})`);
   const prune = [...cpp.matchAll(/pickNextCellForLink\((\d+), (\d+), (\d+)\);/g)].map(m => m.slice(1).map(Number));
-  if (!same(prune, S.ZB_SLIDES_L4_PRUNE)) fail(`level 4's pruning is not ScummVM's: ${JSON.stringify(prune)}`);
+  if (!same(prune, S.ZB_SLIDES_L4_PRUNE)) fail(`level 4's pruning is not ScummVM's (${JSON.stringify(prune)})`);
   const chain = [...need(/else if \(_pageLoadedZmbCount <= 5\) \{([\s\S]*?)buildHexAdjacencyTable/, cpp, 'level 4\'s short chain')[1].matchAll(/setCellStateData\((\d+), kCell(Path|Occupied)/g)];
   const chainStones = chain.filter(m => m[2] === 'Occupied').map(m => Number(m[1])), chainJoins = chain.filter(m => m[2] === 'Path').map(m => Number(m[1]));
-  if (!same(chainStones, S.ZB_SLIDES_L4_CHAIN) || !same(chainJoins, S.ZB_SLIDES_L4_CHAIN_JOINS)) fail(`level 4's short chain is not ScummVM's: ${chainStones} / ${chainJoins}`);
+  if (!same(chainStones, S.ZB_SLIDES_L4_CHAIN) || !same(chainJoins, S.ZB_SLIDES_L4_CHAIN_JOINS)) fail(`level 4's short chain is not ScummVM's, ${chainStones} / ${chainJoins}`);
   const bit = { kAdjNorthWest: 1, kAdjWest: 2, kAdjSouthWest: 4, kAdjSouthEast: 8, kAdjEast: 16, kAdjNorthEast: 32 };
   const short = { kAdjNorthWest: 'NW', kAdjWest: 'W', kAdjSouthWest: 'SW', kAdjSouthEast: 'SE', kAdjEast: 'E', kAdjNorthEast: 'NE' };
   for (const [name, v] of Object.entries(bit)) {
@@ -59,7 +59,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   const l4 = need(/case kPuzzleLevel4: \{([\s\S]*?)for \(int16 i = 0; i < ARRAYSIZE\(kSlotCellIndices\)/, cpp, 'level 4\'s ways')[1];
   const masks = [...l4.matchAll(/_cellAdjacencyMasks\[(\d+)\] = ([^;]+);/g)].map(m => [Number(m[1]), m[2].split('|').reduce((a, t) => a | bit[t.trim()], 0)]);
-  if (!same(masks, S.ZB_SLIDES_L4_MASKS)) fail(`level 4's ways are not ScummVM's: ${JSON.stringify(masks)}`);
+  if (!same(masks, S.ZB_SLIDES_L4_MASKS)) fail(`level 4's ways are not ScummVM's (${JSON.stringify(masks)})`);
   for (const [name, mine] of [['kCellInert', S.ZB_SLIDES_INERT], ['kCellPath', S.ZB_SLIDES_PATH], ['kCellMatched', S.ZB_SLIDES_MATCHED],
     ['kCellSlotBase1', S.ZB_SLIDES_BASE], ['kCellConnector', S.ZB_SLIDES_SLOT], ['kCellOccupied', S.ZB_SLIDES_TAKEN],
     ['kCellLocked', S.ZB_SLIDES_LOCKED], ['kTraitHair', S.ZB_SLIDES_HAIR]]) {
@@ -142,7 +142,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         break;
       }
       const marks = d.marks.map(x => Number(/^stone (\d+)$/.exec(x)?.[1]));
-      if (marks.some(x => !(x >= 1 && x <= n)) || new Set(marks).size !== n) why.push(`the marks are not one stone each: ${d.marks}`);
+      if (marks.some(x => !(x >= 1 && x <= n)) || new Set(marks).size !== n) why.push(`the marks are not one stone each (${d.marks})`);
       // Each level's form.
       if (level === 1) {
         const pairs = groups.filter(g => g.members.length === 2);
@@ -157,7 +157,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       } else if (n <= 5) {
         if (!same(f.slots.slice().sort((a, b) => a - b), S.ZB_SLIDES_L4_CHAIN.slice(0, n).sort((a, b) => a - b))) why.push(`the short chain is on ${f.slots}`);
       } else if (f.slots.some(c => !S.ZB_SLIDES_L4_STONES.includes(c)) || !f.slots.includes(55)) why.push('the network is not the pattern\'s');
-      if (why.length) { if (bad++ < 3) fail(`level ${level}, ${n} Zoombinis, seed ${seed}: ${why.join('; ')}`); }
+      if (why.length) { if (bad++ < 3) fail(`level ${level}, ${n} Zoombinis, seed ${seed} (${why.join('; ')})`); }
     }
   }
   if (counts.looks.size !== 2) fail(`level 4 dealt ${counts.looks.size} looks, not both`);
@@ -236,7 +236,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         bench.edited++;
         why = why.concat(workbench(level, band, edited, true));
       }
-      if (why.length && bad++ < 3) fail(`workbench, level ${level}, ${band.length} Zoombinis, seed ${seed}: ${why.join('; ')}`);
+      if (why.length && bad++ < 3) fail(`workbench, level ${level}, ${band.length} Zoombinis, seed ${seed} (${why.join('; ')})`);
     }
   }
   {
@@ -246,8 +246,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const v of [{ [key]: 'plain' }, { [key]: 'ears' }, { j999: 'hair' }]) { try { P.edit(1, band, d.state, v); } catch (e) { caught++; } }
     if (caught !== 3) fail('the form accepts a plain stone at level 1, a trait that is none, or a stone that is not there');
   }
-  say(`tables as ScummVM's, and in ZOOMBINI.EXE (0x${(at[0] || 0).toString(16)}; 0x${(found[0] || 0).toString(16)} to 0x${(found[3] || 0).toString(16)}; 0x${(judged[0] || 0).toString(16)}, before "Slides.MHK"); `
-    + `${counts.deals} deals over bands of 16 to 1: every placement one stone each, every marked stone satisfied, all risen by the program's judge, `
-    + `${counts.caught} wrong swaps caught; ${counts.quirks} where the program goes astray; the ZB Zone's words in ZOOMBINI.EXE and not in ScummVM; `
+  say(`tables as ScummVM's, and in ZOOMBINI.EXE (0x${(at[0] || 0).toString(16)}. 0x${(found[0] || 0).toString(16)} to 0x${(found[3] || 0).toString(16)}. 0x${(judged[0] || 0).toString(16)}, before "Slides.MHK"); `
+    + `${counts.deals} deals over bands of 16 to 1, every placement one stone each, every marked stone satisfied, all risen by the program's judge, `
+    + `${counts.caught} wrong swaps caught. ${counts.quirks} where the program goes astray. The ZB Zone's words in ZOOMBINI.EXE and not in ScummVM; `
     + `workbench: ${bench.trips} forms given back, ${bench.solved} solved (${bench.edited} after edits, ${bench.short} short of the whole band, ${bench.zone} solutions entering the ZB Zone), ${bench.brute} held to trying every placement`);
 }

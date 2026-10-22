@@ -344,7 +344,7 @@ function zbFleenModEpx([w, h, px]) {
   return [2 * w, 2 * h, out];
 }
 
-/* Each new pixel the commonest colour among the old pixels under it, if
+/* Each new pixel the commonest color among the old pixels under it, if
    `share` of those are drawn: the vote that shrink and enlarged both use. */
 function zbFleenModVote(px, w, h, ys, ye, xs, xe, share) {
   const votes = new Map();
@@ -369,8 +369,8 @@ function zbFleenModShrink([[w, h, px], [rx, ry]], scale) {
   return [[nw, nh, out], [-x0, -y0]];
 }
 
-/* [raw, reg] enlarged by `scale` about `centre`: EPX, then the vote.
-   Returns the image and its top-left relative to `centre`. */
+/* [raw, reg] enlarged by `scale` about `center`: EPX, then the vote.
+   Returns the image and its top-left relative to `center`. */
 function zbFleenModEnlarged(raw, reg, centre, scale) {
   const [w, h, px] = zbFleenModEpx(raw);
   const rx = 2 * reg[0] + 2 * centre[0], ry = 2 * reg[1] + 2 * centre[1];
@@ -387,7 +387,7 @@ function zbFleenModEnlarged(raw, reg, centre, scale) {
   return [[nw, nh, out], [x0, y0]];
 }
 
-/* [raw, reg] turned about the rest body centre b0 onto a tumble pose's b. */
+/* [raw, reg] turned about the rest body center b0 onto a tumble pose's b. */
 function zbFleenModTurned([[w, h, px], [rx, ry]], turn, b0, b, fling) {
   const c = Math.cos(zbFleenModRadians(turn)), s = Math.sin(zbFleenModRadians(turn));
   const ox = b[0] + fling[0], oy = b[1] + fling[1];
@@ -410,7 +410,7 @@ function zbFleenModTurned([[w, h, px], [rx, ry]], turn, b0, b, fling) {
   return [[nw, nh, out], [-x0, -y0]];
 }
 
-/* ---- colour ------------------------------------------------------------ */
+/* ---- color ------------------------------------------------------------ */
 
 function zbFleenModLab(rgb) {
   const lin = rgb.map(c => (c / 255 > 0.04045 ? ((c / 255 + 0.055) / 1.055) ** 2.4 : c / 255 / 12.92));
@@ -542,8 +542,8 @@ function zbFleenModPairings(archives) {
   return { bodies, eyes, tumble };
 }
 
-/* Counters, per feet pose, of the body poses that the walks and special of
-   feet variant v draw it with. */
+/* Counters, per feet pose, of the body poses that feet variant v's walks
+   and special draw with that pose. */
 function zbFleenModFeetPartners(z, v) {
   const W = ZB_FLEEN_MOD_WEB, out = new Map();
   const ids = [];
@@ -616,7 +616,7 @@ function zbFleenModFitter(archives, green) {
   const rides = {};
   for (const [v, phase, skip] of W.FLEEN_RIDES) rides[v] = zbFleenModRide(fl, v, phase, skip);
 
-  // the shared palette entry nearest each Fleen colour, by CIEDE2000
+  // the shared palette entry nearest each Fleen color, by CIEDE2000
   const nearest = new Uint8Array(256), labs = new Map();
   const lab = c => { if (!labs.has(c)) labs.set(c, zbFleenModLab(pal[c])); return labs.get(c); };
   for (let c = 0; c < 256; c++) {
@@ -879,7 +879,7 @@ function zbFleenModFitter(archives, green) {
       homes = [(3 * l + r) / 4, (l + 3 * r) / 4];
     }
     if (own.length < 2) {
-      if (own.length !== 1) throw new Error(`feet ${v} pose ${pose}: no shoes`);
+      if (own.length !== 1) throw new Error(`feet ${v} pose ${pose} has no shoes`);
       const [l, r] = own[0];
       const dx = R((l + r) / 2 - (0 + homes[0] + homes[1]) / 2);
       return [[dx, 0], [dx, 0]];
@@ -1018,7 +1018,7 @@ function zbFleenModSmallPoses(full, small, part, variants, masks) {
   return out;
 }
 
-/* {tumble pose: [turn, rest body centre, body centre, {part: fling}]}. */
+/* {tumble pose: [turn, rest body center, body center, {part: fling}]}. */
 function zbFleenModTumbleMoves(fit, full, tum) {
   const C = ZB_FLEEN_MOD, rest = ZB_FLEEN_MOD_WEB.REST_POSE.zoombini, bodies = fit.pairings.tumble;
   const mean = (atlas, part, pose) => {

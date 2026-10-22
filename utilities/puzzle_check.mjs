@@ -124,7 +124,7 @@ const WAITING_IN_SCUMMVM = {
   let tables = 0;
   for (const k of keys) {
     const w = S.ZB_WAITING[k], sv = WAITING_IN_SCUMMVM[k];
-    if (!w !== !sv) { fail(`${k}: ${w ? 'a waiting table ScummVM is not read for' : 'no waiting table'}`); continue; }
+    if (!w !== !sv) { fail(`${k} (${w ? 'a waiting table ScummVM is not read for' : 'no waiting table'})`); continue; }
     if (!w) continue;
     const text = scumm(path.join('zoombini_pages', sv[0]));
     const m = need(new RegExp(`${sv[1]}\\[(\\d+)\\]\\s*\\{([^}]*)\\}`), text, `${k}'s ${sv[1]}`);
@@ -147,9 +147,9 @@ for (const f of modules) {
   if (!S.ZB_PUZZLES.has(key.toUpperCase())) { fail(`utilities/puzzles/${f} checks ${key.toUpperCase()}, which no js/zb-puzzle-*.js adds`); continue; }
   const mod = await import(pathToFileURL(path.join(dir, f)).href);
   try {
-    await mod.default({ S, fail, say: m => say(`${key}: ${m}`), scumm, exe, need, bands, find, open });
+    await mod.default({ S, fail, say: m => say(`${key} (${m})`), scumm, exe, need, bands, find, open });
   } catch (e) {
-    fail(`${key}: ${e.stack || e}`);
+    fail(`${key} (${e.stack || e})`);
   }
 }
 process.exit(fails ? 1 : 0);

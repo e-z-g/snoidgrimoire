@@ -57,15 +57,15 @@ function compareClip(kind, archive, id, want, feetList) {
   if (got.length !== want.length) return fail(`${archive} SCRS ${id}: ${got.length} ticks from the first drawn, the maker's clip ${want.length}`);
   const x0 = got[0][lead].x, y0 = got[0][lead].y;
   got.forEach((t, i) => {
-    if (!t[lead]) return fail(`${archive} SCRS ${id} tick ${i}: draws nothing, where the maker repeats the tick before`);
+    if (!t[lead]) return fail(`${archive} SCRS ${id} tick ${i}, draws nothing, where the maker repeats the tick before`);
     const [eyes, dx, dy, facing, feet] = want[i];
     const h = t[head].shape, f = t.feet.shape;
-    if (t[lead].x - x0 !== dx || t[lead].y - y0 !== dy) fail(`${archive} SCRS ${id} tick ${i}: moved ${t[lead].x - x0}, ${t[lead].y - y0}, the maker ${dx}, ${dy}`);
-    if ((h === REST[kind] ? 0 : h) !== facing) fail(`${archive} SCRS ${id} tick ${i}: head at ${h}, the maker's facing ${facing}`);
+    if (t[lead].x - x0 !== dx || t[lead].y - y0 !== dy) fail(`${archive} SCRS ${id} tick ${i}, moved ${t[lead].x - x0}, ${t[lead].y - y0}, the maker ${dx}, ${dy}`);
+    if ((h === REST[kind] ? 0 : h) !== facing) fail(`${archive} SCRS ${id} tick ${i}, head at ${h}, the maker's facing ${facing}`);
     if (feetList && f > 3 && !feetList.includes(f)) feetList.push(f);
-    if ((feetList && f > 3 ? feetList.indexOf(f) : -1) !== feet) fail(`${archive} SCRS ${id} tick ${i}: feet at ${f}, the maker's ${feet}`);
+    if ((feetList && f > 3 ? feetList.indexOf(f) : -1) !== feet) fail(`${archive} SCRS ${id} tick ${i}, feet at ${f}, the maker's ${feet}`);
     const key = `${kind} ${facing} ${eyes}`, pose = t.eyes.shape;
-    if (eyeCodes.has(key) && eyeCodes.get(key) !== pose) fail(`${archive} SCRS ${id} tick ${i}: the maker's eyes ${eyes} at facing ${facing} are pose ${pose} here and ${eyeCodes.get(key)} elsewhere`);
+    if (eyeCodes.has(key) && eyeCodes.get(key) !== pose) fail(`${archive} SCRS ${id} tick ${i}, the maker's eyes ${eyes} at facing ${facing} are pose ${pose} here and ${eyeCodes.get(key)} elsewhere`);
     eyeCodes.set(key, pose);
     clipTicks++;
   });
@@ -92,18 +92,18 @@ for (let v = 0; v < 5; v++) for (let d = 0; d < 5; d++) {
   const b0 = got[0].body;
   got.forEach((t, i) => {
     const w = want[i], poses = ['feet', 'body', 'nose', 'eyes', 'hair'].map(n => (t[n].shape === REST.zoombini ? -1 : t[n].shape));
-    if (!same(poses, w.slice(2, 7))) fail(`SCRS ${id} tick ${i}: poses ${poses}, the maker's ${w.slice(2, 7)}`);
+    if (!same(poses, w.slice(2, 7))) fail(`SCRS ${id} tick ${i}, poses ${poses}, the maker's ${w.slice(2, 7)}`);
     const noseFirst = Object.keys(t).indexOf('nose') < Object.keys(t).indexOf('body');
-    if (noseFirst !== (w[10] === 1)) fail(`SCRS ${id} tick ${i}: nose ${noseFirst ? 'before' : 'after'} the body, the maker's away ${w[10]}`);
+    if (noseFirst !== (w[10] === 1)) fail(`SCRS ${id} tick ${i}, nose ${noseFirst ? 'before' : 'after'} the body, the maker's away ${w[10]}`);
     if (t.body.x - b0.x !== w[0] || t.body.y - b0.y !== w[1]) {
       const tie = t.body.shape <= 4 && t.nose.shape <= 4 && Math.abs(t.body.x - t.nose.x) + Math.abs(t.body.y - t.nose.y) === 1;
       if (tie) ties++;
-      else fail(`SCRS ${id} tick ${i}: the body moved ${t.body.x - b0.x}, ${t.body.y - b0.y}, the maker ${w[0]}, ${w[1]}`);
+      else fail(`SCRS ${id} tick ${i}, the body moved ${t.body.x - b0.x}, ${t.body.y - b0.y}, the maker ${w[0]}, ${w[1]}`);
     }
     walkTicks++;
   });
   walks++;
 }
 
-if (!fails) console.log(`${clips} idles and feet shows (${clipTicks} ticks, empty ones held) and ${walks} walks (${walkTicks} ticks) as the maker plays them; ${ties} walk ticks a pixel apart on a body-and-nose tie`);
+if (!fails) console.log(`${clips} idles and feet shows (${clipTicks} ticks, empty ones held) and ${walks} walks (${walkTicks} ticks) as the maker plays them. ${ties} walk ticks a pixel apart on a body-and-nose tie`);
 process.exit(fails ? 1 : 0);

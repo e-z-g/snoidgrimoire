@@ -12,8 +12,8 @@
 //     loop;
 //   - every single picture, written as a replaced one is (format 0x0102),
 //     reads back to the pixels it had;
-//   - a picture's colours, matched to its palette, come back as the
-//     same colours (zbQuantize), its clear pixels clear.
+//   - a picture's colors, matched to its palette, come back as the
+//     same colors (zbQuantize), its clear pixels clear.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -51,7 +51,7 @@ fs.writeFileSync(specPath, JSON.stringify({ archive: name,
   sheets: [{ id: 4000, raw: Object.fromEntries(Object.entries(raw).map(([k, r]) => [k, [r.w, r.h, Buffer.from(r.px).toString('base64')]])) }],
   regs: [{ id: 4000, values: { 0: rv.getInt16(2), 1: -7 } }] }));
 const o = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'write', specPath], { encoding: 'utf8' });
-if (o.status !== 0) { console.log('SKIP the comparison: the oracle did not run: ' + (o.stderr || '').split('\n').slice(-2).join(' ')); }
+if (o.status !== 0) { console.log('SKIP the comparison: the oracle did not run, ' + (o.stderr || '').split('\n').slice(-2).join(' ')); }
 else {
   const want = JSON.parse(o.stdout);
   if (sha1(newSheet) !== want['tBMP/4000']) fail('the rebuilt sheet is not mohawk_write.py\'s');
@@ -72,7 +72,7 @@ reread.frames.forEach((f, k) => {
 });
 if (!same(back.get('REGS', 4000), regs)) fail('REGS 4000 reads back wrong');
 
-// Every string list writes back to the bytes it was read from.
+// Every string list writes back to its original bytes.
 let lists = 0;
 for (const n of archiveNames()) {
   const a = S.openMohawk(archiveBytes(n));
@@ -99,13 +99,13 @@ for (const n of archiveNames()) {
     pictures++;
   }
 }
-// Colours matched: FLEENS' room in its palette, every pixel's colour back.
+// Colors matched: FLEENS' room in its palette, every pixel's color back.
 const pal = S.zbPalette(S.parsePaletteResource(arc.get('SHPL', 300), 'SHPL'));
 const room = S.decodeTbmp(arc.get('tBMP', 300)), rgba = new Uint8ClampedArray(room.pixels.length * 4);
 room.pixels.forEach((v, i) => { const c = pal[v]; rgba.set([c[0], c[1], c[2], v ? 255 : 0], 4 * i); });
 const allowed = Array.from({ length: 256 }, (_, i) => i).filter(i => i);
 const q = S.zbQuantize(rgba, pal, allowed);
-q.forEach((v, i) => { const want = room.pixels[i]; if (want === 0 ? v !== 0 : pal[v].join() !== pal[want].join()) { if (bad++ < 3) fail(`pixel ${i}: matched to ${v}, whose colour is not ${want}'s`); } else matched++; });
+q.forEach((v, i) => { const want = room.pixels[i]; if (want === 0 ? v !== 0 : pal[v].join() !== pal[want].join()) { if (bad++ < 3) fail(`pixel ${i}: matched to ${v}, whose color is not ${want}'s`); } else matched++; });
 
 let regsBack = 0;
 for (const an of archiveNames()) {
@@ -117,5 +117,5 @@ for (const an of archiveNames()) {
   }
 }
 if (!regsBack) fail('no REGS found to write back');
-if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''}, and read back; ${lists} string lists, ${regsBack} REGS and ${sounds} sounds written back to the bytes they were read from; ${pictures} pictures read back from themselves written anew; ${matched} pixels' colours matched back`);
+if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''} and read back. ${lists} string lists, ${regsBack} REGS and ${sounds} sounds written back to their original bytes. ${pictures} pictures read back from themselves written anew. ${matched} pixels' colors matched back`);
 process.exit(fails ? 1 : 0);

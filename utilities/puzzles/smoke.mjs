@@ -33,8 +33,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const l2 = points(need(/kLevel2RunnerPositions\[4\]\{([\s\S]*?)\};/, h, 'kLevel2RunnerPositions')[1]);
   const mirror = points(need(/kBottomRunnerPositions\[2\]\{([\s\S]*?)\};/, h, 'kBottomRunnerPositions')[1]);
   const snap = points(need(/kCliffDropSnapPosition = (Common::Point\(\d+, \d+\))/, h, 'kCliffDropSnapPosition')[1]);
-  if (!same(cliff, S.ZB_SMOKE_REFLECTIONS.map(c => [c.x, c.y]))) fail(`the reflections' places are not ScummVM's: ${JSON.stringify(cliff)}`);
-  if (!same(grid.slice(0, 6), S.ZB_SMOKE_FILTER_HOMES.map(c => [c.x, c.y]))) fail(`the filters' homes are not ScummVM's: ${JSON.stringify(grid)}`);
+  if (!same(cliff, S.ZB_SMOKE_REFLECTIONS.map(c => [c.x, c.y]))) fail(`the reflections' places are not ScummVM's (${JSON.stringify(cliff)})`);
+  if (!same(grid.slice(0, 6), S.ZB_SMOKE_FILTER_HOMES.map(c => [c.x, c.y]))) fail(`the filters' homes are not ScummVM's (${JSON.stringify(grid)})`);
   if (!same(grid[6], snap[0])) fail('grid runner 7 (the mirror\'s reflection) is not at the cliff drop');
   // Reading order: rows are runs of y within 30 pixels, and x rises along each.
   const reading = (list, words) => {
@@ -48,12 +48,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     });
   };
   const reflectionWords = { rows: [
-    { 2: ['top left', 'top right'] }, { 3: ['middle left', 'centre', 'middle right'] }, { 3: ['bottom left', 'bottom middle', 'bottom right'] }] };
+    { 2: ['top left', 'top right'] }, { 3: ['middle left', 'center', 'middle right'] }, { 3: ['bottom left', 'bottom middle', 'bottom right'] }] };
   const homeWords = { rows: [{ 3: ['top left', 'top middle', 'top right'] }, { 3: ['bottom left', 'bottom middle', 'bottom right'] }] };
   if (!reading(S.ZB_SMOKE_REFLECTIONS, reflectionWords)) fail('the reflections are not named in reading order');
   if (!reading(S.ZB_SMOKE_FILTER_HOMES, homeWords)) fail('the filter homes are not named in reading order');
   if (!(l2[0][0] < l2[1][0] && l2[1][0] < mirror[0][0] && mirror[1][0] < l2[2][0] && l2[2][0] < l2[3][0] && l2[3][0] < snap[0][0])
-    || S.ZB_SMOKE_L2_PLACES.length !== 4) fail(`level 2's filters are not two either side of the mirror: ${JSON.stringify(l2)}`);
+    || S.ZB_SMOKE_L2_PLACES.length !== 4) fail(`level 2's filters are not two either side of the mirror (${JSON.stringify(l2)})`);
   const pairs = list => list.flatMap(([x, y]) => [x & 255, x >> 8 & 255, y & 255, y >> 8 & 255]);
   const atCliff = find(exe, pairs(cliff)), atGrid = find(exe, pairs(grid));
   if (atCliff.length !== 1) fail(`the reflections' places are in ZOOMBINI.EXE ${atCliff.length} times, not once`);
@@ -74,7 +74,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (!/rnd\.range\(1, 5\)/.test(fnText('zbSmokeReflection'))) fail('the port does not deal reflections 1-5');
   // Where the two part (level 1's note): ScummVM draws the match from all eight when dealing again.
   if (!/int16 randTarget = \(0 < cliffCount\) \? _vm->_rnd->getRandomNumber\(cliffCount - 1\) : 0;/.test(cpp))
-    fail('ScummVM\'s initLowLevelQuestionRunners no longer draws from all eight reflections; revisit level 1\'s note');
+    fail('ScummVM\'s initLowLevelQuestionRunners no longer draws from all eight reflections. Revisit level 1\'s note');
   // Level 2's filters.
   const l2src = need(/void ZoombiniPuzzleSmoke::assignLevel2RunnerTraits[\s\S]*?\n\}/, cpp, 'assignLevel2RunnerTraits')[0];
   const port2 = fnText('zbSmokeLevel2Filter');
@@ -84,7 +84,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     [/int16 valueCursorBound = (\d+);\s*int16 slotCursorBound = (\d+);/, 'the bounds', m => `valueBound = ${m[1]}, slotBound = ${m[2]}`],
     [/int16 randBudget = _vm->_rnd->getRandomNumber\((\d+), (\d+)\);/, 'the budget', m => `rnd.range(${m[1]}, ${m[2]})`],
     [/int16 slotIdx = _vm->_rnd->getRandomNumber\((\d+), (\d+)\);/, 'the mirror side\'s trait', m => `rnd.range(${m[1]}, ${m[2]})`],
-  ]) { const m = need(re, l2src, what); if (!port2.includes(want(m))) fail(`level 2's ${what} are not ScummVM's: ${m[0]}`); }
+  ]) { const m = need(re, l2src, what); if (!port2.includes(want(m))) fail(`level 2's ${what} are not ScummVM's (${m[0]})`); }
   const reuse = Number(need(/const bool reuseRoll = (\d+) < _vm->_rnd->getRandomNumber\(0, 100\);/, l2src, 'the reuse roll')[1]);
   if (reuse !== S.ZB_SMOKE_ROLL.reuse) fail(`the reuse roll is ${S.ZB_SMOKE_ROLL.reuse}, ScummVM ${reuse}`);
   // The grid.
@@ -105,7 +105,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
 
   // ---- the judge -----------------------------------------------------------
   // ScummVM's display rows: 0 the Zoombini, 1-3 the cart's side from the
-  // cart out, 4-6 the mirror's side from the centre crystal out, 7 the
+  // cart out, 4-6 the mirror's side from the center crystal out, 7 the
   // reflection in the mirror. A
   // step copies the value from the nearest filled row on its way in.
   const judge = (source, image, left, right) => {
@@ -139,7 +139,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const { band, seed } of bands(300, 900 + level, sizes)) {
       const d = P.deal(level, band, S.zbRandom(seed), {});
       const st = d.state;
-      const bad = m => { fail(`level ${level}, a band of ${band.length}: ${m}`); return true; };
+      const bad = m => { fail(`level ${level}, a band of ${band.length} (${m})`); return true; };
       if (level <= 2) {
         const { questionIndex: q, questionCrystalIdx: t, cliffRunnerStates: reflections, level2RunnerStates: filters } = st;
         const left = filters.slice(0, 2), right = filters.slice(2);
@@ -151,9 +151,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (level === 1 && !same(reflections[t], traitsOf(band[q]))) { bad('the matching reflection is not the picked Zoombini'); break; }
         if (!judge(traitsOf(band[q]), reflections[t], left, right)) { bad('the picked Zoombini does not pass the judge with its reflection'); break; }
         if (level === 2) {
-          // The mirror's side gives only the picked Zoombini's values in the centre crystal.
+          // The mirror's side gives only the picked Zoombini's values in the center crystal.
           const atMirror = S.zbSmokeThrough(traitsOf(band[q]), left);
-          if (right.some(f => f.traits.some((v, c) => v && v !== atMirror[c]))) { bad('a mirror-side filter gives a value the picked Zoombini does not have in the centre crystal'); break; }
+          if (right.some(f => f.traits.some((v, c) => v && v !== atMirror[c]))) { bad('a mirror-side filter gives a value the picked Zoombini does not have in the center crystal'); break; }
         }
         const judged = band.map(z => reflections.map((c, i) => judge(traitsOf(z), c, left, right) ? i : -1).filter(i => i >= 0));
         if (!same(judged, st.matches) || d.marks.some((m, i) => (m === null) !== !judged[i].length)) { bad('the marks do not follow the judge'); break; }
@@ -199,7 +199,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   for (let level = 1; level <= 4; level++) {
     for (const { band, seed } of bands(40, 600 + level, [16, 11, 6, 2, 1])) {
       const d = P.deal(level, band, S.zbRandom(seed), {}), n = band.length;
-      const bad = m => { fail(`level ${level}, a band of ${n}: ${m}`); return true; };
+      const bad = m => { fail(`level ${level}, a band of ${n} (${m})`); return true; };
       const vals = valuesOf(P.form(level, band, d.state)), again = P.edit(level, band, d.state, vals);
       if (!same(valuesOf(P.form(level, band, again)), vals) || (level <= 2 && (!same(again.cliffRunnerStates, d.state.cliffRunnerStates) || !same(again.level2RunnerStates, d.state.level2RunnerStates)))) { bad('the form does not give back the puzzle it shows'); break; }
       trips++;
@@ -244,7 +244,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         for (const x of sol.solutions) {
           const side = st => /no filter/.test(st) ? [] : [...st.matchAll(/(top left|top middle|top right|bottom left|bottom middle|bottom right) \(/g)].map(m => home(m[1]));
           const L = side(x.steps[0]), R = side(x.steps[1]);
-          if (L.length + R.length !== +x.title.split(' ')[0] || !srcs.every((q, k) => judge(q, imgs[k], L.map(i => fl[i]), R.map(i => fl[i])))) { bad(`a listed placement fails the judge: ${x.title}`); break; }
+          if (L.length + R.length !== +x.title.split(' ')[0] || !srcs.every((q, k) => judge(q, imgs[k], L.map(i => fl[i]), R.map(i => fl[i])))) { bad(`a listed placement fails the judge (${x.title})`); break; }
         }
         ways += count;
       }
@@ -252,8 +252,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     }
   }
   if (slow > 1500) fail(`a known answer took ${slow} ms`);
-  say(`workbench: ${trips} forms given back, ${edits} picks edited and still matched, ${solved} known answers held to the judge (${ways} placements counted again), slowest ${slow} ms; no strategy, nothing being hidden`);
+  say(`workbench: ${trips} forms given back, ${edits} picks edited and still matched, ${solved} known answers held to the judge (${ways} placements counted again), slowest ${slow} ms. No strategy, nothing being hidden`);
 
-  say(`places as ScummVM's and in ZOOMBINI.EXE at 0x${(atCliff[0] || 0).toString(16)} and 0x${(atGrid[0] || 0).toString(16)}; counts, ranges and rolls as ScummVM's; `
-    + `${dealt} deals judged (at levels 1 and 2, ${chance} with a second Zoombini matching by chance; at 3 and 4 the made placement passes in all ${madeWorks}, a shorter one found in ${shorter})`);
+  say(`places as ScummVM's and in ZOOMBINI.EXE at 0x${(atCliff[0] || 0).toString(16)} and 0x${(atGrid[0] || 0).toString(16)}. Counts, ranges and rolls as ScummVM's; `
+    + `${dealt} deals judged (at levels 1 and 2, ${chance} with a second Zoombini matching by chance. At 3 and 4 the made placement passes in all ${madeWorks}, a shorter one found in ${shorter})`);
 }

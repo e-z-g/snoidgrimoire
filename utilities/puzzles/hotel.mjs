@@ -5,7 +5,7 @@
 //     closes are ScummVM's, and so the chances, 12 less the first step;
 //   - the test the drawn traits must pass is generateRoomRules' as ScummVM
 //     writes it, evaluated here for every draw and every count of values a
-//     band can show, and must match the port's shorter statement;
+//     band can show, which must match the port's shorter statement;
 //   - ScummVM's TraitAxis numbers the traits feet, nose, eyes, hair and the
 //     program hair, eyes, nose, feet: the check reads ScummVM's enum to see
 //     that this is still so, and the port must have the program's order;
@@ -14,7 +14,7 @@
 //     to right and floors top to bottom, which the answer's words assume;
 //   - over bands of 16, 11, 5, 2 and 1 at each level, every deal is dealt
 //     again here as ScummVM writes generateRoomRules (its loops and draws
-//     in order), and must match; then the band is given rooms by the marks,
+//     in order), which must match; then the band is given rooms by the marks,
 //     one at a time, and ScummVM's judging (endDrag, validate2 and
 //     validate3TraitPlacement, fillCellRow, setCellTraitsIn3Grids, written
 //     out here) must let every one in, round the boarded rooms at level 3,
@@ -59,7 +59,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- the traits' order --------------------------------------------------------
   const axisEnum = [...need(/enum class TraitAxis : int16 \{([\s\S]*?)\};/, h, 'TraitAxis')[1].matchAll(/k(Feet|Nose|Eyes|Hair)0(\d) = (\d)/g)]
     .map(m => [Number(m[3]), m[1].toLowerCase()]).sort((a, b) => a[0] - b[0]).map(m => m[1]);
-  if (!same(axisEnum, ['feet', 'nose', 'eyes', 'hair'])) fail(`ScummVM's TraitAxis is now ${axisEnum}; see whether it follows the program`);
+  if (!same(axisEnum, ['feet', 'nose', 'eyes', 'hair'])) fail(`ScummVM's TraitAxis is now ${axisEnum}. See whether it follows the program`);
   if (!same(S.ZB_HOTEL_AXES, ['hair', 'eyes', 'nose', 'feet'])) fail(`the port's trait order is ${S.ZB_HOTEL_AXES}, not the program's hair, eyes, nose, feet`);
 
   // ---- the traits' test, as ScummVM writes it ---------------------------------------
@@ -89,7 +89,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const v = [0, 1, 2, 3].map(i => Math.floor(n / 5 ** i) % 5 + 1);
       for (let t = 0; t < 64; t++) {
         const a = [t & 3, t >> 2 & 3, t >> 4];
-        if (scummSuits(level, a, v) !== S.zbHotelAxesSuit(level, a, v)) { fail(`level ${level}: traits ${a} with values ${v}: ScummVM ${scummSuits(level, a, v)}, the port ${!scummSuits(level, a, v)}`); break; }
+        if (scummSuits(level, a, v) !== S.zbHotelAxesSuit(level, a, v)) { fail(`level ${level}: traits ${a} with values ${v}, ScummVM ${scummSuits(level, a, v)}, the port ${!scummSuits(level, a, v)}`); break; }
         tests++;
       }
     }
@@ -246,10 +246,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const zs = nd.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
     if (zs.join() !== band.map((_, i) => i).join()) return 'a diagram does not draw each Zoombini once';
     if (!nd.outcomes.length) return null;
-    if (nd.zoombini == null || nd.place[nd.zoombini] >= 0) return `a move gives a room to one who has one: ${nd.move}`;
-    if (level === 3 && boards.includes(slotOf(3, nd.room))) return `a move is into a boarded room: ${nd.move}`;
+    if (nd.zoombini == null || nd.place[nd.zoombini] >= 0) return `a move gives a room to one who has one (${nd.move})`;
+    if (level === 3 && boards.includes(slotOf(3, nd.room))) return `a move is into a boarded room (${nd.move})`;
     const m = roomRe(level).exec(nd.move);
-    if (!m || posFromWords(level, m).join() !== nd.room.join() || !nd.move.startsWith(`Give Zoombini ${nd.zoombini + 1} `)) return `a move's words are not its room: ${nd.move}`;
+    if (!m || posFromWords(level, m).join() !== nd.room.join() || !nd.move.startsWith(`Give Zoombini ${nd.zoombini + 1} `)) return `a move's words are not its room (${nd.move})`;
     return null;
   };
   const walkH = (level, band, nd, boards, depth) => {
@@ -334,7 +334,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           for (const slot of slots) if (lets(level, placed, slot, v)) dfs(i + 1, [...placed, { slot, v }], [...rooms, slot]);
         };
         dfs(0, [], []);
-        if (top !== sol.most || (top === band.length && full.size !== sol.ways)) { fail(`level ${level}, band ${S.zbBandCode(band)}: placing every way gives ${top} (${full.size} ways), the solver ${sol.most} (${sol.ways})`); break; }
+        if (top !== sol.most || (top === band.length && full.size !== sol.ways)) { fail(`level ${level}, band ${S.zbBandCode(band)}, placing every way gives ${top} (${full.size} ways), the solver ${sol.most} (${sol.ways})`); break; }
         brute++;
       }
       // The strategy.
@@ -344,20 +344,20 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         slowRoot = Math.max(slowRoot, Date.now() - t0);
         const expect = knows === 'form' ? tuplesOf(level).length : level === 3
           ? allowed.filter(t => { const k = t.map(a => kindsAll[a]); return P.solve(3, band, { traits: k, boarded: boards }).most === band.length; }).length : allowed.length;
-        if (st.hypotheses !== expect) { fail(`level ${level}, knowing the ${knows}: ${st.hypotheses} hypotheses, not ${expect}`); break; }
+        if (st.hypotheses !== expect) { fail(`level ${level}, knowing the ${knows}, ${st.hypotheses} hypotheses, not ${expect}`); break; }
         try {
           if (band.length <= 5) {
             const worst = walkH(level, band, st.root, boards, 0);
-            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, and a branch places ${worst}`); break; }
+            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}, the strategy guarantees ${st.guaranteed}, and a branch places ${worst}`); break; }
             walked++;
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
             const got = playH(level, band, st, state, boards);
-            if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.guaranteed} guaranteed`); break; }
+            if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt traits, ${got} placed, fewer than the ${st.guaranteed} guaranteed`); break; }
             playedH++;
           }
-        } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
+        } catch (e) { fail(`level ${level}, knowing the ${knows} (${e.message})`); break; }
       }
     }
   }
@@ -378,7 +378,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       for (const slot of slots) if (lets(3, placed, slot, v)) dfs(i + 1, [...placed, { slot, v }]);
     };
     dfs(0, []);
-    if (top !== sol.most || top !== 4) { fail(`level 3, band ${S.zbBandCode(band)}, boards ${state.boarded}: placing every way gives ${top}, the solver ${sol.most}`); break; }
+    if (top !== sol.most || top !== 4) { fail(`level 3, band ${S.zbBandCode(band)}, boards ${state.boarded}, placing every way gives ${top}, the solver ${sol.most}`); break; }
     for (const knows of ['program', 'form']) {
       const st = P.strategy(3, band, null, { knows, state, budget: 400 });
       if (knows === 'form' && st.guaranteed > sol.most) { fail(`level 3: the strategy guarantees ${st.guaranteed}, more than the ${sol.most} the answer known allows`); break; }
@@ -422,7 +422,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const tuples = tuplesOf(level);
       for (let c = 1; c <= 2; c++) {
         const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), want = plainH(level, band, tuples, boards, c);
-        if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+        if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
         plain++;
       }
     }
@@ -430,7 +430,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowRoot > 2500) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
   const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} compared with placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits (the puzzle's answer ScummVM's judging at all ${answered} moves), none short of what they guarantee; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
-  say(`counter ${first} of ${last} (chances ${chances}); the traits' test as ScummVM's in ${tests} cases; rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
+  say(`counter ${first} of ${last} (chances ${chances}). The traits' test as ScummVM's in ${tests} cases. Rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
     + `${dealt} deals as ScummVM deals them (traits in the program's order), ${placed} Zoombinis given rooms by their marks as ScummVM judges`);
   say(bench);
 }

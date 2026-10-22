@@ -72,7 +72,7 @@ const ZB_FLEENS_TRAIT_WITH = {
   nose: ['a grey nose', 'a peach nose', 'a yellow nose', 'a teal nose', 'a lilac nose'],
   feet: ['bare feet', 'red shoes', 'wheels', 'tank treads', 'rockets'],
 };
-/* The beehive branch's places, and the Zoombinis a waiting branch has room for. */
+/* The beehive branch's places, and how many Zoombinis fit on a waiting branch. */
 const ZB_FLEENS_HIVE = 3;
 const ZB_FLEENS_WAITING = 6;
 
@@ -210,7 +210,7 @@ function zbFleensDiagram(level, band, { hive, others, grid, unsent = [], waiting
   };
   if (across.length || !(unsent.length || waiting.length || lost.length)) row(across, 16, 20, across.length ? `across: all ${across.length} who are left` : 'no one crosses');
   else {
-    row(unsent, 16, 8, unsent.length ? `not sent yet${sending != null ? `; Zoombini ${sending + 1} goes now` : ''}` : 'all sent');
+    row(unsent, 16, 8, unsent.length ? `not sent yet${sending != null ? `, and Zoombini ${sending + 1} goes now` : ''}` : 'all sent');
     row(waiting, 316, 6, `waiting on the branch, ${waiting.length} of 6`);
     row(lost, 548, 7, lost.length ? 'sent back to Shelter Rock' : '', { faded: true });
   }
@@ -278,8 +278,8 @@ function zbFleensStrategy(level, band, opts = {}) {
   const knows = opts.knows === 'form' ? 'form' : 'program', n = band.length, want = Math.min(3, n), state = opts.state || null;
   const cost = sent => Math.max(0, sent - ZB_FLEENS_WAITING);
   const notesHead = knows === 'form'
-    ? `The player knows only the level’s form: ${level <= 2 ? 'trait for trait' : 'the traits mixed in any way at all (24 mixings)'}, any turns of the values.`
-    : `The player knows how the program deals: ${level <= 2 ? 'trait for trait' : 'hair never to hair, the rest in any order (18 mixings)'}, any turns of the values${state && state.rotationsKept && level % 2 ? ', but on this visit they are the last visit’s, which the player remembers' : ''}.`;
+    ? `The player knows only the level’s form. ${level <= 2 ? 'Each trait matches the same trait' : 'The traits can be mixed in any of 24 ways'}, and the values can have any rotation.`
+    : `The player knows how the program deals. ${level <= 2 ? 'Each trait matches the same trait' : 'Hair never matches hair, and the rest can match in any order (18 mixings)'}, and the values can have any rotation${state && state.rotationsKept && level % 2 ? '. On this visit, though, the rotations are the last visit’s, which the player remembers' : ''}.`;
   if (!state) {
     // Nothing seen: any `want` of the band may be the beehive's.
     const choose = (a, b) => { let c = 1; for (let k = 0; k < b; k++) c = c * (a - k) / (k + 1); return Math.round(c); };
@@ -288,20 +288,20 @@ function zbFleensStrategy(level, band, opts = {}) {
       const left = choose(n - sent, want - lured), grid = ZB_TRAIT_KINDS.map(() => ({ to: null, values: null }));
       const hive = Array.from({ length: want }, (_, k) => ({ look: null, lured: k < lured }));
       const diagram = (s, cap, done) => zbFleensDiagram(level, band, { hive, others: [], grid, unsent: done ? [] : unsent, waiting: done ? [] : waiting, lost, across: done ? band.map((_, i) => i).filter(i => !lost.includes(i)) : [], sending: s, caption: cap });
-      if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross.`, zoombini: null, left, crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
+      if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off. The bees chase the Fleens away, and the ${n - cost(sent)} Zoombinis left cross.`, zoombini: null, left, crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
       return {
         move: `Send Zoombini ${sent + 1} down the lure path.`, zoombini: sent, left, crossed: 0,
-        diagram: diagram(sent, `${lured} of ${want} lured; ${left} possibilities left for the beehive’s Fleens`),
+        diagram: diagram(sent, `${lured} of ${want} lured, ${left} possibilities left for the beehive’s Fleens`),
         outcomes: [
-          ...(want - lured <= n - sent ? [{ label: `A beehive Fleen follows it${cost(sent + 1) ? `; Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured - 1), hive: true, next: () => node(sent + 1, lured + 1) }] : []),
-          ...(want - lured < n - sent ? [{ label: `A Fleen from another branch follows it${cost(sent + 1) ? `; Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured), hive: false, next: () => node(sent + 1, lured) }] : []),
+          ...(want - lured <= n - sent ? [{ label: `A beehive Fleen follows it${cost(sent + 1) ? `, and Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured - 1), hive: true, next: () => node(sent + 1, lured + 1) }] : []),
+          ...(want - lured < n - sent ? [{ label: `A Fleen from another branch follows it${cost(sent + 1) ? `, and Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured), hive: false, next: () => node(sent + 1, lured) }] : []),
         ],
       };
     };
     const guaranteed = n - cost(n);
     return { hypotheses: choose(n, want), guaranteed, exact: true, knows, root: node(0, 0),
-      notes: [notesHead, `Without the dealt Fleens nothing is seen: the player learns only whether a beehive Fleen follows each one sent, and any ${want} of the band may be the beehive’s. So in the worst case all ${n} are sent, and every order is as good as any other.`,
-        n > ZB_FLEENS_WAITING ? `Six wait on the branch, so ${cost(n)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross.` : 'Six wait on the branch, so no one is sent back: everyone crosses.'] };
+      notes: [notesHead, `Without the dealt Fleens nothing is seen. The player learns only whether a beehive Fleen follows each one sent, and any ${want} of the band could be the beehive’s. So in the worst case all ${n} are sent, and every order is equally good.`,
+        n > ZB_FLEENS_WAITING ? `Six wait on the branch, so ${cost(n)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross.` : 'Six wait on the branch, so no one is sent back and everyone crosses.'] };
   }
   const { list } = zbFleensHypotheses(level, band, state, knows), vis = zbFleensVisible(state);
   const memo = new Map(), deadline = Date.now() + (opts.budget || 1500);
@@ -359,15 +359,15 @@ function zbFleensStrategy(level, band, opts = {}) {
     });
     const diagram = (s, cap, done) => zbFleensDiagram(level, band, { hive: hiveCards, others: otherCards, grid, unsent: done ? [] : unsent, waiting: done ? [] : waiting, lost,
       across: done ? band.map((_, i) => i).filter(i => !lost.includes(i)) : [], sending: s, caption: cap });
-    if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} still here cross; ${sent} were sent.`,
+    if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off. The bees chase the Fleens away, and the ${n - cost(sent)} still here cross, after ${sent} were sent.`,
       zoombini: null, left: weight(hs), crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
     const z = value(hs, sentMask, lured).z;
     return {
       move: `Send Zoombini ${z + 1} down the lure path.`, zoombini: z, left: weight(hs), crossed: 0,
-      diagram: diagram(z, `${lured} of ${want} lured; ${weight(hs)} hypotheses left`),
+      diagram: diagram(z, `${lured} of ${want} lured, ${weight(hs)} hypotheses left`),
       outcomes: split(hs, z).map(part => {
         const f = zbFleensFromLook(part.look), goes = cost(sent + 1) > cost(sent);
-        return { label: `${part.hive ? 'A beehive Fleen' : 'A Fleen from another branch'} follows it: ${zbFleensWords(f)}${goes ? `; Zoombini ${sentList[cost(sent)] + 1} is sent back to Shelter Rock` : ''} (${weight(part.hs)} left)`,
+        return { label: `${part.hive ? 'A beehive Fleen' : 'A Fleen from another branch'} follows it (${zbFleensWords(f)})${goes ? `, and Zoombini ${sentList[cost(sent)] + 1} is sent back to Shelter Rock` : ''}, ${weight(part.hs)} left`,
           left: weight(part.hs), hive: part.hive, look: part.look,
           next: () => node(part.hs, sentList.concat(z), lured + (part.hive ? 1 : 0), history.concat({ z, look: part.look, hive: part.hive })) };
       }),
@@ -377,64 +377,64 @@ function zbFleensStrategy(level, band, opts = {}) {
     hypotheses: weight(all), guaranteed, exact: exact || W <= ZB_FLEENS_WAITING, knows,
     root: node(all, [], 0, []),
     notes: [notesHead,
-      `The Fleens seen leave ${weight(all)} hypotheses (${list.length} the player can tell apart). Each Zoombini sent shows, by the Fleen that follows it, which Fleen is whose.`,
-      `Played so, at most ${W} are sent${W > ZB_FLEENS_WAITING ? `; six wait, so ${cost(W)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross` : ', and six may wait: everyone crosses'}. ${exact ? 'The search is complete: no play guarantees more.' : 'The search ran out of time and played the likeliest first; a better play may exist.'}`,
-      'Each move sends the Zoombini whose Fleen is the beehive’s under the most hypotheses left, unless sending another finishes sooner in the worst case.'],
+      `The Fleens you can see leave ${weight(all)} hypotheses (${list.length} that the player can tell apart). The Fleen that follows each Zoombini sent shows that Zoombini’s Fleen.`,
+      `Played this way, at most ${W} are sent${W > ZB_FLEENS_WAITING ? `. Six wait, so ${cost(W)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross` : ', and six may wait, so everyone crosses'}. ${exact ? 'The search is complete, so no play guarantees more.' : 'The search ran out of time and played the likeliest first, so a better play may exist.'}`,
+      'Each move sends the Zoombini most likely to own a beehive Fleen, unless sending another finishes sooner in the worst case.'],
   };
 }
 
 ZB_PUZZLES.set('FLEENS', {
-  about: 'Every Zoombini has a Fleen, and three of the Fleens sit on the beehive branch. The player sends Zoombinis down the lure path, each chased by its own Fleen, until the three are lured off and the bees chase the Fleens away.',
+  about: 'Every Zoombini has a Fleen, and three of the Fleens sit on the beehive branch. The player sends Zoombinis down the lure path, each chased by its own Fleen, until the three are lured off. Then the bees chase the Fleens away.',
   levels: [
-    { rule: 'A Fleen’s hair, eyes, nose and feet go with its Zoombini’s, trait for trait; which Fleen value goes with which Zoombini value is a turn of the five, drawn for each trait. The three on the beehive branch are the Fleens of three Zoombinis drawn at random.',
-      chances: 'The branch the lured Zoombinis wait on holds six, and every Zoombini sent waits there, right or wrong; each sent after the sixth pushes the first still waiting back to Shelter Rock. With three to lure, three wrong guesses are free.',
-      notes: ['The turns are stored in the saved game. This level draws them only if no earlier visit has, and otherwise uses the turns the last visit left, at whatever level.',
-        'Two Zoombinis alike have Fleens alike, but only the one dealt the beehive Fleen lures it, at every level.'] },
-    { rule: 'As level 1, trait for trait, with the values’ turns drawn anew on every visit.',
-      chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.' },
-    { rule: 'The traits are mixed as well: Zoombini hair goes with the Fleen’s eyes, nose or feet, drawn at random, and eyes, nose and feet with the other three in a random order. Values turn as at level 1; both are kept from visit to visit, but a visit at level 1 or 2 clears the mixing, and the next visit here draws it anew.',
-      chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
-      notes: ['According to the help, one trait goes with its like at this level. The program does not make that happen: hair never does, and eyes, nose and feet each may, so none, one or two of them do.'] },
-    { rule: 'Mixed as at level 3, and the traits and the values’ turns are drawn anew on every visit.',
-      chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
-      notes: ['According to the help, every trait is mixed at this level, but the program deals as at level 3: eyes, nose or feet may still go with their like.'] },
+    { rule: 'A Fleen’s hair, eyes, nose and feet match its Zoombini’s, trait for trait. Which Fleen value matches which Zoombini value is a rotation of the five values, picked for each trait. The three on the beehive branch are the Fleens of three Zoombinis picked at random.',
+      chances: 'The branch where lured Zoombinis wait holds six, and every Zoombini sent waits there, right or wrong. Each one sent after the sixth pushes the first one waiting back to Shelter Rock. With three to lure, three wrong guesses are free.',
+      notes: ['The rotations are stored in the saved game. This level only picks new ones if no earlier visit has. Otherwise it uses the rotations from the last visit, at whatever level that was.',
+        'Two Zoombinis that look alike have Fleens that look alike, but only the one dealt the beehive Fleen lures it, at every level.'] },
+    { rule: 'As at level 1, trait for trait, with new rotations picked on every visit.',
+      chances: 'Six wait on the branch, as at level 1. Each one sent after the sixth pushes the first still waiting back to Shelter Rock.' },
+    { rule: 'The traits are mixed as well. Zoombini hair matches the Fleen’s eyes, nose or feet, picked at random, and eyes, nose and feet match the other three in a random order. Values rotate as at level 1. Both are kept from visit to visit, but a visit at level 1 or 2 clears the mixing, so the next visit here picks it again.',
+      chances: 'Six wait on the branch, as at level 1. Each one sent after the sixth pushes the first still waiting back to Shelter Rock.',
+      notes: ['According to the help, one trait matches the same trait at this level. The program does not do that. Hair never matches hair, and eyes, nose and feet each might, so none, one or two of them match.'] },
+    { rule: 'Mixed as at level 3, with the traits and the rotations picked again on every visit.',
+      chances: 'Six wait on the branch, as at level 1. Each one sent after the sixth pushes the first still waiting back to Shelter Rock.',
+      notes: ['According to the help, every trait is mixed at this level. But the program deals as at level 3, so eyes, nose or feet may still match the same trait.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     const s = zbFleensDeal(level, band, rnd, journey);
     const n = band.length, targets = s.targetSnoidOrdinals.filter(t => t > 0);
     const others = n - targets.length;
     const setup = [
-      n === 1 ? 'One Zoombini, and its Fleen on the beehive branch.'
-        : `${n} Zoombinis, and a Fleen for each: ${['', 'one', 'two', 'three'][targets.length]} on the beehive branch${others ? `, ${others} on the other branches` : ''}.`,
-      `The waiting branch holds ${ZB_FLEENS_WAITING}; each Zoombini sent after the sixth sends the first still waiting back to Shelter Rock.`,
+      n === 1 ? 'One Zoombini, with its Fleen on the beehive branch.'
+        : `${n} Zoombinis, and a Fleen for each, with ${['', 'one', 'two', 'three'][targets.length]} on the beehive branch${others ? ` and ${others} on the other branches` : ''}.`,
+      `The waiting branch has room for ${ZB_FLEENS_WAITING}. Each Zoombini sent after the sixth sends the first one waiting back to Shelter Rock.`,
     ];
-    if (n < ZB_FLEENS_HIVE) setup.push(n === 1 ? 'With one Zoombini the puzzle counts two of the three as lured already, so one lure is enough.'
-      : 'With two Zoombinis the puzzle counts one of the three as lured already, so two lures are enough.');
+    if (n < ZB_FLEENS_HIVE) setup.push(n === 1 ? 'With one Zoombini, the puzzle counts two of the three as already lured, so one lure is enough.'
+      : 'With two Zoombinis, the puzzle counts one of the three as already lured, so two lures are enough.');
     if (s.rotationsKept) setup.push(`The values pair as they did on the last visit${s.destSlotsKept ? ', and the traits mix as they did' : ''}.`);
     const answer = ZB_TRAIT_KINDS.map((k, i) => {
       const to = s.traitDestinationKinds[i];
       const pairs = [1, 2, 3, 4, 5].map(v => `${zbTraitWith(k, v)} with ${ZB_FLEENS_TRAIT_WITH[to][(s.traitValueRotations[i] + v - 2) % 5]}`);
-      return `Zoombini ${k} ${k === 'eyes' || k === 'feet' ? 'go' : 'goes'} with Fleen ${to}: ${pairs.join(', ')}.`;
+      return `Zoombini ${k} ${k === 'eyes' || k === 'feet' ? 'match' : 'matches'} Fleen ${to}, pairing ${zbWordsOr(pairs, 'and')}.`;
     });
-    answer.push(targets.length === 1 ? `The beehive Fleen is Zoombini ${targets[0]}’s.`
-      : `The beehive Fleens are those of Zoombinis ${zbWordsOr(targets.slice().sort((a, b) => a - b).map(String), 'and')}, by place in the band.`);
+    answer.push(targets.length === 1 ? `The beehive Fleen belongs to Zoombini ${targets[0]}.`
+      : `The beehive Fleens belong to Zoombinis ${zbWordsOr(targets.slice().sort((a, b) => a - b).map(String), 'and')}, by their place in the band.`);
     for (const t of targets) {
       const twins = band.map((z, i) => i + 1).filter(i => !targets.includes(i) && zbZoombiniId(band[i - 1]) === zbZoombiniId(band[t - 1]));
-      if (twins.length) answer.push(`Zoombini ${zbWordsOr(twins.map(String), 'and')} looks just like ${t}, and its Fleen like ${t}’s, but lures its own Fleen, not the beehive one.`);
+      if (twins.length) answer.push(`Zoombini ${zbWordsOr(twins.map(String), 'and')} looks just like ${t}, and its Fleen looks like ${t}’s. But it lures its own Fleen, not the beehive one.`);
     }
     const marks = band.map((z, i) => (targets.includes(i + 1) ? 'beehive Fleen: ' : 'Fleen: ') + zbFleensWords(s.fleens[i]));
     return { setup, answer, marks, state: s };
   },
   form(level, band, state) {
     const n = band.length, want = Math.min(3, n), kinds = state.traitDestinationKinds;
-    const fields = [{ key: 'hive', label: 'The beehive’s Fleens are those of', kind: 'several', min: want, max: want,
+    const fields = [{ key: 'hive', label: 'The beehive Fleens belong to', kind: 'several', min: want, max: want,
       value: zbFleensTargets(state).map(i => i + 1), options: band.map((_, i) => ({ value: i + 1, label: `Zoombini ${i + 1}` })) }];
     if (level >= 3) ZB_TRAIT_KINDS.forEach((k, i) => fields.push({ key: `to_${k}`, label: `Zoombini ${k} becomes Fleen`, kind: 'choice', value: kinds[i],
-      options: ZB_TRAIT_KINDS.map(t => ({ value: t, label: `${t}${t === k ? ' (its own)' : ''}` })) }));
-    ZB_TRAIT_KINDS.forEach((k, i) => fields.push({ key: `turn_${k}`, label: `Zoombini ${k}: the turn`, kind: 'choice', value: state.traitValueRotations[i],
+      options: ZB_TRAIT_KINDS.map(t => ({ value: t, label: `${t}${t === k ? ' (the same)' : ''}` })) }));
+    ZB_TRAIT_KINDS.forEach((k, i) => fields.push({ key: `turn_${k}`, label: `Rotation for ${k}`, kind: 'choice', value: state.traitValueRotations[i],
       options: [1, 2, 3, 4, 5].map(r => ({ value: r, label: `${r}: ${ZB_TRAIT_SHORT[k][0].toLowerCase()} with ${ZB_FLEENS_TRAIT_WITH[kinds[i]][r - 1]}` })) }));
-    fields.push({ key: 'note', kind: 'note', note: level <= 2 ? 'At levels 1 and 2 each Zoombini trait becomes the same Fleen trait. A turn r gives value v the Fleen value (r + v - 2) mod 5 + 1.'
-      : 'At levels 3 and 4 the four must go to four different Fleen traits, and hair never to hair, as the program deals. A turn r gives value v the Fleen value (r + v - 2) mod 5 + 1.' });
+    fields.push({ key: 'note', kind: 'note', note: level <= 2 ? 'At levels 1 and 2 each Zoombini trait matches the same Fleen trait. A rotation r turns value v into the Fleen value (r + v - 2) mod 5 + 1.'
+      : 'At levels 3 and 4 the four traits must match four different Fleen traits, and hair never matches hair, as the program deals. A rotation r turns value v into the Fleen value (r + v - 2) mod 5 + 1.' });
     return fields;
   },
   edit(level, band, state, values) {
@@ -442,12 +442,12 @@ ZB_PUZZLES.set('FLEENS', {
     const hive = [...new Set((values.hive || []).map(Number))].sort((a, b) => a - b);
     if (hive.length !== want || hive.some(t => !Number.isInteger(t) || t < 1 || t > n)) throw new Error(`Pick ${want} different Zoombinis of the band for the beehive.`);
     const rotations = ZB_TRAIT_KINDS.map(k => Number(values[`turn_${k}`]));
-    if (rotations.some(r => !Number.isInteger(r) || r < 1 || r > 5)) throw new Error('A turn is 1 to 5.');
+    if (rotations.some(r => !Number.isInteger(r) || r < 1 || r > 5)) throw new Error('A rotation must be 1 to 5.');
     let slots = [0, 0, 0, 0];
     if (level >= 3) {
       const to = ZB_TRAIT_KINDS.map(k => values[`to_${k}`]);
       if (to.some(t => !ZB_TRAIT_KINDS.includes(t)) || new Set(to).size !== 4) throw new Error('Each Zoombini trait must become a different Fleen trait.');
-      if (to[0] === 'hair') throw new Error('At this level hair never becomes the Fleen’s hair: the program sends it to eyes, nose or feet.');
+      if (to[0] === 'hair') throw new Error('At this level hair never becomes the Fleen’s hair. The program sends it to eyes, nose or feet.');
       slots = to.map(t => ZB_TRAIT_KINDS.indexOf(t) + 1);
     }
     const kinds = zbFleensKinds(slots);
@@ -460,12 +460,12 @@ ZB_PUZZLES.set('FLEENS', {
   },
   solve(level, band, state) {
     const n = band.length, targets = zbFleensTargets(state), looks = state.fleens.map(zbFleensLook);
-    const steps = targets.map(i => `Send Zoombini ${i + 1}: its Fleen, ${zbFleensWords(state.fleens[i])}, follows it off the beehive branch.`);
+    const steps = targets.map(i => `Send Zoombini ${i + 1}. Its Fleen (${zbFleensWords(state.fleens[i])}) follows it off the beehive branch.`);
     for (const t of targets) {
       const twins = band.map((_, i) => i).filter(i => !targets.includes(i) && looks[i] === looks[t]);
-      if (twins.length) steps.push(`Zoombini ${zbPlacesWords(twins)} looks just like ${t + 1}, with a Fleen just like ${t + 1}’s; sending it would lure its own Fleen, from another branch, and waste a place.`);
+      if (twins.length) steps.push(`Zoombini ${zbPlacesWords(twins)} looks just like ${t + 1}, with a Fleen just like ${t + 1}’s. Sending it would lure its own Fleen, from another branch, and waste a place.`);
     }
-    steps.push(`The bees chase the Fleens away. ${targets.length} sent, so no one is sent back: all ${n} cross.`);
+    steps.push(`The bees chase the Fleens away. Only ${targets.length} were sent, so no one is sent back and all ${n} cross.`);
     const hiveCards = targets.map(i => ({ look: looks[i], by: i, lured: true })).sort((a, b) => a.look - b.look);
     const others = band.map((_, i) => i).filter(i => !targets.includes(i)).map(i => ({ look: looks[i], by: i })).sort((a, b) => a.look - b.look || a.by - b.by);
     return {
@@ -473,11 +473,11 @@ ZB_PUZZLES.set('FLEENS', {
       solutions: [{
         title: `All ${n} cross, sending ${targets.length}`, steps, crosses: band.map((_, i) => i),
         diagram: zbFleensDiagram(level, band, { hive: hiveCards, others, grid: zbFleensGrid(state.traitValueRotations, state.traitDestinationKinds), across: band.map((_, i) => i),
-          caption: `Zoombini${targets.length === 1 ? '' : 's'} ${zbPlacesWords(targets)} lure the beehive’s Fleen${targets.length === 1 ? '' : 's'}: all ${n} across` }),
+          caption: `Zoombini${targets.length === 1 ? '' : 's'} ${zbPlacesWords(targets)} lure the beehive’s Fleen${targets.length === 1 ? '' : 's'}, all ${n} across` }),
       }],
       notes: [
-        'Crossing: once the beehive’s Fleens are lured off, the bees chase every Fleen away, and everyone not sent back to Shelter Rock crosses.',
-        'Simplest: fewest sent, the Zoombinis whose Fleens sit on the beehive branch, one each. The order they go in makes no difference and counts as one way.',
+        'Once the beehive’s Fleens are lured off, the bees chase every Fleen away, and everyone not sent back to Shelter Rock crosses.',
+        'The simplest solution sends the fewest Zoombinis, the ones whose Fleens sit on the beehive branch. The order they go in makes no difference and counts as one way.',
       ],
     };
   },

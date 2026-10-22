@@ -12,11 +12,11 @@ const ROOM_PICK = { walks: true };
 function roomPage(view, key) {
   const place = ZB_PLACE_BY_KEY.get(key), entry = ARCHIVES.get(key);
   const routes = [...new Set(zbPlaceRoutes(key).map(r => ZB_ROUTES[r.route].name))];
-  let html = `<h1>${esc(place.name)}</h1><p class="sub">${esc(place.kind[0].toUpperCase() + place.kind.slice(1))}${routes.length ? ', on ' + esc(routes.join('; ')) : ''}. Its archive is ${entry ? `<a href="#${key}">${key}</a>` : key}.</p>`
-    + `<p class="note">${journeyAvailable() ? `<a href="#place=${key}">Map</a>` : ''}${ZB_PUZZLES.has(key) ? ` · <a href="#solve=${key}">Taken apart</a>` : ''}${key === 'TOWN' ? ' · <a href="#town">All round</a>' : ''}</p>`;
-  if (!entry) { view.innerHTML = html + `<p class="warn">${key}.MHK is not among the files opened.</p>`; return; }
+  let html = `<h1>${esc(place.name)}</h1><p class="sub">${esc(place.kind[0].toUpperCase() + place.kind.slice(1))}${routes.length ? ', on ' + esc(zbWordsOr(routes, 'and')) : ''}. Its archive is ${entry ? `<a href="#${key}">${key}</a>` : key}.</p>`
+    + `<p class="note">${journeyAvailable() ? `<a href="#place=${key}">Map</a>` : ''}${ZB_PUZZLES.has(key) ? ` · <a href="#solve=${key}">Taken apart</a>` : ''}${key === 'TOWN' ? ' · <a href="#town">Full view</a>' : ''}</p>`;
+  if (!entry) { view.innerHTML = html + `<p class="warn">${key}.MHK is not open.</p>`; return; }
   if (!entry.bytes) {
-    view.innerHTML = html + `<p class="note">${FETCHING.has(key) ? 'Fetching it from archive.org…' : `${key.toLowerCase()}.mhk has not been fetched from archive.org: <a id="roomFetch">fetch</a>.`}</p>`;
+    view.innerHTML = html + `<p class="note">${FETCHING.has(key) ? 'Fetching it from archive.org…' : `${key.toLowerCase()}.mhk has not been fetched from archive.org. <a id="roomFetch">Fetch it</a>.`}</p>`;
     const again = () => { if (location.hash === `#scenario/places/${key}`) route(); };
     if ($('roomFetch')) $('roomFetch').addEventListener('click', () => { ensureBytes(entry).then(again); again(); });
     return;
@@ -45,10 +45,10 @@ function roomPage(view, key) {
     html += `<div class="tools">${walks.length ? `<label><input type="checkbox" id="roomWalks"${ROOM_PICK.walks ? ' checked' : ''}> Walk paths</label>` : ''}`
       + (bySheet.size ? `<label>Feature script <select id="roomScript"><option value="">none</option>${[...bySheet].map(([sheet, list]) => `<optgroup label="tBMP ${sheet}">${list.map(s => `<option>${s.id}</option>`).join('')}</optgroup>`).join('')}</select></label>` : '')
       + `<span id="roomNote" class="note"></span></div><div id="roomPic" class="picture"></div>`
-      + `<p class="note">The room is <a href="${link(key, 'tBMP', room)}">tBMP ${room}</a>.${walks.length ? ' ' + walks.map(w => `<a href="${link(key, 'NODE', w.id)}">NODE ${w.id}</a>: ${plural(w.nodes.length, 'waypoint')}, ${plural(w.paths.length, 'path')}`).join('; ') + '.' : ' No waypoints: nothing walks here.'}</p>`;
+      + `<p class="note">The room is <a href="${link(key, 'tBMP', room)}">tBMP ${room}</a>.${walks.length ? ' ' + walks.map(w => `<a href="${link(key, 'NODE', w.id)}">NODE ${w.id}</a> has ${plural(w.nodes.length, 'waypoint')} and ${plural(w.paths.length, 'path')}`).join('. ') + '.' : ' It has no waypoints, so nothing walks here.'}</p>`;
   } else html += '<p class="note">None of the archive’s pictures is 640 × 480, the size of a room.</p>';
   if (bySheet.size || undrawn.length) {
-    html += `<h2 class="h">Feature scripts</h2><p class="note">${plural(arc.list('SCRB').length, 'script')}, by the sheet each draws from (the last sheet numbered at or below it). Point at one to see where it draws.</p>`;
+    html += `<h2 class="h">Feature scripts</h2><p class="note">${plural(arc.list('SCRB').length, 'script')}, grouped by the sheet each one draws from (the last sheet numbered at or below it). Point at one to see where it draws.</p>`;
     for (const [sheet, list] of bySheet) html += `<div class="ids"><span class="note"><a href="${link(key, 'tBMP', sheet)}">tBMP ${sheet}</a></span>${list.map(s => `<a href="${link(key, 'SCRB', s.id)}" data-script="${s.id}">${s.id}</a>`).join('')}</div>`;
     if (undrawn.length) html += `<div class="ids"><span class="note">draw nothing</span>${undrawn.map(id => `<a href="${link(key, 'SCRB', id)}">${id}</a>`).join('')}</div>`;
   }
@@ -58,7 +58,7 @@ function roomPage(view, key) {
     for (const id of sounds) {
       const by = cues.get(id) || [];
       html += `<tr><td><button class="play" data-id="${id}" title="Play">▶</button></td><td><a href="${link(key, '\0SND', id)}">${id}</a></td>`
-        + `<td class="note">${by.length ? 'cued by ' + by.slice(0, 6).map(c => `<a href="${link(key, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 6 ? ` and ${by.length - 6} more` : '') : ''}</td></tr>`;
+        + `<td class="note">${by.length ? 'played by ' + by.slice(0, 6).map(c => `<a href="${link(key, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 6 ? ` and ${by.length - 6} more` : '') : ''}</td></tr>`;
     }
     html += '</table>';
   }
@@ -102,7 +102,7 @@ function roomPage(view, key) {
       for (const p of tick) if (p.width && p.height) g.drawImage(indexedCanvas(s.d.frames[p.shape - 1], pal, true), p.x, p.y);
       g.strokeStyle = '#ff5c7a'; g.lineWidth = 1;
       g.strokeRect(b.x0 - .5, b.y0 - .5, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-      $('roomNote').textContent = `SCRB ${s.id}: ${plural(s.script.frameCount, 'tick')}, within (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1}); the first tick with a shape is shown.`;
+      $('roomNote').textContent = `SCRB ${s.id} has ${plural(s.script.frameCount, 'tick')}, within (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1}). The first tick with a shape is shown.`;
     }
   };
   const show = id => { shown = id; if ($('roomScript')) $('roomScript').value = id == null ? '' : id; draw(); };

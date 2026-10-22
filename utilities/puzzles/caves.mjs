@@ -29,7 +29,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- ScummVM's numbers ---------------------------------------------------
   const init = need(/void ZoombiniPuzzleCaves::initDifficultyParams\(\) \{([\s\S]*?)\n\}/, cpp, 'initDifficultyParams')[1];
   const limits = [...init.matchAll(/case kPuzzleLevel(\d):(?:\s*default:)?\s*_mistakeLimit = (\d+);/g)].map(m => [Number(m[1]), Number(m[2])]);
-  if (limits.length !== 4 || limits.some(([l, v]) => S.ZB_CAVES_MISTAKES[l - 1] !== v)) fail(`the mistakes allowed are not ScummVM's: ${JSON.stringify(limits)}`);
+  if (limits.length !== 4 || limits.some(([l, v]) => S.ZB_CAVES_MISTAKES[l - 1] !== v)) fail(`the mistakes allowed are not ScummVM's (${JSON.stringify(limits)})`);
   const words = ['Four', 'Five', 'Six', 'Seven'];
   if (P.levels.some((l, i) => !l.chances.startsWith(`${words[i]} mistakes`))) fail('a level\'s chances do not name its mistakes');
   need(/_snoidDragEnabled = \(_mistakeCount != _mistakeLimit\);/, cpp, 'placing stopping at the last mistake');
@@ -88,7 +88,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const { band, seed } of bands(300, 700 + level, sizes)) {
       const st = P.deal(level, band, S.zbRandom(seed), {}).state;
       const d2 = P.deal(level, band, S.zbRandom(seed), {});
-      const bad = m => { fail(`level ${level}, a band of ${band.length}: ${m}`); return true; };
+      const bad = m => { fail(`level ${level}, a band of ${band.length} (${m})`); return true; };
       if (!same(st, d2.state)) { bad('the same seed deals twice differently'); break; }
       const n = band.length, two = level >= 3;
       if (st.mistakeLimit !== S.ZB_CAVES_MISTAKES[level - 1] || st.ruleTraitCount !== (two ? 2 : 1) || st.firstUsableSeatNumber !== 21 - n) { bad('the level\'s numbers are wrong'); break; }
@@ -192,7 +192,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     let worst = Infinity, broken = null;
     const walk = (node, H, occ, placed, mistakes, depth) => {
       if (broken) return;
-      if (mistakes === limit && (node.outcomes.length || /Certain to fit/.test(node.move))) { broken = `a placement after the last mistake: ${node.move}`; return; }
+      if (mistakes === limit && (node.outcomes.length || /Certain to fit/.test(node.move))) { broken = `a placement after the last mistake (${node.move})`; return; }
       const head = node.move.split('Put Zoombini')[0];
       for (const m of head.matchAll(/Zoombini (\d+) on stone (\d+)/g)) {
         const z = +m[1] - 1, j = +m[2] - (17 - n);
@@ -209,11 +209,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (depth > 40) { broken = 'a strategy deeper than 40 moves'; return; }
       const mv = /Put Zoombini (\d+) on stone (\d+)\./.exec(node.move);
       const z = mv ? +mv[1] - 1 : -1, j = mv ? +mv[2] - (17 - n) : -1;
-      if (!mv || z !== node.zoombini || placed.has(z) || j < 0 || j >= n || occ >> j & 1) { broken = `an illegal move: ${node.move}`; return; }
+      if (!mv || z !== node.zoombini || placed.has(z) || j < 0 || j >= n || occ >> j & 1) { broken = `an illegal move (${node.move})`; return; }
       for (const o of full ? node.outcomes : [node.outcomes[rnd.range(0, node.outcomes.length - 1)]]) {
-        const w = /walked to stone (\d+)/.exec(o.label), T = w ? +w[1] - (17 - n) : j;
+        const w = /moved to stone (\d+)/.exec(o.label), T = w ? +w[1] - (17 - n) : j;
         const H2 = H.filter(h => w ? !(R[h][z][0] <= j && j <= R[h][z][1]) && R[h][z][0] <= T && T <= R[h][z][1] : R[h][z][0] <= j && j <= R[h][z][1]);
-        if (!H2.length || (w && occ >> T & 1)) { broken = `an outcome no rule gives: ${o.label}`; return; }
+        if (!H2.length || (w && occ >> T & 1)) { broken = `an outcome no rule gives (${o.label})`; return; }
         const t1 = Date.now(), nx = o.next();
         slowNext = Math.max(slowNext, Date.now() - t1);
         walk(nx, H2, occ | 1 << T, new Set([...placed, z]), mistakes + (w ? 1 : 0), depth + 1);
@@ -228,7 +228,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   for (let level = 1; level <= 4; level++) {
     for (const { band, seed } of bands(10, 500 + level, [16, 11, 7, 6, 3])) {
       const d = C.deal(level, band, S.zbRandom(seed), {}), n = band.length, limit = S.ZB_CAVES_MISTAKES[level - 1];
-      const bad = m => { fail(`level ${level}, a band of ${n}: ${m}`); return true; };
+      const bad = m => { fail(`level ${level}, a band of ${n} (${m})`); return true; };
       // Round trips, and an edit's rule dealt again as the program would.
       const form = C.form(level, band, d.state), vals = valuesOf(form), again = C.edit(level, band, d.state, vals);
       if (!same(valuesOf(C.form(level, band, again)), vals) || !same(again.seatPrimaryRuleValues, d.state.seatPrimaryRuleValues)
@@ -298,13 +298,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         let node = st.root, wrong = null, placed = 0;
         for (let depth = 0; !wrong; depth++) {
           for (const m of node.move.split('Put Zoombini')[0].matchAll(/Zoombini (\d+) on stone (\d+)/g)) {
-            if (!fits(band[+m[1] - 1], sn(+m[2]), d.state) || used.has(sn(+m[2]))) wrong = `a placement listed under "Certain to fit" does not fit the dealt rule: ${m[0]}`;
+            if (!fits(band[+m[1] - 1], sn(+m[2]), d.state) || used.has(sn(+m[2]))) wrong = `a placement listed under "Certain to fit" does not fit the dealt rule (${m[0]})`;
             used.add(sn(+m[2])); placed++;
           }
           if (wrong || !node.outcomes.length) break;
           const mv = /Put Zoombini (\d+) on stone (\d+)\./.exec(node.move), z = band[+mv[1] - 1], seat = sn(+mv[2]);
           const free = [...Array(n).keys()].map(j => 21 - n + j).filter(t => !used.has(t) && fits(z, t, d.state));
-          const at = t => node.outcomes.findIndex(o => (/walked to stone (\d+)/.exec(o.label) || [0, mv[2]])[1] == t - 4);
+          const at = t => node.outcomes.findIndex(o => (/moved to stone (\d+)/.exec(o.label) || [0, mv[2]])[1] == t - 4);
           if (!fits(z, seat, d.state) && free.some(t => at(t) < 0)) { wrong = `the game may walk ${node.move} to a stone no outcome names`; break; }
           const k = fits(z, seat, d.state) ? at(seat) : at(free[0]);
           if (k < 0) { wrong = `the game's answer to "${node.move}" is not among its outcomes`; break; }
@@ -330,19 +330,19 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const st = C.strategy(1, band, null, {});
     if (!st.exact) continue;
     const b = brute(band, rulesFor(1, null), S.ZB_CAVES_MISTAKES[0]);
-    if (b !== st.guaranteed) { fail(`level 1, the wall unseen, a band of ${band.length}: the strategy is exact at ${st.guaranteed}, the brute force finds ${b}`); break; }
+    if (b !== st.guaranteed) { fail(`level 1, the wall unseen, a band of ${band.length}, the strategy is exact at ${st.guaranteed}, the brute force finds ${b}`); break; }
     if (st.guaranteed < band.length) {
       short++;
       const { worst, broken } = walkAll(band, rulesFor(1, null), st.root, true, S.ZB_CAVES_MISTAKES[0], 5);
-      if (broken || worst !== st.guaranteed) { fail(`level 1, the wall unseen: ${broken || `the strategy is exact at ${st.guaranteed}, and its worst branch places ${worst}`}`); break; }
+      if (broken || worst !== st.guaranteed) { fail(`level 1, the wall unseen, ${broken || `the strategy is exact at ${st.guaranteed}, and its worst branch places ${worst}`}`); break; }
     }
     brutes++;
   }
   if (!short) fail('no band came out short with the wall unseen, so the brute force held nothing but the whole band');
   if (slowest > 2500) fail(`a strategy took ${slowest} ms`);
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
-  say(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends; slowest ${slowest} ms, a step ${slowNext} ms), ${played} played against the dealt rule, the puzzle answering every move as the judge does`);
+  say(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends. Slowest ${slowest} ms, a step ${slowNext} ms), ${played} played against the dealt rule, the puzzle answering every move as the judge does`);
 
-  say(`mistakes ${S.ZB_CAVES_MISTAKES.join(', ')} as ScummVM's; stones and clues in ZOOMBINI.EXE at 0x${(atSeats[0] || 0).toString(16)} and 0x${(atGlyphs[0] || 0).toString(16)}; `
-    + `tMID ${base + 3} in both MIDI archives; ${dealt} deals judged, ${runs} runs of stones each holding exactly its Zoombinis`);
+  say(`mistakes ${S.ZB_CAVES_MISTAKES.join(', ')} as ScummVM's. Stones and clues in ZOOMBINI.EXE at 0x${(atSeats[0] || 0).toString(16)} and 0x${(atGlyphs[0] || 0).toString(16)}; `
+    + `tMID ${base + 3} in both MIDI archives. ${dealt} deals judged, ${runs} runs of stones each holding exactly its Zoombinis`);
 }
