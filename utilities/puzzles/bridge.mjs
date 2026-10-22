@@ -10,8 +10,8 @@
 //   - the chances are debugGetChances' six;
 //   - the workbench: the form gives back what it was given; the solution
 //     sends every Zoombini over the bridge the rule gives it; and the
-//     strategy, walked down every branch, never gets fewer across than the
-//     number it says is sure, and reaches it on some branch;
+//     strategy, walked down every branch, never has fewer across than the
+//     number it gives as sure, and reaches it on some branch;
 //   - over bands of 16, 11 and 5 at each level, the rule dealt sends one
 //     way the first count the search tries (half the band, then +1, -2,
 //     +1, -2, ...: 8, 9, 7, 8, 6, 7, 5, ...) that some rule gives, and
@@ -65,7 +65,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const n = band.filter(z => S.zbBridgeMatches(z, rule)).length;
       const given = new Set(S.zbBridgeRules(level).map(r => band.filter(z => S.zbBridgeMatches(z, r)).length));
       const first = tries(band.length).find(t => t > 0 && t < 16 && given.has(t));
-      if (n !== matchCount || n !== first) { fail(`level ${level}: a rule sends ${n} one way, the deal says ${matchCount}, the search stops at ${first}`); break; }
+      if (n !== matchCount || n !== first) { fail(`level ${level}: a rule sends ${n} one way, the deal gives ${matchCount}, the search stops at ${first}`); break; }
       if (rule.length !== [1, 1, 2, 3][level - 1] || rule.some(r => r.values.length !== (level === 2 ? 2 : 1))) { fail(`level ${level}: a rule of the wrong form, ${JSON.stringify(rule)}`); break; }
       if (d.marks.some((m, i) => m !== (S.zbBridgeMatches(band[i], rule) === up ? 'upper' : 'lower'))) { fail(`level ${level}: the marks do not follow the rule`); break; }
       dealt++;
@@ -89,14 +89,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       trips++;
       const sol = P.solve(level, band, d.state);
       const sent = sol.solutions[0].steps.join(' ');
-      if (sol.most !== band.length || !sol.exact || sol.solutions[0].crosses.length !== band.length) { fail(`level ${level}: the solution does not take the whole band`); break; }
+      if (sol.most !== band.length || !sol.exact || sol.solutions[0].crosses.length !== band.length) { fail(`level ${level}: the solution leaves some of the band behind`); break; }
       const zs = sol.solutions[0].diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
       if (JSON.stringify(zs) !== JSON.stringify(band.map((_, i) => i))) { fail(`level ${level}: the solution's diagram does not draw each Zoombini once`); break; }
       for (const knows of band.length <= 9 ? ['program', 'form'] : ['program']) {
         const st = P.strategy(level, band, null, { knows, budget: 4000 });
         const worst = walk(st.root, st.sure, 0);
-        if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy says ${st.sure} are sure, and a branch gets ${worst} across`); break; }
-        if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is said to be exact at ${st.sure}, and its worst branch gets ${worst}`); break; }
+        if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy has ${st.sure} sure, and a branch has ${worst} across`); break; }
+        if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.sure}, and its worst branch has ${worst}`); break; }
         walked++;
         // Played against the dealt rule, the game answering each move.
         if (knows === 'program') {
@@ -110,7 +110,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   let bad = null;
   try { P.edit(3, bands(1, 5)[0].band, {}, { t1: 'hair:1', t2: 'hair:2', upper: 'with' }); } catch (e) { bad = e.message; }
-  if (!bad) fail('the form takes two values of one trait at level 3');
+  if (!bad) fail('the form accepts two values of one trait at level 3');
 
-  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it says is sure, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
+  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of the number it gives as sure, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
 }

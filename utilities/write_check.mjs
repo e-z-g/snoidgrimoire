@@ -7,11 +7,12 @@
 //   - the written archive reads back: every resource but the changed is the
 //     same bytes, the changed frames are the pixels written, the rest of the
 //     sheet's frames as they were;
-//   - every string list on the disc writes back to its own bytes, every
-//     REGS, and every sound, given its own samples and loop;
+//   - every string list on the disc writes back to the bytes it was read
+//     from, and so does every REGS and every sound, given its samples and
+//     loop;
 //   - every single picture, written as a replaced one is (format 0x0102),
-//     reads back to its own pixels;
-//   - a picture's own colours, matched to its palette, come back as the
+//     reads back to the pixels it had;
+//   - a picture's colours, matched to its palette, come back as the
 //     same colours (zbQuantize), its clear pixels clear.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -71,13 +72,13 @@ reread.frames.forEach((f, k) => {
 });
 if (!same(back.get('REGS', 4000), regs)) fail('REGS 4000 reads back wrong');
 
-// Every string list writes back to its own bytes.
+// Every string list writes back to the bytes it was read from.
 let lists = 0;
 for (const n of archiveNames()) {
   const a = S.openMohawk(archiveBytes(n));
   for (const { id } of a.list('STRL')) {
     const b = a.get('STRL', id);
-    if (!same(S.zbStringListBytes(S.parseStringList(b)), b)) fail(`${n} STRL ${id} does not write back to its own bytes`);
+    if (!same(S.zbStringListBytes(S.parseStringList(b)), b)) fail(`${n} STRL ${id} does not write back to the bytes it was read from`);
     lists++;
   }
 }
@@ -87,7 +88,7 @@ for (const n of archiveNames()) {
   const a = S.openMohawk(archiveBytes(n));
   for (const { id } of a.list('\0SND')) {
     const b = a.get('\0SND', id), w = S.parseMohawkWave(b);
-    if (!same(S.zbWaveBytes(b, w.samples, w.rate, [w.loopStart, w.loopEnd]), b)) fail(`${n} SND ${id} does not write back to its own bytes`);
+    if (!same(S.zbWaveBytes(b, w.samples, w.rate, [w.loopStart, w.loopEnd]), b)) fail(`${n} SND ${id} does not write back to the bytes it was read from`);
     sounds++;
   }
   for (const { id } of a.list('tBMP')) {
@@ -111,10 +112,10 @@ for (const an of archiveNames()) {
   const a = S.openMohawk(archiveBytes(an));
   for (const r of a.list('REGS')) {
     const b = a.get('REGS', r.id);
-    if (!same(S.zbRegsBytes(Array.from(S.parseRegs(b))), b)) fail(`${an} REGS ${r.id} does not write back to its own bytes`);
+    if (!same(S.zbRegsBytes(Array.from(S.parseRegs(b))), b)) fail(`${an} REGS ${r.id} does not write back to the bytes it was read from`);
     regsBack++;
   }
 }
 if (!regsBack) fail('no REGS found to write back');
-if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''}, and read back; ${lists} string lists, ${regsBack} REGS and ${sounds} sounds written back to their own bytes; ${pictures} pictures read back from themselves written anew; ${matched} pixels' colours matched back`);
+if (!fails) console.log(`a sheet with two frames redrawn and a REGS changed, written into ${name} as mohawk_write.py writes them${o.status === 0 ? ' (SHA-1 for SHA-1)' : ''}, and read back; ${lists} string lists, ${regsBack} REGS and ${sounds} sounds written back to the bytes they were read from; ${pictures} pictures read back from themselves written anew; ${matched} pixels' colours matched back`);
 process.exit(fails ? 1 : 0);

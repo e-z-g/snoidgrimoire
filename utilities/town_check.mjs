@@ -1,5 +1,5 @@
 // Zoombiniville (js/zb-town.js) against ScummVM's town page and the 1996
-// program, each read here from its own files:
+// program, each read here from the files of that page or program:
 //
 //   - the density that raises the houses and the count of inhabitants, for
 //     every population from 0 to 625, are the formulas in shelter_town.cpp,
@@ -44,7 +44,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
     const inh = Math.min(max, Math.max(min, Math.trunc(Math.min(hi, Math.max(lo, p - first)) / per)));
     if (S.zbTownInhabitants(p) !== inh) { if (bad++ < 3) fail(`inhabitants at ${p} are ${S.zbTownInhabitants(p)}, ScummVM's ${inh}`); }
   }
-  if (total !== S.ZB_TOWN_PEOPLE) fail(`the town holds ${S.ZB_TOWN_PEOPLE}, ScummVM ${total}`);
+  if (total !== S.ZB_TOWN_PEOPLE) fail(`the town has room for ${S.ZB_TOWN_PEOPLE}, ScummVM ${total}`);
   if (!bad) console.log(`rules: density and inhabitants as ScummVM's for all 626 populations (density ${S.zbTownDensity(0)} to ${S.zbTownDensity(625)})`);
 
   const clk = need(/int16 xPos = \(scrollCol == 1\) \? (\d+) : (\d+);[\s\S]*?hotspots\[0\]\._y = (\d+);/, cpp, 'the clock\'s place');
@@ -80,7 +80,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
   if (slot !== S.ZB_TOWN_CLOCK_SLOT) fail(`the clock tower is slot ${S.ZB_TOWN_CLOCK_SLOT} here, ${slot} in ScummVM`);
   if (!hands) console.log(`the clock: at ${w.clock.x}, ${w.clock.y}, ${handsFrom}, slot ${slot}`);
 
-  // ---- the world, against its own scripts -------------------------------
+  // ---- the world, against the town's scripts -----------------------------
   const arc = S.openMohawk(archiveBytes('TOWN'));
   const houses = w.things.filter(t => t.gate && t.gate.density != null).map(t => t.shape).sort((a, b) => a - b);
   if (houses.join() !== Array.from({ length: 56 }, (_, i) => i + 25).join()) fail(`the houses are shapes ${houses.join(',')}, not 25-80 once each`);
@@ -117,7 +117,7 @@ else {
   if (plaques.length !== 16) fail(`read ${plaques.length} plaques, not 16`);
   S.ZB_TOWN_REWARDS.forEach((name, slot) => {
     const plaque = plaques[bySlot[slot]] || '';
-    if (!plaque.toLowerCase().includes('this ' + name.toLowerCase() + ' ')) fail(`slot ${slot} is the ${name}; its plaque says "${plaque}"`);
+    if (!plaque.toLowerCase().includes('this ' + name.toLowerCase() + ' ')) fail(`slot ${slot} is the ${name}; its plaque reads "${plaque}"`);
     else n++;
   });
   console.log(`names: ${n} of 16 reward buildings named as their plaques name them`);

@@ -10,11 +10,11 @@
 //   - the counts buildRunnerStacks deals at each level, the ranges and
 //     rolls every draw uses, level 2's shuffles, and the grid's pools and
 //     columns, read from ScummVM's text and found in the port's;
-//   - the chances: ScummVM keeps no count for this page (no
-//     debugGetChances of its own), and a Zoombini rides once;
+//   - the chances: ScummVM has no count for this page (no
+//     debugGetChances for it), and a Zoombini rides once;
 //   - over bands of 16 down to 1 at each level, a judge written here from
 //     compareTwoOrderLines, cycleZmbTraitDisplay and
-//     advanceAnswerRunnerFrames (the display rows, not the port's own
+//     advanceAnswerRunnerFrames (the display rows, not the port's
 //     arithmetic) passes the picked Zoombini and its reflection at levels 1
 //     and 2, and the placement the grid was made for and the placement
 //     the port finds at levels 3 and 4 (both Zoombinis of a pair); the
@@ -100,14 +100,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // The judge, and the chances.
   need(/for \(int16 traitRowIdx = 7; 3 < traitRowIdx; traitRowIdx--\)/, cpp, 'compareTwoOrderLines\' mirror side');
   need(/state->traits\[cycleTrait - 1\] = val \+ 1;\s*if \(5 < state->traits\[cycleTrait - 1\]\)\s*state->traits\[cycleTrait - 1\] = 1;/, cpp, 'a step');
-  if (/debugGetChances/.test(cpp) || !/None are counted/.test(P.levels[0].chances)) fail('ScummVM counts chances here, or the port says it does');
+  if (/debugGetChances/.test(cpp) || !/None are counted/.test(P.levels[0].chances)) fail('ScummVM counts chances here, or the port\'s chances count some');
   need(/if \(_placedZmbCount == _pageLoadedZmbCount\)/, cpp, 'the page ending when every Zoombini has ridden');
 
   // ---- the judge -----------------------------------------------------------
   // ScummVM's display rows: 0 the Zoombini, 1-3 the cart's side from the
   // cart out, 4-6 the mirror's side from the centre crystal out, 7 the
   // reflection in the mirror. A
-  // step takes the value from the nearest filled row on its way in.
+  // step copies the value from the nearest filled row on its way in.
   const judge = (source, image, left, right) => {
     const rows = Array.from({ length: 8 }, () => [0, 0, 0, 0]);
     rows[0] = source.slice(); rows[7] = image.slice();
@@ -215,20 +215,20 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (right.some(g => g.traits.some((v, c) => v && v !== atCrystal[c])) || f.some(g => setCount(g) < 1 || setCount(g) > 2)) { bad('edited filters the program could not deal'); break; }
         for (const wrong of [{ picked: n, place: 0 }, { picked: 0, place: 8 }, { picked: 'x', place: 1 }]) {
           let err = null; try { P.edit(level, band, d.state, wrong); } catch (e) { err = e.message; }
-          if (!err) { bad(`the form takes ${JSON.stringify(wrong)}`); break; }
+          if (!err) { bad(`the form accepts ${JSON.stringify(wrong)}`); break; }
         }
         edits++;
       }
       const t0 = Date.now(), sol = P.solve(level, band, state);
       slow = Math.max(slow, Date.now() - t0);
-      if (sol.most !== n || !sol.exact || sol.solutions.some(x => x.crosses.length > sol.most)) { bad('the known answer does not take the whole band'); break; }
+      if (sol.most !== n || !sol.exact || sol.solutions.some(x => x.crosses.length > sol.most)) { bad('the known answer leaves some of the band behind'); break; }
       if (sol.solutions.some(x => !same(x.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b), band.map((_, i) => i)))) { bad('a solution\'s diagram does not draw each Zoombini once'); break; }
       if (level <= 2) {
         const f = state.level2RunnerStates, left = f.slice(0, 2), right = f.slice(2);
         const seen = new Set(), pairs = [];
         band.forEach((z, i) => { const k = S.zbBandCode([z]); if (seen.has(k)) return; seen.add(k); state.cliffRunnerStates.forEach((r, j) => { if (judge(traitsOf(z), r, left, right)) pairs.push(`${i}/${j}`); }); });
         const listed = sol.solutions.map(x => { const m = /Zoombini (\d+) in the cart and the (.+?) reflection/.exec(x.steps[0]); return `${+m[1] - 1}/${S.ZB_SMOKE_REFLECTIONS.findIndex(r => r.name === m[2])}`; });
-        if (sol.ways !== pairs.length || listed.some(k => !pairs.includes(k)) || !listed.length || !listed[0].startsWith(`${state.questionIndex}/`)) { bad(`${sol.ways} ways said, ${pairs.length} judged, the first ${listed[0]}`); break; }
+        if (sol.ways !== pairs.length || listed.some(k => !pairs.includes(k)) || !listed.length || !listed[0].startsWith(`${state.questionIndex}/`)) { bad(`${sol.ways} ways given, ${pairs.length} judged, the first ${listed[0]}`); break; }
       } else {
         const pair = level === 4 && n > 1, fl = state.gridRunnerStates;
         const srcs = [traitsOf(band[0]), ...(pair ? [traitsOf(band[1])] : [])], imgs = [state.primaryGridTraits[7], ...(pair ? [state.secondaryGridTraits[8]] : [])];
@@ -238,7 +238,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         }
         const listed = sol.solutions.map(x => x.title);
         const sizes = sol.solutions.map(x => +x.title.split(' ')[0]);
-        if (sol.ways !== count || !count || sizes.some((k, i) => i && k < sizes[i - 1])) { bad(`${sol.ways} placements said, ${count} judged, sizes ${sizes}`); break; }
+        if (sol.ways !== count || !count || sizes.some((k, i) => i && k < sizes[i - 1])) { bad(`${sol.ways} placements given, ${count} judged, sizes ${sizes}`); break; }
         // Each listed placement passes the judge, read back from its steps.
         const home = name => S.ZB_SMOKE_FILTER_HOMES.findIndex(h => h.name === name);
         for (const x of sol.solutions) {

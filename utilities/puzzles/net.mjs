@@ -3,7 +3,7 @@
 //
 //   - the names of the mudball's colours and shapes, the six ways of
 //     levels 3 and 4 (kHighAxisSelectorIndices, and the six cases of
-//     findTargetSlotForSelection, which must agree), and the tank's seven
+//     findTargetSlotForSelection, which must match), and the tank's seven
 //     spare mudballs, are ScummVM's, read from its text;
 //   - ScummVM's text still has what the port copies (the groups of 3, 2
 //     and 1, the third value drawn and not used, the sections within a
@@ -11,11 +11,11 @@
 //     set aside at level 4, the draws for the marks, the labels and the
 //     way, one shot used for each launch) and what the port follows the
 //     program in instead (ScummVM resets the way at level 3);
-//   - the program keeps nothing of this rule as a table, so there is none
+//   - the program stores nothing of this rule as a table, so there is none
 //     to find in ZOOMBINI.EXE;
 //   - over bands of 16 down to 1 at each level, the groups add up to the
-//     band in the program's pattern, the tank holds one mudball per mark
-//     and seven or eight more, every mudball lands on its own section and
+//     band in the program's pattern, the tank has one mudball per mark
+//     and seven or eight more, every mudball lands on a different section and
 //     the one the answer gives for each mark lands on it, and each level's
 //     orders have their form: a new order in each row and column, rotated
 //     at levels 2 and 4, the sections within a column in the column's order
@@ -81,7 +81,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       // The marks.
       const marks = [...Array(cells).keys()].filter(i => rule.dots[i]);
       if (rule.dots.length !== cells || !same(marks.map(i => rule.dots[i]).sort(), st.targetLaunchBatchSizes.slice().sort())) why.push('the marks are not the groups');
-      // Every mudball lands on its own section, and the answer's mudball on each mark.
+      // Every mudball lands on a different section, and the answer's mudball on each mark.
       const choices = level <= 2 ? 25 : 125, hit = new Set();
       for (let m = 0; m < choices; m++) {
         const choice = [level <= 2 ? 0 : Math.floor(m / 25), Math.floor(m / 5) % 5, m % 5];
@@ -120,7 +120,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (new Set(rule.labels).size !== 3 || journey.netWay !== rule.way) why.push('level 4\'s labels or way');
         // A level 3 deal after it in the same journey looks through the same way, as the program does.
         const after = P.deal(3, band, S.zbRandom(seed), journey);
-        if (after.state.axisSelectorPermutationIdx !== rule.way) why.push('level 3 does not keep the last way');
+        if (after.state.axisSelectorPermutationIdx !== rule.way) why.push('level 3 does not reuse the last way');
       } else if (rule.way !== 0) why.push(`level ${level} looks through way ${rule.way}`);
       if (level <= 2 && !(same(rule.labels, [2, 1, 0]) || same(rule.labels, [1, 2, 0]))) why.push('the labels');
       if (d.marks.some((m, i) => m !== `goes over ${S.ZB_NET_ORDINALS[i]}`)) why.push('the marks are not the band\'s order');
@@ -133,15 +133,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const valuesOf = form => Object.fromEntries(form.filter(x => x.kind !== 'note').map(x => [x.key, x.value]));
   const bench = { trips: 0, solved: 0, walks: 0, followed: 0, played: 0, lemma: 0, slowest: 0 };
   const perms = []; const permute = (a, k = 0) => { if (k === 5) { perms.push(a.slice()); return; } for (let i = k; i < 5; i++) { [a[k], a[i]] = [a[i], a[k]]; permute(a, k + 1); [a[k], a[i]] = [a[i], a[k]]; } }; permute([0, 1, 2, 3, 4]);
-  /* A whole rule of one of the ways, the squares in an order of their own
-     when untied. */
+  /* A whole rule of one of the ways, the squares in a separate order when
+     untied. */
   const ruleOf = (level, h, rowOrder, colOrder, sqOrder) => {
     const labels = level <= 2 ? [h.axes[0], h.axes[1], 0] : [2, 1, 0];
     const way = level <= 2 ? 0 : S.ZB_NET_WAYS.findIndex(w => same(w, h.axes));
     const r = S.zbNetRuleFrom(level, labels, way, rowOrder, colOrder, h.step, [1], [0]);
     if (sqOrder) for (let i = 0; i < r.subs.length; i++) r.subs[i] = sqOrder[i % 5];
     if (level === 4 && sqOrder) {
-      // The rows turn by the square's place, which the untied order keeps.
+      // The rows turn by the square's place, which the untied order leaves as it is.
       for (let p = 0; p < 5; p++) for (let q = 0; q < 5; q++) for (let row = 0; row < 5; row++) r.rows[25 * row + 5 * p + q] = rowOrder[((row - h.step * q) % 5 + 5) % 5];
     }
     return r;
@@ -162,7 +162,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (B.length > 1) for (let a = 0; a < 5; a++) for (let b = 0; b < 5; b++) for (let c = 0; c < 5; c++) {
       if (level <= 2 ? (a || b === c) : (a === b || b === c || a === c)) continue;
       const x = [level <= 2 ? null : a, b, c], land = B.map(e => S.zbNetLanding(level, e, x));
-      if (new Set(land).size !== B.length) return `the mudball ${x} does not tell ${B.length} ways apart`;
+      if (new Set(land).size !== B.length) return `the mudball ${x} does not separate ${B.length} ways`;
       if (land[B.findIndex(e => isH(e, trueH))] !== S.zbNetLands(rule, x)) return 'the true way does not predict where a mudball lands';
     }
     return null;
@@ -193,7 +193,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const sol = P.solve(level, band, d.state);
       const x = sol.solutions[0];
       const zs = x.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
-      if (sol.most !== band.length || !sol.exact || x.crosses.length !== band.length || !same(zs, band.map((_, i) => i))) why.push('the solution does not take and draw the whole band');
+      if (sol.most !== band.length || !sol.exact || x.crosses.length !== band.length || !same(zs, band.map((_, i) => i))) why.push('the solution leaves some of the band behind or undrawn');
       const marks = d.state.rule.at;
       for (const m of marks) {
         const ball = S.zbNetMudball(d.state.rule, m);
@@ -214,12 +214,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         for (let w = 0; w < 25; w++) {
           let nd = st.root, depth = 0;
           while (nd.outcomes.length && depth < 40) { check(nd); const t1 = Date.now(); nd = nd.outcomes[rnd.number(nd.outcomes.length - 1)].next(); bench.slowest = Math.max(bench.slowest, Date.now() - t1); depth++; }
-          if (nd.crossed < st.sure) why.push(`a branch gets ${nd.crossed} across`);
+          if (nd.crossed < st.sure) why.push(`a branch has ${nd.crossed} across`);
           bench.walks++;
         }
         // The branch a whole rule makes, for the rule dealt and for rules of
         // the kind the player allows, each move judged here and answered by
-        // the puzzle, which must agree.
+        // the puzzle, which must match.
         const Hs = S.zbNetStructures(level, knows), untied = level >= 3 && knows === 'form';
         for (let w = 0; w < 7; w++) {
           const h = Hs[rnd.number(Hs.length - 1)];
@@ -233,7 +233,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
             if (P.answer(level, band, state, nd) !== k) { why.push(`the puzzle answers ${nd.move} with outcome ${P.answer(level, band, state, nd)}, the check with ${k}`); break; }
             nd = nd.outcomes[k].next();
           }
-          if (nd.crossed < st.sure) why.push(`the rule's branch gets ${nd.crossed} across`);
+          if (nd.crossed < st.sure) why.push(`the rule's branch has ${nd.crossed} across`);
           const end = S.zbStrategyPlay(P, level, band, state, st);
           if (!end) why.push('played against the rule, the game\'s answer to a move is not among the strategy\'s outcomes');
           else if (end.crossed < st.sure) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.sure} sure`);
@@ -251,11 +251,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const bad of [{ mark2: v.mark1 }, { rowOrder: [0, 0, 1, 2, 3] }, { way: 9 }, { mark1: 125 }]) { try { P.edit(3, band, d.state, { ...v, ...bad }); } catch (e) { caught++; } }
     const d2 = P.deal(2, band, S.zbRandom(3), {}), v2 = valuesOf(P.form(2, band, d2.state));
     for (const bad of [{ step: 4 }, { rows: 'size' }]) { try { P.edit(2, band, d2.state, { ...v2, ...bad }); } catch (e) { caught++; } }
-    if (caught !== 6) fail(`the form takes ${6 - caught} impossible walls`);
+    if (caught !== 6) fail(`the form accepts ${6 - caught} impossible walls`);
   }
   if (bench.slowest > 500) fail(`a strategy step took ${bench.slowest} ms`);
 
-  say(`names, ways and tank as ScummVM's (the program keeps no table of this rule); ${dealt} deals over bands of 16 to 1: groups, tank and orders of each level as the program's, `
+  say(`names, ways and tank as ScummVM's (the program has no table of this rule); ${dealt} deals over bands of 16 to 1: groups, tank and orders of each level as the program's, `
     + `workbench: ${bench.trips} forms given back, ${bench.solved} solved, the strategy's proof held for ${bench.lemma} whole rules (every one the program can deal at levels 1 to 3), ${bench.walks} random branches and ${bench.followed} rules' branches (the dealt one among them) all taking the whole band, the puzzle's answer the check's at every move and ${bench.played} played to the end, slowest step ${bench.slowest} ms; `
-    + `every mudball on its own section, the answer's mudball on each of ${landed} marks`);
+    + `every mudball on a different section, the answer's mudball on each of ${landed} marks`);
 }

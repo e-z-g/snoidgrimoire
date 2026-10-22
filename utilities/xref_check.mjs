@@ -6,11 +6,11 @@
 //     REGS pair, a PATH's NODE;
 //   - every resource the site reads (zbSiteReads) is on the disc, bar the
 //     European map's (MAP), which the 1996 disc has too;
-//   - the sheets paired with REGS by length agree with the snoids' own pairs
+//   - the sheets paired with REGS by length match the snoids' pairs
 //     (ZB_SNOID_KINDS) and the town's clock (tBMP 6000, REGS 6000), and
 //     every pair is one-to-one;
 //   - search finds a place, a puzzle's rule, a line of help and a resource
-//     by name, and a query nothing holds finds nothing.
+//     by name, and a query that matches nothing finds nothing.
 import { site, archiveNames, archiveBytes, haveDisc } from './load.mjs';
 
 let fails = 0, bad = 0;
@@ -35,13 +35,13 @@ for (const list of x.out.values()) for (const r of list) { const w = r.why.repla
 const reads = S.zbSiteReads();
 for (const r of reads) if (!there(r.key)) fail(`${r.by} reads ${r.key}, which is not there`);
 
-// The sheets' REGS pairs, against what the site knows of them.
+// The sheets' REGS pairs, against the site's pairs for them.
 const pairs = new Map();
 for (const [n, a] of archives) for (const p of S.zbXrefSheetRegs(a)) pairs.set(`${n}/tBMP/${p.sheet}`, `${n}/REGS/${p.regs}`);
 const want = [...Object.values(S.ZB_SNOID_KINDS).map(K => [`${K.archive}/tBMP/${K.sheet}`, `${K.archive}/REGS/${K.regs}`]), ['TOWN/tBMP/6000', 'TOWN/REGS/6000']];
 for (const [sheet, regs] of want) if (pairs.get(sheet) !== regs) fail(`${sheet}'s points are ${pairs.get(sheet) || 'not found'}, not ${regs}`);
 const used = new Map();
-for (const [sheet, regs] of pairs) { if (used.has(regs)) fail(`${regs} holds the points of ${used.get(regs)} and ${sheet}`); used.set(regs, sheet); }
+for (const [sheet, regs] of pairs) { if (used.has(regs)) fail(`${regs} has the points of ${used.get(regs)} and ${sheet}`); used.set(regs, sheet); }
 let sheets = 0;
 for (const [n, a] of archives) for (const { id } of a.list('tBMP')) if (S.zbXrefFrameCount(a, id) != null) sheets++;
 

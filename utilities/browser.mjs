@@ -87,7 +87,7 @@ class Browser {
 
 /* Open a page in a fresh browser, wait until `until` (evaluated in the page)
    is true or the deadline passes, run opts.then with evaluate() and shot(),
-   and return what the console and the exception stream said. */
+   and return the messages from the console and the exception stream. */
 export async function loadPage(url, until, deadlineMs, opts = {}) {
   const b = new Browser(opts.chrome || findChrome(), opts.webgl);
   const log = [];

@@ -1,5 +1,5 @@
 // A Zoombini put together (js/zb-snoid.js) against the extraction
-// project's Python and the disc's own scripts:
+// project's Python and the disc's scripts:
 //
 //   - all 625 Zoombinis standing (SCRS 100): each part's sprite and where
 //     it goes are what tools/animate.py makes of them (utilities/oracle.py
@@ -14,20 +14,20 @@
 //     snoidticks), each record given the part the layout word and the events
 //     say (zbSnoidTicks, zbSnoidParts), against the part animate.py fits to
 //     it. Where they may differ: a profile tick's body and nose both at pose 4,
-//     which the fit cannot tell apart and the word can (they stand a pixel
+//     which the fit cannot separate and the word can (they stand a pixel
 //     apart); and none else: the nine ticks of FLEENS 7026-7030
 //     and NET 13003-13004 whose order comes from code not traced
 //     (ZB_UNTRACED) are the only ones zbSnoidParts fits;
-//   - no tick of those scripts shown clear: one that draws nothing holds the
-//     last that draws (zbSnoidShown), as the Zoombini maker plays them;
+//   - no tick of those scripts shown clear: one that draws nothing shows the
+//     last that draws again (zbSnoidShown), as the Zoombini maker plays them;
 //   - every pose of those scripts inside its block, for the feet its number
-//     says (zbSnoidFeetOf) or else for some feet;
+//     gives (zbSnoidFeetOf) or else for some feet;
 //   - the walk (zbWalkDirection, zbWalkLeg): its slope thresholds and speeds
 //     as ScummVM's ZmbSnoid::calcPathSpeed has them in its text; ZOOMBINI
 //     SCRS 100 + 5 x feet + direction, for every feet and direction, a walk
 //     of those feet in layout 1 (nose behind the body) exactly when going
 //     away (directions 3 and 4); every leg between two of a room's waypoints
-//     arriving, turned round when it goes left, each step within its speeds.
+//     reaching its end, turned round when it goes left, each step within its speeds.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,7 +61,7 @@ for (let n = 0; n < 625; n++) {
   try { S.zbZoombiniImage(small, z); } catch (e) { if (bad++ < 3) fail(`Zoombini ${n} far off: ${e.message}`); }
 }
 
-// Every tick of the Zoombini's own scripts, inside its blocks.
+// Every tick of the scripts in ZOOMBINI, inside the Zoombini's blocks.
 let ticks = 0;
 for (const { id } of arc.list('SCRS')) {
   if (id < 100 || id > 150) continue;
@@ -119,8 +119,8 @@ for (const n of archiveNames()) {
     counts.held += shown.filter((k, i) => k !== i).length;
     const sheetish = { effects: K.effects, blocks: K.blocks };
     const fits = S.zbSnoidFeetFor(sheetish, ticks), own = S.zbSnoidFeetOf(n, id), feet = own ? [own] : fits;
-    if (own && !fits.includes(own) && bad++ < 12) fail(`${n} SCRS ${id}: written for feet ${own} by its number, whose block does not hold its poses`);
-    if (!feet.length) { if (bad++ < 12) fail(`${n} SCRS ${id}: no feet's block holds its feet's poses`); }
+    if (own && !fits.includes(own) && bad++ < 12) fail(`${n} SCRS ${id}: written for feet ${own} by its number, whose block lacks some of its poses`);
+    if (!feet.length) { if (bad++ < 12) fail(`${n} SCRS ${id}: no feet's block has every pose of its feet`); }
     if (feet.length < 5) counts.feetBound++;
     for (const tk of ticks) for (const p of S.zbSnoidParts(tk, K.effects)) {
       const ok = p.part === 'effect' ? p.shape >= K.effects.first && p.shape < K.effects.first + K.effects.poses
@@ -131,7 +131,7 @@ for (const n of archiveNames()) {
   }
 }
 if (counts.untraced !== Object.values(ZB_UNTRACED).flat().length) fail(`${counts.untraced} ticks fitted, not ${Object.values(ZB_UNTRACED).flat().length}`);
-if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties the layout word decides, ${counts.untraced} untraced ones fitted; ${counts.held} that draw nothing holding the last that does; ${counts.feetBound} scripts written for some feet only`);
+if (!bad) console.log(`${counts.scripts} snoid scripts, ${counts.ticks} ticks (${counts.drawn} drawn) as animate.py reads them, bar ${counts.ambiguous} body-and-nose ties settled by the layout word, ${counts.untraced} untraced ones fitted; ${counts.held} that draw nothing holding the last that does; ${counts.feetBound} scripts written for some feet only`);
 // The walk.
 const cpp = path.join(ROOT, 'reference', 'scummvm-zoombini', 'engines', 'mohawk', 'zoombini_scripts.cpp');
 if (fs.existsSync(cpp)) {
@@ -140,7 +140,7 @@ if (fs.existsSync(cpp)) {
   const speeds = [...body.slice(0, 2500).matchAll(/sx = (\d+);\s*sy = -?(\d+);/g)].map(m => [+m[1], +m[2]]);
   if (JSON.stringify(cuts) !== JSON.stringify([['<=', -1409], ['<=', -332], ['<', 332], ['<', 1409]])) fail(`ScummVM's slope cuts are ${JSON.stringify(cuts)}`);
   if (JSON.stringify(speeds) !== JSON.stringify(S.ZB_WALK_SPEEDS)) fail(`ScummVM's walk speeds are ${JSON.stringify(speeds)}, the site's ${JSON.stringify(S.ZB_WALK_SPEEDS)}`);
-  // The cuts as zbWalkDirection takes them, at each side of each: 1024 across
+  // The cuts in the form zbWalkDirection uses, at each side of each: 1024 across
   // and sl up the screen is a slope of sl.
   const at = sl => S.zbWalkDirection(1024, -sl);
   const sides = [[-1409, 0], [-1408, 1], [-332, 1], [-331, 2], [331, 2], [332, 3], [1408, 3], [1409, 4]];
@@ -161,7 +161,7 @@ for (const n of archiveNames()) {
       if (p === q) continue;
       const leg = S.zbWalkLeg(p.x, p.y, q.x, q.y, 1, 0), last = leg.steps[leg.steps.length - 1];
       legs++;
-      if (last.x !== q.x || last.y !== q.y) { if (bad++ < 12) fail(`${n} NODE ${id}: a leg does not arrive`); continue; }
+      if (last.x !== q.x || last.y !== q.y) { if (bad++ < 12) fail(`${n} NODE ${id}: a leg ends short of its waypoint`); continue; }
       if ((q.x < p.x) !== (leg.facing === 1) && q.x !== p.x) { if (bad++ < 12) fail(`${n} NODE ${id}: a leg left is not turned round`); }
       let x = p.x, y = p.y;
       for (const st of leg.steps) {
@@ -171,5 +171,5 @@ for (const n of archiveNames()) {
     }
   }
 }
-if (!bad) console.log(`the walk: ScummVM's cuts and speeds, the 25 walks in their layouts, ${legs} legs between waypoints arriving`);
+if (!bad) console.log(`the walk: ScummVM's cuts and speeds, the 25 walks in their layouts, ${legs} legs between waypoints reaching their ends`);
 process.exit(fails ? 1 : 0);

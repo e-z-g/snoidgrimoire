@@ -5,7 +5,7 @@
 //     closes are ScummVM's, and so the chances, 12 less the first step;
 //   - the test the drawn traits must pass is generateRoomRules' as ScummVM
 //     writes it, evaluated here for every draw and every count of values a
-//     band can show, and must agree with the port's shorter statement;
+//     band can show, and must match the port's shorter statement;
 //   - ScummVM's TraitAxis numbers the traits feet, nose, eyes, hair and the
 //     program hair, eyes, nose, feet: the check reads ScummVM's enum to see
 //     that this is still so, and the port must have the program's order;
@@ -14,23 +14,23 @@
 //     to right and floors top to bottom, which the answer's words assume;
 //   - over bands of 16, 11, 5, 2 and 1 at each level, every deal is dealt
 //     again here as ScummVM writes generateRoomRules (its loops and draws
-//     in order), and must agree; then the band is given rooms by the marks,
+//     in order), and must match; then the band is given rooms by the marks,
 //     one at a time, and ScummVM's judging (endDrag, validate2 and
 //     validate3TraitPlacement, fillCellRow, setCellTraitsIn3Grids, written
-//     out here) must take every one, round the boarded rooms at level 3,
+//     out here) must let every one in, round the boarded rooms at level 3,
 //     with Zoombinis sharing a mark sharing a room;
-//   - the workbench: the form gives back what is put in and refuses what
+//   - the workbench: the form gives back what is put in and throws on what
 //     the program could not set; every solution is placed room by room
-//     through ScummVM's judging and takes those it says, most is the best
+//     through ScummVM's judging, which lets in those it lists, most is the best
 //     of them, and on small bands no way of placing does better (a search
 //     over every room for every Zoombini) and the ways are the room
 //     assignments that place them all; the strategy's hypotheses are the
 //     traits ScummVM's test allows (at level 3 those the band fits round
 //     the boards), it is walked down every branch on small bands and
 //     played against the dealt traits on large ones, the feedback being
-//     ScummVM's judging, which the puzzle's own answer must agree with at
-//     every move (and zbStrategyPlay end where the play does), and no
-//     branch places fewer than it says are sure;
+//     ScummVM's judging, which the puzzle's answer must match at every
+//     move (and zbStrategyPlay end where the play does), and no branch
+//     places fewer than it gives as sure;
 //     with fewer chances its sure count is held to a plain minimax over
 //     every room on small bands; and the times are kept.
 export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
@@ -135,7 +135,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if ((sb && v3 !== sb) || (rc && v1 !== rc) || (cc && v2 !== cc)) return false;
       return true;
     };
-    // Returns whether the room takes the Zoombini, whose values are v (1-3 of them).
+    // Returns whether the room lets in the Zoombini, whose values are v (1-3 of them).
     return (slot, v) => {
       if (g.first) {
         g.first = false;
@@ -236,7 +236,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const slotOf = (level, pos) => level === 1 ? 5 * pos[0] + 4 : level === 4 ? 25 * pos[1] + 5 * pos[0] + pos[2] : 5 * pos[1] + pos[0];
   const roomRe = level => level === 1 ? /the room in trunk (\d)/ : level === 4 ? /door (\d) on floor (\d) of trunk (\d)/ : /the room on floor (\d) of trunk (\d)/;
   const posFromWords = (level, m) => level === 1 ? [m[1] - 1] : level === 4 ? [m[2] - 1, m[3] - 1, m[1] - 1] : [m[1] - 1, m[2] - 1];
-  // Whether ScummVM's judging lets band member v's values into slot after the placings before.
+  // Whether ScummVM's judging lets band member v's values into slot after the earlier placings.
   const lets = (level, placed, slot, v) => { const take = judge(level); for (const p of placed) if (!take(p.slot, p.v)) return null; return take(slot, v); };
   const kindsAll = ['hair', 'eyes', 'nose', 'feet'];
   const tuplesOf = level => { const A = level === 1 ? 1 : level === 4 ? 3 : 2, out = []; const r = pre => { if (pre.length === A) out.push(pre); else for (let a = 0; a < 4; a++) if (!pre.includes(a)) r([...pre, a]); }; r([]); return out; };
@@ -276,7 +276,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       nd = timedNext(o);
       if (k > 80) throw new Error('a strategy deeper than 80 moves');
     }
-    if (nd.crossed !== placed.length) throw new Error(`a strategy says ${nd.crossed} have rooms, and the judging let in ${placed.length}`);
+    if (nd.crossed !== placed.length) throw new Error(`a strategy has ${nd.crossed} with rooms, and the judging let in ${placed.length}`);
     const end = S.zbStrategyPlay(P, level, band, state, st);
     if (!end || end.crossed !== nd.crossed) throw new Error(`played by the puzzle's answers, the strategy ends ${end ? `with ${end.crossed} in rooms` : 'on an answer it did not look for'}, not ${nd.crossed}`);
     return nd.crossed;
@@ -348,7 +348,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 5) {
             const worst = walkH(level, band, st.root, boards, 0);
-            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy says ${st.sure} are sure, and a branch places ${worst}`); break; }
+            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy has ${st.sure} sure, and a branch places ${worst}`); break; }
             walked++;
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
@@ -382,14 +382,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const knows of ['program', 'form']) {
       const st = P.strategy(3, band, null, { knows, state, budget: 400 });
       if (knows === 'form' && st.sure > sol.most) { fail(`level 3: the strategy is sure of ${st.sure}, more than the ${sol.most} the answer known allows`); break; }
-      if (walkH(3, band, st.root, state.boarded, 0) < st.sure) { fail('level 3: a branch places fewer than said'); break; }
+      if (walkH(3, band, st.root, state.boarded, 0) < st.sure) { fail('level 3: a branch places fewer than the strategy has sure'); break; }
       walked++;
     }
     brute++; notAll++;
   }
-  // Refusals.
+  // Values the form must throw on.
   const bb = bands(1, 11)[0].band;
-  const refuseH = (level, values, what) => { let msg = null; try { P.edit(level, bb, { axis2TraitAxis: 1, axis3TraitAxis: 2 }, values); } catch (e) { msg = e.message; } if (!msg) fail(`the form takes ${what}`); };
+  const refuseH = (level, values, what) => { let msg = null; try { P.edit(level, bb, { axis2TraitAxis: 1, axis3TraitAxis: 2 }, values); } catch (e) { msg = e.message; } if (!msg) fail(`the form accepts ${what}`); };
   refuseH(2, { floor: 'hair', trunk: 'hair' }, 'the same trait for floors and trunks');
   refuseH(3, { floor: 'hair', trunk: 'eyes', boarded: [] }, 'no boarded rooms at level 3');
   refuseH(3, { floor: 'hair', trunk: 'eyes', boarded: [0, 1, 2, 3, 4, 5, 6, 7, 8] }, 'nine boarded rooms');
@@ -422,7 +422,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const tuples = tuplesOf(level);
       for (let c = 1; c <= 2; c++) {
         const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), want = plainH(level, band, tuples, boards, c);
-        if (!st.exact || st.sure !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy says ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+        if (!st.exact || st.sure !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy has ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
         plain++;
       }
     }

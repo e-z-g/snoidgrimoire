@@ -12,8 +12,8 @@
 //     map the current page, sixteen Zoombinis made and those sixteen;
 //   - ScummVM's trait value names are the site's ZB_TRAIT_SHORT, value for
 //     value, where the two use the same word;
-//   - written back, the save and the roster are their own bytes, and so is
-//     a file of noise in every layout.
+//   - written back, the save and the roster are the bytes they were read
+//     from, and so is a file of noise in every layout.
 import fs from 'node:fs';
 import path from 'node:path';
 import { site, REF } from './load.mjs';
@@ -56,7 +56,7 @@ if (fs.existsSync(HDR)) {
       const w = pick(tags);
       if (w === undefined) continue;                  // the header gives this field no offset in this release
       const got = k in offsets ? offsets[k] : null;
-      if (got !== w) fail(`${L.name} ${k} at ${got === null ? 'nowhere' : '0x' + got.toString(16)}, the header says ${w === null ? 'absent' : '0x' + w.toString(16)}`);
+      if (got !== w) fail(`${L.name} ${k} at ${got === null ? 'nowhere' : '0x' + got.toString(16)}, the header has ${w === null ? 'absent' : '0x' + w.toString(16)}`);
       offsetsChecked++;
     }
     for (const k of Object.keys(offsets)) if (!(k in want)) fail(`${k} is not a ZmbStateFile member with an offset`);
@@ -136,8 +136,8 @@ if (fs.existsSync(HDR)) {
 }
 
 // ---- (d) written back -----------------------------------------------------
-if (!same(S.zbSaveWrite(f), bytes)) fail('the save does not write back to its own bytes');
-if (!same(S.zbSaveRosterWrite(who), whoBytes)) fail('the roster does not write back to its own bytes');
+if (!same(S.zbSaveWrite(f), bytes)) fail('the save does not write back to the bytes it was read from');
+if (!same(S.zbSaveRosterWrite(who), whoBytes)) fail('the roster does not write back to the bytes it was read from');
 let seed = 1;
 const noise = n => Uint8Array.from({ length: n }, () => (seed = (seed * 1103515245 + 12345) >>> 0) >>> 24);
 for (const L of S.ZB_SAVE_LAYOUTS) {

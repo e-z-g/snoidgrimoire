@@ -3,7 +3,7 @@
 // music, the palettes, the string lists, the cursors, the walk nodes and
 // paths, the registration points. There is no second reader of these to
 // compare with; each reader throws unless the resource is exactly as long
-// as its own counts say, which is the check. What it read is summed up.
+// as the counts in it give, which is the check. What it read is summed up.
 import { site, haveDisc, archiveNames, archiveBytes } from './load.mjs';
 
 if (!haveDisc()) { console.log('SKIP: no reference/disc/DATA'); process.exit(0); }

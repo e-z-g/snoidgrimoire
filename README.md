@@ -5,7 +5,7 @@ Zoombinis* (1996), the logic game by Brøderbund. A sibling of
 [grimoire](https://github.com/ratlizard/grimoire), which does the same for
 *Cythera*.
 
-`index.html` opens on the journey's map, the game's own, where each of the
+`index.html` opens on the game's map of the journey, where each of the
 sixteen places opens into its scene as you zoom in, with its route and its
 help at each level. Zoombiniville can be stood in, all round, on a screen
 or in a VR headset, with its houses, reward buildings, inhabitants, clock

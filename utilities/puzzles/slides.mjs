@@ -5,10 +5,10 @@
 //     joining stones, searches and pruning, the stones the judge visits,
 //     and every cell's place on the screen, are ScummVM's, read from its
 //     text; the cell states and trait codes are its enums;
-//   - the program keeps them as tables of 16-bit words, and they are in
+//   - the program stores them as tables of 16-bit words, and they are in
 //     ZOOMBINI.EXE: level 1's rows, level 3's rings, and level 4's two
 //     search lists in one run, as in the Win32 program; level 4's stones
-//     and joining stones each on their own; the judge's list just before
+//     and joining stones each separate; the judge's list just before
 //     "Slides.MHK";
 //   - ScummVM's text still has what the port copies from it (the pairing's
 //     count of singles set once for all ten tries, the level 4 chain's
@@ -17,7 +17,7 @@
 //     the program in instead (the first search's stop one short);
 //   - the chances are debugGetChances' none counted;
 //   - over bands of 16 down to 1 at each level, the dealt placement puts
-//     every Zoombini on its own stone, one stone each, every marked stone
+//     every Zoombini on a stone, one stone each, every marked stone
 //     joins two Zoombinis who share its trait, the program's judge raises
 //     them all, and swapping a Zoombini for one that differs across a marked
 //     stone stops at least one from rising; each level has its form.
@@ -79,7 +79,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   need(/if \(_puzzleLevel == kPuzzleLevel4\) \{\s*int16 randVal = _vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'level 4\'s look, drawn first');
   // The program's first search at level 4 has no such stop; the port follows the program.
   need(/if \(_pageLoadedZmbCount <= snoidIdx \+ 1\)\s*break;\s*if \(!checkFirstTraitMatch\(snoidIdx \+ 1, snoidIdx\)\)/, cpp, 'the first search\'s stop one short');
-  // The program's own words at level 4, which ScummVM does not have.
+  // The program's words at level 4, which ScummVM does not have.
   const zone = 'You have entered the psychedelic ZB Zone!';
   if (!find(exe, [...zone].map(ch => ch.charCodeAt(0))).length || /psychedelic/.test(cpp + h) || !P.levels[3].notes.some(t => t.includes(zone))) fail('the ZB Zone is not the program\'s alone, or the note does not quote it');
   if (!/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kInfinite/.test(cpp) || !/As many tries as it takes/.test(P.levels[0].chances)) fail('ScummVM counts chances at Stone Rise, or the port does');
@@ -197,7 +197,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const x of sol.solutions) {
       const zs = x.diagram.items.filter(it => it.t === 'zoombini');
       if (!same(zs.map(it => it.i).sort((a, b) => a - b), band.map((_, i) => i))) { why.push('a diagram does not draw each Zoombini once'); break; }
-      // The Zoombinis drawn on stones, as the judge takes them.
+      // The Zoombinis drawn on stones, in the form the judge reads.
       const at = new Map();
       const g = S.zbSlidesGraph(f), number = S.zbSlidesNumbers(f.slots);
       for (const m of x.steps[0].matchAll(/Zoombini (\d+) on stone (\d+)/g)) at.set(g.stones.find(c => number.get(c) === +m[2]), +m[1] - 1);
@@ -205,7 +205,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const crossing = [...at].filter(([c]) => risen.has(c)).map(([, z]) => z).sort((a, b) => a - b);
       if (!same(crossing, x.crosses) || x.crosses.length !== sol.most) { why.push(`a solution's ${x.crosses.length} crossing are not what the judge raises (${crossing.length})`); break; }
       if (zs.some(it => !it.faded !== x.crosses.includes(it.i))) { why.push('a diagram fades the wrong Zoombinis'); break; }
-      if (S.zbSlidesZone(level, g, g.stones.map(c => at.has(c) ? at.get(c) : -1), g.stones.map(c => risen.has(c))) !== x.steps.some(t => /ZB Zone/.test(t))) { why.push('the ZB Zone is not said where it is entered'); break; }
+      if (S.zbSlidesZone(level, g, g.stones.map(c => at.has(c) ? at.get(c) : -1), g.stones.map(c => risen.has(c))) !== x.steps.some(t => /ZB Zone/.test(t))) { why.push('the ZB Zone is not written where it is entered'); break; }
       if (x.steps.some(t => /ZB Zone/.test(t))) bench.zone++;
     }
     for (let k = 1; k < sol.solutions.length; k++) if (sol.solutions[k].inv < sol.solutions[k - 1].inv) { why.push('the solutions are not simplest first'); break; }
@@ -214,7 +214,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (small) {
       const b = brute(level, band, state);
       bench.brute++;
-      if (b.most !== sol.most || (sol.exact && sol.ways != null && b.ways !== sol.ways)) why.push(`the most is ${b.most} in ${b.ways} ways by trying all, the solver says ${sol.most} in ${sol.ways}`);
+      if (b.most !== sol.most || (sol.exact && sol.ways != null && b.ways !== sol.ways)) why.push(`the most is ${b.most} in ${b.ways} ways by trying all, the solver gives ${sol.most} in ${sol.ways}`);
     }
     bench.solved++;
     return why;
@@ -244,7 +244,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const key = P.form(1, band, d.state)[0].key;
     let caught = 0;
     for (const v of [{ [key]: 'plain' }, { [key]: 'ears' }, { j999: 'hair' }]) { try { P.edit(1, band, d.state, v); } catch (e) { caught++; } }
-    if (caught !== 3) fail('the form takes a plain stone at level 1, a trait that is none, or a stone that is not there');
+    if (caught !== 3) fail('the form accepts a plain stone at level 1, a trait that is none, or a stone that is not there');
   }
   say(`tables as ScummVM's, and in ZOOMBINI.EXE (0x${(at[0] || 0).toString(16)}; 0x${(found[0] || 0).toString(16)} to 0x${(found[3] || 0).toString(16)}; 0x${(judged[0] || 0).toString(16)}, before "Slides.MHK"); `
     + `${counts.deals} deals over bands of 16 to 1: every placement one stone each, every marked stone satisfied, all risen by the program's judge, `

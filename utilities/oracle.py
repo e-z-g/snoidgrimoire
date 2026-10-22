@@ -1,6 +1,6 @@
 """What the extraction project's Python makes of the disc, as JSON, for the
-checks to hold js/ to. It imports the tools from reference/tools, or from
-$ZB_TOOLS (a front's own, before it lands), and never changes them.
+checks to compare js/ with. It imports the tools from reference/tools, or
+from $ZB_TOOLS (a front's tools, before it lands), and never changes them.
 
     python3 utilities/oracle.py archives   # every archive's directory
     python3 utilities/oracle.py bitmaps    # every tBMP, frame by frame

@@ -22,13 +22,13 @@
 //     does not depend on the band;
 //   - the workbench: the form gives back the wishes it shows and turns
 //     away wishes the program could not deal; the solution feeds each
-//     troll its own meal as the port's judge serves it; and the strategy,
+//     troll the meal of its wish as the port's judge serves it; and the strategy,
 //     played against every hypothesis at levels 1 and 2 and hundreds at 3
 //     and 4 (with the pit known and not), the trolls' reactions worked out
-//     by zbPizzaJudge and by the puzzle's answer, which agree at every
+//     by zbPizzaJudge and by the puzzle's answer, which match at every
 //     move, and walked again by zbStrategyPlay to the same end, never
-//     serves a meal twice or off the machine and never gets fewer across
-//     than it says are sure; level 1's every branch walked; within its time.
+//     serves a meal twice or off the machine and never has fewer across
+//     than it gives as sure; level 1's every branch walked; within its time.
 export default function check({ S, fail, say, scumm, exe, need, bands }) {
   const h = scumm('zoombini_pages/puzzle_pizza.h'), cpp = scumm('zoombini_pages/puzzle_pizza.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -106,7 +106,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
 
   // ---- ZOOMBINI.EXE: each level's numbers, a run of word stores ----------
   // mov word ptr [addr], imm is C7 06 then the address and the value. The
-  // program keeps the slots at 896c, the threshold at 896e, the minimum at
+  // program stores the slots at 896c, the threshold at 896e, the minimum at
   // 8970, the forgiven meals at 8968 and the trolls at 8960, 8962 and 8964.
   const runs = [];
   for (let i = 0; i + 6 <= exe.length; i++) {
@@ -147,7 +147,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       if (level === 2) level2++;
       if (s.generatedToppings.length === buttons.length) allWanted[level - 1]++;
 
-      // Each troll's own meal is eaten by it; every other meal by no one.
+      // Each troll eats the meal of its wish, and no troll eats any other meal.
       const hungry = [true, l.trolls >= 2, l.trolls >= 3];
       for (let t = 0; t < l.trolls && !bad; t++) {
         const r = S.zbPizzaServe(s, hungry, wants[t]);
@@ -166,7 +166,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
         const whose = i => wants.findIndex(w => w.includes(i));
         const pit = s.rejectExamples || [];
         const mine = new Set(pit.flat().filter(i => whose(i) === most)), others = pit.flat().filter(i => whose(i) !== most);
-        if (pit.length !== 4 || new Set(pit.map(m => m.join())).size !== 4) bad = `the pit holds ${JSON.stringify(pit)}, not four different meals`;
+        if (pit.length !== 4 || new Set(pit.map(m => m.join())).size !== 4) bad = `the pit has ${JSON.stringify(pit)}, not four different meals`;
         else if (mine.size !== 2 || new Set(others.map(whose)).size !== 2 || pit.some(m => m.length !== 2 || m.filter(i => whose(i) === most).length !== 1)) bad = `the pit's meals ${JSON.stringify(pit)} do not pair two of ${S.ZB_PIZZA_TROLLS[most]}'s toppings with one of each other troll's`;
         else if (pit.some(m => S.zbPizzaServe(s, hungry, m).eaten >= 0 || S.zbPizzaServe(s, hungry, m).rock >= 0)) bad = 'a pit meal is eaten or put on a rock';
       } else if (level < 4 && s.rejectExamples) bad = 'a pit meal below level 4';
@@ -179,7 +179,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   // Round trips of the form; the solution fed as the port's judge feeds
   // it; the strategy played against every hypothesis at levels 1 and 2,
   // and hundreds at 3 and 4, the game's reactions worked out by the port's
-  // own judge (zbPizzaJudge), never fewer across than it says are sure.
+  // judge (zbPizzaJudge), never fewer across than it gives as sure.
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
   const drawnOnce = (d, n) => same(d.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((x, y) => x - y), [...Array(n).keys()]);
   let trips = 0, solves = 0;
@@ -189,7 +189,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       const d = P.deal(level, band, S.zbRandom(seed), {}), v = valuesOf(P.form(level, band, d.state)), again = P.edit(level, band, d.state, v);
       if (!same(valuesOf(P.form(level, band, again)), v) || !same(S.zbPizzaWishes(level, again), S.zbPizzaWishes(level, d.state)) || !same(again.rejectExamples, d.state.rejectExamples)) bad = 'the form does not give back the wishes it shows';
       const sol = P.solve(level, band, d.state), s0 = sol.solutions[0];
-      if (!bad && (sol.most !== band.length || !sol.exact || s0.crosses.length !== band.length || !drawnOnce(s0.diagram, band.length))) bad = 'the solution does not take and draw the whole band';
+      if (!bad && (sol.most !== band.length || !sol.exact || s0.crosses.length !== band.length || !drawnOnce(s0.diagram, band.length))) bad = 'the solution leaves some of the band behind or undrawn';
       if (!bad) {
         const hungry = [true, L[level - 1].trolls > 1, L[level - 1].trolls > 2], tried = (d.state.rejectExamples || []).map(m => m.join());
         S.zbPizzaWishes(level, d.state).forEach((w, t) => {
@@ -207,11 +207,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
     [3, { s0: 'Arno', s1: 'Arno', s2: 'Willa', s3: 'Willa', s4: 'nobody', s5: 'nobody', s6: 'nobody' }, 'Shyler wanting nothing'],
     [4, { s0: 'Arno', s1: 'Willa', s2: 'Shyler', s3: 'nobody', s4: 'nobody', s5: 'nobody', s6: 'nobody', s7: 'nobody' }, 'three toppings at level 4'],
     [2, { s0: 'Shyler', s1: 'Arno', s2: 'Arno', s3: 'Willa', s5: 'nobody', s6: 'nobody' }, 'Shyler at level 2']];
-  for (const [level, values, what] of rejects) { let threw = false; try { P.edit(level, band5, base4, values); } catch (x) { threw = true; } if (!threw) fail(`the form takes ${what}`); }
+  for (const [level, values, what] of rejects) { let threw = false; try { P.edit(level, band5, base4, values); } catch (x) { threw = true; } if (!threw) fail(`the form accepts ${what}`); }
   const moved = P.edit(4, band5, base4, { s0: 'Arno', s1: 'Arno', s2: 'Arno', s3: 'Willa', s4: 'Willa', s5: 'Shyler', s6: 'nobody', s7: 'Shyler' });
   if (!same(moved.rejectExamples, [[0, 3], [1, 3], [1, 5], [0, 5]])) fail(`edited wishes at level 4 give the pit ${JSON.stringify(moved.rejectExamples)}`);
 
-  // The strategy, played: each move answered by the check's own judge,
+  // The strategy, played: each move answered by the judge written here,
   // and by the puzzle's answer, which must pick the same outcome; then
   // again by zbStrategyPlay, the page's walk, to an end as good as sure.
   let played = 0, walkedAll = 0, slowest = 0, slowNext = 0, answered = 0;
@@ -226,7 +226,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
     const e = [...S.ZB_PIZZA_ENGINES.values()].find(x => x.level === level && x.knows === knows && same(x.pit, state ? state.rejectExamples.map(m => m.reduce((a, sl) => a | 1 << S.zbPizzaSlots(level).indexOf(sl), 0)).sort((x, y) => x - y) : []));
     if (!e || e.count !== st.hypotheses) { fail(`level ${level} (${knows}): the strategy's hypotheses are not its engine's`); continue; }
     const buttons = S.zbPizzaSlots(level), T = L[level - 1].trolls, pit = state ? state.rejectExamples.map(m => m.join()) : [];
-    // A node is made once: zbStrategyPlay, after the judge, takes the same.
+    // Each node is made one time: zbStrategyPlay, after the judge, reads the same node.
     const next = o => { if (!o.node) { const t1 = Date.now(), nd = o.next(); o.node = nd; o.next = () => nd; slowNext = Math.max(slowNext, Date.now() - t1); } return o.node; };
     const rnd = S.zbRandom(1000 + level);
     const pickH = e.count <= 800 ? [...Array(e.count).keys()] : Array.from({ length: 300 }, () => rnd.number(e.count - 1));
@@ -256,12 +256,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       }
       if (bad) break;
       worst = Math.min(worst, node.crossed);
-      if (node.crossed < st.sure) { bad = `a play gets ${node.crossed} across where ${st.sure} are said to be sure`; break; }
+      if (node.crossed < st.sure) { bad = `a play has ${node.crossed} across where ${st.sure} are marked sure`; break; }
       const end = S.zbStrategyPlay(P, level, band, hs, st);
       if (end !== node) { bad = `zbStrategyPlay ends ${end ? `with ${end.crossed} across` : 'on a move with no branch'}, not where the judge's play does, with ${node.crossed}`; break; }
       played++;
     }
-    if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `said to be exact at ${st.sure} but every play gets ${worst} or more`;
+    if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `marked exact at ${st.sure} but every play has ${worst} or more`;
     if (!bad && level === 1) {
       const walk = (nd, depth) => { if (depth > 40) throw new Error('too deep'); if (!nd.outcomes.length) { if (nd.crossed < st.sure) bad = 'a branch short of sure'; return 1; } return nd.outcomes.reduce((t, o) => t + walk(next(o), depth + 1), 0); };
       walkedAll += walk(st.root, 0);

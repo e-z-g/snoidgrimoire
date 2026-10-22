@@ -1,19 +1,19 @@
 // Bubblewonder Abyss (js/zb-puzzle-maze2.js) against ScummVM's
-// puzzle_maze.cpp and .h, the 1996 program and MAZE2's own layouts:
+// puzzle_maze.cpp and .h, the 1996 program and the layouts in MAZE2:
 //
 //   - the tables: the feature slots' trait offsets, kinds and values, the
 //     thresholds, level 4's counts, the colour pool and names, the seats'
 //     squares and ways and the exits round the corners, are ScummVM's,
-//     read from its text; the program keeps them as tables, and packed as
+//     read from its text; the program stores them as tables, and packed as
 //     its words they are in ZOOMBINI.EXE (the pool, slot kinds and values,
 //     offsets and thresholds in one run; level 4's counts just before
 //     "Maze2.MHK"; the seats' squares with the exits; the seats' ways
 //     before kSeatFlagValue; the slot kinds after the drag rectangles);
-//   - which layout each level takes, how the counters step and when a
-//     small band gets its own, which selector each layout runs, the
+//   - which layout each level uses, how the counters step and when a
+//     small band has a separate one, which selector each layout runs, the
 //     colour draws and level 4's draws, as ScummVM writes them, and the
 //     two lines where the port follows the program instead of ScummVM;
-//   - the calls' ranges in the port's own text are the ones ScummVM's
+//   - the calls' ranges in the port's text are the ones ScummVM's
 //     selectors make;
 //   - the layouts, which the port reads from MAZE2 itself, match a second
 //     reading of MAZE2's REGS words made here, record for record, and a
@@ -25,18 +25,18 @@
 //     launch is played again below by a second reading, frame by frame
 //     (bubbles set moving together, collisions, the grid's edge);
 //   - the workbench: the form gives back what it was given, for the dealt
-//     puzzle and for another layout and features, and edit refuses a
+//     puzzle and for another layout and features, and edit throws on a
 //     layout of another level and a feature that is none; every solution,
 //     played again by a second reading of the game here (sticky squares,
-//     knocks and frees included), sends across whom it says, one launch a
+//     knocks and frees included), sends across the Zoombinis it lists, one launch a
 //     step, and its diagram shows each Zoombini once, those across
 //     unfaded; for bands of four or fewer every order of launches one at a
-//     time is tried, and nothing gets more across than solve says, nor fewer
-//     when it says it is proven, nor more than its bound for any play; solve
-//     is exact only where the two meet; and each solve keeps within two
-//     seconds;
+//     time is tried, and none has more across than solve gives, nor fewer
+//     when solve marks its answer proven, nor more than its bound for any
+//     play; solve is exact only where the two meet; and each solve stays
+//     within two seconds;
 //   - over bands of 16, 11, 7, 4 and 2 at each level and both layouts,
-//     every feature arrow gets a slot and every slot an arrow, the
+//     every feature arrow has a slot and every slot an arrow, the
 //     colours are a permutation, the key feature is the one the level's
 //     ranges pick and sits on the arrows the level puts it on, a last pair
 //     drawn at random at level 1 is of features nobody has, the counters
@@ -118,11 +118,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     [/case kMazeLayoutLevel4:\s*buildZmbAssignmentList\(\);[\s\S]*?else\s*variantState\._level4 \+= 2;\s*if \(2 < variantState\._level4\)\s*variantState\._level4 = 0;/, 'level 4'],
     [/default:[^\n]*\n\s*selectPathSlots\(\);/, 'the small band'],
   ];
-  for (const [re, what] of dispatch) if (!re.test(init)) fail(`ScummVM's initGridAndSelectPaths no longer reads as the port for ${what}`);
+  for (const [re, what] of dispatch) if (!re.test(init)) fail(`ScummVM's initGridAndSelectPaths differs from the port for ${what}`);
   const shuffle = need(/lastAvailablePathPoolIdx = (\d+);\s*for \(int16 group = (\d+); group < (\d+); group\+\+\) \{\s*const int16 randIdx = _vm->_rnd->getRandomNumber\((\d+), lastAvailablePathPoolIdx\);/, init, 'the colour shuffle').slice(1).map(Number);
   if (!same(shuffle, [8, 2, 9, 2])) fail(`the colour shuffle is ScummVM's ${shuffle}`);
   const list = need(/void ZoombiniPuzzleMaze::buildZmbAssignmentList\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbAssignmentList')[1];
-  if ([...list.matchAll(/getRandomNumber\(1, 20\)/g)].length !== 2 || [...list.matchAll(/getRandomNumber\(0, 2\)/g)].length !== 1) fail(`level 4's own draws are not two of 1-20 and one of 0-2`);
+  if ([...list.matchAll(/getRandomNumber\(1, 20\)/g)].length !== 2 || [...list.matchAll(/getRandomNumber\(0, 2\)/g)].length !== 1) fail(`level 4's extra draws are not two of 1-20 and one of 0-2`);
   const sel2 = need(/void ZoombiniPuzzleMaze::selectPathSlots2\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots2')[1];
   if (!/_puzzleLevel == kPuzzleLevel2 && phase == 0/.test(sel2)) fail('ScummVM no longer doubles level 2\'s first middle feature');
   // The two differences: ScummVM excludes the slot just drawn; the program (0x4339b6, 0x433ddf) excludes nothing.
@@ -130,7 +130,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   for (const [text, fn] of [[sel2, 'selectPathSlots2'], [sel1, 'selectPathSlots']]) {
     if (!/int16 secondFinalSlot = findHighestScoredSlot\(firstFinalSlot\);/.test(text)) fail(`ScummVM's ${fn} no longer excludes firstFinalSlot: the port's note on the difference is stale`);
   }
-  // The ranges the selectors ask for, in ScummVM and in the port's text.
+  // The ranges the selectors draw from, in ScummVM and in the port's text.
   const calls = (text, fn) => [...text.matchAll(new RegExp(`${fn}\\((\\d+), (\\d+)\\)`, 'g'))].map(m => `${m[1]},${m[2]}`);
   for (const fn of ['findBestTraitSlotInRange', 'commitBestTraitSlot', 'findAndCommitNewTraitSlot', 'findAndCommitNextSlot']) {
     const a = [...new Set(calls(cpp, fn))].sort(), b = [...new Set(calls(port, fn))].sort();
@@ -160,17 +160,17 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     if (!L || !same(L.seats, w.slice(1, 10).filter(Boolean).map(x => x - 1)) || !same(L.cells, cells) || w.length !== 10 + 10 * w[0]) fail(`layout ${id} as the port reads it is not MAZE2's REGS ${id}`);
   }
   if (!arc.has('REGS', ids.L4Unused) || layouts[ids.L4Unused]) fail(`REGS ${ids.L4Unused} should be in MAZE2 and not read`);
-  // The movement's timing, from MAZE2's own scripts: every movement script
+  // The movement's timing, from the scripts in MAZE2: every movement script
   // (SCRS 15015-15034, five feet a direction) is ZB_MAZE2_STEP frames long,
   // claims its square on the frames before the last, ZB_MAZE2_CLAIM among
-  // them, and says it has arrived on the last; ScummVM counts the claim on
+  // them, and marks its arrival on the last; ScummVM counts the claim on
   // that frame only, pairs the second claimant with the first, and starts a
-  // launch from the right or left on its own square (the program's 0x4301d6).
+  // launch from the right or left on the launcher's square (the program's 0x4301d6).
   let scripts = 0;
   for (let id = 15015; id <= 15034; id++) {
     const sc = S.parseScript(arc.get('SCRS', id), 'SCRS'), ev = sc.frames.map(f => f.event);
     const claimByte = 21 + 10 * Math.floor((id - 15015) / 5);
-    if (sc.frameCount !== S.ZB_MAZE2_STEP || ev[0] || ev.slice(1, -1).some(e => e !== claimByte) || ev[ev.length - 1] !== claimByte + 1) fail(`SCRS ${id} is not a ${S.ZB_MAZE2_STEP}-frame step claiming and arriving as the port has it: ${ev}`);
+    if (sc.frameCount !== S.ZB_MAZE2_STEP || ev[0] || ev.slice(1, -1).some(e => e !== claimByte) || ev[ev.length - 1] !== claimByte + 1) fail(`SCRS ${id} is not a ${S.ZB_MAZE2_STEP}-frame step claiming and reaching its square as the port has it: ${ev}`);
     else scripts++;
   }
   const claimFrame = Number(need(/snoid->getLastFrameIdx\(\) != (\d)\)/, cpp, 'the claim frame')[1]);
@@ -280,7 +280,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
         band.forEach((z, i) => {
           const by = st.traitArrows.map((a, k) => (a.traitValue && z[S.ZB_TRAIT_KINDS[a.traitCategory - 1]] === a.traitValue ? S.ZB_MAZE2_LETTERS[k] : '')).filter(Boolean);
           const out = seats.map(x => launch(g, z, x));
-          if (!same(out, st.launches[i])) bad = `${S.zbZoombiniWords(z)} launches ${out}, the deal says ${st.launches[i]}`;
+          if (!same(out, st.launches[i])) bad = `${S.zbZoombiniWords(z)} launches ${out}, the deal gives ${st.launches[i]}`;
           if (!d.marks[i].startsWith(`turned by ${by.length ? S.zbWordsOr(by, 'and') : 'no feature arrow'};`)) bad = `mark "${d.marks[i]}" for arrows ${by}`;
           for (const o of out) outcomes.set(o, (outcomes.get(o) || 0) + 1);
           if (level < 4) { sent++; if (out.includes('across')) crossed++; }
@@ -327,7 +327,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       load: s => { s.where.forEach((v, i) => { where[i] = v; }); dir.clear(); s.dir.forEach((v, k) => dir.set(k, v)); held.clear(); s.held.forEach((v, k) => held.set(k, v)); },
       // One launch as the program plays it (the per-frame loop of
       // ZOOMBI32.EXE, the Mac's MODULEDELAYPROC), frame by frame: a bubble
-      // takes seven frames a square, claims the square it is entering on
+      // spends seven frames on a square, claims the square it is entering on
       // the fourth and meets it on the seventh; each frame the waiting
       // captives start, the last queued first, then the arrivals, the
       // latest set moving first, then any two that claimed one square are
@@ -447,7 +447,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
           for (const l of s.launches) if (!seats.includes(l.seat) || !W.launch(l.i, l.seat)) { problem = `${s.title}: launch ${l.i + 1} from seat ${l.seat + 1} is not one the game allows`; break; }
           if (problem) break;
           const across = band.map((_, i) => i).filter(i => W.where[i] === 3);
-          if (!same(across, s.crosses) || !s.title.startsWith(`${across.length} of ${band.length} across`)) { problem = `${s.title}: played again, ${across.length} cross (${across}), it says ${s.crosses}`; break; }
+          if (!same(across, s.crosses) || !s.title.startsWith(`${across.length} of ${band.length} across`)) { problem = `${s.title}: played again, ${across.length} cross (${across}), it lists ${s.crosses}`; break; }
           if (s.steps.length !== Math.max(1, s.launches.length)) { problem = `${s.title}: ${s.steps.length} steps for ${s.launches.length} launches`; break; }
           const zs = s.diagram.items.filter(it => it.t === 'zoombini');
           if (!same(zs.map(it => it.i).sort((a, b) => a - b), band.map((_, i) => i)) || zs.some(it => !!it.faded === s.crosses.includes(it.i))) { problem = `${s.title}: the diagram does not show each Zoombini once, the ones across unfaded`; break; }
@@ -456,7 +456,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
         }
         if (problem) { fail(`${tag}: ${problem}`); break; }
         if (!sol.solutions.length) { fail(`${tag}: no solution`); break; }
-        if (sol.solutions[0].crosses.length !== sol.most) { fail(`${tag}: the simplest gets ${sol.solutions[0].crosses.length} across, most is ${sol.most}`); break; }
+        if (sol.solutions[0].crosses.length !== sol.most) { fail(`${tag}: the simplest has ${sol.solutions[0].crosses.length} across, most is ${sol.most}`); break; }
         if (sol.most < band.length) fewer++;
         // Exact only where the one-at-a-time most, proven, meets the bound for any play.
         if (!(sol.upper >= sol.most) || sol.exact !== (sol.oneAtATime.proven && sol.most >= sol.upper)) { fail(`${tag}: most ${sol.most}, bound ${sol.upper}, proven ${sol.oneAtATime.proven}, exact ${sol.exact}`); break; }
@@ -466,10 +466,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
           const top = brute(st.mazeLayoutRegsId, st.traitArrows, band, seats);
           if (top == null) continue;
           brutes++;
-          if (top < sol.most || top > sol.upper || (sol.oneAtATime.proven && top !== sol.most)) { fail(`${tag}: every order one at a time gets ${top} across at most, solve says ${sol.most}${sol.oneAtATime.proven ? ', proven' : ''}, bound ${sol.upper}`); break; }
+          if (top < sol.most || top > sol.upper || (sol.oneAtATime.proven && top !== sol.most)) { fail(`${tag}: every order one at a time has ${top} across at most, solve gives ${sol.most}${sol.oneAtATime.proven ? ', proven' : ''}, bound ${sol.upper}`); break; }
           // And with too little time for the full search, what best first proves.
           const hurried = P.solve(level, band, st, arc, { budget: 4 });
-          if (top < hurried.most || (hurried.oneAtATime.proven && top !== hurried.most)) { fail(`${tag}: every order one at a time gets ${top} across at most, solve in a hurry says ${hurried.most}${hurried.oneAtATime.proven ? ', proven' : ''}`); break; }
+          if (top < hurried.most || (hurried.oneAtATime.proven && top !== hurried.most)) { fail(`${tag}: every order one at a time has ${top} across at most, solve in a hurry gives ${hurried.most}${hurried.oneAtATime.proven ? ', proven' : ''}`); break; }
         }
       }
     }
@@ -479,7 +479,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${at1.toString(16)}, 0x${at2.toString(16)}, 0x${at3.toString(16)}, 0x${at4.toString(16)} and 0x${at5.toString(16)}; `
     + `${want.length} layouts read from MAZE2 as a second reading of its REGS gives (${records} records), and an Error without them; ${scripts} movement scripts ${S.ZB_MAZE2_STEP} frames a square, claiming on frame ${S.ZB_MAZE2_CLAIM}; ${dealt} deals with a slot for every feature arrow, the key the ranges pick and the repeats each level makes (${nobody} arrows showing a feature nobody in the band has); `
     + `first launches as a second reading gives (${tally}; ${crossed} of ${sent} Zoombinis at levels 1-3 cross from some launcher); `
-    + `workbench: ${trips} forms given back and ${rejects} bad values refused, ${sols} solutions played again as said, ${brutes} small bands' most matched by trying every order, `
+    + `workbench: ${trips} forms given back and ${rejects} bad values thrown on, ${sols} solutions played again as listed, ${brutes} small bands' most matched by trying every order, `
     + `${fewer} puzzles where not everyone can cross one at a time (${unsettled} of them short of the bound for launches that overlap), ${exactBig} of ${bigs} with 11 or more proven, the slowest solve ${worst} ms`);
 
   // ---- a layout edited (the page's layout editor) ------------------------

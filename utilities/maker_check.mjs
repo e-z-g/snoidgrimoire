@@ -1,26 +1,26 @@
 // The snoids as js/zb-snoid.js plays them, against the Zoombini maker
 // (e-z-g.github.io/zoombinis, reference/site/sprites.js), whose clips Sam
 // has watched and judged: the maker is where the scripts' playback was
-// settled by eye, so what the site plays should agree with it. The maker's
+// settled by eye, so what the site plays should match it. The maker's
 // clips are the scripts boiled down by tools/export_web.py (clip(),
 // walk_cycle(), walk_clip()), so each is read here the same way from what
 // zbSnoidTicks, zbSnoidShown and zbSnoidParts make of the script:
 //
 //   - the idles (ZOOMBINI SCRS 130-137, FLEENS 4000-4003) and the feet shows
 //     (ZOOMBINI 146-150), tick for tick from the first that draws: the
-//     figure's move, the head's facing, the feet's pose in the clip's own
+//     figure's move, the head's facing, the feet's pose in the clip's
 //     list, and the eyes, whose codes (rest, blink, glances) must stand for
-//     one pose each at each facing; a tick that draws nothing holds the one
-//     before, as the maker holds it;
+//     one pose each at each facing; a tick that draws nothing repeats the
+//     one before, as in the maker;
 //   - the Zoombini's 25 walks (SCRS 105-129), one loop of each: every part's
 //     pose, the body's move, and the head turned away (the maker draws the
 //     nose before the body at nose pose 4) exactly where zb-snoid.js draws
 //     the nose first. The maker follows animate.py's fitted body and nose,
-//     so on the ties the layout word decides (snoid_check) the body's move
+//     so on the ties settled by the layout word (snoid_check) the body's move
 //     may differ by a pixel; those are counted, not failed.
 //
-// Not compared: the tumble, which the maker builds from a spin of its own
-// and one landing script; the Fleen's hops and runs, which it holds on the
+// Not compared: the tumble, which the maker builds from a separate spin
+// and one landing script; the Fleen's hops and runs, which it pins to one
 // spot by the drawn pixels.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -57,7 +57,7 @@ function compareClip(kind, archive, id, want, feetList) {
   if (got.length !== want.length) return fail(`${archive} SCRS ${id}: ${got.length} ticks from the first drawn, the maker's clip ${want.length}`);
   const x0 = got[0][lead].x, y0 = got[0][lead].y;
   got.forEach((t, i) => {
-    if (!t[lead]) return fail(`${archive} SCRS ${id} tick ${i}: draws nothing, where the maker holds the tick before`);
+    if (!t[lead]) return fail(`${archive} SCRS ${id} tick ${i}: draws nothing, where the maker repeats the tick before`);
     const [eyes, dx, dy, facing, feet] = want[i];
     const h = t[head].shape, f = t.feet.shape;
     if (t[lead].x - x0 !== dx || t[lead].y - y0 !== dy) fail(`${archive} SCRS ${id} tick ${i}: moved ${t[lead].x - x0}, ${t[lead].y - y0}, the maker ${dx}, ${dy}`);

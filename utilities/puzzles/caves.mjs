@@ -7,7 +7,7 @@
 //   - the stones' places (kSeatEntrancePositions) are in ZOOMBINI.EXE and
 //     make one path, stone after stone, and the clues' places
 //     (kRuleGlyphScreenX and Y) are there too, two rows of five, left to
-//     right, which is how the port names them;
+//     right, in the port's order;
 //   - level 4's tune, tMID 30028, is in both MIDI archives, and ScummVM
 //     plays it only past its fix option;
 //   - over bands of 16 down to 1 at each level, a judge written here from
@@ -18,7 +18,7 @@
 //     else the deal draws;
 //   - each strategy played against the rule it was dealt, the judge
 //     answering each move, gives the answers the puzzle's answer gives
-//     and places no fewer than it says are sure.
+//     and places no fewer than it gives as sure.
 import { site, archiveBytes } from '../load.mjs';
 
 export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
@@ -77,7 +77,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
 
   // ---- deals -------------------------------------------------------------
   // The judge, from findMatchingSeatNumber: a drop stays when the seat is
-  // in use, empty, and holds the Zoombini's values.
+  // in use, empty, and marked with the Zoombini's values.
   const fits = (z, seat, st) => seat >= st.firstUsableSeatNumber && seat <= 20
     && st.seatPrimaryRuleValues[seat] === z[st.primaryRuleTraitKind]
     && (st.ruleTraitCount < 2 || st.seatSecondaryRuleValues[seat] === z[st.secondaryRuleTraitKind]);
@@ -201,7 +201,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       }
       if (!node.outcomes.length) {
         ends++;
-        if (node.crossed !== placed.size) { broken = `an end says ${node.crossed} cross, ${placed.size} are placed`; return; }
+        if (node.crossed !== placed.size) { broken = `an end has ${node.crossed} crossing, ${placed.size} placed`; return; }
         if (placed.size < n && mistakes !== limit) { broken = 'an end short of the band before the last mistake'; return; }
         worst = Math.min(worst, node.crossed);
         return;
@@ -236,12 +236,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const rejects = [{ ...vals, order: [1, 1, 2, 3, 4] }, { ...vals, primary: 'ears' }];
       if (level >= 3) rejects.push({ ...vals, secondary: vals.primary });
       if (level === 2 || level === 3) rejects.push({ ...vals, shown: [1, 2, 3] });
-      for (const r of rejects) { let err = null; try { C.edit(level, band, d.state, r); } catch (e) { err = e.message; } if (!err) { bad(`the form takes ${JSON.stringify(r)}`); break; } }
+      for (const r of rejects) { let err = null; try { C.edit(level, band, d.state, r); } catch (e) { err = e.message; } if (!err) { bad(`the form accepts ${JSON.stringify(r)}`); break; } }
       trips++;
-      // The known answer: every member on a stone it fits, one to a stone, drawn once.
+      // The known answer: every member on a stone it fits, one to a stone, each drawn one time.
       const sol = C.solve(level, band, d.state), s0 = sol.solutions[0];
       const seatsUsed = new Set(), dz = s0.diagram.items.filter(it => it.t === 'zoombini');
-      if (sol.most !== n || !sol.exact || s0.crosses.length !== n || sol.most < Math.max(...sol.solutions.map(x => x.crosses.length))) { bad('the known answer does not take the whole band'); break; }
+      if (sol.most !== n || !sol.exact || s0.crosses.length !== n || sol.most < Math.max(...sol.solutions.map(x => x.crosses.length))) { bad('the known answer leaves some of the band behind'); break; }
       if (!same(dz.map(it => it.i).sort((a, b) => a - b), band.map((_, i) => i))) { bad('the solution\'s diagram does not draw each Zoombini once'); break; }
       const at = seat => { const [x, y] = S.ZB_CAVES_SEAT_PLACES[seat - 1]; return [Math.round(150 + (x - 254) * 2), Math.round(110 + (y - 140) * 1.8) + 2]; };
       let misfit = null;
@@ -275,7 +275,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (st.hypotheses !== rules.length) { bad(`the strategy counts ${st.hypotheses} rules, the wall allows ${rules.length}`); break; }
       if (st.exact && n > limit && rules.length <= 40 && n <= 7) {
         const b = brute(band, rules, limit);
-        if (b !== st.sure) { bad(`the strategy is exact at ${st.sure}, the brute force gets ${b}`); break; }
+        if (b !== st.sure) { bad(`the strategy is exact at ${st.sure}, the brute force finds ${b}`); break; }
         brutes++;
       }
       // Walks: every branch for small trees, else twelve at random. The
@@ -285,13 +285,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const full = n <= 7 && level < 4;
       const { worst, broken } = walkAll(band, rules, st.root, full, limit, seed);
       if (broken) { bad(broken); break; }
-      if (worst < st.sure) { bad(`the strategy says ${st.sure} are sure, and a branch places ${worst}`); break; }
+      if (worst < st.sure) { bad(`the strategy has ${st.sure} sure, and a branch places ${worst}`); break; }
       if (full && st.exact && worst !== st.sure) { bad(`the strategy is exact at ${st.sure}, and its worst branch places ${worst}`); break; }
       walks++;
-      // Played against the dealt rule: the judge says what the game does
+      // Played against the dealt rule: the judge gives what the game does
       // with each move (it stays on a stone it fits, else is walked to a
       // free stone it fits, every one of which must be an outcome, the
-      // first of them taken), and the puzzle's answer must agree.
+      // first of them taken), and the puzzle's answer must match it.
       {
         const sn = stone => stone + 4;
         const used = new Set();
@@ -313,7 +313,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           node = node.outcomes[k].next();
           if (depth > 40) wrong = 'a strategy deeper than 40 moves';
         }
-        if (!wrong && node.crossed !== placed) wrong = `played against the dealt rule, the end says ${node.crossed} cross, ${placed} are placed`;
+        if (!wrong && node.crossed !== placed) wrong = `played against the dealt rule, the end has ${node.crossed} crossing, ${placed} placed`;
         const end = wrong ? null : S.zbStrategyPlay(C, level, band, d.state, st);
         if (!wrong && (!end || end.crossed !== node.crossed)) wrong = 'zbStrategyPlay does not end where the judge does';
         if (!wrong && end.crossed < st.sure) wrong = `played against the dealt rule, ${end.crossed} cross, fewer than the ${st.sure} sure`;
@@ -323,14 +323,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     }
   }
   // With the wall unseen, a small band at level 1 can be short: the brute
-  // force holds the strategy's exact count there too, and a walk of every
+  // force finds the strategy's exact count there too, and a walk of every
   // branch finds a branch at exactly that count.
   let short = 0;
   for (const { band } of bands(6, 777, [5, 6])) {
     const st = C.strategy(1, band, null, {});
     if (!st.exact) continue;
     const b = brute(band, rulesFor(1, null), S.ZB_CAVES_MISTAKES[0]);
-    if (b !== st.sure) { fail(`level 1, the wall unseen, a band of ${band.length}: the strategy is exact at ${st.sure}, the brute force gets ${b}`); break; }
+    if (b !== st.sure) { fail(`level 1, the wall unseen, a band of ${band.length}: the strategy is exact at ${st.sure}, the brute force finds ${b}`); break; }
     if (st.sure < band.length) {
       short++;
       const { worst, broken } = walkAll(band, rulesFor(1, null), st.root, true, S.ZB_CAVES_MISTAKES[0], 5);

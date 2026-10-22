@@ -8,11 +8,10 @@
 //     it: the first frame's seat shapes in order (1-3, 20 at most), each
 //     seat the rectangle of its picture (FERRY tBMP 1500, decoded in full
 //     here) at its corner, SCRB 1500-1502 each drawing their seat once;
-//     a FERRY without them fails with its own error;
-//   - the neighbours are found again here from ScummVM's own three
-//     stretched rectangles, read from its text, for every raft, and agree
-//     with the port's; ScummVM wants every occupied neighbour to share a
-//     trait and counts no chances;
+//     a FERRY without them fails with an error about them;
+//   - the neighbours are found again here from ScummVM's three stretched
+//     rectangles, read from its text, for every raft, and match the port's;
+//     ScummVM needs every occupied neighbour to share a trait and counts no chances;
 //   - over bands of 16, 15, 12, 8 and 5 at each level, every seating the
 //     deal gives has each two seated neighbours sharing a trait, seats
 //     each member once at most, the marks name the seats, and a band no
@@ -41,8 +40,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (at.length !== 1) fail(`ZOOMBINI.EXE adds ${adds} in ${at.length} places, not one`);
 
   // ---- the seats, read from FERRY ------------------------------------------------------
-  // Read again here, with the full picture decoder and the check's own
-  // reading of the scripts, and held to what the port reads.
+  // Read again here, with the full picture decoder and a separate reading
+  // of the scripts, and compared with what the port reads.
   const arc = open('FERRY');
   const sheetId = Number(need(/kResBitmapShape1500_Seats = (\d+),/, h, 'kResBitmapShape1500_Seats')[1]);
   const seatBase = Number(need(/kResScrb1500_SeatBase = (\d+),/, h, 'kResScrb1500_SeatBase')[1]);
@@ -64,7 +63,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     if (!same(S.zbFerryRaft(arc, id), theirs)) fail(`the port's reading of FERRY SCRB ${id} is not the seats' corners and pictures`);
   }
   const sizes = [...new Set([...read.values()].flat().map(s => `${s.w} x ${s.h}`))];
-  // Without the rafts the deal says what is missing.
+  // Without the rafts the deal throws, naming what is missing.
   const bare = { has: () => false, get: () => { throw new Error('no resource'); } };
   try { P.deal(1, bands(1, 1)[0].band, S.zbRandom(1), {}, bare); fail('a FERRY without SCRB 1510 deals anyway'); } catch (e) { if (!/SCRB 1510/.test(e.message)) fail(`a FERRY without SCRB 1510 fails with "${e.message}"`); }
 
@@ -75,7 +74,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (tests.length !== 3 || tests.flat().some(Number.isNaN)) fail(`read ${tests.length} stretched rectangles from buildAdjacencyMatrix, not 3`);
   need(/if \(!adjacent && kPuzzleLevel4 <= _puzzleLevel\) \{\s*Common::Rect expandedK/, cpp, 'the third rectangle\'s level');
   const most = Number(need(/if \(adjacent && slotCount < (\d+)\)/, cpp, 'the most neighbours')[1]);
-  if (most !== S.ZB_FERRY_SEAT.neighbours) fail(`ScummVM keeps ${most} neighbours a seat, the port ${S.ZB_FERRY_SEAT.neighbours}`);
+  if (most !== S.ZB_FERRY_SEAT.neighbours) fail(`ScummVM has ${most} neighbours a seat, the port ${S.ZB_FERRY_SEAT.neighbours}`);
   const edges = [];
   for (const [level, id] of scripts) {
     const seats = read.get(id);
@@ -201,11 +200,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   // Nothing to choose: the form is a note and gives back nothing. Each
   // solution, read back from its words, seats each member once, every two
   // seated neighbours sharing a trait (the rule written again here), and
-  // the diagram draws each member once. On a small raft (a raft's first
+  // the diagram draws each member one time. On a small raft (a raft's first
   // seats) and small bands, some of them sharing nothing with anyone,
   // every seating is tried here: the most and the count of seatings, alike
   // Zoombinis as one, are the solver's. On the level-1 line filled end to
-  // end, a count of the ways the band can fill it decides whether all can
+  // end, a count of the ways the band can fill it shows whether all can
   // sit.
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
   let solved = 0, brute = 0, bruteShort = 0, lines = 0, worstMs = 0, wb = null;
@@ -235,7 +234,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       for (const so of sol.solutions) {
         const seating = readBack(so, st, n), who = seating.filter(z => z >= 0);
         if (new Set(who).size !== who.length || !legal(band, st.seatNeighborIndices, seating)) wbad(`level ${level}: "${so.title}" breaks the rule`);
-        if (!same(who.slice().sort((a, b) => a - b), so.crosses)) wbad(`level ${level}: "${so.title}" says ${so.crosses.length} seated, its rows ${who.length}`);
+        if (!same(who.slice().sort((a, b) => a - b), so.crosses)) wbad(`level ${level}: "${so.title}" has ${so.crosses.length} seated, its rows ${who.length}`);
         if (so.crosses.length > sol.most) wbad(`level ${level}: a solution seats more than the most`);
         const drawn = so.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
         if (!same(drawn, band.map((_, i) => i))) wbad(`level ${level}: "${so.title}" does not draw each Zoombini once`);
@@ -291,6 +290,6 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (P.strategy) fail('Captain Cajun’s Ferryboat hides nothing from the player, and has a strategy');
   if (worstMs > 1000) fail(`a solve took ${worstMs} ms on a budget of 500`);
   if (wb) fail(wb);
-  say(`${solved} solves read back and seated by the rule (bands of 16 as level:most/ways ${summary.join(' ')}; the slowest ${worstMs} ms), ${lines} full lines counted, ${brute} small rafts where every seating was tried agree (${bruteShort} of them unable to seat everyone)`);
+  say(`${solved} solves read back and seated by the rule (bands of 16 as level:most/ways ${summary.join(' ')}; the slowest ${worstMs} ms), ${lines} full lines counted, ${brute} small rafts where every seating was tried match (${bruteShort} of them unable to seat everyone)`);
   say(`rafts SCRB ${scripts[0][1]}-${scripts[scripts.length - 1][1]} read as ScummVM places them (seats ${sizes.join(', ')}; the sixteen-seat ones' ${adds.join(', ')} added at 0x${(at[0] || 0).toString(16)} in ZOOMBINI.EXE), ${edges.join(', ')} pairs of neighbours by ScummVM's rectangles; ${dealt} deals seated by the rule, ${whole} whole (${unproven} where the search gave up on a larger seating)`);
 }

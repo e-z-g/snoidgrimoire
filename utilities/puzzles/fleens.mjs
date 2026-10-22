@@ -20,13 +20,13 @@
 //     Zoombini's under them, and no two different Zoombinis share a
 //     Fleen; the marks name the beehive three; and over journeys of
 //     random levels, what is kept from visit to visit is what the program
-//     keeps, and each visit draws as many numbers as the program would;
+//     stores, and each visit draws as many numbers as the program would;
 //   - the workbench: the form gives back what it shows and turns away
 //     what the program could not deal; the solution sends the beehive's
 //     Zoombinis; and the strategy, played against every mapping and choice
 //     of the beehive's that shows the Fleens seen (enumerated here, apart
-//     from the port), follows each Zoombini sent with its own Fleen and
-//     never gets fewer across than it says are sure, the port's answer
+//     from the port), follows each Zoombini sent with its Fleen and never
+//     has fewer across than it gives as sure, the port's answer
 //     picking the check's branch at every move; played against the dealt
 //     Fleens, seen or not, as many across; small bands' every branch
 //     walked, and with nothing seen, min(band, 6) sure.
@@ -57,7 +57,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- the chances and the judging --------------------------------------
   const chances = Number(need(/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kSubmit, (\d+),/, cpp, 'debugGetChances')[1]);
   const evict = Number(need(/mustEvictOldestPair = _submittedPairCount == (\d+);/, cpp, 'the eviction')[1]);
-  if (chances !== S.ZB_FLEENS_WAITING || evict !== S.ZB_FLEENS_WAITING + 1) fail(`ScummVM gives ${chances} chances and sends back the first of ${evict}, the port holds ${S.ZB_FLEENS_WAITING}`);
+  if (chances !== S.ZB_FLEENS_WAITING || evict !== S.ZB_FLEENS_WAITING + 1) fail(`ScummVM gives ${chances} chances and sends back the first of ${evict}, the port has ${S.ZB_FLEENS_WAITING}`);
   const board = need(/void ZoombiniPuzzleFleens::beginBoardingAnimation\([^)]*\) \{([\s\S]*?)\n\}/, cpp, 'beginBoardingAnimation')[1];
   need(/if \(creature\.isTarget && creature\.posCode <= kFleenPosCode19_TargetBranchLast\) \{\s*_matchedTargetCount \+= 1;[\s\S]*?\}\s*if \(appendQueue && _submittedPairCount < 7\) \{/, board, 'a submission joining the waiting pairs whether it lured a beehive Fleen or not');
   if (!/six/.test(P.levels[0].chances) || !P.levels.every(l => /Six|six/.test(l.chances))) fail('the chances do not say six at every level');
@@ -88,7 +88,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const lists = [...fs.readFileSync(spritesJs, 'utf8').matchAll(/"names":(\{[^}]*\})/g)].map(m => JSON.parse(m[1]));
     const fleen = lists.find(l => l.hair && l.hair.includes('Mohawk'));
     const mine = Object.fromEntries(KINDS.map(k => [k, S.ZB_FLEENS_TRAIT_SHORT[k].map(n => k === 'nose' ? n + ' nose' : n)]));
-    // The maker lists a Fleen's own five first, then extras it can wear (Captain Cajun's feet, ...).
+    // The maker's list has a Fleen's five first, then extras it can wear (Captain Cajun's feet, ...).
     if (!fleen || !same(KINDS.map(k => fleen[k].slice(0, 5)), KINDS.map(k => mine[k]))) fail(`the Fleen names are not the maker's: ${JSON.stringify(fleen)}`);
     makerChecked = true;
     KINDS.forEach(k => S.ZB_FLEENS_TRAIT_WITH[k].forEach((w, v) => { if (!w.toLowerCase().includes(S.ZB_FLEENS_TRAIT_SHORT[k][v].toLowerCase())) fail(`Fleen ${k} ${v + 1} reads "${w}" after "with"`); }));
@@ -121,7 +121,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
 
   // Journeys: random levels in turn on one journey, against the program's
-  // rules for what a visit draws and keeps.
+  // rules for what a visit draws and stores.
   const jr = S.zbRandom(4242);
   let visits = 0;
   for (let j = 0; j < 60; j++) {
@@ -147,8 +147,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- the workbench -----------------------------------------------------
   // Round trips of the form; the solution; and the strategy played against
   // every hidden part that fits what the band sees, enumerated here apart
-  // from the port's own enumeration, the game's answer to each Zoombini
-  // sent being its own Fleen, from the beehive or not.
+  // from the port's enumeration, the game's answer to each Zoombini sent
+  // being its Fleen, from the beehive or from another branch.
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
   let trips = 0;
   for (let level = 1; level <= 4; level++) {
@@ -158,7 +158,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (!same(valuesOf(P.form(level, band, again)), v) || !same(again.fleens, d.state.fleens) || !same(S.zbFleensTargets(again), S.zbFleensTargets(d.state))) bad = 'the form does not give back the puzzle it shows';
       const sol = P.solve(level, band, d.state), s0 = sol.solutions[0];
       const drawn = s0.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((x, y) => x - y);
-      if (!bad && (sol.most !== band.length || !sol.exact || s0.crosses.length !== band.length || !same(drawn, [...band.keys()]))) bad = 'the solution does not take and draw the whole band';
+      if (!bad && (sol.most !== band.length || !sol.exact || s0.crosses.length !== band.length || !same(drawn, [...band.keys()]))) bad = 'the solution leaves some of the band behind or undrawn';
       if (!bad && s0.steps.filter(t => /^Send Zoombini/.test(t)).length !== Math.min(3, band.length)) bad = 'the solution does not send one Zoombini a beehive Fleen';
       if (bad) { fail(`level ${level}: ${bad}`); break; }
       trips++;
@@ -168,7 +168,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   for (const [what, values] of [['two Zoombinis for three places', { ...good3, hive: [1, 2] }], ['the same place twice', { ...good3, hive: [1, 1, 2] }],
     ['hair to hair at level 3', { ...good3, to_hair: 'hair', to_eyes: good3.to_hair === 'hair' ? good3.to_eyes : good3.to_hair === 'eyes' ? 'hair' : good3.to_eyes, to_nose: good3.to_nose === 'hair' ? good3.to_hair : good3.to_nose, to_feet: good3.to_feet === 'hair' ? good3.to_hair : good3.to_feet }],
     ['two traits to one', { ...good3, to_eyes: good3.to_nose }], ['a turn of 6', { ...good3, turn_feet: 6 }]]) {
-    let threw = false; try { P.edit(3, b6, base3, values); } catch (x) { threw = true; } if (!threw) fail(`the form takes ${what}`);
+    let threw = false; try { P.edit(3, b6, base3, values); } catch (x) { threw = true; } if (!threw) fail(`the form accepts ${what}`);
   }
 
   const mixings = (level, knows) => {
@@ -234,8 +234,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (bad) break;
       maxSent = Math.max(maxSent, sent);
       const crossed = n - Math.max(0, sent - 6);
-      if (lured !== Math.min(3, n) || node.crossed !== crossed) { bad = `a play ends with ${lured} lured and ${node.crossed} said to cross, ${crossed} by the count`; break; }
-      if (crossed < st.sure) { bad = `a play gets ${crossed} across where ${st.sure} are said to be sure`; break; }
+      if (lured !== Math.min(3, n) || node.crossed !== crossed) { bad = `a play ends with ${lured} lured and ${node.crossed} marked as crossing, ${crossed} by the count`; break; }
+      if (crossed < st.sure) { bad = `a play has ${crossed} across where ${st.sure} are marked sure`; break; }
       worst = Math.min(worst, crossed);
       played++;
     }
@@ -245,13 +245,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (!end) bad = 'the game\'s answer to a move is not among the strategy\'s outcomes';
       else if (end.crossed < st.sure) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.sure} sure`;
     }
-    if (!bad && st.exact && worst !== st.sure) bad = `said to be exact at ${st.sure} but every play gets ${worst}`;
+    if (!bad && st.exact && worst !== st.sure) bad = `marked exact at ${st.sure} but every play has ${worst}`;
     if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.sure, 0); if (lo < st.sure) bad = 'a branch short of sure'; }
     // And with nothing seen: any of the band's places may be the beehive's.
     if (!bad) {
       const blind = P.strategy(level, band, null, { knows });
-      if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen ${blind.sure} are said to be sure, not ${n - Math.max(0, n - 6)}`;
-      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen the worst branch gets ${lo}`; }
+      if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen ${blind.sure} are marked sure, not ${n - Math.max(0, n - 6)}`;
+      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen the worst branch has ${lo}`; }
       if (!bad) { const end = S.zbStrategyPlay(P, level, band, state, blind); if (!end || end.crossed < blind.sure) bad = `with nothing seen, played against the dealt Fleens, ${end ? end.crossed : 'no outcome'} across`; }
     }
     if (bad) { fail(`level ${level} (${knows}, a band of ${n}): ${bad}`); continue; }
@@ -261,6 +261,6 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
 
   const pct = n => `${Math.round(100 * n / (keepsLike[0] + keepsLike[1] + keepsLike[2]))}%`;
   say(`${trips} forms given back and solved; ${stratCount} strategies played against every hidden part that fits what is seen (${played} plays, the port's answer the check's at all ${agreed} moves, ${amb} strategies with more than one, at most ${maxSent} sent, all across, and played against the dealt Fleens), ${walked} branches walked, slowest ${slowest} ms; `
-    + `dealing as ScummVM's, table in ZOOMBINI.EXE at 0x${(tableAt[0] || 0).toString(16)}, beehive REGS 5000's ${hivePlaces}${makerChecked ? ', names the maker\'s' : ''}; ${dealt} deals of the level's form, `
-    + `${visits} visits keeping what the program keeps; at levels 3 and 4 no trait keeps its like in ${pct(keepsLike[0])}, one in ${pct(keepsLike[1])}, two in ${pct(keepsLike[2])}`);
+    + `dealing as ScummVM's, table in ZOOMBINI.EXE at 0x${(tableAt[0] || 0).toString(16)}, beehive REGS 5000's ${hivePlaces}${makerChecked ? ', the maker\'s names' : ''}; ${dealt} deals of the level's form, `
+    + `${visits} visits storing what the program stores; at levels 3 and 4 no trait stays the same in ${pct(keepsLike[0])}, one in ${pct(keepsLike[1])}, two in ${pct(keepsLike[2])}`);
 }

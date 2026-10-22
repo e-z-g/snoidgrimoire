@@ -3,15 +3,15 @@
 // Without a browser: every <script src> is there, none is a module and no
 // js/ file imports or exports (the page must work from file://), and no
 // top-level name is declared in two scripts -- they share one global scope,
-// so the later would win and nothing would say so.
+// so the later would take precedence with no error to show it.
 //
 // In headless Chrome (utilities/browser.mjs), served over HTTP:
 //   - the page loads with no console error or exception and shows its start;
 //   - with the CD image from reference/ opened through ?src=, the map comes
 //     up first with its sixteen places; a wheel step at a time onto Pizza
-//     Pass takes the address into it (#place=PIZZA) with its picture drawn,
-//     and steps back out take it back to the map; an address given while a
-//     flight is under way takes over from it; the map's views by
+//     Pass brings the address to it (#place=PIZZA) with its picture drawn,
+//     and steps back out return it to the map; an address given while a
+//     flight is under way replaces it; the map's views by
 //     address come up, a dealt puzzle among them, and every puzzle's
 //     panel draws at every level with one dealt; all 22 archives are listed, and a view of every
 //     resource type comes up with what it should show and no error -- on a
@@ -22,7 +22,7 @@
 //     leaves it; the sliders empty the town and write the address; the
 //     map's Zoombiniville links to it;
 //   - on the phone, nothing is wider than the screen.
-// SHOTS=<dir> keeps a screenshot of each view.
+// SHOTS=<dir> saves a screenshot of each view there.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, REF, pageScripts } from './load.mjs';
@@ -57,7 +57,7 @@ if (shots) fs.mkdirSync(shots, { recursive: true });
 const srv = await serve();
 const describe = l => (l.where ? l.where + ' ' : '') + l.text.split('\n')[0].slice(0, 200);
 
-// Each view, and what in it says it came up.
+// Each view, and what in it shows that it came up.
 const panel = "document.getElementById('jpanel').textContent";
 const VIEWS = [
   ['place=PIZZA', `/Pizza Pass/.test(document.getElementById('crumbs').textContent) && /Arno/.test(${panel}) && JPICS.get('PIZZA/5000') instanceof HTMLCanvasElement && !JMOVING`],
@@ -125,7 +125,7 @@ const VIEWS = [
       const f = decodeBitmapResource(openedArchive(ARCHIVES.get('ZOOMBINI')).get('tBMP', 3000)).frames[0];
       const c = document.createElement('canvas'); c.width = f.width; c.height = f.height;
       const g = c.getContext('2d'); g.translate(f.width, 0); g.scale(-1, 1); g.drawImage(document.querySelector('#sheet .frame canvas'), 0, 0);
-      window.__frame = 'asked';
+      window.__frame = 'sent';
       c.toBlob(b => { const dt = new DataTransfer(); dt.items.add(new File([b], 'mirrored.png', { type: 'image/png' }));
         const input = [...document.querySelectorAll('#focus input[type=file]')][0]; input.files = dt.files; input.dispatchEvent(new Event('change')); });
       return false;
@@ -142,7 +142,7 @@ const VIEWS = [
       const input = document.querySelector('#view input[type=file]'); if (!input) return false;
       const pcm = new Uint8Array(11025).map((_, i) => 128 + Math.round(100 * Math.sin(i / 10)));
       const dt = new DataTransfer(); dt.items.add(new File([wavFromPcmBytes(pcm, 11025, 8, 1)], 'tone.wav', { type: 'audio/wav' }));
-      input.files = dt.files; input.dispatchEvent(new Event('change')); window.__sound = 'asked';
+      input.files = dt.files; input.dispatchEvent(new Event('change')); window.__sound = 'sent';
       return false;
     }
     const e = EDITS.get('FLEENS'), c = e && e.changes.get('SND/1000');
@@ -155,7 +155,7 @@ const VIEWS = [
       const input = document.querySelector('#view input[type=file]'); if (!input) return false;
       const c = document.createElement('canvas'); c.width = 64; c.height = 48;
       const g = c.getContext('2d'); g.fillStyle = 'rgb(200,30,30)'; g.fillRect(0, 0, 64, 48);
-      window.__pic = 'asked';
+      window.__pic = 'sent';
       c.toBlob(b => { const dt = new DataTransfer(); dt.items.add(new File([b], 'red.png', { type: 'image/png' })); input.files = dt.files; input.dispatchEvent(new Event('change')); });
       return false;
     }
@@ -165,11 +165,11 @@ const VIEWS = [
     return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /64 × 48 where it was 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
   })()`],
   ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
-  // The recolour maker: Shaggy hair, purples into reds, put in by its own buttons and read back, then undone.
+  // The recolour maker: Shaggy hair, purples into reds, put in with the maker's buttons and read back, then undone.
   ['mods', `(() => {
     if (!window.__rc) {
       const to = document.querySelector('[data-rto=reds]'); if (!to) return false;
-      to.click(); document.getElementById('rcApply').click(); window.__rc = 'asked';
+      to.click(); document.getElementById('rcApply').click(); window.__rc = 'sent';
       return false;
     }
     const c = EDITS.get('ZOOMBINI') && EDITS.get('ZOOMBINI').changes.get('tBMP/3000');
@@ -184,7 +184,7 @@ const VIEWS = [
   ['mods', `(() => {
     if (!window.__mod) {
       if (!document.getElementById('modApply')) return false;
-      window.__mod = 'asked';
+      window.__mod = 'sent';
       fetch('reference/zombs-lair/HDD/ZOOMBINI/ZOOMBINI.EXE').then(r => r.arrayBuffer()).then(b => {
         MOD_EXE = { name: 'ZOOMBINI.EXE', bytes: new Uint8Array(b) }; MOD_FLEEN.green = true; modFleenApply(); renderMods(); window.__mod = 'done';
       });
@@ -201,7 +201,7 @@ const VIEWS = [
   ['saves', `(() => {
     if (!window.__save) {
       const input = document.getElementById('saveFiles'); if (!input) return false;
-      window.__save = 'asked';
+      window.__save = 'sent';
       Promise.all(['ZOOM0000.TXT', 'ZOOMBINI.WHO'].map(n => fetch('reference/saves/test-2026-10-01/' + n).then(r => r.arrayBuffer()).then(b => new File([b], n)))).then(fs => {
         const dt = new DataTransfer(); fs.forEach(f => dt.items.add(f)); input.files = dt.files; input.dispatchEvent(new Event('change'));
       });
@@ -245,8 +245,8 @@ const VIEWS = [
   })()`],
   ['changes', `(() => { if (EDITS.has('MAZE2')) { editUndo(ARCHIVES.get('MAZE2')); route(); } return !EDITS.has('MAZE2') && /Changes/.test(document.getElementById('view').textContent); })()`],
   ['solve=LILLY&level=2&deal=5&stage=layout', `document.querySelectorAll('#sdiagram [data-pad]').length === 144 && document.querySelectorAll('#sdiagram [data-lmap]').length === 3 && /route 1: \\d+ pads, across/.test(document.getElementById('sdiagram').textContent)`],
-  // Remembered in this browser: every archive the CD image gave, at its own
-  // size; then opened again from there alone, as a visit with no ?src is.
+  // Remembered in this browser: every archive the CD image gave, at its size
+  // on the disc; then opened again from there alone, as a visit with no ?src is.
   ['journey', `(() => {
     if (!window.memoryChecked) {
       window.memoryChecked = 'pending';
@@ -300,7 +300,7 @@ try {
         const inSteps = await until("location.hash === '#place=PIZZA' && JPICS.get('PIZZA/5000') instanceof HTMLCanvasElement", () => wheel('PIZZA', -120), 80);
         if (shots) await p.shot(path.join(shots, `${dev.name}-journey-pizza.png`));
         const outSteps = inSteps < 0 ? -1 : await until("location.hash === '#journey&place=PIZZA'", () => wheel('PIZZA', 120), 80);
-        // A second address while the first flight is under way wins.
+        // A second address given during the first flight has precedence.
         await p.evaluate("location.hash = '#place=TOWN'; setTimeout(() => { location.hash = '#place=FERRY'; }, 250)");
         const took = await until("JVIEW.place === 'FERRY' && !JMOVING && location.hash === '#place=FERRY'", async () => {}, 60);
         results.push({ hash: 'wheel onto Pizza Pass and out', met: inSteps > 0 && outSteps > 0 && took >= 0, ms: 0, wide: false,
@@ -326,8 +326,8 @@ try {
           if (await p.evaluate("!!document.getElementById('saveall')")) {
             await p.evaluate("window.SAVED = null; window.dlBlob = (blob, name) => { window.SAVED = { name, size: blob.size }; }; window.ZIPPED = null; (() => { const z = buildZip; window.buildZip = files => { window.ZIPPED = files.map(f => f.name); return z(files); }; })(); document.getElementById('saveall').click()");
             while (Date.now() - t0 < 120000 && !(await p.evaluate('!!window.SAVED'))) await new Promise(res => setTimeout(res, 200));
-            note = await p.evaluate(`(() => { const want = openArchives().reduce((n, o) => n + o.arc.list('${tag}').length, 0), got = (window.ZIPPED || []).filter(n => n.startsWith('${key}/') && n.endsWith('.${ext}')).length;
-              return window.SAVED && got === want && got === window.ZIPPED.length && window.SAVED.name === 'zoombinis-${key}.zip' && window.SAVED.size > got * 30 ? '' : got + ' of ' + want + ' in ' + JSON.stringify(window.SAVED); })()`);
+            note = await p.evaluate(`(() => { const expected = openArchives().reduce((n, o) => n + o.arc.list('${tag}').length, 0), got = (window.ZIPPED || []).filter(n => n.startsWith('${key}/') && n.endsWith('.${ext}')).length;
+              return window.SAVED && got === expected && got === window.ZIPPED.length && window.SAVED.name === 'zoombinis-${key}.zip' && window.SAVED.size > got * 30 ? '' : got + ' of ' + expected + ' in ' + JSON.stringify(window.SAVED); })()`);
           }
           results.push({ hash: `components/${key} saved whole`, met: !note, ms: Date.now() - t0, wide: false, note });
         }
@@ -352,7 +352,7 @@ try {
           results.push({ hash: 'saves, a route at level 3 and saved', met: !note, ms: Date.now() - t0, wide: false, note });
         }
         // A tune played: the instruments from the copy in reference/ (the
-        // page's own fetch is archive.org's), the sound in an <audio>.
+        // page fetches archive.org's), the sound in an <audio>.
         if (!dev.mobile && fs.existsSync(path.join(REF, 'quicktime', 'QUICKTIM.EXE'))) {
           await p.evaluate("location.hash = '#MIDIMAC/tMID/30000'");
           const t0 = Date.now();
@@ -419,7 +419,7 @@ try {
     if (!r.met) { fail(`${dev.name}: #town did not come up with WebGL`); continue; }
     const g = r.more;
     if (!g.full) fail(`${dev.name} #town: not 80 things, 8 inhabitants and the clock`);
-    if (!/Clock Tower/.test(g.caption)) fail(`${dev.name} #town: looking at the clock tower says "${g.caption}"`);
+    if (!/Clock Tower/.test(g.caption)) fail(`${dev.name} #town: the caption facing the clock tower is "${g.caption}"`);
     if (!g.depth) fail(`${dev.name} #town: the depth modes did not draw, or Cardboard would not be left`);
     if (!g.empty) fail(`${dev.name} #town: the sliders did not empty the town`);
     if (g.wide) fail(`${dev.name} #town: wider than the screen`);

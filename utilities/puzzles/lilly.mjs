@@ -4,13 +4,13 @@
 //   - the tables: the twelve tattoos' families, values and numbers, the
 //     routes a band needs, the rows and columns that may be cut, the
 //     demonstration swaps, the maps' route numbers and the pools, are
-//     ScummVM's, read from its text; as the program keeps them, a word
+//     ScummVM's, read from its text; as the program stores them, a word
 //     each, they are in ZOOMBINI.EXE (the toads' copy of the tattoos just
 //     before "Lilly.MHK");
 //   - the three route maps are read from LILLY's REGS 15000-15002, the
 //     ids ScummVM's setup loads, as ScummVM reads them: 144 big-endian
 //     numbers row by row, each 0 or one of the map's routes, every route
-//     there; a LILLY without them fails with its own error;
+//     there; a LILLY without them fails with an error about them;
 //   - the random draws come in ScummVM's order: the family, the
 //     transform, the routes that may be cut, the pools, the pads row by
 //     row (a cut tried, then the families no route covers), then the
@@ -20,10 +20,10 @@
 //     route's value, the next route's where cut, and cuts are at most two
 //     a route in the rows and columns that may be cut; with the cuts
 //     undone every route not turned crosses from its rows; at level 1 the
-//     routes spared are half the band, rounded up, uncut, and carry
+//     routes spared are half the band, rounded up, uncut, and enough for
 //     everyone; the wand is six times (cuts + 5) / 6 rounded up; the
 //     crabs start on the top row of the turned family's routes; and every
-//     mark names a toad that crosses from its row, two a toad at most.
+//     mark is on a toad that crosses from its row, two a toad at most.
 const nums = body => [...body.matchAll(/-?\d+/g)].map(m => Number(m[0]));
 
 export default function check({ S, fail, say, scumm, exe, need, bands, find, open }) {
@@ -58,7 +58,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const demo = [[[col[idx[0]], row[idx[0]]], [col[idx[1]], row[idx[1]]]], [[col[idx[2]], row[idx[2]]], [col[idx[3]], row[idx[3]]]]];
   if (idx.length !== 4 || !same(demo, S.ZB_LILLY_DEMO_SWAPS)) fail(`the demonstration swaps are not ScummVM's: ${JSON.stringify(demo)}`);
 
-  // The maps: which REGS, and which route numbers each holds and wraps to.
+  // The maps: which REGS, and which route numbers each has and wraps to.
   const regs = [...init.matchAll(/loadGridPatternRegs\((\d), (\d+)\);/g)].map(m => Number(m[2]));
   if (!same(regs, [15000, 15001, 15002])) fail(`ScummVM loads the maps from REGS ${regs}`);
   const first = nums(need(/kFirstPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kFirstPatternIndex')[1]);
@@ -97,7 +97,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const one = (bytes, what) => { const o = find(exe, bytes); if (o.length !== 1) fail(`${what}: ${o.length} places in ZOOMBINI.EXE, not one`); return o[0] || 0; };
   const T = S.ZB_LILLY_TATTOO_TYPE, V = S.ZB_LILLY_TATTOO_VALUE;
   const exeTattoos = one(w([...T, ...V]), 'the twelve tattoos\' families and values');
-  // The numbers run straight into the crabs' kObstacleBFSOffset, of which ZOOMBINI.EXE keeps four words.
+  // The numbers run straight into the crabs' kObstacleBFSOffset, of which ZOOMBINI.EXE has four words.
   const exeNumbers = one(w([...S.ZB_LILLY_TATTOO_EXTRA, ...table('kObstacleBFSOffset', 5).slice(0, 4)]), 'the tattoos\' numbers');
   const exeNeeded = one(w([...S.ZB_LILLY_ROUTES_NEEDED, ...S.ZB_LILLY_CUTTABLE]), 'the routes needed and the rows that may be cut');
   const exeSwaps = one(w([...S.ZB_LILLY_DEMO_SWAPS.flat().map(p => p[0]), 0, ...S.ZB_LILLY_DEMO_SWAPS.flat().map(p => p[1]), 0]), 'the demonstration swaps');
@@ -115,9 +115,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     const mine = maps[i].flat();
     if (raw.length !== 144 || !same(raw, mine)) fail(`map ${i} is not LILLY REGS ${regs[i]} read row by row`);
     const [a, b] = [first[i], last[i]];
-    if (mine.some(v => v && (v < a || v > b)) || [...Array(b - a + 1).keys()].some(k => !mine.includes(a + k))) fail(`map ${i} holds routes other than ${a}-${b}, or lacks one`);
+    if (mine.some(v => v && (v < a || v > b)) || [...Array(b - a + 1).keys()].some(k => !mine.includes(a + k))) fail(`map ${i} has routes other than ${a}-${b}, or lacks one`);
   }
-  // Without the maps the deal says what is missing.
+  // Without the maps the deal throws, naming what is missing.
   const bare = { has: () => false, get: () => { throw new Error('no resource'); } };
   try { P.deal(1, bands(1, 1)[0].band, S.zbRandom(1), {}, bare); fail('a LILLY without REGS 15000 deals anyway'); } catch (e) { if (!/REGS 15000/.test(e.message)) fail(`a LILLY without REGS 15000 fails with "${e.message}"`); }
 
@@ -222,7 +222,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   // ---- the workbench ---------------------------------------------------------
   // The form gives back what it is given, and dealing again with the
   // choices as dealt deals the same pond; a changed choice is kept; bad
-  // choices are refused. Each solution, replayed from its own words on the
+  // choices throw. Each solution, replayed from its words on the
   // pads, is legal: no more swaps than the wand's, each toad two riders at
   // most, from a row pads of its tattoo join to the far bank (found again
   // here); level 1's most is two a toad with a way across, found by
@@ -277,12 +277,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
         }
         if (swaps > (st.swapWandUses || 0)) wbad(`level ${level}: ${swaps} swaps, the wand allows ${st.swapWandUses}`);
         if ([...riders.values()].some(k => k > 2)) wbad(`level ${level}: a toad carries more than two`);
-        if (!same(crossed.slice().sort((a, b) => a - b), so.crosses.slice().sort((a, b) => a - b)) || new Set(crossed).size !== crossed.length) wbad(`level ${level}: "${so.title}" says ${so.crosses.length} cross, its steps ${crossed.length}`);
-        if (so.crosses.length > sol.most) wbad(`level ${level}: a solution takes more than the most`);
+        if (!same(crossed.slice().sort((a, b) => a - b), so.crosses.slice().sort((a, b) => a - b)) || new Set(crossed).size !== crossed.length) wbad(`level ${level}: "${so.title}" has ${so.crosses.length} crossing, its steps ${crossed.length}`);
+        if (so.crosses.length > sol.most) wbad(`level ${level}: a solution has more across than the most`);
         const drawn = so.diagram.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((a, b) => a - b);
         if (!same(drawn, band.map((_, i) => i))) wbad(`level ${level}: "${so.title}" does not draw each Zoombini once`);
       }
-      if (sol.solutions[0].crosses.length !== sol.most) wbad(`level ${level}: the simplest does not take the most`);
+      if (sol.solutions[0].crosses.length !== sol.most) wbad(`level ${level}: the simplest has fewer across than the most`);
       if (level === 1) {
         const T = st.toads.filter(t => reachRows({ pattern: st.padPattern, shape: st.padShape, colour: st.padColor }, t.attrType, t.attrValue).length).length;
         if (!sol.exact || sol.most !== Math.min(n, 2 * T)) wbad(`level 1: most ${sol.most}, and ${T} toads have a way across`);
@@ -297,7 +297,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (slow) fail(`${slow} solves took more than 1.2 s on a budget of 0.6 s`);
   if (wb) fail(wb);
   say(`${trips} forms given back and dealt again as dealt; ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms; bands of 16 as level:most/swaps ${summary.join(' ')})`);
-  say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}); maps as REGS 15000-15002; ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 the ${spared} spared routes carry every band`);
+  say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}); maps as REGS 15000-15002; ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 every band crosses by the ${spared} spared routes`);
 
   // ---- a route map edited (the page's layout editor) ----------------------
   // Every route on the disc runs from the first column to the last, a pad
@@ -315,8 +315,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       if (S.zbLillyRouteRuns(cut, g)[0].across) fail(`REGS ${S.ZB_LILLY_ROUTE_REGS[g]}: route ${route} without its last column is still across`);
       let refused = false;
       try { S.zbLillyEditMap(words, g, 0, 0, g === 0 ? 4 : 1); } catch (e) { refused = true; }
-      if (!refused) fail(`map ${g + 1} takes another family's route`);
+      if (!refused) fail(`map ${g + 1} accepts another family's route`);
     }
-    say('route maps edited: every route on the disc across, a pad painted back as it was, a route cut in its last column not across, another family\'s route refused');
+    say('route maps edited: every route on the disc across, a pad painted back as it was, a route cut in its last column not across, another family\'s route turned away');
   }
 }

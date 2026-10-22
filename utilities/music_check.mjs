@@ -3,7 +3,7 @@
 //     out: as many notes as the MIDI file has note-ons with a velocity, none
 //     of them on a part past the 32nd, no controller dropped, and as long as
 //     the file is;
-//   - a file that does not begin as a MIDI file is refused, not played;
+//   - a file that does not begin as a MIDI file throws, and is not played;
 //   - with QuickTime 3's installer at reference/quicktime/QUICKTIM.EXE
 //     (archive.org, apple-quicktime-3; the page fetches the same file),
 //     every part of every tune has an instrument in the set, and the

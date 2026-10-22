@@ -1,6 +1,6 @@
 // The puzzles' rules (js/zb-puzzle.js and js/zb-puzzle-*.js) against
-// ScummVM's page classes and the 1996 program, each read here from its own
-// files. What they share is checked here:
+// ScummVM's page classes and the 1996 program, each read here from the files
+// of those classes or that program. What they share is checked here:
 //
 //   - the random numbers are the generator in zoombini_random.cpp, whose
 //     two constants are the ones the program multiplies and adds
@@ -12,10 +12,10 @@
 //     its page class loads the band at, and the program's, little-endian
 //     x, y pairs at the offset given in ZOOMBINI.EXE;
 //
-// and each puzzle's own rules by utilities/puzzles/<archive>.mjs, whose
+// and the rules particular to each puzzle by utilities/puzzles/<archive>.mjs, whose
 // default export is given { S, fail, say, scumm, exe, need, bands, find,
 // open }; open(name) is an archive of the 1996 disc, opened, which a deal
-// that names one is given.
+// for a puzzle with an archive is given.
 //
 //   node utilities/puzzle_check.mjs           # every puzzle
 //   node utilities/puzzle_check.mjs bridge    # the shared checks and one,
@@ -35,7 +35,7 @@ if (!haveDisc() || !fs.existsSync(SCUMM) || !fs.existsSync(EXE)) {
   process.exit(0);
 }
 
-// The page's scripts, and any puzzle file it does not load yet (said
+// The page's scripts, and any puzzle file it does not load yet (listed
 // below). Given puzzles to check, only their files are loaded.
 const want = process.argv.slice(2);
 const wanted = f => !want.length || want.some(w => f === `js/zb-puzzle-${w}.js`);

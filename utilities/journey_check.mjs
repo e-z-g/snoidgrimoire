@@ -1,5 +1,6 @@
 // The journey (js/zb-journey.js) against the 1996 program and ScummVM's
-// Zoombinis branch, each read here from its own files, not from the site:
+// Zoombinis branch, each read here from the files of that program or branch,
+// not from the site:
 //
 //   - every place's, route's and level's name is the string the program
 //     shows, at the offset ScummVM's kV11US_NETextEntries gives, in

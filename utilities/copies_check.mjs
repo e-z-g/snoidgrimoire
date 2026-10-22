@@ -1,7 +1,7 @@
 // js/mac-*.js are copies of ratlizard/mac-files and must stay byte for byte what
 // it has: a change goes to mac-files first and is copied here (its README,
 // *Changing a file*). This finds mac-files at ~/e-z-g-cythera/mac-files, or
-// where MAC_FILES says (a Cythera front's worktree, while a change is tried).
+// at MAC_FILES when it is set (a Cythera front's worktree, while a change is tried).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
