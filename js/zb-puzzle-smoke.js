@@ -10,16 +10,16 @@
    through the filters on the cart's side, the reflection as seen through
    the filters on the mirror's side. If they look the same the Zoombini
    crosses; if not it is knocked back to the Shade Tree camp. Each
-   Zoombini rides once, and no other count is kept. (The game's help
-   names the reflections, the mirror and the centre crystal; ScummVM
-   calls the reflections crystals.)
+   Zoombini rides once, and no other count is kept. (The words
+   reflection, mirror and centre crystal are from the game's help;
+   ScummVM calls the reflections crystals.)
 
    A filter sets one or two traits (a cap, a red nose), and at levels 3
    and 4 it may instead step one trait on to its next value, in the
    Zoombini maker's order, the fifth back to the first. Filters work
    outward from the cart on one side and from the mirror on the other. An
    image is four values, hair, eyes, nose and feet, 1-5 each, kept here as
-   an array in that order, as the program keeps them.
+   an array in that order, as the program stores them.
 
    Levels 1 and 2. One of the band still to go is picked at random, and
    eight reflections are dealt on the wall: seven show random Zoombinis
@@ -35,9 +35,9 @@
    Levels 3 and 4. The Zoombinis go in line and the reflection in the
    mirror is fixed; six filters are dealt for the player to place, up to
    three on each side, in order. They are made from the first Zoombini
-   (at level 4 the first two, each with a reflection of its own) as a
-   grid of rows: rows 1 and 2 carry it from the cart to the centre
-   crystal, rows 3 and 4 carry the reflection there to the same image,
+   (at level 4 the first two, each with a separate reflection) as a
+   grid of rows: rows 1 and 2 bring it from the cart to the centre
+   crystal, rows 3 and 4 bring the reflection there to the same image,
    and the reflection is worked out backwards through rows 4 and 3; rows
    5 and 6 are decoys. Each row sets one or two traits, drawing values
    without repeats from 1-5, and one trait of a row may be a step
@@ -61,7 +61,7 @@
    initLowLevelQuestionRunners, generateTraitGrid,
    initLevel3RunnersAllTraits, cycleZmbTraitDisplay,
    advanceAnswerRunnerFrames, compareTwoOrderLines and the answer search
-   in debugGetAnswer), checked against the program's own code in
+   in debugGetAnswer), checked against the program's code in
    ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the setup at 0x4494b8 (the
    level in the word at 0x4b1b9c, 1-4; the Zoombini drawn with
    random(0, n - 1) at every level, kept at levels 1 and 2, the first two
@@ -74,8 +74,8 @@
    reflections' and the filters' places are tables in ZOOMBINI.EXE as
    well. The words for the places are the game's help (ZOOMBINI STRL
    2700-2760).
-   utilities/puzzles/smoke.mjs holds all of it to ScummVM's text and the
-   tables to ZOOMBINI.EXE.
+   utilities/puzzles/smoke.mjs compares all of it with ScummVM's text and
+   the tables with ZOOMBINI.EXE.
 
    Where ScummVM and the program part: when the reflections are dealt
    again for a later Zoombini, the program puts the matching one among
@@ -149,7 +149,7 @@ function zbSmokeReflection(rnd, question, isTarget) {
   return t;
 }
 
-/* One of level 2's filters, as assignLevel2RunnerTraits deals it. s holds
+/* One of level 2's filters, as assignLevel2RunnerTraits deals it. s has
    what the four share: seenA, seenB, question (the picked Zoombini's
    values, which the filters change as they go) and display (the eight
    rows the comparison reads). */
@@ -207,12 +207,12 @@ function zbSmokeTake(pool, index, last) {
   for (let i = index; i < last + 1; i++) pool[i] = pool[i + 1];
 }
 
-/* Levels 3 and 4: the grid, as generateTraitGrid makes it when asked for
+/* Levels 3 and 4: the grid, as generateTraitGrid makes it when called for
    row 1. q0 and q1 are the first two Zoombinis' values (q1 all 0 with
    only one). Returns { primary, secondary, match }, nine rows of four:
    rows 1-6 the filters, 7 the first reflection, 8 (secondary) the
    second;
-   match holds a row's stepped value where it steps. */
+   match has a row's stepped value where it steps. */
 function zbSmokeGrid(level, q0, q1, rnd) {
   const rows = () => Array.from({ length: 9 }, () => [0, 0, 0, 0]);
   const P = rows(), S = rows(), M = rows();
@@ -285,7 +285,7 @@ function zbSmokeGrid(level, q0, q1, rnd) {
     }
   }
   /* The reflections, worked back through rows 4 and 3: one below a step,
-     anything where a value is set, and otherwise the Zoombini's own. */
+     anything where a value is set, and otherwise the Zoombini's value. */
   const back = (G, out) => {
     for (let col = 0; col < 4; col++) {
       if (M[4][col]) G[out][col] = zbSmokePrev(G[4][col]);
@@ -419,7 +419,7 @@ ZB_PUZZLES.set('SMOKE', {
       const question = images[pick].slice();
       const filters = [];
       if (level === 2) {
-        rnd.range(0, ZB_SMOKE_L2_FILTERS - 1);   /* the stack's own pick, which only reflections use */
+        rnd.range(0, ZB_SMOKE_L2_FILTERS - 1);   /* the pick for the stack, which only reflections use */
         const s = { question, display };
         for (let i = 0; i < ZB_SMOKE_L2_FILTERS; i++) filters.push(zbSmokeLevel2Filter(i, rnd, s));
       }
@@ -446,7 +446,7 @@ ZB_PUZZLES.set('SMOKE', {
     }
     /* Levels 3 and 4: the first two in line, and the grid. */
     const q0 = images[0].slice(), q1 = n > 1 ? images[1].slice() : [0, 0, 0, 0];
-    rnd.range(0, ZB_SMOKE_GRID[level - 1] - 1);   /* the stack's own pick, which only reflections use */
+    rnd.range(0, ZB_SMOKE_GRID[level - 1] - 1);   /* the pick for the stack, which only reflections use */
     const grid = zbSmokeGrid(level, q0, q1, rnd);
     const filters = [1, 2, 3, 4, 5, 6].map(row => zbSmokeGridFilter(grid, row));
     const pair = level === 4 && n > 1;
@@ -541,7 +541,7 @@ function zbSmokeEdit(level, band, state, values) {
     }
     /* The reflection: the picked Zoombini as it reaches the centre
        crystal, and where the mirror's filters cover a trait, the dealt
-       reflection's own value, which the program draws at random. */
+       reflection's value, which the program draws at random. */
     reflections[place] = question.map((v, c) => v || base[c]);
   }
   return { questionIndex: pick, questionTraits: [image, [0, 0, 0, 0]], questionCrystalIdx: place, cliffRunnerStates: reflections,
@@ -574,7 +574,7 @@ function zbSmokeSolve(level, band, state) {
     ? `The rides after the first are dealt as the band goes: after each ride the program ${level <= 2 ? 'picks another of those left and deals the reflections again, one of them its match' : 'makes a new set of filters, and a reflection, from the next in line'}, so each can be matched in its turn, and all ${n} cross.`
     : 'There is one ride.';
   const notes = [
-    'To cross here is to match: a Zoombini whose image and reflection look the same in the centre crystal crosses, and one that does not is knocked back to the Shade Tree camp; each rides once.',
+    'To cross here is to match: a Zoombini whose image and reflection look the same in the centre crystal crosses, and one that does not is knocked back to the Shade Tree camp; each rides only one time.',
     later,
     'The rides after the first are not drawn here: the program deals them from random numbers the game’s animations share, so what they will be is not known in advance, only that they can be matched. The solutions below are for the first ride.',
   ];
@@ -592,7 +592,7 @@ function zbSmokeSolve(level, band, state) {
     const filters = state.level2RunnerStates;
     const through = i => zbSmokeThrough(zbSmokeZ(band[i]), filters.slice(0, 2));
     const matching = new Set(pairs.map(p => p.i)).size;
-    notes.push(`On the first ride ${matching} of the band ${matching === 1 ? 'matches' : 'match'} a reflection: the Zoombini the program picked${matching > 1 ? ', and the others by chance' : ''}. Any of them may ride first; each way is one Zoombini and one reflection, alike Zoombinis counted once.`);
+    notes.push(`On the first ride ${matching} of the band ${matching === 1 ? 'matches' : 'match'} a reflection: the Zoombini the program picked${matching > 1 ? ', and the others by chance' : ''}. Any of them may ride first; each way is one Zoombini and one reflection, two alike Zoombinis counted as one.`);
     return {
       most: n, exact: true, ways: pairs.length,
       solutions: pairs.slice(0, 12).map(({ i, r }) => ({
@@ -636,7 +636,7 @@ function zbSmokeSolve(level, band, state) {
   };
 }
 
-/* An image as the game's own parts, hair above feet, centred on x, y. */
+/* An image as the game's parts, hair above feet, centred on x, y. */
 function zbSmokeImageItems(t, x, y, extra = {}) {
   return ZB_TRAIT_KINDS.map((kind, c) => Object.assign({ t: 'trait', kind, value: t[c], x, y: y - 27 + c * 18, scale: 1.5 }, extra));
 }

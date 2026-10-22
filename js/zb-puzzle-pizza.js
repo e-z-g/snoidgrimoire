@@ -10,8 +10,8 @@
    machine's toppings, no topping wanted by two trolls. A meal is shown to
    the trolls still hungry in turn, Arno, Willa, Shyler: the first for whom
    it is exactly his or her toppings eats it, and no one after sees it. A
-   meal no troll takes lands on the rock of the first troll whose toppings
-   it holds some of and no others, or else in the reject pit, and it counts
+   meal no troll takes lands on the rock of the first troll some of whose
+   toppings it has, and no others, or else in the reject pit, and it counts
    against the band. The trolls forgive six such meals at level 1 and seven
    after that; each one after those costs the Zoombini who carried it, and
    the next in the band carries on. A meal already tried is not judged
@@ -35,7 +35,7 @@
    whichever of the other two has more (the later of the two on a tie),
    Arno first, then Willa, then Shyler. At level 4 the troll who wants the
    most (Arno, then Willa, on a tie) gives two different toppings, drawn at
-   random from his or her own, and each of the other two one, and the four
+   random from that troll's toppings, and each of the other two one, and the four
    meals that pair one of the first two with one of the others lie in the
    pit from the start, counted as tried.
 
@@ -44,8 +44,8 @@
    (setDifficultyParams, generateToppingSet, distributeToppings,
    pickRandomToppingFromOrderLine, createLevel4RejectExamples,
    classifySubmittedMeal, onToppingDelivered, checkToppingMaskMatch,
-   evaluateDelivery, debugGetChances), checked against the program's own
-   code. ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z keeps the level (0-3,
+   evaluateDelivery, debugGetChances), checked against the program's
+   code. ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z stores the level (0-3,
    from 0x4563d7) in the word at 0x4b0b88 and sets each level's slots,
    threshold, minimum, forgiven meals and trolls at 0x43b606, 0x43b734,
    0x43b892 and 0x43ba20; deals the toppings at 0x43f011 and shares them
@@ -58,7 +58,7 @@
    build's SETTOPPINGS, SETTROLLTOPPINGS, GETLIKEDTOPPING, CHECKACCEPTANCE,
    DUPLICATEMEAL, SAVETHISMEAL and REJECTTHESNOID read the same, and the
    installed ZOOMBINI.EXE sets the same values per level;
-   utilities/puzzles/pizza.mjs holds them to it. One difference, of no
+   utilities/puzzles/pizza.mjs compares them with it. One difference, of no
    effect: after the rebalancing pass the program goes round again while
    any troll wants nothing, ScummVM while Arno or Willa does; the pass
    always leaves Shyler with something, so they deal the same. Not read:
@@ -106,7 +106,7 @@ function zbPizzaJudge(wants, meal) {
 /* A meal served to the trolls still hungry (hungry[t] true), as the program
    serves it: { eaten: the troll who takes it or -1, rock: the troll on
    whose rock it lands or -1 (the pit), counted: whether it counts against
-   the band }. tried is whether the same toppings were served before. */
+   the band }. tried is whether the same toppings were served earlier. */
 function zbPizzaServe(state, hungry, meal, tried = false) {
   const wants = [state.arnoToppings, state.willaToppings, state.shylerToppings];
   const order = [0, 1, 2].filter(t => hungry[t]);
@@ -240,7 +240,7 @@ function zbPizzaPit(wishes) {
 }
 
 /* The trolls drawn: the machine with its buttons (the meal being served
-   pressed), each troll with a pizza and, from level 2, a sundae carrying
+   pressed), each troll with a pizza and, from level 2, a sundae, with
    the toppings it wants (faded and ringed where it only may), the meals
    still forgiven, the pit at level 4, and the band: waiting on the near
    side (the carrier first, the lost faded) or across the pass.
@@ -332,21 +332,22 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
    machine's buttons, button b the level's b-th slot.
 
    The moves are meals, any set of the machine's toppings not served
-   before (a meal served again is not judged, so it tells nothing and is
+   before (a meal served again is not judged, so it shows nothing and is
    always a waste). The feedback is each hungry troll's reaction in turn,
-   Arno, Willa, Shyler, until one eats it (zbPizzaFeedback). A troll whose
-   wish every hypothesis left agrees on is served it at once, for nothing.
+   Arno, Willa, Shyler, until one eats it (zbPizzaFeedback). A troll with
+   the same wish in every hypothesis left is served it immediately, for
+   nothing.
    The cost is the meals no troll eats: the level forgives so many, and
    each after that loses the Zoombini carrying it; everyone left crosses
    once every troll has eaten. So the play is the one whose worst case
    wastes fewest meals, the same for any band: the wishes do not depend on
-   it. The search asks whether every troll can be fed wasting at most d,
+   it. The search tests whether every troll can be fed wasting at most d,
    depth first, with the meals whose worst reaction leaves fewest
-   hypotheses tried first and every answer remembered; buttons no meal has
-   told apart are alike (the hypotheses are the same with them swapped),
+   hypotheses tried first and every answer remembered; buttons that no meal has
+   yet distinguished are alike (the hypotheses are the same with them swapped),
    so a meal is a count from each such class. It plays the rule of thumb
    (always the first meal of that order) through first, which gives a
-   bound in one pass, then asks for one fewer at a time while its budget
+   bound in one pass, then tries for one fewer at a time while its budget
    lasts. At level 4 the pit's four meals, seen on arrival (opts.state),
    are tried meals never to serve, and with knows 'program' they narrow
    the hypotheses to those the program would cross so; without them the
@@ -417,8 +418,8 @@ function zbPizzaReactions(e, hungry, code) {
   while (cs.length < (eaten < 0 ? order.length : order.indexOf(eaten) + 1)) { cs.unshift(rest % 5); rest = (rest - rest % 5) / 5; }
   return cs.map((c, k) => [order[k], c]);
 }
-/* Trolls whose wish every hypothesis left agrees on are served it: the
-   hungry mask and the tried meals after. */
+/* Trolls with the same wish in every hypothesis left are served it: the
+   hungry mask and the tried meals after that. */
 function zbPizzaFeedKnown(e, idx, hungry, tried) {
   let fed = null;
   for (let t = 0; t < e.T; t++) {
@@ -438,10 +439,10 @@ function zbPizzaKey(idx, hungry, tried) {
 /* The meals worth trying from here, best first: each with the size of its
    worst split that no troll eats (fewest hypotheses left is best), how
    many splits, and whether any is wasted. Buttons are alike when no meal
-   served has told them apart, or when every hypothesis left gives them the
+   served has distinguished them, or when every hypothesis left gives them the
    same troll (or none): the hypotheses are the same with them swapped, so
    a meal is a count from each class of alike buttons, and at most one
-   topping no troll can want, since a second tells nothing more. */
+   topping that is in no troll's wish, since a second adds nothing. */
 function zbPizzaMoves(e, idx, hungry, tried) {
   const classes = new Map();
   for (let b = 0; b < e.m; b++) {
@@ -587,7 +588,7 @@ function zbPizzaNode(e, band, st) {
   };
   const forgiven = { left: Math.max(0, a - st.wasted), of: a };
   const fedNow = st.fed.slice();
-  // A troll every hypothesis agrees on is served first, for nothing.
+  // A troll with the same wish in every hypothesis is served first, for nothing.
   if (st.lost < n) for (let t = 0; t < e.T; t++) {
     if (!(st.hungry >> t & 1)) continue;
     const w0 = e.wish(t, st.idx[0]);

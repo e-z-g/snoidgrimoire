@@ -8,8 +8,8 @@
    it; where it lands is fixed by what was picked, by a rule hidden from
    the player. A few sections of the wall are marked with dots, 1, 2 or 3,
    and a mudball that lands on one sends that many Zoombinis over, the
-   band going in its own order; a section counts once. The tank holds one
-   mudball for each marked section and seven more (eight at level 4), and
+   band going in band order; a section counts only the first time. The
+   tank has one mudball for each marked section and seven more (eight at level 4), and
    whoever is still behind the wall when it is empty stays behind. The
    Zoombinis' own traits play no part.
 
@@ -38,14 +38,14 @@
    computeTargetLaunchBatches, generateTraitRules,
    findTargetSlotForSelection, settleShotAtTargetSlot, loadFeatures (the
    tank), onPostRenderFrame (a shot used on each launch), debugGetAnswer
-   and debugGetChances. Checked against the program's own code,
+   and debugGetChances. Checked against the program's code,
    ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the groups at 0x439090, the
    tank at 0x436244 (one more at level 4, then the number of marks, then
    7), each launch taking one at 0x436731, the rule at 0x437702 and the
    lookup of where a mudball lands at 0x438920. Every draw is as ScummVM
    has it, in the same order, including the third value drawn for each
    row, checked for repeats at levels 3 and 4 and then never used (the
-   square within a column takes the column's order), the coin tossed at
+   square within a column follows the column's order), the coin tossed at
    levels 1 to 3 that at level 3 only labels the program's debug display,
    and a coin at level 4 that the program zeroes before testing, so its
    other branch never runs (ScummVM draws it and drops it). One difference:
@@ -62,8 +62,8 @@
 */
 
 /* A mudball's three choices, as the program numbers them: 0 the shape's
-   colour (levels 3 and 4), 1 the shape, 2 the mudball's colour; each
-   takes a value 0-4, named as ScummVM's kMudballSelectorValueNames. */
+   colour (levels 3 and 4), 1 the shape, 2 the mudball's colour; each a
+   value 0-4, named as ScummVM's kMudballSelectorValueNames. */
 const ZB_NET_COLOURS = ['yellow', 'blue', 'green', 'red', 'purple'];
 const ZB_NET_SHAPES = ['rectangle', 'triangle', 'star', 'circle', 'diamond'];
 const ZB_NET_CHOICES = ['the shape’s colour', 'the shape', 'the mudball’s colour'];
@@ -121,8 +121,8 @@ function zbNetRule(level, groups, rnd, way3 = 0) {
     if (!high) {
       for (let i = 0; i < 5; i++) { rows[5 * k + i] = a; cols[5 * i + k] = b; }
     } else {
-      // Row k, column k, and square k of every column; the square takes
-      // b, the column's value, as the program has it, and c is not used.
+      // Row k, column k, and square k of every column; the square's value
+      // is b, the column's, as the program has it, and c is not used.
       for (let i = 0; i < 25; i++) rows[25 * k + i] = a;
       for (let p = 0; p < 5; p++) for (let i = 0; i < 5; i++) cols[25 * p + 5 * k + i] = b;
       for (let r = 0; r < 5; r++) for (let p = 0; p < 5; p++) subs[25 * p + 5 * r + k] = b;
@@ -200,7 +200,7 @@ function zbNetRuleFrom(level, labels, way, rowOrder, colOrder, step, groups, at)
 }
 
 /* Which choice picks the row, the column and the square. At levels 1
-   and 2 the coin's labels decide it; at 3 and 4 the way. */
+   and 2 it follows the coin's labels; at 3 and 4 the way. */
 function zbNetAxes(rule) {
   return rule.level <= 2 ? [rule.labels[0], rule.labels[1], -1] : ZB_NET_WAYS[rule.way];
 }
@@ -239,9 +239,9 @@ function zbNetValueWord(k, v) { return k === 1 ? ZB_NET_SHAPES[v] : ZB_NET_COLOU
 
 /* ---- Taken apart ------------------------------------------------------
    A Zoombini crosses when a mudball lands on a mark and it is among those
-   the mark sends over, the band going in its own order. Known, the rule
-   gives each mark's mudball, one shot each, and the tank always holds
-   more than the marks, so everyone crosses. Unknown, see zbNetStrategy. */
+   the mark sends over, the band going in band order. Known, the rule
+   gives each mark's mudball, one shot each, and the tank always has
+   more than there are marks, so everyone crosses. Unknown, see zbNetStrategy. */
 
 /* The game's colours for the mudballs, and the shapes as outlines about a
    centre, for the diagrams. */
@@ -257,7 +257,7 @@ function zbNetMudballItems(choice, x, y, r) {
     [0, -s, 0.75 * s, 0, 0, s, -0.75 * s, 0],
   ][shape];
   if (shape == null) return items;
-  // Outlined, so that a shape the mudball's own colour still shows.
+  // Outlined, so that a shape in the mudball's colour still shows.
   if (pts) items.push({ t: 'poly', points: pts.map((v, k) => Math.round((k % 2 ? y : x) + v)), fill: ink, stroke: '#15181e', width: 1 });
   else items.push({ t: 'circle', x, y, r: Math.round(0.62 * s), fill: ink, stroke: '#15181e', width: 1 });
   return items;
@@ -308,8 +308,8 @@ function zbNetDiagram(level, band, marks, { hits = new Set(), misses = [], mudba
    rule always has them at levels 3 and 4), each with what the shots so far
    have shown of the orders: per order, each value's place, -1 while
    unknown (the last found by elimination once four are known). Values not
-   yet fired are all alike to the player, so this is the whole of what it
-   knows. */
+   yet fired are all alike to the player, so this is all the player can
+   learn. */
 function zbNetStructures(level, knows) {
   const tied = knows !== 'form';
   if (level <= 2) return [[2, 1, -1], [1, 2, -1]].flatMap(axes => (level === 2 ? [2, 3] : [0]).map(step => ({ axes, step, tied: false })));
@@ -335,7 +335,7 @@ const zbNetMod = x => ((x % 5) + 5) % 5;
 function zbNetCoords(level, cell) {
   return level <= 2 ? { r: Math.floor(cell / 5), c: cell % 5, q: 0 } : { r: Math.floor(cell / 25), c: Math.floor(cell % 25 / 5), q: cell % 5 };
 }
-/* What a shot of choice landing on cell tells under e: e updated, or null
+/* What a shot of choice landing on cell shows under e: e updated, or null
    if e could not have sent it there. */
 function zbNetApply(level, e, x, cell) {
   const { r, c, q } = zbNetCoords(level, cell), a = e.h.axes, s = e.h.step, n = zbNetClone(e);
@@ -388,8 +388,8 @@ const zbNetComplete = e => !e.R.includes(-1) && !e.C.includes(-1) && (!e.Q || !e
    mudball of three different values, which lands on a different section
    under each of them (rows or columns or squares differ between ways, and
    the rotation moves the row, or at level 2 the column, by a different
-   amount); then each mark's own mudball. That is at most five shots that
-   need hit nothing, and the tank holds seven spare (eight at level 4), so
+   amount); then each mark's mudball. That is at most five shots that
+   need hit nothing, and the tank has seven spare (eight at level 4), so
    every mark is hit and the whole band crosses: no play can do better,
    and the worst rule cannot make this one do worse. The marks come from
    the deal (opts.state); without one they are dealt from seed 1. */
@@ -596,7 +596,7 @@ ZB_PUZZLES.set('NET', {
       columnAxisSelectorIdx: next.labels[1], subcolumnAxisSelectorIdx: next.labels[2], axisSelectorPermutationIdx: next.way, edited: true,
     });
   },
-  /* Known, each mark's own mudball, once: the simplest has no other shot,
+  /* Known, the mudball for each mark, one shot each: the simplest has no other shot,
      and the order they are hit in only changes which Zoombinis go with
      which mark, so all orders are one way. */
   solve(level, band, state) {
@@ -619,7 +619,7 @@ ZB_PUZZLES.set('NET', {
         diagram: zbNetDiagram(level, band, { dots: rule.dots, at: rule.at }, { hits: new Set(marks), mudballs, crossed: n, over: true, caption: `All ${n} across: a mudball for each mark` }),
       }],
       notes: [
-        'A Zoombini crosses when a mudball lands on a mark: the mark sends as many over as it has dots, in the band’s order. A mark counts once.',
+        'A Zoombini crosses when a mudball lands on a mark: the mark sends as many over as it has dots, in the band’s order. A mark counts only the first time it is hit.',
         'Known, the rule gives each mark its mudball, and the tank always holds more mudballs than there are marks, so the whole band crosses.',
         'The simplest fires each mark’s mudball once and nothing else. The order the marks are hit in only changes which Zoombinis go with which mark, so every order is counted as one way.',
       ],

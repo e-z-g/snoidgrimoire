@@ -6,7 +6,7 @@
    The pond is 12 rows of 12 lily pads, and every pad has three things
    about it: a mark in one of five colours (magenta, red, orange, cyan,
    beige), the mark's pattern, one of three (diamond, cross, flower), and
-   the pad's own shape, one of four (one notch, two notches, three leaves,
+   the shape of the pad itself, one of four (one notch, two notches, three leaves,
    four leaves). Each of the twelve toads on the near bank has a tattoo
    that is one of those twelve things, and hops only onto pads that share
    it. The player drags a toad to a pad in the first column; the next
@@ -29,7 +29,7 @@
    for it, and more by chance. Then it cuts routes, by painting a route's
    pad with the next route's value of the same family: at level 1 all but
    half the band (rounded up) of the twelve routes may be cut, so that
-   the routes left whole carry every Zoombini across, two to a toad; at
+   every Zoombini can cross by the routes left whole, two to a toad; at
    levels 2 to 4 every route may be cut, and a wand that swaps two pads
    mends them. A pad in the third to twelfth row and column is cut with
    chance 25 in 101 (a draw of 0-100 above 75), at most twice a route,
@@ -37,7 +37,7 @@
    is cut there. At levels 3 and 4 one family's
    map is turned a quarter first, so its routes run from top to bottom:
    they are the paths of crabs, which walk down from the top row and stand
-   in the toads' way, and that family's toads have no route of their own.
+   in the toads' way, and that family's toads have no route.
 
    Before the band can move, levels 2 to 4 show the wand at work: the
    program swaps two pairs of pads, (row 5, column 5) with (row 7, column
@@ -50,8 +50,8 @@
    mirrors, the routes left whole at level 1 and the routes' tattoos; the
    pond is dealt again from the same numbers with those put in. solve
    gives the most that can cross, two to a toad, and the fewest wand
-   swaps it finds for them (zbLillyPlan: one toad at a time, the one whose
-   cheapest way across wants the fewest swaps, its way then kept from
+   swaps it finds for them (zbLillyPlan: one toad at a time, the one with
+   the fewest swaps on its cheapest way across, its way then kept from
    later swaps; and restarts that break its ties otherwise).
 
    WHERE IT CAME FROM
@@ -78,8 +78,8 @@
    0x4a1776 and 0x4a178e (the toads' copy), 0x4a182e (the routes a band
    needs),
    0x4a1858 (the rows and columns that may be cut) and 0x4a16e8 and
-   0x4a16fc (the demonstration swaps). The Mac build names the same
-   steps BUILDLILLYPADGRID, RANDOMIZELILYPADSHAPES, SETFROGATTRIBUTES,
+   0x4a16fc (the demonstration swaps). The Mac build's names for the
+   same steps are BUILDLILLYPADGRID, RANDOMIZELILYPADSHAPES, SETFROGATTRIBUTES,
    SWAPMAGICLILLYPADS, CHECKFROGPOSITIONANDMOVE and
    JUMPOFFPADCALLBACKPROC, and draws the same numbers in the same order.
    The values' names are from the pictures, LILLY tBMP 13000, which the
@@ -89,13 +89,15 @@
    marks are a diamond, a cross and a flower in each colour. ScummVM's
    debug text calls the shapes oneCut, twoCut, threeLeaf and fourLeaf,
    and pattern 0 a flower and pattern 2 a diamond, which the pictures
-   have the other way round. utilities/puzzles/lilly.mjs holds the tables
-   to ScummVM and ZOOMBINI.EXE and the reading of the maps to ScummVM's.
+   have the other way round. utilities/puzzles/lilly.mjs compares the
+   tables with ScummVM and ZOOMBINI.EXE and the reading of the maps with
+   ScummVM's.
 
    Not checked against the program: how far a toad goes when the way is
-   shut. It walks by its own greedy search (ScummVM's computeShortestPath
-   and traversePathBFS); here a row is said to cross when matching pads
-   join it to the far side, as ScummVM's isAnswerEntryRowCrossable says.
+   shut. The program walks it by a greedy search (ScummVM's
+   computeShortestPath and traversePathBFS); here a row counts as crossing
+   when matching pads join it to the far side, as in ScummVM's
+   isAnswerEntryRowCrossable.
 */
 
 /* The three families, by the program's number (ScummVM's PadAttrType):
@@ -154,7 +156,7 @@ function zbLillyRouteMaps(arc) {
 
 /* A route map edited, as REGS words in and out (map 0-2, 15000-15002 as
    stored, before the program turns or mirrors it): the pad at row, col
-   given route (0 for none, else one of the map's own). */
+   given route (0 for none, else one of the map's routes). */
 function zbLillyEditMap(words, map, row, col, route) {
   const [first, last] = ZB_LILLY_MAP_ROUTES[map];
   if (route && (route < first || route > last)) throw new Error(`Titanic Tattooed Toads: map ${map + 1}’s routes are ${first}-${last}, not ${route}`);
@@ -305,8 +307,8 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
   }
   if (over.tattoos) for (let k = 1; k <= 12; k++) routeTattoo[k] = over.tattoos[k];
 
-  /* The pads, row by row. A route's cell takes its route's value, or,
-     cut, the next route's; the cut is tried where the row and column may
+  /* The pads, row by row. A route's cell is of its route's value, or,
+     cut, of the next route's; the cut is tried where the row and column may
      be cut and the route may be cut and has been cut fewer than twice.
      The turned family's cuts change nothing but are counted. */
   const pads = { pattern: [], shape: [], colour: [] };
@@ -389,7 +391,7 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
   }
 
   /* A plan: the band in order, two to a toad, first the toads that
-     cross as dealt, then those whose route rows want mending. */
+     cross as dealt, then those with route rows to mend. */
   const plan = [];
   for (const t of toads) if (t.crossRows.length) plan.push(...[0, 1].map(() => `toad ${t.entrySlot + 1} (${t.words}), from row ${t.crossRows[0] + 1}`));
   if (level > 1) {
@@ -535,17 +537,17 @@ function zbLillyPath(pads, type, value, row) {
    crossers: [{ slot, row, path }], plain (toads crossing with no swap),
    gaveUp }. Half the band, rounded up, of toads is enough, two riders
    each. One toad at a time, the cheapest: for each toad still to go, the
-   way across with the fewest pads not of its tattoo (each wants a swap),
-   through no pad another chosen toad's way holds in that family; then a
-   pad of its value swapped onto each of those, one that neither takes a
-   pad off a chosen way nor changes, in another family, a pad a chosen
-   way of that family holds. The ways chosen are kept, so no later swap
+   way across with the fewest pads not of its tattoo (a swap for each),
+   through no pad of that family on another chosen toad's way; then a pad
+   of its value swapped onto each of those, one that neither moves a pad
+   off a chosen way nor changes, in another family, a pad on a chosen way
+   of that family. The ways chosen are kept, so no later swap
    shuts a toad out. */
 function zbLillyPlan(level, n, state, deadline, jitter = null) {
   const FAM = ['pattern', 'shape', 'colour'];
   const pads = zbLillyCopyPads({ pattern: state.padPattern, shape: state.padShape, colour: state.padColor });
   const toads = state.toads, need = Math.ceil(n / 2), wand = state.swapWandUses || 0;
-  /* By family, the cells a chosen way holds: 1 + the toad's slot. */
+  /* By family, the cells on a chosen way: 1 + the toad's slot. */
   const held = { pattern: new Int8Array(144), shape: new Int8Array(144), colour: new Int8Array(144) };
   /* The cheapest way for a toad: a 0-1 search, a pad not of its value
      costing a swap; null if every way is held. */
@@ -637,7 +639,8 @@ function zbLillyPlan(level, n, state, deadline, jitter = null) {
 
 /* The plan with the fewest swaps of the cheapest-first one and of
    restarts that break its ties another way, as many as a share of the
-   budget allows (their own small random numbers, so the same each time). */
+   budget allows (each with small random numbers apart from the program's,
+   so the same each time). */
 function zbLillyBestPlan(level, n, state, deadline) {
   let best = zbLillyPlan(level, n, state, deadline);
   const better = p => p.reached > best.reached || (p.reached === best.reached && p.swaps.length < best.swaps.length);

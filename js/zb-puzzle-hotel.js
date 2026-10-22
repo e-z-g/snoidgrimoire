@@ -6,15 +6,15 @@
    The band is given rooms one Zoombini at a time. The rooms stand in five
    tree trunks, five floors to a trunk, and at level 4 five doors to a
    floor. Hidden is which traits matter: at level 1 one, and each of the
-   five rooms (one to a trunk) takes Zoombinis alike in it; at levels 2 and
-   3 two, one deciding the floor and the other the trunk, so each of the 25
-   rooms takes one pair of values; at level 4 three, the third deciding the
-   door, 125 rooms. Nothing says which value goes where: the first Zoombini
-   into a floor, trunk or door settles its value, and after that a room
-   takes a Zoombini only if it has the values already settled there and,
-   where one is not yet settled, a value not settled anywhere else. Every
-   Zoombini sent to a room that will not take it uses a chance, and the
-   hotel grows darker.
+   five rooms (one to a trunk) lets in Zoombinis alike in it; at levels 2
+   and 3 two, one for the floor and the other for the trunk, so each of
+   the 25 rooms is for one pair of values; at level 4 three, the third for
+   the door, 125 rooms. Which value goes where is open at the start: the
+   first Zoombini into a floor, trunk or door settles its value, and after
+   that a room lets a Zoombini in only if it has the values already
+   settled there and, where one is not yet settled, a value not settled
+   anywhere else. Every Zoombini sent to a room that turns it away uses a
+   chance, and the hotel grows darker.
 
    The traits are drawn three at a time, each any of the four, until they
    suit the band. At levels 1 and 2 the first two must differ, and if the
@@ -29,12 +29,12 @@
    band at random, a different value of the first trait on each floor and
    of the second in each trunk, and boards up between 1 and 8 of the rooms
    that arrangement leaves empty (how many at random, at most as many as
-   are empty); then it forgets the arrangement. So at least that one fits
+   are empty); then it discards the arrangement. So at least that one fits
    round the boards, but the player may find another.
 
    Taken apart (the page's workbench): the form is the traits (and at
    level 3 the boarded rooms, any 1 to 8). Known, an arrangement (which
-   value each floor, trunk or door takes) gives each Zoombini its room, so
+   value goes to each floor, trunk or door) gives each Zoombini its room, so
    all go in, in P(5, k) ways a trait for the k values the band shows,
    except at level 3, where only the arrangements that keep everyone out
    of the boarded rooms do; with boards the program did not deal, there
@@ -56,8 +56,8 @@
      for Ulla's greeting, the band loaded with an idle phase each
      (0x4523c2), and then the rules, 0x4206ee, which calls 0x421661 (the
      Mac program's COUNTBODYPARTS) for how many values of each trait the
-     band shows. The rules are the first thing the deal decides, so deal()
-     starts there;
+     band shows. The deal settles the rules first, so deal() starts
+     there;
    - 0x4206ee draws the three traits and tests them as ScummVM does, and at
      level 3 draws the arrangement, counts the band into it and boards up
      rooms in ScummVM's order (after each room random(0, 3), which picks
@@ -72,14 +72,14 @@
    reading and was not looked for in the program.
    One difference: the program reads trait n (0-3) of a Zoombini as the
    nth byte of its traits, hair, eyes, nose, feet (0x420eb4 and on, the
-   same bytes whose last picks a walk by feet at 0x422718), where ScummVM
-   takes 0-3 as feet, nose, eyes, hair. From the same random numbers
+   same bytes whose last picks a walk by feet at 0x422718), where ScummVM's
+   reading of 0-3 is feet, nose, eyes, hair. From the same random numbers
    ScummVM therefore names another trait; deal() follows the program.
-   utilities/puzzles/hotel.mjs holds the reading to ScummVM.
+   utilities/puzzles/hotel.mjs compares the reading with ScummVM.
 */
 
 /* The program's trait order for the hotel's draws: a Zoombini's traits as
-   it keeps them (ScummVM's TraitAxis has them the other way round). */
+   the program stores them (ScummVM's TraitAxis has them the other way round). */
 const ZB_HOTEL_AXES = ['hair', 'eyes', 'nose', 'feet'];
 /* The counter's first step at each level; the hotel closes at step 12. */
 const ZB_HOTEL_FIRST_STEP = [5, 2, 4, 2];
@@ -112,7 +112,7 @@ function zbHotelAxesSuit(level, a, variants) {
 }
 
 /* A room of the 25 in words: slot = 5 x trunk + floor, trunks counted
-   from the left and floors from the top, as the program keeps them. */
+   from the left and floors from the top, as the program numbers them. */
 function zbHotelRoomWords(slot) {
   return `trunk ${Math.floor(slot / 5) + 1}, floor ${slot % 5 + 1}`;
 }
@@ -138,7 +138,7 @@ function zbHotelAxisMaps(values, fixed = new Map()) {
   return out;
 }
 /* How far a way of placing values strays from the simplest, the values in
-   their own order from the first position: the sum of each value's
+   ascending order from the first position: the sum of each value's
    distance from its place in that order. */
 function zbHotelStray(map, values) { return values.reduce((t, v, r) => t + Math.abs(map.get(v) - r), 0); }
 
@@ -206,8 +206,8 @@ function zbHotelDiagram(band, { level, traits = null, maps = null, place, boards
   return { width: W, height: H, items };
 }
 
-/* The hotel with the traits unknown. A hypothesis is which traits
-   decide the rooms (one, two or three, in order); to the player only how
+/* The hotel with the traits unknown. A hypothesis is which traits sort
+   Zoombinis into rooms (one, two or three, in order); to the player only how
    each sorts the band matters (who is alike in it), so hypotheses that
    sort the band alike are one, counted. With knows 'program', the traits
    the program's test lets it draw for this band (at level 3, given the
@@ -216,7 +216,7 @@ function zbHotelDiagram(band, { level, traits = null, maps = null, place, boards
    with 'form', any different traits.
    A move gives a Zoombini a room: a floor, trunk or door already settled,
    or a new one (the lowest free, the others being alike, except at level
-   3 where the boards tell them apart). It is let in, which settles the
+   3, where the boards make them differ). It is let in, which settles the
    room's values for the hypotheses that let it in, or turned away, a
    chance used, and the one that uses the last closes the hotel. Once one
    hypothesis is left the rest is known: every Zoombini that can have a
@@ -389,8 +389,8 @@ function zbHotelStrategy(level, band, opts = {}) {
     /* No play does better than the worst hypothesis's best, known. */
     const ub = Math.min(...H.map(h => fit(h, P).count));
     if (b.v < ub) {
-      /* The most promising first: at level 3 by the rule of thumb's own
-         step-ahead judgement, elsewhere those fewest would turn away. */
+      /* The most promising first: at level 3 by the step-ahead judgement
+         of the rule of thumb, elsewhere those fewest would turn away. */
       const ms = moves(P, H), ahead = new Map();
       if (level === 3) for (const m of ms) {
         const rej = H.filter(h => !m.acc.includes(h));
@@ -500,8 +500,8 @@ ZB_PUZZLES.set('HOTEL', {
     };
     const boarded = [];
     if (level === 3) {
-      /* A random arrangement: floor i takes the first trait's value
-         rows[i], trunk i the second's cols[i], drawn in turn. */
+      /* A random arrangement: floor i is for the first trait's value
+         rows[i], trunk i for the second's cols[i], drawn in turn. */
       const rows = [], cols = [];
       for (let i = 0; i < 5; i++) {
         let r, c;
@@ -639,10 +639,10 @@ ZB_PUZZLES.set('HOTEL', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbHotelStrategy(level, band, opts); },
-  /* The room takes it when each floor, trunk or door it is in is settled
-     for its value of the trait deciding it, or, where one is not yet
-     settled, its value is settled nowhere else; it is let in, and
-     otherwise turned away. A boarded room is not judged at all. */
+  /* The room lets it in when each floor, trunk or door of the room is
+     settled for the Zoombini's value of that one's trait, or, where one is
+     not yet settled, its value is settled nowhere else; otherwise the room
+     turns it away. A boarded room is not judged at all. */
   answer(level, band, state, node) {
     const z = band[node.zoombini], traits = state.traits;
     if (zbHotelBoarded(level, node.room, level === 3 ? state.boarded || [] : [])) return -1;

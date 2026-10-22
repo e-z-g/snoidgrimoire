@@ -9,10 +9,10 @@
    pair (the help's words). The leftmost tunnel passes the left and upper
    guardians, the next the left and lower, the next the right and lower,
    and the rightmost the right and upper; the two outer tunnels come out in
-   the upper caves and the two inner ones in the lower. Each pair keeps a
+   the upper caves and the two inner ones in the lower. Each pair has a
    rule, some trait values: one guardian of the pair lets through the
    Zoombinis with any of them and the other those with none, which way
-   round a coin toss decides. A Zoombini goes through only if both of its
+   round set by a coin toss. A Zoombini goes through only if both of its
    tunnel's guardians let it; otherwise it is sent back, and one of the
    level's chances is used.
 
@@ -26,15 +26,15 @@
    dealt, closes one tunnel on each side: either the two outer ones or the
    two inner ones turn every Zoombini back.
 
-   At levels 2 to 4 both pairs keep a rule. The program lists every rule of
-   the level's form (level 2 one trait value, 20 of them; level 3 one trait
+   At levels 2 to 4 both pairs have a rule. The program makes a list of
+   every rule of the level's form (level 2 one trait value, 20 of them; level 3 one trait
    with either of two values, 40; level 4 either of two traits' values,
    150) and scores every ordered pair of two different rules on the band:
    into how many of the four groups (both rules, the first only, the second
    only, neither) it sorts at least one Zoombini, and how evenly, as the
    sum of the differences between the four groups' sizes taken two at a
-   time. Of the pairs that fill the most groups it keeps those with the
-   smallest sum, and picks one at random; the first rule goes to the left
+   time. Of the pairs that fill the most groups, it picks one at random
+   from those with the smallest sum; the first rule goes to the left
    and right guardians and the second to the upper and lower.
 
    Taken apart (the page's workbench): the form is the rules, which side
@@ -46,18 +46,18 @@
    guardian (it belongs on the other side) or the upper or lower one (the
    other tunnel on this side), which handleZoombiniPlacement shows by
    animating that guardian (kHoverDataToGateType; the program's table at
-   0x4a73dc, used at 0x45a6ec). zbTunnelsStrategy says how the play is
-   found. The chances are generous: played well, no band at any level
+   0x4a73dc, used at 0x45a6ec). The comment on zbTunnelsStrategy covers how
+   the play is found. The chances are generous: played well, no band at any level
    loses a Zoombini, and the worst case uses a quarter to a half of them.
 
    WHERE IT CAME FROM
    ScummVM's Zoombinis branch, zoombini_pages/puzzle_tunnels.cpp and .h
    (initStates, loadZoombinisFromPack, setupLevel1_singleTrait to
    setupLevel4_crossCategoryTrait, evaluateRule, handleZoombiniPlacement,
-   debugGetChances), checked against the program's own code in ZOOMBI32.EXE
+   debugGetChances), checked against the program's code in ZOOMBI32.EXE
    of the 1996 disc's ZBARC32.Z:
    - the page's setup is 0x459767. It sets the chances to 16, 18, 20 or 22
-     by level, and first calls 0x4595f8, which clears the guards, forgets
+     by level, and first calls 0x4595f8, which clears the guards, resets
      the Allergic Cliffs' count in practice games only, and tosses the coin
      for the closed tunnels (random(0, 1) into 0x4b752c) at every level;
    - it then loads the band (0x4523c2), drawing random(0, 64) for each
@@ -76,16 +76,16 @@
    - the judging is 0x45bffa, called from 0x45a36b, which then turns back
      anyone sent into a closed tunnel at level 1; each Zoombini turned back
      uses a chance at 0x45a166.
-   One difference: at level 4 the program lists a pair of traits' 25
-   rules with the first trait's value changing fastest (SETUPTUNNELPUZZLEL4
-   in the Mac program the same), and ScummVM with the second's. The rules
+   One difference: at level 4 the program's list of a pair of traits' 25
+   rules has the first trait's value changing fastest (SETUPTUNNELPUZZLEL4
+   in the Mac program the same), and ScummVM's the second's. The rules
    are the same 150 but in another order, so the same random number picks
    another pair of them; deal() follows the program.
-   utilities/puzzles/tunnels.mjs holds the tables to ScummVM and to
+   utilities/puzzles/tunnels.mjs compares the tables with ScummVM and with
    ZOOMBINI.EXE.
 */
 
-/* The order the program lists a level's rules in and reads a rule's
+/* The order in which the program puts a level's rules and reads a rule's
    traits: its packed word's bytes, lowest first. */
 const ZB_TUNNELS_ORDER = ['feet', 'nose', 'eyes', 'hair'];
 /* Level 3's pairs of values for one trait, the first in the low half of
@@ -200,7 +200,7 @@ function zbTunnelsOf(key, i) { const l = key >> i & 1, u = key >>> (16 + i) & 1;
    the band to, counted: a Map from key to how many hidden parts give it.
    knows 'program': what the program could deal this band (at level 1 the
    rules its search stops at, avoiding the Allergic Cliffs' count split if
-   one is given; at 2-4 the pairs its scoring keeps); 'form': every rule or
+   one is given; at 2-4 the pairs left after its scoring); 'form': every rule or
    pair of the level's form. Each with either side for each rule and, at
    level 1, either pair of tunnels closed; the coin that closes them is
    tossed at every level, but only at level 1 does it close anything, so
@@ -240,7 +240,7 @@ function zbTunnelsDiagram(band, { level, guards = null, toggle = null, where, se
       return;
     }
     items.push({ t: 'text', x: x + w / 2, y: y + 16, text: `${who} guardian: ${withIt ? 'with' : 'without'}`, anchor: 'middle', size: 12, fill: 'dim' });
-    /* Hair drawn at its own size, the smaller parts at twice theirs. */
+    /* Hair drawn at full size, the smaller parts at twice theirs. */
     items.push(...zbDiagramTraits(rule.flatMap(r => r.values.map(value => ({ kind: r.kind, value }))), x + w / 2, y + 37, 40, withIt ? {} : { faded: true })
       .map(it => it.kind === 'hair' ? Object.assign(it, { scale: 1 }) : it));
   };
@@ -277,7 +277,8 @@ function zbTunnelsDiagram(band, { level, guards = null, toggle = null, where, se
 
 /* The caves with the rules unknown. The hypotheses are kept as the
    tunnels they send the band to (zbTunnelsHypotheses), counted. A
-   Zoombini whose tunnel every hypothesis left agrees on goes in free;
+   Zoombini that every hypothesis left sends to the same tunnel goes in
+   free;
    otherwise one is sent into a tunnel, and it goes through, or the
    guardian of that tunnel's side turns it back (it belongs on the other
    side), or the tunnel's upper or lower guardian does (it belongs in the
@@ -287,9 +288,9 @@ function zbTunnelsDiagram(band, { level, guards = null, toggle = null, where, se
    The play is first worked out by a rule of thumb: send the Zoombini, into
    the tunnel, whose worse turning back leaves the fewest hypotheses (the
    most lopsided move, as at the Allergic Cliffs), which is quick and, with
-   the chances these caves give, nearly always gets everyone through; then,
-   if it does not, by minimax, the best move the one whose worst outcome
-   still gets the most through, memoised on the hypotheses left, those
+   the chances these caves give, nearly always ends with everyone
+   through; then, if it does not, by minimax, the best move the one with the most
+   through in its worst outcome, memoised on the hypotheses left, those
    still to go and the chances, starting from the rule of thumb's value and
    giving up at the budget. A plan is { v, i, t, kids }: v the most sure to
    go through from here, the move, and the plans after each outcome (gone
@@ -499,14 +500,14 @@ ZB_PUZZLES.set('TUNNELS', {
     const side = (g, yes, no) => g.traitMatchOnPrimarySide ? [yes, no] : [no, yes];
     const answer = [];
     const [withA, withoutA] = side(guards[0], 'left', 'right');
-    answer.push(`The ${withA} guardian lets through Zoombinis with ${zbTunnelsRuleWords(guards[0].rule)}, the ${withoutA} guardian those without.`);
+    answer.push(`The ${withA} guardian lets through Zoombinis with ${zbTunnelsRuleWords(guards[0].rule)}, the ${withoutA} guardian those with none of them.`);
     if (level === 1) {
       const open = toggle ? [1, 2] : [0, 3];
       answer.push(`Only the ${ZB_TUNNELS_ENTRANCES[open[0]]} and the ${ZB_TUNNELS_ENTRANCES[open[1]]} tunnels let anyone through; of this band ${tally(open[0])} go left and ${tally(open[1])} right.`);
       answer.push(`The ${toggle ? 'two outer' : 'two inner'} tunnels turn every Zoombini back.`);
     } else {
       const [withB, withoutB] = side(guards[1], 'upper', 'lower');
-      answer.push(`The ${withB} guardian lets through Zoombinis with ${zbTunnelsRuleWords(guards[1].rule)}, the ${withoutB} guardian those without.`);
+      answer.push(`The ${withB} guardian lets through Zoombinis with ${zbTunnelsRuleWords(guards[1].rule)}, the ${withoutB} guardian those with none of them.`);
       const pass = ['left and upper', 'left and lower', 'right and lower', 'right and upper'];
       answer.push(`Of this band, the leftmost tunnel (${pass[0]} guardians) takes ${tally(0)}, `
         + zbWordsOr([1, 2, 3].map(k => `the ${ZB_TUNNELS_ENTRANCES[k]} (${pass[k]}) ${tally(k)}`), 'and') + '.');

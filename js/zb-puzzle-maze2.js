@@ -12,7 +12,7 @@
    shows a feature, such as a red nose: a Zoombini with that feature goes
    the arrow's way and one without it carries straight on. From level 2's
    second layout a coloured square, when a bubble crosses it, turns the
-   arrows of its colour; at level 4 a sticky square holds a bubble until a
+   arrows of its colour; at level 4 a sticky square traps a bubble until a
    square of its colour is crossed or another bubble knocks it on, and the
    band may have to go by way of the upper left or the lower right.
 
@@ -20,11 +20,11 @@
    which features the feature arrows show, chosen from the band in front
    of it, and the colours. The grid itself is one of two fixed layouts a
    level, REGS 16600-16609 in MAZE2, the program taking each level's two
-   in turn over a session, the first first; at level 4 a band of fewer
-   than five gets a third layout of its own. The layouts are read from the
+   in turn over a session, the first first; at level 4 a third layout
+   serves a band of fewer than five. The layouts are read from the
    archive the deal is given, as the program reads them; the 2001
-   release's maze2.mhk is expected to hold the same, and a layout it
-   lacks is an Error, not a guess.
+   release's maze2.mhk is expected to hold the same, and a layout missing
+   from it throws an Error rather than being made up.
 
    The deal. Twenty-one feature slots, as the program numbers them: 0 is
    no feature, 1-5 the five hairs, 6-10 the eyes, 11-15 the noses, 16-20
@@ -37,8 +37,8 @@
    turns, within a limit that grows with how many are left; level 4
    starts from the band's rarest features. Where the band leaves no
    choice, a feature nobody in the band has is drawn at random, which
-   turns no one. The feature arrows take the slots in the order the layout
-   lists them.
+   turns no one. The feature arrows take the slots in the order of the
+   layout's records.
 
    Before the features, seven draws give the colour groups 2-8 each one of
    seven colours, all different; group 1 is white. After them, the
@@ -50,7 +50,7 @@
    (initGridAndSelectPaths, buildZmbAssignmentAlt2, buildZmbAssignmentAlt,
    selectPathSlots2, selectPathSlots, buildZmbAssignmentList and their
    helpers, registerGridCellState, moveRunnerStepAlt, simulateNextLaunch),
-   checked against the program's own code, ZOOMBI32.EXE of the 1996
+   checked against the program's code, ZOOMBI32.EXE of the 1996
    disc's ZBARC32.Z. The page's setup at 0x42e148 picks the layout
    (0x431695: REGS 16600 + the level's counter, the counters at 0x4a1aca,
    0x4a1acc, 0x4a1ace and 0x4a1ad0 starting at 0, level 4's stepping by
@@ -66,12 +66,12 @@
    trait and value from the table at 0x4a1fc0; the feature arrow is
    judged at 0x434d7c: the Zoombini's trait (category - 1) against the
    value, the arrow's way if equal, else straight on, then one square,
-   held to the grid. The program's own quirk, which ScummVM keeps: a
+   held to the grid. A quirk of the program, which ScummVM shares: a
    "free" slot, one nobody has, is drawn at 0x4336a8 as a number from 1 to
    how many there are, used to index the list of all 21 (0x4af556, where
    a slot someone has is 0) rather than the short list built beside it
    (0x4af5aa), so it is often 0 and the next fallback is taken. The Mac
-   build agrees where it was read: SETLEVELTWOKEYANDNONKEYGROUPS (the
+   build matches where it was read: SETLEVELTWOKEYANDNONKEYGROUPS (the
    twin of 0x43356d) and PROCESSFEATUREDIVERTER.
    The program and ScummVM differ in two lines, followed here as the
    program has them: in the last pair of 0x43356d (level 3's first
@@ -92,25 +92,25 @@
    whirlpool loses it (0x434c57, PROCESSBLACKHOLE); a feature arrow as
    above; a white or coloured arrow sends it its way, then turns to its
    next way if it turns once passed, at that moment (0x434f5c,
-   PROCESSPLAINDIVERTER); a sticky square holds it, keeping the way it
+   PROCESSPLAINDIVERTER); a sticky square traps it, keeping the way it
    came (0x4351a4, PROCESSSTICKYSPOT); a coloured square turns every arrow
    of its colour and frees every captive of its colour, which goes on the
-   way it came, and the bubble goes on (0x434ae9, PROCESSSWITCH); an exit
-   takes it out at its corner, the upper right across (0x42fd15,
+   way it came, and the bubble goes on (0x434ae9, PROCESSSWITCH); at an
+   exit it leaves the grid at the exit's corner, the upper right across (0x42fd15,
    DROPSNOIDONLEDGE). Going on means the next square, or the same square
    if that would leave the grid, and a captive held there is knocked on
-   the same way the moment a bubble sets out for it (0x434948). A square
-   takes seven frames; on the fourth a bubble claims the square it is
-   entering, and a second claim before the first arrives pairs them
+   the same way the moment a bubble sets out for it (0x434948). Crossing a
+   square lasts seven frames; on the fourth a bubble claims the square it
+   is entering, and a second claim before the first has reached it pairs them
    (0x431020), and a pair is a collision: both are lost (0x4342fa,
-   PROCESSCOLLISION). A launch's first square is the launcher's own for
+   PROCESSCOLLISION). A launch's first square is the launcher's square for
    a launcher sending right or left, the next one on for one sending up
    (the drop at 0x4301d6). All of that is ScummVM's reading too, but for
    two things its answer finder does differently: it follows a knocked or
    freed captive only after the bubble that set it going has stopped, and
    treats a step off the grid as no launch. The port follows the program
    in both (zbMaze2Run); over 1,800 random level-4 launches the two never
-   ended differently, and no route from a layout's own launchers meets the
+   ended differently, and no route from the launchers of a layout meets the
    grid's edge, whatever its arrows. What the program
    also allows and the search here does not play is launching while other
    bubbles still float: a launcher is free again 34 frames after a drop
@@ -138,7 +138,7 @@ const ZB_MAZE2_COLOUR_POOL = [0, 31, 52, 73, 94, 115, 136, 157, 178, 0, 0];
 /* ScummVM's names for them (MazeColorShapeBase). */
 const ZB_MAZE2_COLOURS = { 31: 'white', 52: 'red', 73: 'orange', 94: 'yellow', 115: 'green', 136: 'cyan', 157: 'purple', 178: 'magenta' };
 
-/* The launcher seats, 0-13 (the layout names them 1-14): the grid square
+/* The launcher seats, 0-13 (1-14 in the layout): the grid square
    each stands on (row, column) and the way its bubbles leave, 0-3.
    Seats 0-5 are at the lower left, 6-8 the upper left, 9-13 the lower
    right. kSeatGridCoords and kSeatMoveDirection. */
@@ -208,8 +208,8 @@ function zbMaze2ParseLayout(id, w) {
    { type 0-7, group 1-8, ways [4 booleans], dir 0-3, turns }, or emptied
    (null). The square's first record is rewritten where it stands, so the
    feature arrows keep their order and so the features dealt to them; any
-   other record on it goes, and a square that had none gets its record
-   last. A record of an exit (types 20-23) is left as it is. */
+   other record on it goes, and a square that had none has its record
+   added last. A record of an exit (types 20-23) is left as it is. */
 function zbMaze2EditSquare(words, row, col, cell) {
   const w = Array.from(words), n = w[0], recs = [];
   for (let i = 0; i < n; i++) recs.push(w.slice(10 + 10 * i, 20 + 10 * i));
@@ -228,8 +228,9 @@ function zbMaze2EditSeats(words, seats) {
   return w;
 }
 
-/* The layouts of an opened MAZE2 (openMohawk), by REGS id, read once an
-   archive. A missing layout is an Error when a deal asks for it. */
+/* The layouts of an opened MAZE2 (openMohawk), by REGS id, read the first
+   time for each archive. A missing layout throws an Error when a deal
+   needs it. */
 const ZB_MAZE2_READ = new WeakMap();
 function zbMaze2Layouts(arc) {
   if (!arc || typeof arc.has !== 'function') throw new Error('Bubblewonder Abyss: its deal needs MAZE2 opened (openMohawk), for its layouts');
@@ -316,7 +317,7 @@ function zbMaze2Slots(layoutLevel, variant, band, rnd) {
     freeCount = free.filter(Boolean).length;
   };
   /* Drawn from 1 to the number of slots, as the program draws; with none
-     it asks for 0 to 0, which does not step the generator. */
+     it draws from 0 to 0, which does not step the generator. */
   const randomReachableSlot = () => (reachCount > 0 ? reach[rnd.range(1, reachCount)] : reach[0]);
   /* The program's quirk (0x4336a8): the draw is 1 to the number of free
      slots, but it indexes the list of all 21, where a slot someone has is
@@ -359,7 +360,7 @@ function zbMaze2Slots(layoutLevel, variant, band, rnd) {
     }
     return null;
   };
-  /* The rarest slot (count at least 1; a later slot wins a tie) with a
+  /* The rarest slot (count at least 1; a tie goes to the later slot) with a
      holder whose value is new in its column while fewer than four are
      committed; that Zoombini's traits are committed, and everyone with
      the slot removed (0x4324a2). */
@@ -377,8 +378,8 @@ function zbMaze2Slots(layoutLevel, variant, band, rnd) {
     }
     return best;
   };
-  /* The commonest slot with a count from min to max (the first wins a
-     tie) with a holder new in its column against every row; all its
+  /* The commonest slot with a count from min to max (a tie goes to the
+     first) with a holder new in its column against every row; all its
      holders committed and removed (0x432810). */
   const commitBestTraitSlot = (max, min) => {
     let best = 0, score = 0;
@@ -400,7 +401,7 @@ function zbMaze2Slots(layoutLevel, variant, band, rnd) {
     }
     return best;
   };
-  /* The rarest slot (a later slot wins a tie) whose first holder shares
+  /* The rarest slot (a tie goes to the later slot) whose first holder shares
      no value with any committed row while fewer than three are
      committed; only that Zoombini is removed. In mode 0 only the slot's
      own column is kept for later tests (0x4320ab). */
@@ -631,7 +632,7 @@ function zbMaze2Launch(dealt, z, seat) {
     }
   };
   let [row, col, dir] = ZB_MAZE2_SEATS[seat];
-  /* Seats that launch right or left start on their own square. */
+  /* A bubble from a seat that launches right or left starts on the seat's square. */
   if (dir === 1) row -= 1; else if (dir === 3) row += 1;
   for (let step = 0; step < 256; step++) {
     const [pr, pc] = [row, col];
@@ -653,12 +654,12 @@ function zbMaze2Launch(dealt, z, seat) {
 
 
 const ZB_MAZE2_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-/* The groups' colours as a diagram paints them: near enough to tell apart,
+/* The groups' colours as a diagram paints them: different enough to see which is which,
    by ScummVM's names for tBMP 5100's banks, not read from its pixels. */
 const ZB_MAZE2_HEX = { white: '#e8ecf2', red: '#e0483c', orange: '#f0902a', yellow: '#eed23a', green: '#52c04c', cyan: '#3ec6d6', purple: '#9058d4', magenta: '#dc4cb8' };
 
-/* The layouts a level may take: its two, or level 4's own for a band
-   under five. */
+/* The layouts a level may take: its two, or at level 4 the third, for a
+   band under five. */
 function zbMaze2LevelLayouts(level, band) {
   if (level === 4) return band.length < 5 ? [ZB_MAZE2_SMALL_LAYOUT] : [ZB_MAZE2_FIRST_LAYOUT[4], ZB_MAZE2_FIRST_LAYOUT[4] + 2];
   return [ZB_MAZE2_FIRST_LAYOUT[level], ZB_MAZE2_FIRST_LAYOUT[level] + 1];
@@ -731,7 +732,7 @@ ZB_PUZZLES.set('MAZE2', {
     if (count(5)) parts.push(many(count(5), 'sticky square'));
     parts.push(many(count(1), 'whirlpool'));
     const setup = [
-      `Layout REGS ${id}, ${small ? 'level 4’s own for a band under five' : `the ${variant ? 'second' : 'first'} of level ${level}’s two`}: ${zbWordsOr(parts, 'and')}.`,
+      `Layout REGS ${id}, ${small ? 'level 4’s third, for a band under five' : `the ${variant ? 'second' : 'first'} of level ${level}’s two`}: ${zbWordsOr(parts, 'and')}.`,
       `${many(band.length, 'Zoombini')} wait${band.length === 1 ? 's' : ''} at the lower left, with ${many(lowerLeft.length, 'launcher')} there`
         + (others.length ? ` and one more at the ${others.map(s => (s < 9 ? 'upper left' : 'lower right')).join(' and ')}.` : '.'),
     ];
@@ -791,7 +792,7 @@ ZB_PUZZLES.set('MAZE2', {
 /* ---- solving ------------------------------------------------------------
    With the grid known, how many of the band can float across, and in what
    order, sending one Zoombini at a time and waiting until every bubble has
-   stopped: the orders ScummVM's own answer finder plays, each launch
+   stopped: the orders that ScummVM's answer finder plays, each launch
    played frame by frame as the program plays it (zbMaze2Run). Launching
    while others float is not searched; zbMaze2CanCross bounds what it could
    add. */
@@ -802,7 +803,7 @@ function zbMaze2Next(d, ways) {
   return d;
 }
 /* Where a seat's bubble starts, one square behind for the seats that
-   launch right or left, so their own square is the first it meets. */
+   launch right or left, so the seat's square is the first it meets. */
 function zbMaze2SeatStart(seat) {
   const [r, c, d] = ZB_MAZE2_SEATS[seat];
   return [d === 1 ? r - 1 : d === 3 ? r + 1 : r, c, d];
@@ -835,10 +836,10 @@ function zbMaze2Board(band, state, arc) {
   return { layout, dealt, cells, at, arrowK, arrows, kinds, kindOf, ctrl, sticky, groupCells, seats: layout.seats };
 }
 
-/* A bubble takes ZB_MAZE2_STEP frames a square: the movement scripts, SCRS
-   15015-15034, are seven frames each, the last saying it has arrived. On
-   the fourth (frame 3) it claims the square it is entering; a second
-   bubble claiming the same square before the first arrives is a
+/* A bubble spends ZB_MAZE2_STEP frames on a square: the movement scripts,
+   SCRS 15015-15034, are seven frames each, the last marking its arrival.
+   On the fourth (frame 3) it claims the square it is entering; a second
+   bubble claiming the same square before the first has reached it is a
    collision, and both are lost (the program's 0x431020 and 0x4342fa). */
 const ZB_MAZE2_STEP = 7;
 const ZB_MAZE2_CLAIM = 3;
@@ -848,13 +849,13 @@ const ZB_MAZE2_CLAIM = 3;
    starts from start [row, col, direction]. Each frame the bubbles that
    reach a square are dealt with by its type (the program's per-frame
    loop, the Mac's MODULEDELAYPROC, dispatching as 0x42f974 does), and one
-   that goes on starts its next square the frame after. A captive knocked
+   that goes on starts its next square on the following frame. A captive knocked
    off a sticky square by a bubble setting out for it, or freed by a
    coloured square, starts a frame later still (the move queue, 0x4afe98),
    so it moves along with the bubble that set it going. A step off the
    grid stays on its square and meets it again (0x434948). The world w
-   keeps the arrows' ways and the captives and is told where each bubble
-   ends. False if bubbles are still moving after 256 squares' time. */
+   has the arrows' ways and the captives, and its callbacks receive
+   where each bubble ends. False if bubbles are still moving after 256 squares' time. */
 function zbMaze2Run(B, w, token, start) {
   if (!B.sticky.length) return zbMaze2RunAlone(B, w, token, start);
   const movers = [], queue = [], claims = new Map(), pairs = [];
@@ -1142,7 +1143,7 @@ function zbMaze2Search(B, band, deadline) {
   };
   /* The rule of thumb, when the search runs out of time: from where the
      grid stands, look a few thousand arrangements ahead for the nearest
-     launch that gets more across than it loses, make it, and go on. */
+     launch with more across than lost, make it, and go on. */
   const greedy = (st, cap = 3000) => {
     const out = [];
     let acc = 0;
@@ -1218,13 +1219,13 @@ function zbMaze2Search(B, band, deadline) {
     for (let n = best.node; n && n.move; n = n.up) out.unshift(n.move);
     return { acc: best.g, moves: out, proven };
   };
-  /* fn run with the search's deadline moved to until. */
+  /* fn run with the search's deadline moved to the time `until`. */
   const within = (until, fn) => { const old = limit; limit = until; try { return fn(); } finally { limit = old; } };
   return { init, key, moves, value, plan, greedy, bestFirst, bound, memo, starts, within };
 }
 const ZB_MAZE2_OUT = { out: true };
 
-/* A plan played with the band's own Zoombinis: each launch sends the first
+/* A plan played with the band's Zoombinis: each launch sends the first
    of its kind waiting at its launcher's corner. Returns the launches, each
    with who went, what befell every bubble it moved, and their routes. */
 function zbMaze2Replay(B, band, plan) {
@@ -1274,7 +1275,7 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
   let exact = true, shortest = true, best, plans = [];
   /* The full search first, with two fifths of the time; if it runs out,
      best first with the rest, or the rule of thumb's order if that does no
-     better. Either is proven the most when it gets across everyone who
+     better. Either is proven the most when it has everyone across who
      could ever cross, though not then the fewest launches. */
   let quick = { acc: 0, moves: [] };
   try {
@@ -1314,7 +1315,7 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
   for (const p of plans) {
     const r = zbMaze2Replay(B, band, p);
     if (!r) continue;
-    /* An order that throws away a Zoombini the simplest keeps is not
+    /* An order that loses a Zoombini whom the simplest saves is not
        another way worth listing. */
     const lostHere = r.where.filter(x => x === -2).length;
     if (lostFirst == null) lostFirst = lostHere;
@@ -1336,7 +1337,7 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
   }
   const most = Math.max(best.acc, ...solutions.map(s => s.crosses.length));
   /* One launch at a time is searched; launching while others float is
-     not, but nothing can beat the bound every Zoombini's own routes give. */
+     not, but nothing can beat the bound from the routes of each Zoombini. */
   const upper = X.bound(X.init), proven = exact;
   exact = proven && most >= upper;
   const notes = [

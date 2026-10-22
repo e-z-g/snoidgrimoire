@@ -6,7 +6,7 @@
    A path of stones winds down past the lion's paw, and the band must
    stand on it grouped by a trait, the groups in an order the lion keeps
    to itself. The Zoombinis are dragged one at a time onto a stone; one
-   put on a stone of the wrong group is walked to a free stone of its own
+   put on a stone of the wrong group is walked to a free stone of the right
    group anyway, and still goes on, but the mistake counts, and at the
    last mistake allowed no more may be placed. The symbols on the wall by
    the lion show some of the order (the game's help calls them clues, some
@@ -40,8 +40,8 @@
    orders and, at levels 2 and 3, which places the wall shows. Known, the
    answer puts everyone on the path with no mistake, one way. Unknown, the
    strategy (zbCavesStrategy, below) plays for the worst of every rule
-   that agrees with the wall; it needs the wall, opts.state, and without
-   it takes the wall as unseen. With the wall every band is sure to cross
+   that fits the wall; it needs the wall, opts.state, and without it
+   treats the wall as unseen. With the wall every band is sure to cross
    whole at levels 1 to 3; at level 4, with nothing on the wall and seven
    mistakes, bands of up to nine were in every trial, and larger ones
    mostly one to four short, as far as the search can show in its budget.
@@ -51,7 +51,7 @@
    (initDifficultyParams, initEntranceTraitPattern, countGlyphDistribution,
    buildGlyphTimingTable, distributeEntranceTraits,
    findMatchingSeatNumber, handleWrongPlacement, handleEntranceDoorEvent,
-   debugGetChances, setBackgroundMusic), checked against the program's own
+   debugGetChances, setBackgroundMusic), checked against the program's
    code in ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the setup at
    0x41665d (the level in the word at 0x4aad98, 1-4; the first stone at
    21 - n; the music, tMID 30025 + level, played only below level 4),
@@ -60,9 +60,9 @@
    program's data), the counts at 0x418972, the stones at 0x418ce0, the
    clues at 0x418a25 and the judge at 0x418e70; and the Mac build's
    RANDOMLYSELECTANDSORTBODYPARTS and the Lion's Lair's
-   SETSTARTINGLEVELVARIABLES, which agree. The stones' places and the
+   SETSTARTINGLEVELVARIABLES, which match it. The stones' places and the
    clues' places are tables in ZOOMBINI.EXE. utilities/puzzles/caves.mjs
-   holds the reading to ScummVM's text and the tables to ZOOMBINI.EXE.
+   compares the reading with ScummVM's text and the tables with ZOOMBINI.EXE.
 */
 
 /* Mistakes allowed at levels 1-4 (initDifficultyParams' _mistakeLimit). */
@@ -157,7 +157,7 @@ ZB_PUZZLES.set('CAVES', {
     { rule: 'One trait is drawn at random and its five values shuffled; the band must stand along the path in groups by that trait, in that order, so each Zoombini has a run of stones as long as the number like it. The wall shows all five values, in order.',
       chances: 'Four mistakes. A Zoombini put on a wrong stone is walked to a right one and still goes on, but it counts; after the fourth no more may be placed, and the rest stay behind.',
       notes: [
-        'The first Lion’s Lair after the program starts is by nose, at any level: the trait is drawn and then set to the nose, once. ScummVM does the same.',
+        'The first Lion’s Lair after the program starts is by nose, at any level: the trait is drawn and then set to the nose, the first time only. ScummVM does the same.',
         'A band of fewer than sixteen stands on the last stones of the path, and the stones before them fit no one: the program accepts a Zoombini only on the band’s stones, so in ScummVM one put on an earlier stone is moved on and counted a mistake.',
       ] },
     { rule: 'As at level 1, but the wall shows only two of the five values, drawn at random, each in its place in the order; the others have worn away.',
@@ -205,7 +205,7 @@ ZB_PUZZLES.set('CAVES', {
   edit(level, band, state, values) { return zbCavesEdit(level, band, state, values); },
   solve(level, band, state) { return zbCavesSolve(level, band, state); },
   strategy(level, band, arc, opts = {}) { return zbCavesStrategy(level, band, opts); },
-  /* It stays when the stone it is put on is of its own run, and is walked
+  /* It stays when the stone it is put on is of the run it belongs to, and is walked
      to a free stone of its run otherwise (findMatchingSeatNumber). The
      game draws that stone at random; here it is the first, nearest the
      top of the path. */
@@ -302,7 +302,7 @@ function zbCavesEdit(level, band, state, values) {
   const kind = k => { if (!ZB_TRAIT_KINDS.includes(k)) throw new Error('Pick a trait: hair, eyes, nose or feet.'); return k; };
   const order = (o, what) => {
     const a = (Array.isArray(o) ? o : []).map(Number);
-    if (a.length !== 5 || new Set(a).size !== 5 || a.some(v => !(v >= 1 && v <= 5))) throw new Error(`${what} must hold all five values, each once.`);
+    if (a.length !== 5 || new Set(a).size !== 5 || a.some(v => !(v >= 1 && v <= 5))) throw new Error(`${what} must have all five values, with none twice.`);
     return a;
   };
   const places = (v, what) => {
@@ -394,12 +394,12 @@ function zbCavesDiagram(level, band, { state = null, reveal = false, seatOf = ne
 }
 
 /* The lair with the order unknown. The hypotheses are the rules the
-   program could deal this band at this level that agree with the wall
-   (opts.state gives the wall; without it the wall is taken as unseen, as
-   at level 4). To the player a rule is only which stones each band member
+   program could deal this band at this level that fit the wall
+   (opts.state gives the wall; without it the strategy treats the wall as
+   unseen, as at level 4). To the player a rule is only which stones each band member
    fits, a run of them, so rules alike in that are one hypothesis, weighed
    by how many rules they stand for. A move puts a waiting Zoombini on a
-   free stone: it stays, or it is walked to a free stone of its own run,
+   free stone: it stays, or it is walked to a free stone of the run it belongs to,
    one the game draws at random and here the worst for the player, and a
    mistake is counted; after the last mistake allowed no one else may be
    placed. A Zoombini every hypothesis left puts on some free stone is
@@ -431,7 +431,7 @@ function zbCavesStrategy(level, band, opts = {}) {
   const top = clues(0), below = clues(1);
   const primaries = top.length ? [state.primaryRuleTraitKind] : ZB_TRAIT_KINDS;
   /* The orders of the values present in the band, each with the number of
-     the five values' orders (agreeing with the wall's row) behind it. */
+     the five values' orders (those that fit the wall's row) behind it. */
   const orders = (present, row) => {
     const out = new Map();
     for (const p of ZB_CAVES_PERMS) {
@@ -613,11 +613,11 @@ function zbCavesStrategy(level, band, opts = {}) {
     if (!cuts || sure === n || Date.now() > deadline) break;
   }
   const exact = cuts === 0 || sure === n;
-  /* The play, a node at a time, made when asked. */
+  /* The play, a node at a time, each made the first time it is needed. */
   const stone = j => 17 - n + j;
   const seatOfJ = j => 21 - n + j;
   const node = (H, occ, rem, m, placed) => {
-    /* After the last mistake no one else is placed, sure or not. */
+    /* After the last mistake no one else is placed, whether or not they are sure to fit. */
     const f = m > 0 ? settle(H, occ, rem) : { occ, rem, placed: [] };
     const pm = new Map(placed);
     for (const [z, j] of f.placed) pm.set(z, j);

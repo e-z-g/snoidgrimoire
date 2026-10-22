@@ -6,7 +6,7 @@
    The band is dragged onto stones in a field of hexagons. Between two
    stones is a joining stone, which either shows a trait (hair, eyes, nose
    or feet) or is plain. Two Zoombinis either side of a stone that shows a
-   trait must have the same value of it; a plain stone asks nothing. Each
+   trait must have the same value of it; a plain stone sets no condition. Each
    group of stones is entered from a base on the right of the screen, and
    a stone rises when every joining stone on some way to it from the base
    is satisfied. Nothing is counted against the band: Zoombinis can be moved
@@ -19,7 +19,7 @@
               first later one it shares a trait with, trying the traits in
               turn from one drawn at random; a pair is two stones joined by
               a stone showing the trait they share, and a Zoombini with no
-              partner gets a stone of its own. The pairs and single stones
+              partner stands alone on a stone. The pairs and single stones
               go in rows, one to a row.
      level 2: chains of three. From the first Zoombini the program finds
               one that shares a trait with it (trying the traits from one
@@ -29,7 +29,7 @@
               stone is plain and the next is the first one left.
      level 3: three rings of six stones on a fixed pattern, each entered
               at its right-hand stone. The program sorts the band by how
-              many others each shares a trait with, takes the rings in one
+              many others each shares a trait with, fills the rings in one
               of three orders (two draws of 0-100), stands the two most
               sociable left on each ring's two ends, then finds for each
               end two neighbours sharing a trait with it, from the least
@@ -63,7 +63,7 @@
    1 and 2) and resetAnimStates, confirmEndpointMatches, activateChainLink,
    propagateMatchChain, evalNeighborStates and evalTraitMatchAndAdvance
    (levels 3 and 4); debugGetChances (no limit). Checked against the
-   program's own code, ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the grid
+   program's code, ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the grid
    is dealt at 0x446574 (the level 4 look drawn first, 0x4465b1), level 1's
    pairing at 0x4444d6, level 2's chains at 0x444892 and 0x444a44, level 3
    at 0x446d04 with 0x444c3b, 0x445bf1, 0x444d1f and 0x444fb9, level 4 at
@@ -76,12 +76,12 @@
    SOLVETHEPUZZLE is the typed cheat's playback of the placement the level
    4 deal records, not part of the deal. Every step, loop order and draw is as ScummVM has
    it, with three exceptions (marked below): the pairing's retries at
-   level 1 swap the program's own copy of the traits, not a local one,
+   level 1 swap the program's shared copy of the traits, not a local one,
    which changes nothing the page shows; level 4's first search reads one
    entry past the sorted list; and the program writes the wrong id for a
    Zoombini it stands on a spare stone at level 4, which only its typed
    "sovle" cheat uses. The tables are in ZOOMBINI.EXE too, and
-   utilities/puzzles/slides.mjs holds them to both.
+   utilities/puzzles/slides.mjs compares them with both.
 */
 
 const ZB_SLIDES_CELLS = 117;
@@ -227,9 +227,10 @@ function zbSlidesLinks(f) {
    program tries again, up to ten times in all, after moving the Zoombinis
    left single to the front; its count of singles is never reset between
    tries, so after a first try that leaves two or more single (one is
-   allowed if the band is odd) it always makes all ten and keeps the last.
-   It swaps its own copy of the traits, which nothing else at level 1
-   reads; this keeps a copy and which Zoombini is where in it. */
+   allowed if the band is odd) it always makes all ten tries and uses the
+   last. It swaps the traits in its shared copy, which nothing else at
+   level 1 reads; this function makes a copy and tracks which Zoombini is
+   where in it. */
 function zbSlidesPairs(f) {
   const { n, rnd } = f, T = f.traits.map(t => t.slice()), who = [...Array(n).keys()];
   let cursor = rnd.number(3), singles = 0, groups = [];
@@ -446,11 +447,11 @@ function zbSlidesReach(f, cell) {
 }
 
 /* Level 4: the entrance's stone and the search out from it
-   (assignZmbToSlot, 0x447c75). The first stone takes the later of the
+   (assignZmbToSlot, 0x447c75). The first stone goes to the later of the
    first two neighbours on the sorted list that share a trait. The
    program looks as far as the last entry against the one after it, which
    is 0: so if no two neighbours share a trait, the first Zoombini of the
-   band may be stood there while still waiting for a stone of its own
+   band may be stood there while still waiting for another stone
    (ScummVM stops one short). */
 function zbSlidesEntrance(f, baseCell) {
   zbSlidesSort(f);
@@ -477,7 +478,7 @@ function zbSlidesEntrance(f, baseCell) {
 /* Level 4: stand anyone still waiting on the first free stones of
    ZB_SLIDES_L4_SPARE (reassignDeadSlots, 0x448619). The program writes the
    id of the word before its list of ids instead of the Zoombini's: the
-   stone is right, the record of who stands there is not. */
+   stone is right, and the record of who stands there is wrong. */
 function zbSlidesSpare(f) {
   for (const cell of ZB_SLIDES_L4_SPARE) {
     if (f.state[cell] === ZB_SLIDES_TAKEN) continue;
@@ -492,7 +493,7 @@ function zbSlidesSpare(f) {
   }
 }
 
-/* clearCellToEmpty, resetCellToEmpty (which also takes the link back from
+/* clearCellToEmpty, resetCellToEmpty (which also removes the link back from
    each neighbour) and clearCellLinkBits. */
 function zbSlidesClear(f, cell) {
   f.state[cell] = ZB_SLIDES_INERT;
@@ -648,7 +649,7 @@ function zbSlidesBuild(level, band, rnd) {
       const t = zbSlidesPickTrait(f, a, b);
       if (t) f.data[mid] = t;
     }
-    // Stones for anyone the rings did not take, in ZB_SLIDES_L3_STONES'
+    // Stones for anyone left off the rings, in ZB_SLIDES_L3_STONES'
     // order; the band always has as many Zoombinis as stones filled, so the
     // program's branch for too many is never taken.
     let missing = n - ZB_SLIDES_L3_STONES.filter(c => f.state[c] === ZB_SLIDES_TAKEN).length;
@@ -712,7 +713,7 @@ function zbSlidesBuild(level, band, rnd) {
       // diagonal. Each joining stone shows the first trait shared by two
       // Zoombinis the program finds by looking the sorted list up in itself
       // (so the k-th stone's is the sorted list's entry at the sorted
-      // list's k-th entry); it stands the band on the stones in its own
+      // list's k-th entry); it stands the band on the stones in band
       // order, which need not satisfy them, and this page gives the order
       // that does.
       const cells = ZB_SLIDES_L4_CHAIN, joins = ZB_SLIDES_L4_CHAIN_JOINS;
@@ -760,8 +761,8 @@ function zbSlidesBuild(level, band, rnd) {
   return { f, solution, groups };
 }
 
-/* The program's judge: which stones rise with the band stood as placement
-   says (Map stone -> place in band). Levels 1 and 2 walk each row out from
+/* The program's judge: which stones rise with the band stood as in
+   placement (Map stone -> place in band). Levels 1 and 2 walk each row out from
    its base (validateChainAndMarkMatched, 0x443f25); levels 3 and 4 spread
    out from each ring's first stone (confirmEndpointMatches) or from the
    entrance (activateChainLink), so a stone rises if any way to it from
@@ -904,9 +905,9 @@ const ZB_SLIDES_SAME = { hair: 'the same hair', eyes: 'the same eyes', nose: 'th
 /* ---- Taken apart ------------------------------------------------------
    Nothing is hidden at Stone Rise: the joining stones show their traits,
    so there is no strategy to find, only where to stand whom. A Zoombini
-   crosses if it stands on a stone that rises, and a stone rises when it
-   holds a Zoombini and some way to it from its entrance runs through
-   stones that hold Zoombinis and joining stones they satisfy; this is the
+   crosses if it stands on a stone that rises, and a stone rises when a
+   Zoombini stands on it and some way to it from its entrance runs through
+   stones with Zoombinis on them and joining stones they satisfy; this is the
    program's judge (zbSlidesJudge) put as a graph, and every solution given
    is held to the judge itself. */
 
@@ -920,8 +921,8 @@ function zbSlidesFieldOf(level, band, state) {
 
 /* The stones as a graph: stones (cells, in reading order), index (cell ->
    place in stones), entrance (per stone, whether a base is beside it),
-   adj (per stone, [{ t, kind }]: another stone and the trait, 0-3, the
-   joining stone between asks, or -1 for none; through a chain of plain
+   adj (per stone, [{ t, kind }]: another stone and the trait, 0-3, that
+   the joining stone between shows, or -1 for none; through a chain of plain
    joining stones too), and joins: the joining stones between two stones,
    [{ cell, a, b, kind }], which the form can change. */
 function zbSlidesGraph(f) {
@@ -929,7 +930,7 @@ function zbSlidesGraph(f) {
   const index = new Map(stones.map((c, i) => [c, i])), adj = stones.map(() => []), joins = [];
   const traitOf = c => f.data[c] >= ZB_SLIDES_HAIR && f.data[c] <= ZB_SLIDES_HAIR + 3 ? f.data[c] - ZB_SLIDES_HAIR : -1;
   stones.forEach((s, i) => {
-    // Every way out, a cell visited once for each trait asked on the way
+    // Every way out, a cell visited once for each trait shown on the way
     // to it, so that two ways to one stone (one marked, one plain) are both
     // kept.
     const seen = new Set(), stack = [0, 1, 2, 3, 4, 5].map(d => [zbSlidesLink(f, s, d), -1]);
@@ -943,7 +944,7 @@ function zbSlidesGraph(f) {
       }
       if (f.state[c] !== ZB_SLIDES_PATH) continue;
       const k = traitOf(c);
-      // A shown trait asks it of the stones either side; past them it is
+      // A shown trait applies to the stones either side; past them it is
       // no joining stone of theirs.
       if (k >= 0 && kind >= 0) continue;
       for (let d = 0; d < 6; d++) stack.push([zbSlidesLink(f, c, d), k >= 0 ? k : kind]);
@@ -962,7 +963,7 @@ function zbSlidesGraph(f) {
   return { stones, index, adj, joins, entrance };
 }
 
-/* The stones that rise with the band stood as place says (per stone, a
+/* The stones that rise with the band stood as in place (per stone, a
    band index or -1): those reached from an entrance through stones with
    Zoombinis on them and joining stones they satisfy. */
 function zbSlidesRisen(g, band, place) {
@@ -991,11 +992,11 @@ function zbSlidesZone(level, g, place, risen) {
 /* The most that can cross and how (the puzzle's solve). Only placements in
    which everyone stood on a stone rises are counted (anyone else stands
    aside, which changes nothing), and two alike Zoombinis swapped are one
-   way, not two. Simplest is nearest the band's own order: read the stones
+   way, not two. Simplest is nearest band order: read the stones
    in their numbered order and count the pairs of Zoombinis on them out of
    band order; fewest first (of two alike, the earlier stands on the stone
    read first).
-   Levels 1 and 2 are rows, each on its own: the most and the ways are a
+   Levels 1 and 2 are rows, each separate: the most and the ways are a
    sum over the rows, each row's choices (who stands on its first one, two
    or three stones) tried against which of the band the rows above have
    taken, and the simplest are found best first (A*), the least disorder
@@ -1205,7 +1206,7 @@ function zbSlidesSolve(level, band, state, opts = {}) {
       dfs(0);
       return { out, done, count };
     };
-    // The placement the stones were laid out from, as far as it still holds.
+    // The placement the stones were laid out from, as far as it still fits.
     const dealt = g.stones.map(c => { const x = (state.solution || []).find(y => y.cell === c); return x ? x.zoombini : -1; });
     const dealtRisen = zbSlidesRisen(g, band, dealt);
     const dealtPlace = dealt.map((z, i) => dealtRisen[i] ? z : -1), dealtMost = dealtPlace.filter(z => z >= 0).length;
@@ -1289,7 +1290,7 @@ function zbSlidesSolve(level, band, state, opts = {}) {
     solutions,
     notes: [
       'A Zoombini crosses if it stands on a stone that rises; a stone rises when some way to it from its entrance runs through stones with Zoombinis on them and joining stones they satisfy. Those on stones that do not rise, and those not stood on a stone, stay behind.',
-      'Simplest is nearest the band’s own order: read the stones in their numbered order and count the pairs of Zoombinis on them out of band order; fewest first.',
+      'Simplest is nearest band order: read the stones in their numbered order and count the pairs of Zoombinis on them out of band order; fewest first.',
       'Two alike Zoombinis swapped count as one way, and those who stay behind are not told apart by where they wait.',
       ways == null ? 'The ways were not all counted within the budget.' : `${ways} way${ways === 1 ? '' : 's'} in all to stand ${most} on stones that rise.`,
       ...(complete ? [] : ['The search stopped at its budget: the simplest found are listed, and there may be simpler.']),
@@ -1297,9 +1298,9 @@ function zbSlidesSolve(level, band, state, opts = {}) {
   };
 }
 
-/* The field drawn: the joining stones with their traits (the shared value's
-   own sprite where both Zoombinis beside one share it), the stones
-   numbered, risen ones edged, the band on the stones as place says, and
+/* The field drawn: the joining stones with their traits (the sprite of the
+   shared value where both Zoombinis beside one share it), the stones
+   numbered, risen ones edged, the band on the stones as in place, and
    those not on a stone that rises waiting at the right, faded. */
 function zbSlidesDiagram(f, g, band, place, risen, caption = null) {
   const W = 800, H = 520, items = [];
@@ -1374,7 +1375,7 @@ ZB_PUZZLES.set('SLIDES', {
       chances: 'As many tries as it takes, as at every level.',
       notes: ['A coin toss first picks one of two looks for the stones; it does not change the rule.',
         'A stone rises if any way to it from the entrance is satisfied.',
-        'The program’s own, not in ScummVM: when exactly four Zoombinis stand on the network, on the four stones of the entrance’s row, and all four rise, it writes “You have entered the psychedelic ZB Zone!” on the screen and cycles the colours, once a visit (0x4451a3 from 0x4452b6, 0x448d00). A band of four at this level always meets it when it succeeds. ScummVM cycles the colours but writes nothing.',
+        'Only in the program, not in ScummVM: when exactly four Zoombinis stand on the network, on the four stones of the entrance’s row, and all four rise, it writes “You have entered the psychedelic ZB Zone!” on the screen and cycles the colours, once a visit (0x4451a3 from 0x4452b6, 0x448d00). A band of four at this level always meets it when it succeeds. ScummVM cycles the colours but writes nothing.',
         'In a few bands in ten thousand, no two Zoombinis next to each other on the program’s sorted list share a trait, and its first search goes wrong: it either stands a Zoombini on the entrance stone while still finding it another stone, or stands no one there and sets the stone to the traits of a Zoombini that is not there. ScummVM leaves the stone empty in the second case.',
         'For three to five Zoombinis the program marks each stone of the chain for two Zoombinis it finds by looking its sorted list up in itself, and stands the band on the stones in the band’s order, which need not satisfy the marks; the marks can always be satisfied, and the arrangement given here does.'] },
   ],

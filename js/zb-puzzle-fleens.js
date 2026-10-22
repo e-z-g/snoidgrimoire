@@ -5,15 +5,16 @@
 
    Each Zoombini in the band has a Fleen, sitting in the trees: three of
    the Fleens on the beehive branch, the rest on the other branches.
-   The player sends a Zoombini down the lure path, and its own Fleen chases
-   it off its branch. When the three on the beehive branch have been lured
+   The player sends a Zoombini down the lure path, and that Zoombini's
+   Fleen chases it off its branch. When the three on the beehive branch have been lured
    off, the bees chase the Fleens away and the band may go on. Hidden is how
    a Fleen goes with its Zoombini: for each Zoombini trait, the Fleen trait
    it becomes (hair, eyes, nose or feet) and a turn of its five values.
 
    Every Zoombini sent, whether its Fleen was on the beehive branch or not,
-   waits on another branch, which holds six; when a seventh is sent, the
-   first still waiting goes back to Shelter Rock, and so for each after.
+   waits on another branch, with room for six; when a seventh is sent,
+   the first still waiting goes back to Shelter Rock, and so on for each
+   one after that.
    The three the puzzle needs wait there too, so three wrong guesses cost
    nothing.
 
@@ -24,12 +25,12 @@
    missing ones as lured already). The beehive's three places go to them in
    band order. Then the values: for each of hair, eyes, nose and feet a
    turn from 1 to 5, and a Zoombini value v becomes the Fleen value
-   (turn + v - 2) mod 5 + 1, so a turn of 1 keeps the numbers. Then the
+   (turn + v - 2) mod 5 + 1, so a turn of 1 leaves the numbers as they are. Then the
    traits: at levels 1 and 2 each Zoombini trait becomes the same Fleen
    trait; at levels 3 and 4 hair becomes the Fleen's eyes, nose or feet (2
    to 4), and eyes, nose and feet take the other three in an order drawn
-   without repeats, so any of them may keep its own. The saved game keeps
-   both: levels 1 and 3 draw the values only if no visit has, levels 2 and
+   without repeats, so any of them may stay the same trait. The saved game
+   stores both: levels 1 and 3 draw the values only if no visit has, levels 2 and
    4 on every visit; level 3 draws the traits only if none are kept, level
    4 on every visit, and levels 1 and 2 clear them, so a visit at either
    makes level 3 draw them anew.
@@ -38,7 +39,7 @@
    ScummVM's Zoombinis branch, zoombini_pages/puzzle_fleens.cpp and .h
    (buildZmbTraitSetup, spawnFleenCreatures, beginBoardingAnimation, the
    seventh pair's eviction in processInitialLureOrSubmittedPairEscapeEvent,
-   shiftDepartureQueue, debugGetChances), checked against the program's own
+   shiftDepartureQueue, debugGetChances), checked against the program's
    code. ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z deals the Fleens at
    0x41d738: the three places at 0x41d7aa, with random(1, size) at
    0x410471, and the count already lured for one or two Zoombinis; the
@@ -71,7 +72,7 @@ const ZB_FLEENS_TRAIT_WITH = {
   nose: ['a grey nose', 'a peach nose', 'a yellow nose', 'a teal nose', 'a lilac nose'],
   feet: ['bare feet', 'red shoes', 'wheels', 'tank treads', 'rockets'],
 };
-/* The beehive branch's places, and the Zoombinis a waiting branch holds. */
+/* The beehive branch's places, and the Zoombinis a waiting branch has room for. */
 const ZB_FLEENS_HIVE = 3;
 const ZB_FLEENS_WAITING = 6;
 
@@ -89,11 +90,11 @@ function zbFleensOf(z, rotations, kinds) {
   return f;
 }
 
-/* The dealing. journey keeps what the saved game keeps between visits:
+/* The dealing. journey has what the saved game stores between visits:
    fleensTraitValueRotations and fleensTraitDestSlots (ScummVM's
    _v1FleensTraitValueRotations and _v1FleensTraitDestSlots: a turn per
    Zoombini trait, 0 before any is drawn; the Fleen trait each becomes,
-   1-4, or 0 for its own). */
+   1-4, or 0 for the same trait). */
 function zbFleensDeal(level, band, rnd, journey) {
   const n = band.length, targets = [0, 0, 0];
   targets[0] = rnd.range(1, n);
@@ -142,7 +143,7 @@ function zbFleensVisible(state) {
   return { hive: zbFleensTargets(state).map(i => looks[i]).sort((a, b) => a - b), all: looks.slice().sort((a, b) => a - b) };
 }
 /* The mixings of the traits a level may have: the Fleen trait each
-   Zoombini trait becomes, as destination slots 1-4 (0 for its own). The
+   Zoombini trait becomes, as destination slots 1-4 (0 for the same trait). The
    program's: levels 1 and 2 none, 3 and 4 hair to 2-4 and the rest the
    other three in any order, 18; the form's at 3 and 4 any order, 24. */
 function zbFleensMixings(level, knows) {
@@ -231,7 +232,7 @@ function zbFleensGrid(rotations, kinds) {
    player can tell apart is only each band member's Fleen and whether it is
    a beehive one, so hypotheses alike in those are one. A move sends a
    Zoombini; its Fleen follows it, from the beehive or not, and its looks
-   tell the player whose it is. The cost is the Zoombinis sent: six wait,
+   show the player whose it is. The cost is the Zoombinis sent: six wait,
    and each sent after the sixth sends the first waiting back to Shelter
    Rock. The search is minimax over the Zoombinis to send, remembering
    every position; the spaces are small once the Fleens seen are taken
@@ -239,7 +240,7 @@ function zbFleensGrid(rotations, kinds) {
    player learns only whether a beehive Fleen follows, and any three of the
    band may be the beehive's; sending in band order is then as good as
    anything. At levels 1 and 3, with knows 'program', turns (and at 3 a
-   mixing) kept from the last visit are taken to be remembered. */
+   mixing) kept from the last visit count as ones the player remembers. */
 function zbFleensHypotheses(level, band, state, knows) {
   const vis = zbFleensVisible(state), n = band.length, want = Math.min(3, n);
   const remember = knows === 'program' && state.rotationsKept;
@@ -481,10 +482,10 @@ ZB_PUZZLES.set('FLEENS', {
     };
   },
   strategy(level, band, arc, opts = {}) { return zbFleensStrategy(level, band, opts); },
-  /* The Zoombini sent is followed by its own Fleen, from the beehive
+  /* The Zoombini sent is followed by its Fleen, from the beehive
      branch if it is one of the beehive's three and from another branch if
-     not; a strategy made with nothing seen tells the two apart only by
-     the branch. */
+     not; for a strategy made with nothing seen, the branch is the only
+     difference between the two. */
   answer(level, band, state, node) {
     const z = node.zoombini, hive = zbFleensTargets(state).includes(z), look = zbFleensLook(state.fleens[z]);
     return node.outcomes.findIndex(o => o.hive === hive && (o.look == null || o.look === look));

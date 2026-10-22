@@ -2,7 +2,7 @@
    at each level, how many chances it gives, and how it deals the hidden
    part out of the band in front of it, as the program does.
    =========================================================================
-   Needs zb-journey.js. Each puzzle is a file of its own,
+   Needs zb-journey.js. Each puzzle has a file,
    js/zb-puzzle-<archive in lower case>.js, which adds itself to
    ZB_PUZZLES; this file has what they share: a Zoombini's four traits and
    their names, the program's random numbers, a band dealt the way
@@ -10,18 +10,18 @@
    shows it.
 
    A Zoombini here is its four traits, { hair, eyes, nose, feet }, each
-   1-5, in the order the program keeps them in a saved game (ScummVM's
+   1-5, in the order the program stores them in a saved game (ScummVM's
    ZmbTrait: kTraitHair 0, kTraitEyes 1, kTraitNose 2, kTraitFeet 3). The
    program's puzzles mostly pack them into one 32-bit word instead, a byte
    a trait: feet in the lowest, then nose, eyes and hair.
 
-   The random numbers are the program's own: a linear congruential
+   The random numbers are the program's: a linear congruential
    generator, state = 214013 * state + 2531011 (mod 2^32), whose top 16
-   bits modulo (n + 1) give a number from 0 to n; asking for 0 to 0 gives
+   bits modulo (n + 1) give a number from 0 to n; a draw from 0 to 0 gives
    0 and does not step it. A number from a to b is a + that from 0 to
    b - a. The same generator draws for everything the game animates, so
    a seed here does not replay a game; it deals the same puzzle each time
-   it is used, which is what the address keeps.
+   it is used, which is why the address has the seed.
 
    A puzzle, ZB_PUZZLES.get(key), where key is its archive's name:
      about    what the player does there, in a sentence or two;
@@ -31,15 +31,15 @@
      archive  the archive its deal reads, if any: a puzzle whose layout
               is in its archive's resources (a maze's squares, a pond's
               routes) reads it from there, as the rest of the site does,
-              and never carries a copy;
+              and never has a copy of it;
      deal(level, band, rnd, journey, arc)
               the puzzle set up for this band at this level (1-4), with
               rnd a zbRandom, drawing in the order the program draws.
               journey is an object shared by the deals of one journey,
               for what one puzzle leaves for the next (Allergic Cliffs'
               split, which the Stone Cold Caves avoid). arc is the
-              puzzle's archive opened (openMohawk), given whenever it
-              names one. It returns
+              puzzle's archive opened (openMohawk), given whenever the
+              puzzle has an archive. It returns
                 { setup:  sentences, what the band sees on arrival;
                   answer: sentences, what is hidden;
                   marks:  per band member, a few words or null: where the
@@ -58,8 +58,8 @@
               numbers. Fields may depend on level and band.
      edit(level, band, state, values, arc)
               the state with the fields' values ({ key: value }) put in,
-              as a new state; throws an Error whose message says what is
-              wrong when they make no puzzle the program could set. The
+              as a new state; throws an Error, with the fault in its
+              message, when they make no puzzle the program could set. The
               form of the result gives back the values put in.
      solve(level, band, state, arc, opts)
               with the hidden part known, the most of the band that can
@@ -78,9 +78,9 @@
               zoombini: the band index it sends or null, left: hypotheses
               still possible, crossed, diagram (optional), outcomes: [{
               label, left, next() }] }, next() the node that follows, made
-              when asked; a node with no outcomes ends the puzzle, says
-              how it ended in move, and says in spent how many of the
-              chances the play used (pegs, mistakes, meals or mudballs
+              the first time it is called; a node with no outcomes ends the
+              puzzle, with how it ended in move and, in spent, how many
+              of the chances the play used (pegs, mistakes, meals or mudballs
               wasted, Zoombinis sent for nothing).
               opts.state is the puzzle as dealt (or edited): the strategy
               may use what the player can see of it (the marks on a wall,
@@ -92,7 +92,7 @@
               what the game does with a strategy node's move when its
               hidden part is state's: the index in node.outcomes, or -1
               when no outcome is the game's (state is none of the
-              hypotheses). zbStrategyPlay walks a strategy so.
+              hypotheses). zbStrategyPlay walks a strategy with it.
      A diagram is the puzzle drawn as data, for the page to paint:
               { width, height, items }, each item one of
                 { t: 'rect', x, y, w, h, r, fill, stroke }
@@ -102,8 +102,8 @@
                 { t: 'text', x, y, text, size, anchor, fill, weight }
                 { t: 'zoombini', x, y, i, scale, faded } (band member i,
                   standing with its feet at x, y)
-                { t: 'trait', x, y, kind, value, scale } (the part's own
-                  sprite, centred on x, y)
+                { t: 'trait', x, y, kind, value, scale } (the sprite of
+                  that part alone, centred on x, y)
               with colours as roles ('ink', 'dim', 'line', 'accent',
               'good', 'bad', 'warn', 'water', 'stone', 'wood', 'grass',
               'panel', 'chip') or '#rrggbb', and x, y in the diagram's
@@ -138,7 +138,7 @@ const ZB_PUZZLES = new Map();
 /* Where a band waits on coming to each puzzle: the program's tables of
    places, x and y where each Zoombini stands, the first of the band at the
    first (ScummVM's loadZoombinisFromPack and the tables it is given, named
-   in utilities/puzzle_check.mjs; ZOOMBINI.EXE holds each as little-endian
+   in utilities/puzzle_check.mjs; ZOOMBINI.EXE stores each as little-endian
    x, y pairs at `exe`, four of them with 20 places of which a band uses 16).
    Hotel Dimensia's band waits in the distance, drawn small (tBMP 3200,
    `small`). The toads' band is not here: its Zoombinis stand off the
@@ -233,7 +233,7 @@ function zbPackTraits(z) { return (z.feet | z.nose << 8 | z.eyes << 16 | z.hair 
    dealt first, then the puzzles before this one on its route, each at the
    same level and crossed with no one lost, for what they leave the next,
    then this one; all from one run of the program's random numbers.
-   open(name) gives an archive opened, for a puzzle that names one. */
+   open(name) gives an archive opened, for a puzzle with an archive. */
 function zbDealAt(key, level, seed, size = 16, open = () => null) {
   const rnd = zbRandom(seed);
   return zbDealWith(key, level, rnd, zbDealBand(rnd, size), open);
@@ -249,8 +249,8 @@ function zbDealWith(key, level, rnd, band, open) {
   for (const k of route ? route.places.slice(1, route.places.indexOf(key)) : []) if (ZB_PUZZLES.has(k)) deal(k);
   return Object.assign({ band }, deal(key));
 }
-/* The archives a puzzle's deal needs, its own and those before it on its
-   route that name one. */
+/* The archives a puzzle's deal needs: the puzzle's, and those of the
+   puzzles before it on its route that have one. */
 function zbDealNeeds(key) {
   const route = ZB_ROUTES.find(r => r.places.slice(1, -1).includes(key));
   const keys = route ? route.places.slice(1, route.places.indexOf(key) + 1) : [key];
@@ -260,8 +260,8 @@ function zbDealNeeds(key) {
 /* A strategy played against a puzzle dealt (or edited): the node it ends
    at, each move answered as the game would answer it (the puzzle's
    answer), or null when the game gives an answer the strategy did not
-   look for. Its crossed is how many a player who plays for the worst
-   gets across this puzzle. */
+   look for. Its crossed is how many Zoombinis a player who plays for the
+   worst brings across this puzzle. */
 function zbStrategyPlay(P, level, band, state, strategy, arc) {
   let node = strategy.root;
   for (let steps = 0; node.outcomes.length; steps++) {

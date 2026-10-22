@@ -6,7 +6,7 @@
    The band crosses one at a time, each dragged onto the upper bridge or
    the lower. Hidden is a rule, some trait values: a Zoombini with any of
    them belongs on one bridge and one with none of them on the other,
-   which way round a coin toss decides. On the wrong bridge the cliffs
+   with a coin toss for which way round. On the wrong bridge the cliffs
    sneeze it back and a peg falls from the gate; six pegs, and when the
    sixth has fallen no one else may cross.
 
@@ -27,16 +27,16 @@
    WHERE IT CAME FROM
    ScummVM's Zoombinis branch, zoombini_pages/puzzle_bridge.cpp and .h
    (buildTraitTollTable, traitMatchesDescriptor, testTraitMatch,
-   debugGetChances), checked against the program's own code: ZOOMBI32.EXE
+   debugGetChances), checked against the program's code: ZOOMBI32.EXE
    of the 1996 disc's ZBARC32.Z builds the rules at 0x415e63 from the
    tables at 0x4a0804 (the level 2 pairs, 0x12 to 0x45), 0x4a082c and
    0x4a0844 (level 3's two traits), which are in ZOOMBINI.EXE too, and
    its search steps +1, -2 as ScummVM's does.
-   utilities/puzzle_check.mjs holds the tables to both.
+   utilities/puzzle_check.mjs compares the tables with both.
 */
 
-/* Level 2's pairs of values, and level 3's pairs of traits: the first
-   trait takes value v and the second value s, for s and then v 1-5. */
+/* Level 2's pairs of values, and level 3's pairs of traits: value v of
+   the first trait and value s of the second, for s and then v 1-5. */
 const ZB_BRIDGE_PAIRS = [[1, 2], [1, 3], [1, 4], [1, 5], [2, 3], [2, 4], [2, 5], [3, 4], [3, 5], [4, 5]];
 const ZB_BRIDGE_L3 = [['feet', 'nose'], ['feet', 'eyes'], ['feet', 'hair'], ['nose', 'eyes'], ['nose', 'hair'], ['eyes', 'hair']];
 /* The order the rules are listed and a rule's traits read: the packed
@@ -222,12 +222,12 @@ function zbBridgeDiagram(band, { rule = null, upperMatches = true, up = [], low 
 /* The cliffs with the rule unknown. The hypotheses are the rules the
    program could deal this band at this level, each with either bridge; to
    the player only which of the band each sends up matters, so they are
-   kept as that, a mask each, and counted. A Zoombini whose bridge every
-   hypothesis left agrees on goes over free; otherwise one is sent over a
+   kept as that, a mask each, and counted. A Zoombini that every
+   hypothesis left puts on the same bridge goes over free; otherwise one is sent over a
    bridge, and either crosses, ruling out the hypotheses that would have it
    on the other, or is sneezed back, ruling out the rest, for a peg. The
-   search is minimax: the best move is the one whose worse outcome gets the
-   most across, with pegs up to six and no one crossing once the sixth has
+   search is minimax: the best move is the one with the most across in its
+   worse outcome, with pegs up to six and no one crossing once the sixth has
    fallen. It gives up at the budget and then plays out the rest by the
    rule of sending the Zoombini that splits the hypotheses most evenly. */
 function zbBridgeStrategy(level, band, opts = {}) {
@@ -288,8 +288,8 @@ function zbBridgeStrategy(level, band, opts = {}) {
     if (guess && !guessOnly) exact = false;
     let best = { v: -1, i: -1, upper: true };
     const ms = moves(H, u);
-    /* The even-split rule's own value first: when it gets them all across
-       there is nothing to search, and otherwise it is the move to beat. */
+    /* The value the even-split rule gives, first: when all of them cross by
+       it there is nothing to search, and otherwise it is the move to beat. */
     if (!guess) {
       guessOnly = true;
       const g = guessValue(H, u, p);
@@ -354,7 +354,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
   const free0 = [...Array(n).keys()].filter(k => g0 >> k & 1);
   const u0 = full & ~g0;
   const sure = free0.length + (H0.length ? value(H0, u0, 6) : 0);
-  /* The whole band sure is as many as there can be, budget or not. */
+  /* The whole band sure is as many as there can be, whether or not the budget ran out. */
   if (sure === n) exact = true;
   const up0 = free0.filter(k => H0[0] >> k & 1), low0 = free0.filter(k => !(H0[0] >> k & 1));
   return {

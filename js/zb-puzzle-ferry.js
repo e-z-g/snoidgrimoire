@@ -11,8 +11,8 @@
    seated next to it. The captain sends back one that does not, and
    nothing is counted; a seated Zoombini may be picked up and moved. The
    raft leaves when the player says so, with at least one aboard, and
-   those still on the dock stay behind. No random number decides any of
-   it: what changes with the level is the raft.
+   those still on the dock stay behind. Nothing in it is drawn at
+   random: what changes with the level is the raft.
 
    The raft is one of FERRY's feature scripts SCRB 1510-1529, chosen by
    level and band: 1510 + 5 x (level - 1) + (band - 16), where a band of
@@ -43,7 +43,7 @@
 
    On the workbench nothing is hidden from the player, who sees the raft
    and the band, so there is no strategy to find, and nothing is the
-   program's to choose but the raft, which the level and band decide.
+   program's to choose but the raft, which follows from the level and the band.
    solve gives the most that can sit, whether that is proven, the number
    of seatings (exactly, for the level-1 line filled end to end, by
    counting paths; otherwise by the search, while its budget lasts) and a
@@ -60,22 +60,22 @@
    seats at 0x41b4bd (the seat's drop point 22 right
    and 7 up from its corner) and finds the neighbours at 0x41ba0b, with
    the three stretched rectangles as ScummVM has them, the third only at
-   the last level, and an overlap that must be strict (0x4823e8); a drop
-   is judged at 0x41ad8c, which wants every occupied neighbour to share
-   one of the four traits. The Mac build's INSTALLSEATSFORCURRENTLEVEL
+   the last level, and an overlap that must be strict (0x4823e8); the code
+   at 0x41ad8c judges a drop, allowing it only where every occupied
+   neighbour shares one of the four traits. The Mac build's INSTALLSEATSFORCURRENTLEVEL
    picks the raft by the same sum, and its FINDSEATADJACENCIES does the
    same sums on the same fields (and first works out half the width,
    which it then overwrites with half the height). No draw of the random
    numbers in ScummVM's or the program's setup changes the seats or the
    rule: they pick the captain's animations and sounds.
-   utilities/puzzles/ferry.mjs holds the reading of the rafts and the
-   rules to ScummVM's text and the raft's choice to ZOOMBINI.EXE.
+   utilities/puzzles/ferry.mjs compares the reading of the rafts and the
+   rules with ScummVM's text and the raft's choice with ZOOMBINI.EXE.
 */
 
 /* The seats' feature scripts and picture (ScummVM's kResScrb1500_SeatBase
    and kResBitmapShape1500_Seats): seat shape k is drawn by SCRB 1499 + k
    from tBMP 1500's frame k - 1. The most seats a raft registers, and the
-   most neighbours a seat keeps. */
+   most neighbours a seat has. */
 const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbours: 8 };
 /* The quick search's steps for each size of seating, before zbFerryMatch
    settles it. */
@@ -83,7 +83,7 @@ const ZB_FERRY_QUICK = 2000;
 
 /* A raft from an opened FERRY: its seats, in the program's order, each
    { x, y, w, h }, the rectangle its seat is drawn in. The raft script's
-   first frame places a seat with each record of shape 1-3; the seat's own
+   first frame places a seat with each record of shape 1-3; each seat's
    script draws its picture from its first record, which is where the
    seat's corner goes. Kept for each archive. */
 const zbFerryRaftsRead = new WeakMap();
@@ -138,7 +138,7 @@ function zbFerryShare(a, b) { return ZB_TRAIT_KINDS.some(k => a[k] === b[k]); }
    found, strong) calls found(seating) for each seating of want of the
    band (the band index by seat, -1 empty), each once, two alike
    Zoombinis counting as one, until found returns true; it gives up after
-   limit steps or at the deadline, and says so. Seats are taken in the
+   limit steps or at the deadline, and its result has gaveUp set. Seats are taken in the
    order a walk from the least connected seat reaches them, each filled or
    left empty; once no seat can be spared, the open seat that the fewest
    Zoombinis fit is filled first. The Zoombinis are tried the least
@@ -473,8 +473,8 @@ function zbFerryApart(neighbours) {
 
 /* The number of ways to seat the whole band on a raft that is one line
    (each seat next to one or two, and the band fills it): orderings along
-   the line in which each two in a row share a trait, alike Zoombinis
-   counted once. null if the raft is not one line, or the band does not
+   the line in which each two in a row share a trait, two alike Zoombinis
+   counted as one. null if the raft is not one line, or the band does not
    fill it. */
 function zbFerryLineWays(band, neighbours) {
   const S = neighbours.length, n = band.length;
@@ -600,7 +600,7 @@ ZB_PUZZLES.set('FERRY', {
     const better = (a, b) => a.singles.length - b.singles.length || a.links.length - b.links.length;
     let scored = list.map(score).sort(better);
     /* Each of the best few made simpler while it can be: a Zoombini moved
-       to an empty seat, or two swapped, where the rule still holds. */
+       to an empty seat, or two swapped, where every pair of neighbours still shares a trait. */
     const fitsAt = (sg, z, s, gone) => nb[s].every(t => t === gone || sg[t] < 0 || zbFerryShare(band[z], band[sg[t]]));
     const improve = x => {
       for (let again = true; again && Date.now() < t0 + budget * 0.7;) {
@@ -684,7 +684,7 @@ ZB_PUZZLES.set('FERRY', {
       ],
     };
   },
-  /* No random number decides the raft or the rule, so rnd is not drawn. */
+  /* The raft and the rule involve no random number, so the deal draws nothing from rnd. */
   deal(level, band, rnd, journey, arc) {
     const n = band.length;
     const script = zbFerryRaftScript(level, n);
