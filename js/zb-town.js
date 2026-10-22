@@ -35,8 +35,10 @@
    updateClockHandTime; zoombini_state.cpp addFirstClearMemorial), and the
    buildings' names are the plaques' own words in the 1996 program.
    utilities/town_check.mjs holds the reading to those files and to the
-   scripts themselves. Not checked against the program: the order the
-   layers are drawn in, and where the inhabitants stand (below).
+   scripts themselves, and the clock's hands to the program (below). Not
+   checked against the program: the order the layers are drawn in, and
+   where the inhabitants stand, though zbtools' decompilation of another
+   build of it (town.cpp) puts them at their scripts' own places too.
 */
 
 const ZB_TOWN_WIDTH = 1920, ZB_TOWN_HEIGHT = 480, ZB_TOWN_COLUMN = 320;
@@ -57,11 +59,15 @@ function zbTownDensity(population) {
 function zbTownInhabitants(population) {
   return Math.max(0, Math.min(16, Math.floor(Math.max(0, Math.min(605, population - 20)) / 37)));
 }
-/* The clock's hands at a time, as ScummVM reads the program: the hour hand
-   takes the hour in fives (0-4 of its twelve steps) and the minute hand
-   the minute modulo twelve. Odd, and not yet checked against the program. */
+/* The clock's hands at a time, as the program has them: the minute hand
+   is the minute in fives, shapes 1-12, and the hour hand the hour modulo
+   twelve, shapes 13-24, so it stays put between one hour and the next.
+   ZOOMBINI.EXE reads the time at file offset 0x6bcf7 and draws the hands
+   at 0x6c6eb; ZOOMBI32.EXE at 0x4575ed and 0x45805b, its date call at
+   0x410a6a filling the minute from gettime's ti_min. ScummVM swaps the
+   two, taking the hour in fives and the minute modulo twelve. */
 function zbTownClockShapes(hour, minute) {
-  return { hour: Math.floor(hour / 5) + 1, minute: minute % 12 + 13 };
+  return { minute: Math.floor(minute / 5) + 1, hour: hour % 12 + 13 };
 }
 
 /* The town as read from TOWN: { land, things, inhabitants, clock, sheets }.

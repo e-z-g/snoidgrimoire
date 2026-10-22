@@ -10,7 +10,8 @@
 //     the page's kTownClockTowerMemorialSlot;
 //   - the clock is where clockHands_preRenderShape puts it, in the world
 //     (within 2 pixels: 946 from one column, 947 from the next), and its
-//     hands take the time as updateClockHandTime does;
+//     hands take the time as ZOOMBINI.EXE's code does, read here from its
+//     bytes (ScummVM's updateClockHandTime swaps the hour and the minute);
 //   - the world: SCRB 1000 is six strips all round; every record of every
 //     frame of SCRB 1001-1003 is one of the things read, within 2 pixels;
 //     the houses are shapes 25-80 and the reward buildings 7-22, each once;
@@ -51,17 +52,33 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
   const w = S.zbTownWorld(S.openMohawk(archiveBytes('TOWN')));
   // A pixel apart from the two columns, as the layers' things are.
   if (Math.abs(x1 + 320 - w.clock.x) > 2 || Math.abs(x2 + 640 - w.clock.x) > 2 || y !== w.clock.y) fail(`the clock is at ${w.clock.x}, ${w.clock.y}; ScummVM draws it at ${x1} from column 1 and ${x2} from column 2, y ${y}`);
-  const hourDiv = +need(/_clockHourStep = static_cast<byte>\(td\.tm_hour\) \/ (\d+);/, cpp, 'the hour hand')[1];
-  const minMod = +need(/_clockMinuteStep = static_cast<byte>\(td\.tm_min\) % (\d+);/, cpp, 'the minute hand')[1];
-  const minBase = +need(/hotspots\[1\]\._shapeIdx = _clockMinuteStep \+ (\d+);/, cpp, 'the minute shapes')[1];
-  let hands = 0;
-  for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m++) {
-    const s = S.zbTownClockShapes(h, m);
-    if (s.hour !== Math.trunc(h / hourDiv) + 1 || s.minute !== m % minMod + minBase) { if (hands++ < 3) fail(`the hands at ${h}:${m} are ${s.hour}, ${s.minute}`); }
+  // The hands, from ZOOMBINI.EXE's code: the hour's and the minute's
+  // pointers pushed for the date call (Pascal order, the minute last, as
+  // ZOOMBI32.EXE's date call at 0x410a6a fills them), then the minute
+  // divided by 5 and the hour taken modulo 12; the hands drawn as the
+  // minute plus 1 and the hour plus 13. ScummVM swaps the hour and the
+  // minute, which is recorded so that a change there shows.
+  if (!/_clockHourStep = static_cast<byte>\(td\.tm_hour\) \/ 5;/.test(cpp) || !/_clockMinuteStep = static_cast<byte>\(td\.tm_min\) % 12;/.test(cpp))
+    fail('ScummVM\'s clock no longer has the hour in fives and the minute modulo 12; see whether it now follows the program');
+  let hands = 0, handsFrom = 'SKIP the hands: no ZOOMBINI.EXE';
+  if (fs.existsSync(EXE)) {
+    const code = fs.readFileSync(EXE).toString('latin1');
+    const read = [...code.matchAll(/\x1e\x68([\s\S]{2})\x1e\x68([\s\S]{2})\x9a[\s\S]{4}\xa0\2\xb4\x00\xbb\x05\x00\x99\xf7\xfb\xa2\2\xa0\1\xb4\x00\xbb\x0c\x00\x99\xf7\xfb\x88\x16\1/g)];
+    if (read.length !== 1) fail(`ZOOMBINI.EXE reads the clock's time in ${read.length} places, not one`);
+    else {
+      const [, hourAt, minuteAt] = read[0];
+      const drawn = (at, tail) => code.split('\xa0' + at + '\xb4\x00' + tail).length - 1;
+      if (drawn(minuteAt, '\x40') !== 1 || drawn(hourAt, '\x05\x0d\x00') !== 1) fail('ZOOMBINI.EXE does not draw the hands once each as the minute plus 1 and the hour plus 13');
+      for (let h = 0; h < 24; h++) for (let m = 0; m < 60; m++) {
+        const s = S.zbTownClockShapes(h, m);
+        if (s.minute !== Math.trunc(m / 5) + 1 || s.hour !== h % 12 + 13) { if (hands++ < 3) fail(`the hands at ${h}:${m} are ${s.minute}, ${s.hour}`); }
+      }
+      handsFrom = `its hands for every minute of the day as ZOOMBINI.EXE's (time read at file offset 0x${read[0].index.toString(16)})`;
+    }
   }
   const slot = +need(/kTownClockTowerMemorialSlot = (\d+);/, cpp, 'the clock tower\'s slot')[1];
   if (slot !== S.ZB_TOWN_CLOCK_SLOT) fail(`the clock tower is slot ${S.ZB_TOWN_CLOCK_SLOT} here, ${slot} in ScummVM`);
-  if (!hands) console.log(`the clock: at ${w.clock.x}, ${w.clock.y}, its hands for every minute of the day as ScummVM's, slot ${slot}`);
+  if (!hands) console.log(`the clock: at ${w.clock.x}, ${w.clock.y}, ${handsFrom}, slot ${slot}`);
 
   // ---- the world, against its own scripts -------------------------------
   const arc = S.openMohawk(archiveBytes('TOWN'));

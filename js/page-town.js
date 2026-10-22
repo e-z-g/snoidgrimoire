@@ -153,7 +153,7 @@ function townDynamic() {
   if (TCLOCK) {
     const d = new Date(), s = zbTownClockShapes(d.getHours(), d.getMinutes()), c = TWORLD.clock;
     TCLOCK.shapes = s.hour + '/' + s.minute;
-    for (const shape of [s.hour, s.minute]) tCard(data, TATLAS.rects.get('6000/' + shape), c.x - (c.regs.x[shape] || 0), c.y - (c.regs.y[shape] || 0), TCLOCK.rho);
+    for (const shape of [s.minute, s.hour]) tCard(data, TATLAS.rects.get('6000/' + shape), c.x - (c.regs.x[shape] || 0), c.y - (c.regs.y[shape] || 0), TCLOCK.rho);
   }
   townMesh('moving', data);
   TDYN = false;
