@@ -30,8 +30,8 @@
 //     played against the dealt traits on large ones, the feedback being
 //     ScummVM's judging, which the puzzle's answer must match at every
 //     move (and zbStrategyPlay end where the play does), and no branch
-//     places fewer than it gives as sure;
-//     with fewer chances its sure count is held to a plain minimax over
+//     places fewer than it guarantees;
+//     with fewer chances its guarantee is compared with a plain minimax over
 //     every room on small bands; and the times are kept.
 export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_hotel.h'), cpp = scumm('zoombini_pages/puzzle_hotel.cpp');
@@ -348,13 +348,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 5) {
             const worst = walkH(level, band, st.root, boards, 0);
-            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy has ${st.sure} sure, and a branch places ${worst}`); break; }
+            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, and a branch places ${worst}`); break; }
             walked++;
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
             const got = playH(level, band, st, state, boards);
-            if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.sure} sure`); break; }
+            if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.sure} guaranteed`); break; }
             playedH++;
           }
         } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
@@ -381,8 +381,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (top !== sol.most || top !== 4) { fail(`level 3, band ${S.zbBandCode(band)}, boards ${state.boarded}: placing every way gives ${top}, the solver ${sol.most}`); break; }
     for (const knows of ['program', 'form']) {
       const st = P.strategy(3, band, null, { knows, state, budget: 400 });
-      if (knows === 'form' && st.sure > sol.most) { fail(`level 3: the strategy is sure of ${st.sure}, more than the ${sol.most} the answer known allows`); break; }
-      if (walkH(3, band, st.root, state.boarded, 0) < st.sure) { fail('level 3: a branch places fewer than the strategy has sure'); break; }
+      if (knows === 'form' && st.sure > sol.most) { fail(`level 3: the strategy guarantees ${st.sure}, more than the ${sol.most} the answer known allows`); break; }
+      if (walkH(3, band, st.root, state.boarded, 0) < st.sure) { fail('level 3: a branch places fewer than the strategy guarantees'); break; }
       walked++;
     }
     brute++; notAll++;
@@ -394,7 +394,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   refuseH(3, { floor: 'hair', trunk: 'eyes', boarded: [] }, 'no boarded rooms at level 3');
   refuseH(3, { floor: 'hair', trunk: 'eyes', boarded: [0, 1, 2, 3, 4, 5, 6, 7, 8] }, 'nine boarded rooms');
   refuseH(1, { trunk: 'wings' }, 'a trait that is not one');
-  // Fewer chances: the sure count against a plain minimax over every room, on tiny bands.
+  // Fewer chances: the guarantee against a plain minimax over every room, on tiny bands.
   const plainH = (level, band, tuples, boards, c) => {
     const slots = level === 1 ? [4, 9, 14, 19, 24] : [...Array(25).keys()].filter(x => !boards.includes(x));
     const memoP = new Map();
@@ -422,14 +422,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const tuples = tuplesOf(level);
       for (let c = 1; c <= 2; c++) {
         const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), want = plainH(level, band, tuples, boards, c);
-        if (!st.exact || st.sure !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy has ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+        if (!st.exact || st.sure !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
         plain++;
       }
     }
   }
   if (slowRoot > 2500) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
-  const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} held to placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits (the puzzle's answer ScummVM's judging at all ${answered} moves), none short of what they say is sure; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
+  const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} compared with placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits (the puzzle's answer ScummVM's judging at all ${answered} moves), none short of what they guarantee; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
   say(`counter ${first} of ${last} (chances ${chances}); the traits' test as ScummVM's in ${tests} cases; rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
     + `${dealt} deals as ScummVM deals them (traits in the program's order), ${placed} Zoombinis given rooms by their marks as ScummVM judges`);
   say(bench);

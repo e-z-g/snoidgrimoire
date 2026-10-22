@@ -203,7 +203,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       for (const knows of ['program', 'form']) {
         const t0 = Date.now(), st = P.strategy(level, band, null, { knows, state: d.state });
         bench.slowest = Math.max(bench.slowest, Date.now() - t0);
-        if (st.sure !== band.length || !st.exact) why.push(`the strategy is sure of ${st.sure}`);
+        if (st.sure !== band.length || !st.exact) why.push(`the strategy guarantees ${st.sure}`);
         const check = nd => {
           const t1 = Date.now(), sum = nd.outcomes.reduce((t, o) => t + o.left, 0);
           if (nd.outcomes.length && sum !== nd.left) why.push(`a node's outcomes leave ${sum} of its ${nd.left} rules`);
@@ -236,7 +236,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           if (nd.crossed < st.sure) why.push(`the rule's branch has ${nd.crossed} across`);
           const end = S.zbStrategyPlay(P, level, band, state, st);
           if (!end) why.push('played against the rule, the game\'s answer to a move is not among the strategy\'s outcomes');
-          else if (end.crossed < st.sure) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.sure} sure`);
+          else if (end.crossed < st.sure) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.sure} guaranteed`);
           else bench.played++;
           bench.followed++;
         }

@@ -30,8 +30,8 @@
 //     guardian ScummVM's handleZoombiniPlacement animates (kHoverDataToGateType),
 //     the puzzle's answer() picks that outcome at every move and
 //     zbStrategyPlay ends where the judge's play does,
-//     and no branch has fewer through than it gives as sure; with fewer
-//     chances than the game gives, the sure count is held to a plain
+//     and no branch has fewer through than it guarantees; with fewer
+//     chances than the game gives, the guarantee is compared with a plain
 //     minimax over every move, written out here, on small bands; and the
 //     times are kept.
 const KIND = { kTraitHair: 'hair', kTraitEyes: 'eyes', kTraitNose: 'nose', kTraitFeet: 'feet' };
@@ -272,7 +272,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (nd.where.some((t, i) => t >= 0 && t !== real[i])) throw new Error('a strategy put a Zoombini through a tunnel that would turn it back');
     const end = S.zbStrategyPlay(P, level, band, state, st);
     if (!end || end.crossed !== nd.crossed || !same(end.where, nd.where)) throw new Error(`zbStrategyPlay ends ${end ? `with ${end.crossed} through` : 'with no answer'}, the judge's play with ${nd.crossed}`);
-    if (end.crossed < st.sure) throw new Error(`zbStrategyPlay has ${end.crossed} through, fewer than the ${st.sure} sure`);
+    if (end.crossed < st.sure) throw new Error(`only ${end.crossed} go through in zbStrategyPlay, fewer than the ${st.sure} guaranteed`);
     answered++;
     return nd.crossed;
   };
@@ -310,11 +310,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 6 && (knows === 'program' || level <= 2)) {
             const worst = walk(band, st.root, 0);
-            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy has ${st.sure} sure, and its worst branch has ${worst} through`); break; }
+            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, and ${worst} go through on its worst branch`); break; }
             walked++;
           }
           const got = play(level, band, st, d.state);
-          if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt rules, ${got} through, fewer than the ${st.sure} sure`); break; }
+          if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt rules, ${got} through, fewer than the ${st.sure} guaranteed`); break; }
           played++;
         } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
       }
@@ -331,7 +331,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const H = S.zbTunnelsHypotheses(1, band, 'program', d.state.bridgeSplit || 0);
     const dk = S.zbTunnelsKey(...[0, 1].map(bit => band.reduce((m, z, i) => { const t = S.zbTunnelsEntrance(z, d.state.guardRules, d.state.level1BlockedPairToggle); return (bit ? t === 0 || t === 3 : t < 2) ? m | 1 << i : m; }, 0)));
     if (st.hypotheses !== d.state.candidates * 4 || !H.has(dk)) { fail(`level 1 after the cliffs: ${st.hypotheses} hypotheses, the deal's ${d.state.candidates} candidates each way, the dealt one ${H.has(dk) ? '' : 'not '}among them`); break; }
-    try { if (play(1, band, st, d.state) < st.sure) { fail('level 1 after the cliffs: fewer through than sure'); break; } } catch (e) { fail(`level 1 after the cliffs: ${e.message}`); break; }
+    try { if (play(1, band, st, d.state) < st.sure) { fail('level 1 after the cliffs: fewer through than guaranteed'); break; } } catch (e) { fail(`level 1 after the cliffs: ${e.message}`); break; }
     splits++;
   }
   // Values the form must throw on.
@@ -341,7 +341,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   refuse(4, { a1: 'hair:1', a2: 'hair:2', left: 'with', b1: 'feet:1', b2: 'nose:2', upper: 'with' }, 'two values of one trait at level 4');
   refuse(3, { aKind: 'nose', aValues: [2], left: 'with', bKind: 'feet', bValues: [1, 2], upper: 'with' }, 'one value at level 3');
   refuse(1, { a: 'eyes:3', left: 'with', closed: 'both' }, 'no closed pair at level 1');
-  // With fewer chances, the sure count against a plain minimax over every move.
+  // With fewer chances, the guarantee against a plain minimax over every move.
   const plain = (band, keys, c) => {
     const T = (k, i) => S.zbTunnelsOf(k, i), n = band.length, memoP = new Map();
     const v = (H, done, c) => {
@@ -367,8 +367,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (keys.length > 40) continue;
         for (let c = 1; c <= 3; c++) {
           const st = P.strategy(level, band, null, { knows, chances: c, budget: 5000 }), want = plain(band, keys, c);
-          if (!st.exact || st.sure !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}: the strategy has ${st.sure} sure${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
-          if (walk(band, st.root, 0) < st.sure) { fail(`level ${level}, ${c} chances: a branch has fewer through than the strategy has sure`); break; }
+          if (!st.exact || st.sure !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+          if (walk(band, st.root, 0) < st.sure) { fail(`level ${level}, ${c} chances: a branch has fewer through than the strategy guarantees`); break; }
           brute++;
         }
       }
@@ -376,7 +376,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   if (slowRoot > 2000) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
-  const bench = `workbench: ${trips} forms given back; ${walked} strategies walked down every branch (${ends} ends) and ${played} played against dealt rules, none short of what they say is sure; the puzzle's answer the judge's at every move of ${answered} plays; ${brute} held to a plain minimax with fewer chances; ${splits} dealt after the Allergic Cliffs, their count read from the state; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
+  const bench = `workbench: ${trips} forms given back; ${walked} strategies walked down every branch (${ends} ends) and ${played} played against dealt rules, none short of what they guarantee; the puzzle's answer the judge's at every move of ${answered} plays; ${brute} held to a plain minimax with fewer chances; ${splits} dealt after the Allergic Cliffs, their count read from the state; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
   say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}, the entrances at 0x${(posAt[0] || 0).toString(16)}; chances ${chances}; `
     + `${cases} guard cases as evaluateRule; ${dealt} deals as ScummVM deals them (level 4 in the program's order: ScummVM's picks another rule in ${other4} of ${dealt4}); `
     + `the Allergic Cliffs' count avoided in ${avoided}`);

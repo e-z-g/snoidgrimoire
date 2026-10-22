@@ -381,7 +381,7 @@ const zbNetComplete = e => !e.R.includes(-1) && !e.C.includes(-1) && (!e.Q || !e
 
 /* The wall with the rule unknown. The player sees the marks and knows the
    band, and plays for the worst of the rules left. The play is fixed and
-   sure of everyone: first the mudballs of the values 0, 0, 0, then 1, 1,
+   guarantees everyone: first the mudballs of the values 0, 0, 0, then 1, 1,
    1, then 2 and 3 (each value in every choice), which whatever the rule
    leaves every order known under each way the axes and rotation could be
    (the fifth by elimination); then, if more than one way is left, one

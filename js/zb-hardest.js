@@ -26,7 +26,7 @@
         spent: pegs, mistakes, meals, mudballs, Zoombinis sent for
         nothing), which is where deals differ when the whole band is
         sure to cross, as it mostly is at level 4;
-     4. fewest sure to cross before the first move (the strategy's sure);
+     4. fewest sure to cross before the first move (the number the strategy guarantees);
      5. fewest ways across, where the puzzle counts them;
      6. the longest simplest solution, in steps.
    A deal is a candidate once: deals alike in every dealt value are one.
@@ -99,8 +99,8 @@ function zbHardestSearch(key, band, open = () => null, opts = {}) {
           if (score && (!best || zbHardestCompare(score, best.score) < 0)) best = { seed, deal, score };
         }
         /* A puzzle the seed makes no difference to is done immediately; one
-           whose deals have all turned up is done after enough tries to be
-           sure of it. */
+           whose deals have all turned up is done after enough tries to
+           make a missed deal unlikely. */
         if (tried >= 64 && seen.size === 1) done = true;
         if (tried >= 4000 || tried >= 40 * seen.size + 400) done = true;
       }

@@ -405,7 +405,7 @@ function zbCavesDiagram(level, band, { state = null, reveal = false, seatOf = ne
    placed. A Zoombini every hypothesis left puts on some free stone is
    placed there first, at no cost. A move that might go either way rules
    out at least one hypothesis whatever happens, so with no more
-   hypotheses than mistakes left everyone left is sure.
+   hypotheses than mistakes left everyone left is guaranteed a place.
 
    The search is minimax with memoisation, stopping short where it has
    shown enough, the moves tried sharpest first: the move whose worst
@@ -415,8 +415,8 @@ function zbCavesDiagram(level, band, { state = null, reveal = false, seatOf = ne
    one, then four, then twelve; where there are few, every move. While
    there is time the search goes round again, wider, until every move is
    tried everywhere.
-   Where the budget runs out, a state is valued at what any play is sure
-   of there, one placement for each mistake left, and the play goes on
+   Where the budget runs out, a state is valued at what any play
+   guarantees there, one placement for each mistake left, and the play goes on
    from it by a fresh search when it is reached. */
 function zbCavesStrategy(level, band, opts = {}) {
   const knows = opts.knows === 'form' ? 'form' : 'program';
@@ -557,7 +557,7 @@ function zbCavesStrategy(level, band, opts = {}) {
   let cuts = 0, until = deadline;
   /* The most sure to be placed from here, free placements included; the
      search stops once it has shown enough, at least beta. A memo entry is
-     exact, or a value shown to be sure. */
+     exact, or a lower bound the search has shown. */
   const value = (H, occ, rem, m, beta = Infinity) => {
     const f = settle(H, occ, rem);
     occ = f.occ; rem = f.rem;
@@ -635,7 +635,7 @@ function zbCavesStrategy(level, band, opts = {}) {
     const key = `${hkey(H)}|${occ}|${rem}|${m}`;
     if (!(memo.get(key) || {}).move && m < r) {
       /* Not reached by the search at the start: search from here now,
-         briefly. Any move is sure of what was counted for it. */
+         briefly. Any move guarantees what was counted for it. */
       const saved = cuts;
       until = Date.now() + 300;
       value(H, occ, rem, m);
@@ -666,9 +666,9 @@ function zbCavesStrategy(level, band, opts = {}) {
     notes: [
       `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so it is taken as unseen.'} Of the rules the program could deal, ${hyp} fit it, ${H0.length} different to this band.`,
       'The player who knows only the level’s form has the same hypotheses: the program draws every trait and order alike. (The first Lion’s Lair after the program starts is by nose, which a player could know; this does not assume it.)',
-      'Each placement goes on even when it is a mistake, so as many placements as there are mistakes allowed are sure whatever happens; the question is how many more can be made without a mistake.',
+      'Each placement goes on even when it is a mistake, so as many placements as there are mistakes allowed are guaranteed whatever happens; the question is how many more can be made without a mistake.',
       'A Zoombini every hypothesis left puts on some free stone goes there first, at no cost; otherwise the move is the one whose worst outcome still places the most, a mistake’s stone (which the game draws at random) taken as the worst for the player.',
-      exact ? 'The search is complete: no way of playing is sure of more.' : 'The search stopped short (at its budget, or following only the rule of thumb where the hypotheses are many), so this many are sure, and perhaps more could be.',
+      exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped short (at its budget, or following only the rule of thumb where the hypotheses are many), so this many are guaranteed, and perhaps more could be.',
     ],
   };
 }

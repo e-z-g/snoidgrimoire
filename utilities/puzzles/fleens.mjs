@@ -26,10 +26,10 @@
 //     Zoombinis; and the strategy, played against every mapping and choice
 //     of the beehive's that shows the Fleens seen (enumerated here, apart
 //     from the port), follows each Zoombini sent with its Fleen and never
-//     has fewer across than it gives as sure, the port's answer
+//     has fewer across than it guarantees, the port's answer
 //     picking the check's branch at every move; played against the dealt
 //     Fleens, seen or not, as many across; small bands' every branch
-//     walked, and with nothing seen, min(band, 6) sure.
+//     walked, and with nothing seen, min(band, 6) guaranteed.
 import fs from 'node:fs';
 import path from 'node:path';
 import { REF, archiveBytes } from '../load.mjs';
@@ -235,7 +235,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       maxSent = Math.max(maxSent, sent);
       const crossed = n - Math.max(0, sent - 6);
       if (lured !== Math.min(3, n) || node.crossed !== crossed) { bad = `a play ends with ${lured} lured and ${node.crossed} marked as crossing, ${crossed} by the count`; break; }
-      if (crossed < st.sure) { bad = `a play has ${crossed} across where ${st.sure} are marked sure`; break; }
+      if (crossed < st.sure) { bad = `only ${crossed} cross in one play, where the strategy guarantees ${st.sure}`; break; }
       worst = Math.min(worst, crossed);
       played++;
     }
@@ -243,15 +243,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (!bad) {
       const end = S.zbStrategyPlay(P, level, band, state, st);
       if (!end) bad = 'the game\'s answer to a move is not among the strategy\'s outcomes';
-      else if (end.crossed < st.sure) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.sure} sure`;
+      else if (end.crossed < st.sure) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.sure} guaranteed`;
     }
-    if (!bad && st.exact && worst !== st.sure) bad = `marked exact at ${st.sure} but every play has ${worst}`;
-    if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.sure, 0); if (lo < st.sure) bad = 'a branch short of sure'; }
+    if (!bad && st.exact && worst !== st.sure) bad = `marked exact at ${st.sure}, but ${worst} cross in every play`;
+    if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.sure, 0); if (lo < st.sure) bad = 'a branch short of the guarantee'; }
     // And with nothing seen: any of the band's places may be the beehive's.
     if (!bad) {
       const blind = P.strategy(level, band, null, { knows });
-      if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen ${blind.sure} are marked sure, not ${n - Math.max(0, n - 6)}`;
-      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen the worst branch has ${lo}`; }
+      if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen the strategy guarantees ${blind.sure}, not ${n - Math.max(0, n - 6)}`;
+      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen only ${lo} cross on the worst branch`; }
       if (!bad) { const end = S.zbStrategyPlay(P, level, band, state, blind); if (!end || end.crossed < blind.sure) bad = `with nothing seen, played against the dealt Fleens, ${end ? end.crossed : 'no outcome'} across`; }
     }
     if (bad) { fail(`level ${level} (${knows}, a band of ${n}): ${bad}`); continue; }

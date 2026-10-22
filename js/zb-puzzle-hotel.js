@@ -40,10 +40,10 @@
    of the boarded rooms do; with boards the program did not deal, there
    may be none, and then the most is the best any arrangement does.
    Unknown, a move gives a Zoombini a room and it is let in or turned
-   away (zbHotelStrategy). At levels 1, 2 and 4 the player is always sure
-   of the whole band; at level 3 the player must settle floors and trunks
+   away (zbHotelStrategy). At levels 1, 2 and 4 the player can always
+   guarantee the whole band; at level 3 the player must settle floors and trunks
    before knowing which traits they go by, and may settle them so that a
-   Zoombini's room is boarded, so with a large band fewer are sure.
+   Zoombini's room is boarded, so with a large band fewer are guaranteed.
 
    WHERE IT CAME FROM
    ScummVM's Zoombinis branch, zoombini_pages/puzzle_hotel.cpp and .h
@@ -224,7 +224,7 @@ function zbHotelDiagram(band, { level, traits = null, maps = null, place, boards
    The play is worked out first by a rule of thumb, a move every
    hypothesis lets in if there is one (at level 3 the one that leaves the
    most room round the boards), else the one fewest hypotheses turn away;
-   and where that is not sure of everyone, by minimax, memoised on the
+   and where that does not guarantee everyone, by minimax, memoised on the
    placings, the hypotheses left and the chances, within the budget. */
 function zbHotelStrategy(level, band, opts = {}) {
   const knows = opts.knows === 'form' ? 'form' : 'program', state = opts.state || null;
@@ -347,7 +347,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     const least = Math.min(...ms.map(m => H.length - m.acc.length));
     if (level !== 3) return free.length ? free[0] : ms.find(m => H.length - m.acc.length === least);
     /* At level 3 the boards matter: each move is judged a step ahead, by
-       the most sure of a room once the traits are known, as if that were
+       the most guaranteed a room once the traits are known, as if that were
        at once (fit): the worse of being let in and being turned away. A
        free move is tried for the first two kinds of Zoombini that have
        one; otherwise the moves fewest hypotheses turn away, a dozen or two. */
@@ -454,8 +454,8 @@ function zbHotelStrategy(level, band, opts = {}) {
   const H0 = hyps.slice(), P0 = band.map(() => -1);
   const plan0 = H0.length ? search(P0, H0, C) : END;
   const hyp = weight(H0);
-  /* Sure of as many as the worst hypothesis could give with it known is
-     as many as can be, however the search ended. */
+  /* A guarantee as large as the worst hypothesis allows with it known
+     cannot be bettered, however the search ended. */
   if (H0.length && plan0.v === Math.min(...H0.map(h => fit(h, P0).count))) exact = true;
   return {
     hypotheses: hyp, sure: plan0.v, exact, knows,
@@ -463,8 +463,8 @@ function zbHotelStrategy(level, band, opts = {}) {
     notes: [
       `${knows === 'form' ? 'The player knows only the level’s form: any' : 'The program could draw, for this band,'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}, ${H0.length} different to this band${knows === 'program' && level === 3 ? (boards.length ? ', counting only those the band fits round the boards (the program boards only rooms an arrangement leaves empty, so a puzzle set otherwise is not one it could deal)' : '; the boards were not given, so none are taken into account') : level === 3 && !boards.length ? '; the boards were not given, so none are taken into account' : ''}. Which floor, trunk or door takes which value is not hidden: the first Zoombini into each settles it.`,
       'A move gives a Zoombini a room; it is let in or turned away, and each turning away moves the counter on.',
-      'A room every hypothesis would let it into is taken first; otherwise the one fewest hypotheses would turn it away from, and where that is not sure of everyone, the move whose worse outcome still gets the most in.',
-      exact ? 'The search is complete: no way of playing is sure of more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are sure, and perhaps more could be.',
+      'A room every hypothesis would let it into is taken first; otherwise the one fewest hypotheses would turn it away from, and where that does not guarantee everyone, the move whose worse outcome still gets the most in.',
+      exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are guaranteed, and perhaps more could be.',
     ],
   };
 }

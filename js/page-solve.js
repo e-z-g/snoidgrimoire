@@ -2,7 +2,7 @@
    Zoombini by Zoombini, a puzzle set for it, which can be changed where it
    hides something, and what can be done: with the answer known, the most
    that can cross and the ways, the simplest first; with it unknown, the
-   play that is sure of the most, to be walked through move by move.
+   play that guarantees the most, to be walked through move by move.
    =========================================================================
 
    The puzzle's file (zb-puzzle-<archive>.js) has the rest: deal, form,

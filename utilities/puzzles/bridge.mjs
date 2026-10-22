@@ -10,8 +10,8 @@
 //   - the chances are debugGetChances' six;
 //   - the workbench: the form gives back what it was given; the solution
 //     sends every Zoombini over the bridge the rule gives it; and the
-//     strategy, walked down every branch, never has fewer across than the
-//     number it gives as sure, and reaches it on some branch;
+//     strategy, walked down every branch, never has fewer across than it
+//     guarantees, and reaches that number on some branch;
 //   - over bands of 16, 11 and 5 at each level, the rule dealt sends one
 //     way the first count the search tries (half the band, then +1, -2,
 //     +1, -2, ...: 8, 9, 7, 8, 6, 7, 5, ...) that some rule gives, and
@@ -95,14 +95,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       for (const knows of band.length <= 9 ? ['program', 'form'] : ['program']) {
         const st = P.strategy(level, band, null, { knows, budget: 4000 });
         const worst = walk(st.root, st.sure, 0);
-        if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy has ${st.sure} sure, and a branch has ${worst} across`); break; }
-        if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.sure}, and its worst branch has ${worst}`); break; }
+        if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, but only ${worst} cross on one branch`); break; }
+        if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.sure}, and ${worst} cross on its worst branch`); break; }
         walked++;
         // Played against the dealt rule, the game answering each move.
         if (knows === 'program') {
           const end = S.zbStrategyPlay(P, level, band, d.state, st);
           if (!end) { fail(`level ${level}: the game's answer to a move is not among the strategy's outcomes`); break; }
-          if (end.crossed < st.sure) { fail(`level ${level}: played against the dealt rule, ${end.crossed} across, fewer than the ${st.sure} sure`); break; }
+          if (end.crossed < st.sure) { fail(`level ${level}: played against the dealt rule, ${end.crossed} across, fewer than the ${st.sure} guaranteed`); break; }
           played++;
         }
       }
@@ -112,5 +112,5 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   try { P.edit(3, bands(1, 5)[0].band, {}, { t1: 'hair:1', t2: 'hair:2', upper: 'with' }); } catch (e) { bad = e.message; }
   if (!bad) fail('the form accepts two values of one trait at level 3');
 
-  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of the number it gives as sure, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
+  say(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it guarantees, ${played} played against the dealt rule; tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}; 20, 40, 150 and 500 rules; ${dealt} deals split as the program's search does`);
 }

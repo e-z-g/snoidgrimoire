@@ -354,7 +354,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
   const free0 = [...Array(n).keys()].filter(k => g0 >> k & 1);
   const u0 = full & ~g0;
   const sure = free0.length + (H0.length ? value(H0, u0, 6) : 0);
-  /* The whole band sure is as many as there can be, whether or not the budget ran out. */
+  /* With the whole band guaranteed, no play can do better, whether or not the budget ran out. */
   if (sure === n) exact = true;
   const up0 = free0.filter(k => H0[0] >> k & 1), low0 = free0.filter(k => !(H0[0] >> k & 1));
   return {
@@ -365,8 +365,8 @@ function zbBridgeStrategy(level, band, opts = {}) {
         ? `The player knows only the rule's form at this level: any of its ${rules.length} rules, each with either bridge, ${weight(H0)} hypotheses, ${H0.length} different to this band.`
         : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge: ${weight(H0)} hypotheses, ${H0.length} different to this band. The player knows that.`,
       'Any Zoombini whose bridge is the same under every hypothesis left goes first, which costs nothing; otherwise the one whose worse outcome still gets the most across.',
-      exact ? (sure === n ? 'So the whole band is sure to cross.' : 'The search is complete: no way of playing is sure of more.')
-        : 'The search stopped at its budget and played the rest by a rule of thumb: the Zoombini whose bridge is the same under most of the hypotheses goes next, over that bridge. So this many are sure, and perhaps more could be.',
+      exact ? (sure === n ? 'So the whole band is sure to cross.' : 'The search is complete: no way of playing guarantees more.')
+        : 'The search stopped at its budget and played the rest by a rule of thumb: the Zoombini whose bridge is the same under most of the hypotheses goes next, over that bridge. So this many are guaranteed, and perhaps more could be.',
     ],
   };
 }

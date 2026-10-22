@@ -658,11 +658,11 @@ function zbPizzaStrategy(level, band, opts = {}) {
         : e.pit.length ? `Of the sets of wishes the program could deal at this level, ${e.count} give the pit it shows; the player knows that.`
           : `The program could deal ${e.count} sets of wishes at this level, whatever the band; the player knows that.`,
       'Each meal goes to the trolls still hungry in turn, Arno, Willa, Shyler, and the first whose wish it is eats it; the others’ reactions (a topping hated, more than one hated, none hated but some missing) are the feedback. A troll whose wish is the same under every hypothesis left is served it at once, for nothing.',
-      `Played so, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play is sure of fewer' : '; fewer may do, but the search ran out of time before that was known'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini need be lost: every one of any band crosses.`}`,
+      `Played so, the trolls waste at most ${e.best} meal${e.best === 1 ? '' : 's'}${e.minimal ? ', and no play guarantees fewer' : '; fewer may do, but the search ran out of time before that was known'}. ${lose ? `${a} are forgiven, so ${lose} Zoombini${lose === 1 ? '' : 's'} may be lost${e.minimal ? '' : ' by this play'}.` : `${a} are forgiven, so no Zoombini need be lost: every one of any band crosses.`}`,
       `How it plays: first the rule of thumb, the meal whose worst reaction leaves fewest hypotheses, every time; then a search for fewer meals wasted, ${e.mode === 'search' ? 'which found them' : 'which found none within its time'}.`,
       ...(level === 4 ? [e.pit.length
         ? `The four meals in the pit are read, as tried meals never to serve${knows === 'program' ? ', and as the program makes them: two toppings of the troll who wants the most, each crossed with one of each other troll’s' : ''}.`
-        : 'The four meals in the pit are not known here (give opts.state to read them). So the play never serves two toppings that could be two trolls’, one each, which might be a pit meal the game would not judge; a player who reads the pit knows more, and is sure of more.'] : []),
+        : 'The four meals in the pit are not known here (give opts.state to read them). So the play never serves two toppings that could be two trolls’, one each, which might be a pit meal the game would not judge; a player who reads the pit knows more, and can guarantee more.'] : []),
       'A meal with no toppings is taken to be one the machine can make, as ScummVM lets it.',
     ],
   };

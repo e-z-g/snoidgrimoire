@@ -292,8 +292,8 @@ function zbTunnelsDiagram(band, { level, guards = null, toggle = null, where, se
    through; then, if it does not, by minimax, the best move the one with the most
    through in its worst outcome, memoised on the hypotheses left, those
    still to go and the chances, starting from the rule of thumb's value and
-   giving up at the budget. A plan is { v, i, t, kids }: v the most sure to
-   go through from here, the move, and the plans after each outcome (gone
+   giving up at the budget. A plan is { v, i, t, kids }: v the most guaranteed
+   to go through from here, the move, and the plans after each outcome (gone
    through, turned back by the side guardian, by the upper or lower one),
    or no kids when they are to be looked up. */
 function zbTunnelsStrategy(level, band, opts = {}) {
@@ -452,8 +452,8 @@ function zbTunnelsStrategy(level, band, opts = {}) {
         : `The program could deal this band ${hyp} hidden parts at this level (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} different to this band. The player knows that${level === 1 ? (split ? `, and that the Allergic Cliffs left a count of ${split}` : ', and is taken not to know of a count left by the Allergic Cliffs') : ''}.`,
       ...(level === 1 ? ['Which pair of tunnels is closed does not show until a Zoombini is turned back from one, so it is among the hypotheses.'] : []),
       'A Zoombini turned back is turned back by one guardian, and the game shows which: the one on its tunnel\'s side, so it belongs on the other side, or the upper or lower one, so it belongs in the other tunnel on this side.',
-      'Any Zoombini whose tunnel is the same under every hypothesis left goes first, which costs nothing; otherwise the most lopsided move, and where that is not sure of everyone, the move whose worst outcome still gets the most through.',
-      exact ? 'The search is complete: no way of playing is sure of more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are sure, and perhaps more could be.',
+      'Any Zoombini whose tunnel is the same under every hypothesis left goes first, which costs nothing; otherwise the most lopsided move, and where that does not guarantee everyone, the move whose worst outcome still gets the most through.',
+      exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are guaranteed, and perhaps more could be.',
       ...(Number.isFinite(worstBack) && sure === band.length ? [`Played so, no more than ${worstBack} ${worstBack === 1 ? 'is' : 'are'} ever turned back, of the ${C} the caves allow.`] : []),
     ],
   };

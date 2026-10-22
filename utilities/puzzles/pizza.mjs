@@ -28,7 +28,7 @@
 //     by zbPizzaJudge and by the puzzle's answer, which match at every
 //     move, and walked again by zbStrategyPlay to the same end, never
 //     serves a meal twice or off the machine and never has fewer across
-//     than it gives as sure; level 1's every branch walked; within its time.
+//     than it guarantees; level 1's every branch walked; within its time.
 export default function check({ S, fail, say, scumm, exe, need, bands }) {
   const h = scumm('zoombini_pages/puzzle_pizza.h'), cpp = scumm('zoombini_pages/puzzle_pizza.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -179,7 +179,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   // Round trips of the form; the solution fed as the port's judge feeds
   // it; the strategy played against every hypothesis at levels 1 and 2,
   // and hundreds at 3 and 4, the game's reactions worked out by the port's
-  // judge (zbPizzaJudge), never fewer across than it gives as sure.
+  // judge (zbPizzaJudge), never fewer across than it guarantees.
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
   const drawnOnce = (d, n) => same(d.items.filter(it => it.t === 'zoombini').map(it => it.i).sort((x, y) => x - y), [...Array(n).keys()]);
   let trips = 0, solves = 0;
@@ -213,7 +213,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
 
   // The strategy, played: each move answered by the judge written here,
   // and by the puzzle's answer, which must pick the same outcome; then
-  // again by zbStrategyPlay, the page's walk, to an end as good as sure.
+  // again by zbStrategyPlay, the page's walk, to an end no worse than the guarantee.
   let played = 0, walkedAll = 0, slowest = 0, slowNext = 0, answered = 0;
   const results = [];
   const plays = [];
@@ -256,14 +256,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       }
       if (bad) break;
       worst = Math.min(worst, node.crossed);
-      if (node.crossed < st.sure) { bad = `a play has ${node.crossed} across where ${st.sure} are marked sure`; break; }
+      if (node.crossed < st.sure) { bad = `only ${node.crossed} cross in one play, where the strategy guarantees ${st.sure}`; break; }
       const end = S.zbStrategyPlay(P, level, band, hs, st);
       if (end !== node) { bad = `zbStrategyPlay ends ${end ? `with ${end.crossed} across` : 'on a move with no branch'}, not where the judge's play does, with ${node.crossed}`; break; }
       played++;
     }
-    if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `marked exact at ${st.sure} but every play has ${worst} or more`;
+    if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `marked exact at ${st.sure}, but ${worst} or more cross in every play`;
     if (!bad && level === 1) {
-      const walk = (nd, depth) => { if (depth > 40) throw new Error('too deep'); if (!nd.outcomes.length) { if (nd.crossed < st.sure) bad = 'a branch short of sure'; return 1; } return nd.outcomes.reduce((t, o) => t + walk(next(o), depth + 1), 0); };
+      const walk = (nd, depth) => { if (depth > 40) throw new Error('too deep'); if (!nd.outcomes.length) { if (nd.crossed < st.sure) bad = 'a branch short of the guarantee'; return 1; } return nd.outcomes.reduce((t, o) => t + walk(next(o), depth + 1), 0); };
       walkedAll += walk(st.root, 0);
     }
     if (bad) { fail(`level ${level} (${knows}${state ? ', pit known' : ''}): ${bad}`); continue; }
@@ -273,7 +273,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
 
   const tail = runs.map(r => '0x' + r.at.toString(16)).join(', ');
-  say(`${trips} forms given back and solved; strategies (level, f form, p pit known: sure/band) ${results.join(' ')}, played against ${played} hypotheses (the puzzle's answer the judge's at all ${answered} moves, zbStrategyPlay's ends the same; level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
+  say(`${trips} forms given back and solved; strategies (level, f form, p pit known: guaranteed/band) ${results.join(' ')}, played against ${played} hypotheses (the puzzle's answer the judge's at all ${answered} moves, zbStrategyPlay's ends the same; level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
     + `levels' numbers and trolls as ScummVM's and ZOOMBINI.EXE's (${tail}); ${dealt} deals: toppings wanted once each, each troll's meal eaten by it alone, `
     + `every topping wanted in ${allWanted.map((n, i) => `${n}/${perLevel[i]}`).join(', ')} by level; level 2 left a troll wanting nothing in ${wantNothing} of ${level2}`);
 }
