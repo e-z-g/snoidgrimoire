@@ -64,7 +64,7 @@ function layoutMaze() {
   let html = `<div class="ltools"><label>Put <select data-lt="type">${LAYOUT_MAZE_TYPES.map(([v, n]) => `<option value="${v}"${v === t.type ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`
     + ` <label>pointing <select data-lt="dir">${ZB_MAZE2_WAYS.map((w, k) => `<option value="${k}"${k === t.dir ? ' selected' : ''}>${w}</option>`).join('')}</select></label>`
     + ` <label>in <select data-lt="group">${[1, 2, 3, 4, 5, 6, 7, 8].map(g => `<option value="${g}"${g === t.group ? ' selected' : ''}>${esc(colourName(g))}</option>`).join('')}</select></label>`
-    + ` <label><input type="checkbox" data-lt="turns"${t.turns ? ' checked' : ''}> turning once passed, to</label>`
+    + ` <label><input type="checkbox" data-lt="turns"${t.turns ? ' checked' : ''}> turning when passed, to</label>`
     + ZB_MAZE2_WAYS.map((w, k) => ` <label><input type="checkbox" data-lt="way" value="${k}"${t.ways[k] ? ' checked' : ''}> ${w}</label>`).join('') + '</div>'
     + `<div class="ltools">Launchers: ${ZB_MAZE2_SEATS.map((s, k) => `<label title="${esc(zbMaze2Corner(k) || 'the lower left')}"><input type="checkbox" data-seat="${k}"${B.seats.includes(k) ? ' checked' : ''}> ${k + 1}</label>`).join(' ')}</div>`;
   const svg = zbDiagramSvg(zbMaze2Diagram(B, SDEALT.band, null, `MAZE2 REGS ${id}`), solveSprites(SDEALT.band));
@@ -72,8 +72,8 @@ function layoutMaze() {
   for (let row = 0; row < 13; row++) for (let col = 0; col < 13; col++) hits.push(`<rect data-sq="${row},${col}" x="${GX + row * C}" y="${GY + col * C}" width="${C}" height="${C}" fill="transparent"/>`);
   html += svg.replace(/<\/svg>$/, `<g class="lhits">${hits.join('')}</g></svg>`);
   $('sdiagram').innerHTML = html;
-  $('scaption').textContent = `MAZE2 REGS ${id}, the layout this deal uses${edited ? ', edited (in Changes, to save as MAZE2.MHK)' : ''}. A click puts the tool on a square; on a square that has it already, turns it.`
-    + (arrows > dealt ? ` ${arrows} feature arrows, and the program deals ${dealt} features at this level: here the rest show none; what the game puts on them is not known.` : '');
+  $('scaption').textContent = `MAZE2 REGS ${id}, the layout this deal uses${edited ? ', edited (in Changes, to save as MAZE2.MHK)' : ''}. Click a square to put the tool there, and click it again to turn it.`
+    + (arrows > dealt ? ` The layout has ${arrows} feature arrows, and the program deals ${dealt} features at this level. The rest are shown empty here, because what the game puts on them is not known.` : '');
 }
 
 function layoutMazeClick(row, col) {

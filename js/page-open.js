@@ -214,7 +214,7 @@ function ensureBytes(entry) {
       const bytes = new Uint8Array(got);
       let o = 0;
       for (const part of parts) { bytes.set(part, o); o += part.length; }
-      if (!looksLikeMohawk(bytes)) throw new Error('what came back is not a Mohawk archive');
+      if (!looksLikeMohawk(bytes)) throw new Error('the file fetched is not a Mohawk archive');
       entry.bytes = bytes;
       entry.size = bytes.length;
       const left = sortedArchives().filter(e => !e.bytes && e.remote).length;

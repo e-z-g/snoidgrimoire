@@ -551,7 +551,7 @@ function puzzlePanel(key) {
   const dealt = JVIEW.deal && JVIEW.deal.key === key ? JVIEW.deal : null;
   const solveHref = `#solve=${key}${JVIEW.level !== 1 ? '&level=' + JVIEW.level : ''}${dealt ? `&deal=${dealt.seed}${dealt.size !== 16 ? '&size=' + dealt.size : ''}` : ''}`;
   html += `<div class="actions"><button data-deal="${key}">${JVIEW.deal && JVIEW.deal.key === key ? 'Deal another' : 'Deal one'}</button>`
-    + ` <a class="btn" href="${solveHref}">Solve it${dealt ? ', this one' : ''}</a>`
+    + ` <a class="btn" href="${solveHref}">${dealt ? 'Solve this deal' : 'Solve it'}</a>`
     + `<label class="note">for <select data-bandsize>${sizes.map(n => `<option${n === JVIEW.bandSize ? ' selected' : ''}>${n}</option>`).join('')}</select> Zoombinis</label></div>`;
   if (JVIEW.deal && JVIEW.deal.key === key) html += dealtPanel(key);
   return html + `<p class="note">${esc(z.source)}</p>`;
@@ -571,7 +571,7 @@ function dealtPanel(key) {
   }
   let d;
   try { d = zbDealAt(key, JVIEW.level, seed, size, name => openedArchive(ARCHIVES.get(name))); }
-  catch (e) { return `<p class="bad">It could not be dealt: ${esc(e.message)}</p>`; }
+  catch (e) { return `<p class="bad">The puzzle could not be dealt: ${esc(e.message)}</p>`; }
   const T = ZB_TRAIT_SHORT;
   const rows = d.band.map((b, i) => `<tr><td class="num">${i + 1}</td><td>${esc(T.hair[b.hair - 1])}</td><td>${esc(T.eyes[b.eyes - 1])}</td>`
     + `<td>${esc(T.nose[b.nose - 1])}</td><td>${esc(T.feet[b.feet - 1])}</td><td class="mark">${esc(d.marks[i] || '')}</td></tr>`).join('');
@@ -586,10 +586,10 @@ function helpPanel(p) {
   const z = ARCHIVES.get('ZOOMBINI');
   const id = p.kind === 'puzzle' ? p.help + 20 * (JVIEW.level - 1) : p.help;
   const head = p.kind === 'puzzle' ? `The help, level ${JVIEW.level}: ${esc(ZB_LEVELS[JVIEW.level - 1])}` : 'The help';
-  if (!z) return `<h3>${head}</h3><p class="note">It is in ZOOMBINI.MHK, STRL ${id}, which is not among the files opened.</p>`;
+  if (!z) return `<h3>${head}</h3><p class="note">The help is in ZOOMBINI.MHK, STRL ${id}, and that file is not open.</p>`;
   if (!z.bytes) {
     if (FETCHING.has('ZOOMBINI')) return `<h3>${head}</h3><p class="note">Fetching zoombini.mhk from archive.org…</p>`;
-    return `<h3>${head}</h3><p class="note">It is in zoombini.mhk, STRL ${id}: <a data-fetch="ZOOMBINI">fetch</a> (24 MB).</p>`;
+    return `<h3>${head}</h3><p class="note">The help is in zoombini.mhk, STRL ${id}: <a data-fetch="ZOOMBINI">fetch</a> (24 MB).</p>`;
   }
   const arc = openedArchive(z);
   if (!arc || !arc.has('STRL', id)) return `<h3>${head}</h3><p class="warn">ZOOMBINI has no STRL ${id}.</p>`;

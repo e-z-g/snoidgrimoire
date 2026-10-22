@@ -75,10 +75,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const P = S.ZB_PUZZLES.get('BRIDGE');
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
   let trips = 0, walked = 0, leaves = 0, played = 0;
-  const walk = (node, sure, depth) => {
+  const walk = (node, guaranteed, depth) => {
     if (!node.outcomes.length) { leaves++; return node.crossed; }
     if (depth > 40) throw new Error('a strategy deeper than 40 moves');
-    return Math.min(...node.outcomes.map(o => walk(o.next(), sure, depth + 1)));
+    return Math.min(...node.outcomes.map(o => walk(o.next(), guaranteed, depth + 1)));
   };
   for (let level = 1; level <= 4; level++) {
     for (const { band, seed } of bands(12, 300 + level, [16, 9, 4])) {
@@ -94,15 +94,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       if (JSON.stringify(zs) !== JSON.stringify(band.map((_, i) => i))) { fail(`level ${level}: the solution's diagram does not draw each Zoombini once`); break; }
       for (const knows of band.length <= 9 ? ['program', 'form'] : ['program']) {
         const st = P.strategy(level, band, null, { knows, budget: 4000 });
-        const worst = walk(st.root, st.sure, 0);
-        if (worst < st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, but only ${worst} cross on one branch`); break; }
-        if (st.exact && worst !== st.sure) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.sure}, and ${worst} cross on its worst branch`); break; }
+        const worst = walk(st.root, st.guaranteed, 0);
+        if (worst < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, but only ${worst} cross on one branch`); break; }
+        if (st.exact && worst !== st.guaranteed) { fail(`level ${level}, knowing the ${knows}: the strategy is marked exact at ${st.guaranteed}, and ${worst} cross on its worst branch`); break; }
         walked++;
         // Played against the dealt rule, the game answering each move.
         if (knows === 'program') {
           const end = S.zbStrategyPlay(P, level, band, d.state, st);
           if (!end) { fail(`level ${level}: the game's answer to a move is not among the strategy's outcomes`); break; }
-          if (end.crossed < st.sure) { fail(`level ${level}: played against the dealt rule, ${end.crossed} across, fewer than the ${st.sure} guaranteed`); break; }
+          if (end.crossed < st.guaranteed) { fail(`level ${level}: played against the dealt rule, ${end.crossed} across, fewer than the ${st.guaranteed} guaranteed`); break; }
           played++;
         }
       }

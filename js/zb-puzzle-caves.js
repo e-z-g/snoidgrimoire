@@ -41,7 +41,7 @@
    answer puts everyone on the path with no mistake, one way. Unknown, the
    strategy (zbCavesStrategy, below) plays for the worst of every rule
    that fits the wall; it needs the wall, opts.state, and without it
-   treats the wall as unseen. With the wall every band is sure to cross
+   treats the wall as unseen. With the wall every band is guaranteed to cross
    whole at levels 1 to 3; at level 4, with nothing on the wall and seven
    mistakes, bands of up to nine were in every trial, and larger ones
    mostly one to four short, as far as the search can show in its budget.
@@ -154,7 +154,7 @@ const zbCavesOrdinal = n => ['first', 'second', 'third', 'fourth', 'fifth'][n - 
 ZB_PUZZLES.set('CAVES', {
   about: 'The band must stand along a path of stones past a stone lion, grouped by a trait in an order the lion keeps to itself; symbols on the wall show some of that order. A Zoombini put in the wrong place is moved to the right one, but each such mistake counts.',
   levels: [
-    { rule: 'One trait is drawn at random and its five values shuffled; the band must stand along the path in groups by that trait, in that order, so each Zoombini has a run of stones as long as the number like it. The wall shows all five values, in order.',
+    { rule: 'One trait is drawn at random and its five values shuffled; the band must stand along the path in groups by that trait, in that order, so each Zoombini has a run of stones as long as the number of Zoombinis like it. The wall shows all five values, in order.',
       chances: 'Four mistakes. A Zoombini put on a wrong stone is walked to a right one and still goes on, but it counts; after the fourth no more may be placed, and the rest stay behind.',
       notes: [
         'The first Lion’s Lair after the program starts is by nose, at any level: the trait is drawn and then set to the nose, the first time only. ScummVM does the same.',
@@ -165,7 +165,7 @@ ZB_PUZZLES.set('CAVES', {
       notes: [
         'As at level 1, the first Lion’s Lair after the program starts is by nose.',
       ] },
-    { rule: 'Two traits are drawn, each with its values shuffled: the band stands in groups by the first, in its order, and within each group by the second, in its own. The wall shows two values of each, drawn at random, the first trait’s along the top row and the second’s below.',
+    { rule: 'Two traits are drawn, each with its values shuffled: the band stands in groups by the first, in its order, and within each group by the second, in the second trait’s order. The wall shows two values of each, drawn at random, the first trait’s along the top row and the second’s below.',
       chances: 'Six mistakes, counted as at level 1.',
       notes: [
         'As at level 1, the first Lion’s Lair after the program starts has the nose as its first trait.',
@@ -292,7 +292,7 @@ function zbCavesForm(level, state) {
   fields.push({ key: 'note', kind: 'note', note: [
     level === 1 ? 'At this level the wall shows the whole order.' : level === 4 ? 'At this level the wall shows nothing.' : 'The wall shows two places of each row in use, the rest worn away.',
     ...(two ? ['The two traits must differ.'] : []),
-    `The stones follow from the rule and the band, and the ${ZB_CAVES_MISTAKES[level - 1]} mistakes from the level; neither is edited.`,
+    `The stones follow from the rule and the band, and the ${ZB_CAVES_MISTAKES[level - 1]} mistakes from the level; neither can be edited.`,
   ].join(' ') });
   return fields;
 }
@@ -307,7 +307,7 @@ function zbCavesEdit(level, band, state, values) {
   };
   const places = (v, what) => {
     const a = [...new Set((Array.isArray(v) ? v : []).map(Number))].sort((x, y) => x - y);
-    if (a.length !== 2 || a.some(k => !(k >= 1 && k <= 5))) throw new Error(`${what} shows two of its five places.`);
+    if (a.length !== 2 || a.some(k => !(k >= 1 && k <= 5))) throw new Error(`${what} must show two of its five places.`);
     return a;
   };
   const primary = kind(values.primary);
@@ -341,7 +341,7 @@ function zbCavesSolve(level, band, state) {
       diagram: zbCavesDiagram(level, band, { state, reveal: true, seatOf, caption: `All ${n} on the path` }) }],
     notes: [
       'To cross here is to stand on the path: when the lion lifts its paw every Zoombini on a stone goes on, and those not placed stay behind. A Zoombini put on a wrong stone is still walked to a right one and goes on; the mistake only counts against the rest.',
-      'Known, each Zoombini has its run of stones, as long as the number like it, so all of them cross without a mistake. Which stone of its run each takes, and the order they are placed in, do not matter, so this is counted as one way, and it is the simplest.',
+      'With the rule known, each Zoombini has its run of stones, as long as the number of Zoombinis like it, so all of them cross without a mistake. Which stone of its run each takes, and the order they are placed in, do not matter, so this counts as one way, and it is the simplest.',
     ],
   };
 }
@@ -555,7 +555,7 @@ function zbCavesStrategy(level, band, opts = {}) {
   let caps = [1, 4];
   const memo = new Map();
   let cuts = 0, until = deadline;
-  /* The most sure to be placed from here, free placements included; the
+  /* The most guaranteed to be placed from here, free placements included; the
      search stops once it has shown enough, at least beta. A memo entry is
      exact, or a lower bound the search has shown. */
   const value = (H, occ, rem, m, beta = Infinity) => {
@@ -606,29 +606,29 @@ function zbCavesStrategy(level, band, opts = {}) {
   const full = (1 << n) - 1;
   /* Wider each time round while there is time: the moves tried where the
      hypotheses are many, and where they are some. */
-  let sure = 0;
+  let guaranteed = 0;
   for (const c of [[1, 1], [1, 4], [1, 12], [2, Infinity], [Infinity, Infinity]]) {
     caps = c; cuts = 0;
-    sure = value(H0, 0, full, limit);
-    if (!cuts || sure === n || Date.now() > deadline) break;
+    guaranteed = value(H0, 0, full, limit);
+    if (!cuts || guaranteed === n || Date.now() > deadline) break;
   }
-  const exact = cuts === 0 || sure === n;
+  const exact = cuts === 0 || guaranteed === n;
   /* The play, a node at a time, each made the first time it is needed. */
   const stone = j => 17 - n + j;
   const seatOfJ = j => 21 - n + j;
   const node = (H, occ, rem, m, placed) => {
-    /* After the last mistake no one else is placed, whether or not they are sure to fit. */
+    /* After the last mistake no one else is placed, whether or not they are certain to fit. */
     const f = m > 0 ? settle(H, occ, rem) : { occ, rem, placed: [] };
     const pm = new Map(placed);
     for (const [z, j] of f.placed) pm.set(z, j);
     occ = f.occ; rem = f.rem;
     const r = bits(rem), across = pm.size, made = limit - m;
-    const sureWords = f.placed.length ? `Sure now: ${zbWordsOr(f.placed.map(([z, j]) => `Zoombini ${z + 1} on stone ${stone(j)}`), 'and')}. ` : '';
+    const certainWords = f.placed.length ? `Certain to fit: ${zbWordsOr(f.placed.map(([z, j]) => `Zoombini ${z + 1} on stone ${stone(j)}`), 'and')}. ` : '';
     const seatOf = new Map([...pm].map(([z, j]) => [z, seatOfJ(j)]));
     const waitingNow = [...Array(n).keys()].filter(i => rem >> i & 1);
     const draw = (extra, caption) => zbCavesDiagram(level, band, Object.assign({ state, seatOf, mistakes: [made, limit], caption }, extra));
     if (!r || !m) {
-      return { move: !r ? `${sureWords}All ${across} are on the path, and cross.` : `${sureWords}That was the last mistake allowed: ${across} cross, and ${r} stay${r === 1 ? 's' : ''} behind.`,
+      return { move: !r ? `${certainWords}All ${across} are on the path, and cross.` : `${certainWords}That was the last mistake allowed: ${across} cross, and ${r} stay${r === 1 ? 's' : ''} behind.`,
         zoombini: null, left: weight(H), crossed: across, spent: made, outcomes: [],
         diagram: draw({ left: waitingNow }, !r ? `All ${across} on the path` : `${across} on the path, ${r} left behind`) };
     }
@@ -653,7 +653,7 @@ function zbCavesStrategy(level, band, opts = {}) {
         next: () => node(Int32Array.from(w.H), occ | 1 << w.T, rem2, m - 1, [...pm, [mv.z, w.T]]) });
     }
     return {
-      move: `${sureWords}Put Zoombini ${mv.z + 1} on stone ${stone(mv.j)}.`,
+      move: `${certainWords}Put Zoombini ${mv.z + 1} on stone ${stone(mv.j)}.`,
       zoombini: mv.z, seat: seatOfJ(mv.j), left: weight(H), crossed: across,
       diagram: draw({ waiting: waitingNow.filter(i => i !== mv.z), move: { i: mv.z, seat: seatOfJ(mv.j) } }, `${weight(H)} rules left`),
       outcomes,
@@ -661,10 +661,10 @@ function zbCavesStrategy(level, band, opts = {}) {
   };
   const hyp = weight(H0);
   return {
-    hypotheses: hyp, sure, exact, knows,
+    hypotheses: hyp, guaranteed, exact, knows,
     root: node(H0, 0, full, limit, []),
     notes: [
-      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so it is taken as unseen.'} Of the rules the program could deal, ${hyp} fit it, ${H0.length} different to this band.`,
+      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so it is taken as unseen.'} Of the rules the program could deal, ${hyp} fit it, ${H0.length} of them different for this band.`,
       'The player who knows only the level’s form has the same hypotheses: the program draws every trait and order alike. (The first Lion’s Lair after the program starts is by nose, which a player could know; this does not assume it.)',
       'Each placement goes on even when it is a mistake, so as many placements as there are mistakes allowed are guaranteed whatever happens; the question is how many more can be made without a mistake.',
       'A Zoombini every hypothesis left puts on some free stone goes there first, at no cost; otherwise the move is the one whose worst outcome still places the most, a mistake’s stone (which the game draws at random) taken as the worst for the player.',

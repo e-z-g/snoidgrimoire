@@ -391,9 +391,9 @@ ZB_PUZZLES.set('SMOKE', {
     { rule: 'As at level 1, with four filters in fixed places, each giving one or two traits: two between the cart and the centre crystal, two between it and the mirror. They are made from the Zoombini picked, so that it looks through the first two as its reflection looks through the other two; the reflection’s traits the second pair covers are random.',
       chances: 'None are counted, as at level 1: one ride each, and a Zoombini that does not match is knocked back.',
       notes: [
-        'As at level 1, after the first ride a reflection with a value the others cannot have (a cap, sunglasses, a blue nose or a propeller) is the match, and the match keeps to the first few while fewer than eight Zoombinis are left.',
+        'As at level 1, after the first ride a reflection with a value the others cannot have (a cap, sunglasses, a blue nose or a propeller) is the match, and the match is among the first few places while fewer than eight Zoombinis are left.',
       ] },
-    { rule: 'The Zoombinis go in line and the reflection in the mirror is fixed; six filters are dealt to be placed, up to three on each side of the centre crystal, in order. Each gives one or two traits, and some step one trait on instead, to the next value in the maker’s order, the fifth back to the first. Four are made from the Zoombini to work, two on each side; two are random.',
+    { rule: 'The Zoombinis go in line and the reflection in the mirror is fixed; six filters are dealt to be placed, up to three on each side of the centre crystal, in order. Each gives one or two traits, and some step one trait on instead, to the next value in the maker’s order, the fifth back to the first. Four are made to work for the Zoombini, two on each side; two are random.',
       chances: 'None are counted: each Zoombini rides once, and one that does not match is knocked back.',
       notes: [
         'The first Zoombini’s filters are laid out in the order they were made, so the top left then top middle filters on the cart’s side, and the top right then bottom left on the mirror’s side counting from the centre crystal, always work. Later sets are shuffled.',
@@ -499,7 +499,7 @@ function zbSmokeDisplay(filters) {
 
 function zbSmokeForm(level, band, state) {
   if (level >= 3) {
-    return [{ key: 'note', kind: 'note', note: `The six filters and the reflection${level === 4 ? 's' : ''} in the mirror are made together from the first ${level === 4 ? 'two' : 'Zoombini'} in line by the program’s recipe, and are not edited here; change the band, or deal again.` }];
+    return [{ key: 'note', kind: 'note', note: `The six filters and the reflection${level === 4 ? 's' : ''} in the mirror are made together from the first ${level === 4 ? 'two' : 'Zoombini'} in line by the program’s recipe, and cannot be edited here; change the band or deal again instead.` }];
   }
   return [
     { key: 'picked', label: 'The program picks', kind: 'choice', value: state.questionIndex,
@@ -592,7 +592,7 @@ function zbSmokeSolve(level, band, state) {
     const filters = state.level2RunnerStates;
     const through = i => zbSmokeThrough(zbSmokeZ(band[i]), filters.slice(0, 2));
     const matching = new Set(pairs.map(p => p.i)).size;
-    notes.push(`On the first ride ${matching} of the band ${matching === 1 ? 'matches' : 'match'} a reflection: the Zoombini the program picked${matching > 1 ? ', and the others by chance' : ''}. Any of them may ride first; each way is one Zoombini and one reflection, two alike Zoombinis counted as one.`);
+    notes.push(`On the first ride ${matching} of the band ${matching === 1 ? 'matches' : 'match'} a reflection: the Zoombini the program picked${matching > 1 ? ', and the others by chance' : ''}. Any of them may ride first; each way is one Zoombini and one reflection, with two alike Zoombinis counted as one.`);
     return {
       most: n, exact: true, ways: pairs.length,
       solutions: pairs.slice(0, 12).map(({ i, r }) => ({

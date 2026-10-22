@@ -72,7 +72,7 @@ function openMohawk(bytes) {
     for (let k = 0; k < n; k++) {
       const id = i16be(b, rt + 2 + k * 4), index = u16be(b, rt + 4 + k * 4);
       const f = files[index - 1];
-      if (!f) throw new Error(`not a Mohawk archive: ${tag} ${id} names file ${index} of ${fileCount}`);
+      if (!f) throw new Error(`not a Mohawk archive: ${tag} ${id} points to file ${index} of ${fileCount}`);
       need(f.offset, f.size, `${tag} ${id}`);
       list.push({ tag, id, index, name: names.get(index) || '', offset: f.offset, size: f.size });
     }

@@ -575,7 +575,7 @@ ZB_PUZZLES.set('FERRY', {
   ],
   /* Nothing on the raft is the program's to choose. */
   form(level, band, state) {
-    return [{ key: 'note', kind: 'note', note: `Nothing here is the program’s to choose: the raft is SCRB ${state.seatLayoutScrbId}, the one for ${band.length} Zoombinis at this level, and the rule is the same at every level.` }];
+    return [{ key: 'note', kind: 'note', note: `The program chooses nothing here: the raft is SCRB ${state.seatLayoutScrbId}, the one for ${band.length} Zoombinis at this level, and the rule is the same at every level.` }];
   },
   edit(level, band, state) { return Object.assign({}, state, { edited: true }); },
   solve(level, band, state, arc, opts = {}) {
@@ -676,11 +676,11 @@ ZB_PUZZLES.set('FERRY', {
       solutions: pick.map(describe),
       notes: [
         'To cross is to be seated on the raft when it leaves; any still on the dock stay behind.',
-        'The rule is the same at every level: each two seated side by side share a trait. The order they are seated in does not matter, and two alike Zoombinis swapped are the same seating.',
-        'Simplest is the seating with the fewest neighbours who share one trait only, then the fewest neighbours at all: a band small enough to sit with no two side by side needs no matching at all, and on this raft that is up to ' + apart.most + '.',
+        'The rule is the same at every level: each two seated side by side share a trait. The order they are seated in does not matter, and swapping two alike Zoombinis gives the same seating.',
+        'The simplest seating has the fewest neighbours who share only one trait, then the fewest neighbours of any kind. A band small enough to sit with no two side by side needs no matching, and on this raft that is a band of up to ' + apart.most + '.',
         ways != null ? `There ${ways === 1 ? 'is 1 seating' : `are ${ways} seatings`} of ${most}, counting alike Zoombinis as one.` : 'There are too many seatings to count within the budget.',
         ...(found.proven ? (most < n ? [`No seating takes more than ${most} of the ${n}: the search ruled out every larger one.`] : [])
-          : [`The search gave up on seating more than ${most}; more may be possible.`]),
+          : [`The search stopped before finding a seating of more than ${most}; more may be possible.`]),
       ],
     };
   },

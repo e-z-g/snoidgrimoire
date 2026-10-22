@@ -460,7 +460,7 @@ async function townEnterVR() {
   let session;
   try {
     session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
-  } catch (e) { $('tstatus').textContent = 'The headset would not start: ' + e.message; return; }
+  } catch (e) { $('tstatus').textContent = 'The headset could not start: ' + e.message; return; }
   TV.xr = session;
   $('tvr').textContent = 'Leave VR';
   townSound(true);

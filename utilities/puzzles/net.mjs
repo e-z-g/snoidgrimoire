@@ -203,7 +203,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       for (const knows of ['program', 'form']) {
         const t0 = Date.now(), st = P.strategy(level, band, null, { knows, state: d.state });
         bench.slowest = Math.max(bench.slowest, Date.now() - t0);
-        if (st.sure !== band.length || !st.exact) why.push(`the strategy guarantees ${st.sure}`);
+        if (st.guaranteed !== band.length || !st.exact) why.push(`the strategy guarantees ${st.guaranteed}`);
         const check = nd => {
           const t1 = Date.now(), sum = nd.outcomes.reduce((t, o) => t + o.left, 0);
           if (nd.outcomes.length && sum !== nd.left) why.push(`a node's outcomes leave ${sum} of its ${nd.left} rules`);
@@ -214,7 +214,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         for (let w = 0; w < 25; w++) {
           let nd = st.root, depth = 0;
           while (nd.outcomes.length && depth < 40) { check(nd); const t1 = Date.now(); nd = nd.outcomes[rnd.number(nd.outcomes.length - 1)].next(); bench.slowest = Math.max(bench.slowest, Date.now() - t1); depth++; }
-          if (nd.crossed < st.sure) why.push(`a branch has ${nd.crossed} across`);
+          if (nd.crossed < st.guaranteed) why.push(`a branch has ${nd.crossed} across`);
           bench.walks++;
         }
         // The branch a whole rule makes, for the rule dealt and for rules of
@@ -233,10 +233,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
             if (P.answer(level, band, state, nd) !== k) { why.push(`the puzzle answers ${nd.move} with outcome ${P.answer(level, band, state, nd)}, the check with ${k}`); break; }
             nd = nd.outcomes[k].next();
           }
-          if (nd.crossed < st.sure) why.push(`the rule's branch has ${nd.crossed} across`);
+          if (nd.crossed < st.guaranteed) why.push(`the rule's branch has ${nd.crossed} across`);
           const end = S.zbStrategyPlay(P, level, band, state, st);
           if (!end) why.push('played against the rule, the game\'s answer to a move is not among the strategy\'s outcomes');
-          else if (end.crossed < st.sure) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.sure} guaranteed`);
+          else if (end.crossed < st.guaranteed) why.push(`played against the rule, ${end.crossed} across, fewer than the ${st.guaranteed} guaranteed`);
           else bench.played++;
           bench.followed++;
         }

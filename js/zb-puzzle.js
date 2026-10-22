@@ -73,7 +73,7 @@
               hypotheses are every hidden part the program could deal
               for this band at this level, and the player is one who knows
               that, and plays for the worst of them. { hypotheses (how
-              many), sure (how many are sure to cross, playing so), exact,
+              many), guaranteed (how many cross, playing so, in the worst case), exact,
               root: a node, notes }. A node is { move: a sentence,
               zoombini: the band index it sends or null, left: hypotheses
               still possible, crossed, diagram (optional), outcomes: [{

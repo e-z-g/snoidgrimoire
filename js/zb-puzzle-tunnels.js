@@ -438,23 +438,23 @@ function zbTunnelsStrategy(level, band, opts = {}) {
   const g0 = H0.length ? agreed(H0) : full, u0 = full & ~g0;
   const where0 = band.map((_, k) => g0 >> k & 1 && H0.length ? zbTunnelsOf(H0[0], k) : -1);
   const plan0 = H0.length ? search(H0, u0, C) : END;
-  const sure = bits(g0) + plan0.v, hyp = weight(H0);
+  const guaranteed = bits(g0) + plan0.v, hyp = weight(H0);
   /* The most turned back on any branch, when the plan is the rule of
      thumb's all through (a searched plan's branches are not all kept). */
   const most = p => !p || p.end ? 0 : !p.kids ? null : Math.max(...p.kids.map((k, j) => { if (!k) return 0; const r = most(k); return r == null ? null : r + (j ? 1 : 0); }).map(r => r == null ? Infinity : r));
   const worstBack = most(plan0);
   return {
-    hypotheses: hyp, sure, exact, knows,
+    hypotheses: hyp, guaranteed, exact, knows,
     root: node(H0, u0, C, where0, plan0),
     notes: [
       knows === 'form'
-        ? `The player knows only the rules' form at this level: ${hyp} hypotheses (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} different to this band.`
-        : `The program could deal this band ${hyp} hidden parts at this level (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} different to this band. The player knows that${level === 1 ? (split ? `, and that the Allergic Cliffs left a count of ${split}` : ', and is taken not to know of a count left by the Allergic Cliffs') : ''}.`,
+        ? `The player knows only the rules' form at this level: ${hyp} hypotheses (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} of them different for this band.`
+        : `The program could deal this band ${hyp} hidden parts at this level (rules, sides${level === 1 ? ' and closed pair' : ''}), ${H0.length} of them different for this band. The player knows that${level === 1 ? (split ? `, and that the Allergic Cliffs left a count of ${split}` : ', and is assumed not to know of a count left by the Allergic Cliffs') : ''}.`,
       ...(level === 1 ? ['Which pair of tunnels is closed does not show until a Zoombini is turned back from one, so it is among the hypotheses.'] : []),
       'A Zoombini turned back is turned back by one guardian, and the game shows which: the one on its tunnel\'s side, so it belongs on the other side, or the upper or lower one, so it belongs in the other tunnel on this side.',
       'Any Zoombini whose tunnel is the same under every hypothesis left goes first, which costs nothing; otherwise the most lopsided move, and where that does not guarantee everyone, the move whose worst outcome still gets the most through.',
       exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are guaranteed, and perhaps more could be.',
-      ...(Number.isFinite(worstBack) && sure === band.length ? [`Played so, no more than ${worstBack} ${worstBack === 1 ? 'is' : 'are'} ever turned back, of the ${C} the caves allow.`] : []),
+      ...(Number.isFinite(worstBack) && guaranteed === band.length ? [`Played so, no more than ${worstBack} ${worstBack === 1 ? 'is' : 'are'} ever turned back, of the ${C} the caves allow.`] : []),
     ],
   };
 }
@@ -462,9 +462,9 @@ function zbTunnelsStrategy(level, band, opts = {}) {
 ZB_PUZZLES.set('TUNNELS', {
   about: 'Each Zoombini is sent into one of four tunnels, two either side of the band. Every tunnel passes two Cave Guardians, who let through only Zoombinis with, or without, certain traits.',
   levels: [
-    { rule: 'Only the left and right guardians have a rule: one trait value, such as a propeller, one of 20 chosen as at the Allergic Cliffs to send as near half the band one way as it can, though not the number the cliffs’ rule sent if no other rule there sent it. The left guardian takes the Zoombinis with it or those without, the right the others, and two of the tunnels, the outer pair or the inner pair, are closed to everyone.',
+    { rule: 'Only the left and right guardians have a rule: one trait value, such as a propeller, one of 20, chosen as at the Allergic Cliffs so that as close to half the band as possible goes one way, though not the number the cliffs’ rule sent if no other rule there sent it. The left guardian takes the Zoombinis with it or those without, the right the others, and two of the tunnels, the outer pair or the inner pair, are closed to everyone.',
       chances: 'Sixteen Zoombinis may be turned back; with four left, rocks begin to fall, and when none are left no one else may go in.' },
-    { rule: 'The left and right guardians have one trait value and the upper and lower another, so each tunnel takes one of four kinds of Zoombini. The pair is one of 380, chosen to sort the band into as many of the four kinds, and as evenly, as it can.',
+    { rule: 'The left and right guardians have one trait value and the upper and lower another, so each tunnel takes one of four kinds of Zoombini. The pair is one of 380, chosen to sort the band into as many of the four kinds as possible, as evenly as possible.',
       chances: 'Eighteen Zoombinis may be turned back, with the rocks falling at four left.',
       notes: ['According to the help for this level, there are two features to look for in each pair of guardians; the program deals one.'] },
     { rule: 'Each pair of guardians has one trait with either of two values, such as a red or a blue nose. The pair of rules is one of 1,560, chosen the same way.',
@@ -558,26 +558,26 @@ ZB_PUZZLES.set('TUNNELS', {
         const kind = values[p + 'Kind'];
         if (!ZB_TRAIT_KINDS.includes(kind)) throw new Error('Pick a trait for each pair of guardians.');
         const vs = [...new Set((values[p + 'Values'] || []).map(Number))].filter(v => v >= 1 && v <= 5).sort((a, b) => b - a);
-        if (vs.length !== 2) throw new Error('Each rule at this level is two values of one trait.');
+        if (vs.length !== 2) throw new Error('Each rule at this level must be two values of one trait.');
         return [{ kind, values: vs }];
       }
       const os = [one(values[p + '1']), one(values[p + '2'])];
-      if (os[0].kind === os[1].kind) throw new Error('Each rule at this level is two values of two different traits.');
+      if (os[0].kind === os[1].kind) throw new Error('Each rule at this level must be two values of two different traits.');
       os.sort((x, y) => ZB_TUNNELS_ORDER.indexOf(x.kind) - ZB_TUNNELS_ORDER.indexOf(y.kind));
       return os.map(o => ({ kind: o.kind, values: [o.value] }));
     };
     const side = key => {
-      if (values[key] !== 'with' && values[key] !== 'without') throw new Error('Say which Zoombinis each guardian lets through.');
+      if (values[key] !== 'with' && values[key] !== 'without') throw new Error('Choose which Zoombinis each guardian lets through.');
       return values[key] === 'with';
     };
     const guards = [{ rule: rule('a'), traitMatchOnPrimarySide: side('left') }];
     let toggle = state.level1BlockedPairToggle;
     if (level === 1) {
-      if (values.closed !== 'outer' && values.closed !== 'inner') throw new Error('Say which pair of tunnels is closed.');
+      if (values.closed !== 'outer' && values.closed !== 'inner') throw new Error('Choose which pair of tunnels is closed.');
       toggle = values.closed === 'outer';
     } else {
       guards.push({ rule: rule('b'), traitMatchOnPrimarySide: side('upper') });
-      if (JSON.stringify(guards[0].rule) === JSON.stringify(guards[1].rule)) throw new Error('The two pairs of guardians must keep different rules.');
+      if (JSON.stringify(guards[0].rule) === JSON.stringify(guards[1].rule)) throw new Error('The two pairs of guardians must have different rules.');
     }
     return { level1BlockedPairToggle: toggle, guardAxisCount: guards.length, guardRules: guards, remainingRejectChances: ZB_TUNNELS_CHANCES[level - 1],
       entrance: band.map(z => zbTunnelsEntrance(z, guards, toggle)), bridgeSplit: state.bridgeSplit != null ? state.bridgeSplit : null, edited: true };
@@ -599,7 +599,7 @@ ZB_PUZZLES.set('TUNNELS', {
         diagram: zbTunnelsDiagram(band, { level, guards: state.guardRules, toggle: state.level1BlockedPairToggle, where, chances: ZB_TUNNELS_CHANCES[level - 1] }),
       }],
       notes: ['Through means into a tunnel and past both its guardians to the caves beyond.',
-        'Known, the rules give every Zoombini exactly one tunnel that lets it through, so all of them go through, in any order: one way, the order aside, and it is the simplest.'],
+        'With the rules known, every Zoombini has exactly one tunnel that lets it through, so all of them go through, in any order: that counts as one way, and it is the simplest.'],
     };
   },
   strategy(level, band, arc, opts = {}) { return zbTunnelsStrategy(level, band, opts); },

@@ -187,7 +187,7 @@ function zbMaze2ParseLayout(id, w) {
   if (w[0] !== (w.length - 10) / 10) throw bad(`the count is ${w[0]} records, but there are ${(w.length - 10) / 10}`);
   const seats = [];
   for (let i = 1; i <= 9; i++) {
-    if (w[i] < 0 || w[i] > 14) throw bad(`names launcher seat ${w[i]}`);
+    if (w[i] < 0 || w[i] > 14) throw bad(`has launcher seat ${w[i]}`);
     if (w[i]) seats.push(w[i] - 1);
   }
   const cells = [];
@@ -233,7 +233,7 @@ function zbMaze2EditSeats(words, seats) {
    needs it. */
 const ZB_MAZE2_READ = new WeakMap();
 function zbMaze2Layouts(arc) {
-  if (!arc || typeof arc.has !== 'function') throw new Error('Bubblewonder Abyss: its deal needs MAZE2 opened (openMohawk), for its layouts');
+  if (!arc || typeof arc.has !== 'function') throw new Error('Bubblewonder Abyss: its deal needs MAZE2 opened, for its layouts');
   if (!ZB_MAZE2_READ.has(arc)) {
     const out = {};
     for (const id of ZB_MAZE2_LAYOUT_IDS) if (arc.has('REGS', id)) out[id] = zbMaze2ParseLayout(id, parseRegs(arc.get('REGS', id)));
@@ -739,7 +739,7 @@ ZB_PUZZLES.set('MAZE2', {
     if (colours.length) setup.push(`Its colours are ${zbWordsOr(colours, 'and')}.`);
 
     const launches = state.launches;
-    const answer = ['Nothing is hidden: each feature arrow shows its feature. The deal chose these.'];
+    const answer = ['Nothing is hidden: each feature arrow shows its feature. The deal set these features.'];
     arrows.forEach((c, i) => {
       const n = band.filter(z => zbMaze2Turns(z, c)).length;
       answer.push(`${ZB_MAZE2_LETTERS[i]}, ${where(c)}, pointing ${ZB_MAZE2_WAYS[c.dir]}: `
@@ -1343,12 +1343,12 @@ function zbMaze2Solve(band, state, arc, opts = {}) {
   const notes = [
     'Crossing is floating out at the upper right. A Zoombini lost in a whirlpool, or in a collision with another bubble, does not cross; one that floats back to the lower left, or comes out at the upper left or lower right, may be launched again from a launcher there.',
     'The orders searched send one Zoombini at a time and wait until every bubble has stopped. Each launch is played frame by frame as the program plays it: a captive knocked off a sticky square, or freed by a coloured square, floats along with the bubble that set it going, and two bubbles entering one square together are both lost.',
-    'Zoombinis turned by the same feature arrows go the same ways, so which of them is sent is the same order: they are counted as one.',
-    'Simplest is the fewest launches for the most across; the others listed start with a different launch, and lose no more to whirlpools.',
+    'Zoombinis turned by the same feature arrows go the same ways, so orders that differ only in which of them is sent are counted as one.',
+    'The simplest order has the fewest launches for the most across; the others listed start with a different launch, and lose no more to whirlpools.',
   ];
   if (!shortest) notes.push(proven
     ? `The full search did not finish in its time, but the order found gets across everyone who could ever cross, so it is the most; it may not be the fewest launches, and no other orders are listed.`
-    : `The search stopped at its ${budget} ms: this is the best order found (best first, or the rule of thumb of making the nearest launch that gets more across than it loses), not proven the most one at a time.`);
+    : `The search stopped after ${budget} ms: this is the best order found (best first, or the rule of thumb of making the nearest launch that sends more across than it loses), and it may not be the most possible one at a time.`);
   if (most < upper) notes.push(`${proven ? `One at a time, ${most} is the most.` : `One at a time, ${most} is the best found.`} The program lets a Zoombini be launched while others still float, and then two bubbles can both pass an arrow before either reaches the square that turns it; that is not searched here. However it is timed, no more than ${upper} can cross: those whose bubbles could reach the far side with every turning arrow pointing any way it can.`);
   return { most, exact, ways: null, solutions, notes, ms: Date.now() - t0, oneAtATime: { most, proven }, upper };
 }

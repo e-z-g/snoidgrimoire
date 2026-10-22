@@ -46,9 +46,9 @@ function roomPage(view, key) {
       + (bySheet.size ? `<label>Feature script <select id="roomScript"><option value="">none</option>${[...bySheet].map(([sheet, list]) => `<optgroup label="tBMP ${sheet}">${list.map(s => `<option>${s.id}</option>`).join('')}</optgroup>`).join('')}</select></label>` : '')
       + `<span id="roomNote" class="note"></span></div><div id="roomPic" class="picture"></div>`
       + `<p class="note">The room is <a href="${link(key, 'tBMP', room)}">tBMP ${room}</a>.${walks.length ? ' ' + walks.map(w => `<a href="${link(key, 'NODE', w.id)}">NODE ${w.id}</a>: ${plural(w.nodes.length, 'waypoint')}, ${plural(w.paths.length, 'path')}`).join('; ') + '.' : ' No waypoints: nothing walks here.'}</p>`;
-  } else html += '<p class="note">No picture of the archive’s is a room’s 640 × 480.</p>';
+  } else html += '<p class="note">None of the archive’s pictures is 640 × 480, the size of a room.</p>';
   if (bySheet.size || undrawn.length) {
-    html += `<h2 class="h">Feature scripts</h2><p class="note">${plural(arc.list('SCRB').length, 'script')}, by the sheet each draws from (the last sheet numbered at or below it). Pointing at one shows where it draws.</p>`;
+    html += `<h2 class="h">Feature scripts</h2><p class="note">${plural(arc.list('SCRB').length, 'script')}, by the sheet each draws from (the last sheet numbered at or below it). Point at one to see where it draws.</p>`;
     for (const [sheet, list] of bySheet) html += `<div class="ids"><span class="note"><a href="${link(key, 'tBMP', sheet)}">tBMP ${sheet}</a></span>${list.map(s => `<a href="${link(key, 'SCRB', s.id)}" data-script="${s.id}">${s.id}</a>`).join('')}</div>`;
     if (undrawn.length) html += `<div class="ids"><span class="note">draw nothing</span>${undrawn.map(id => `<a href="${link(key, 'SCRB', id)}">${id}</a>`).join('')}</div>`;
   }
@@ -102,7 +102,7 @@ function roomPage(view, key) {
       for (const p of tick) if (p.width && p.height) g.drawImage(indexedCanvas(s.d.frames[p.shape - 1], pal, true), p.x, p.y);
       g.strokeStyle = '#ff5c7a'; g.lineWidth = 1;
       g.strokeRect(b.x0 - .5, b.y0 - .5, b.x1 - b.x0 + 1, b.y1 - b.y0 + 1);
-      $('roomNote').textContent = `SCRB ${s.id}: ${plural(s.script.frameCount, 'tick')}, within (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1}); its first tick that draws is shown.`;
+      $('roomNote').textContent = `SCRB ${s.id}: ${plural(s.script.frameCount, 'tick')}, within (${b.x0}, ${b.y0}) to (${b.x1}, ${b.y1}); the first tick with a shape is shown.`;
     }
   };
   const show = id => { shown = id; if ($('roomScript')) $('roomScript').value = id == null ? '' : id; draw(); };

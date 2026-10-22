@@ -123,7 +123,7 @@ function galleryVoice(id) {
 
 const ZB_GALLERIES = {
   pictures(view) {
-    galleryHead(view, 'Pictures', 'Every single picture: rooms, backgrounds, the map.', 'Pictures');
+    galleryHead(view, 'Pictures', 'Every picture that is not a sprite sheet: rooms, backgrounds, the map.', 'Pictures');
     const cards = [];
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP'))
       if (!gallerySheet(entry.name, arc, id)) cards.push({ entry, arc, id, href: link(entry.name, 'tBMP', id), cap: `${entry.name} <b>${id}</b>` });
@@ -135,7 +135,7 @@ const ZB_GALLERIES = {
   },
 
   sheets(view) {
-    galleryHead(view, 'Sprite sheets', 'Every sheet of sprites, its first sprite shown: the snoids’ parts, the puzzles’ pieces, the buttons.', 'Sheets');
+    galleryHead(view, 'Sprite sheets', 'Every sprite sheet, shown by its first sprite: the snoids’ parts, the puzzles’ pieces, the buttons.', 'Sheets');
     const cards = [];
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP'))
       if (gallerySheet(entry.name, arc, id)) cards.push({ entry, arc, id, href: link(entry.name, 'tBMP', id), cap: `${entry.name} <b>${id}</b>` });
@@ -148,7 +148,7 @@ const ZB_GALLERIES = {
   },
 
   sounds(view) {
-    galleryHead(view, 'Sounds', 'Every sound, archive by archive: how long, what cues it, and for ZOOMBINI’s voices whose they are.', 'Sounds');
+    galleryHead(view, 'Sounds', 'Every sound, archive by archive: its length, the scripts that cue it, and, for ZOOMBINI’s voices, which Zoombini speaks.', 'Sounds');
     let html = '';
     for (const { entry, arc } of openArchives()) {
       const list = arc.list('\0SND');
@@ -172,7 +172,7 @@ const ZB_GALLERIES = {
   },
 
   music(view) {
-    galleryHead(view, 'Music', 'Every tune, as authored for Windows (MIDIMPC) and for the Mac (MIDIMAC); each saves as a MIDI file, and plays through QuickTime’s instruments, as a Mac played it.', 'Tunes');
+    galleryHead(view, 'Music', 'Every tune, as written for Windows (MIDIMPC) and for the Mac (MIDIMAC). Each can be saved as a MIDI file and played through QuickTime’s instruments, as on a Mac.', 'Tunes');
     let html = '<table class="plain"><tr><th>archive</th><th>tune</th><th>bytes</th><th></th></tr>';
     for (const { entry, arc } of openArchives()) for (const r of arc.list('tMID'))
       html += `<tr><td>${entry.name}</td><td><a href="${link(entry.name, 'tMID', r.id)}">${r.id}</a></td><td class="num">${fmtBytes(r.size)}</td><td class="tune" data-arc="${entry.name}" data-id="${r.id}"></td></tr>`;
@@ -181,7 +181,7 @@ const ZB_GALLERIES = {
   },
 
   text(view) {
-    galleryHead(view, 'Text', 'Every string list: the help for each place at each level, the credits, the rest.', 'Text');
+    galleryHead(view, 'Text', 'Every string list: the help for each place at each level, the credits and the rest.', 'Text');
     let html = '';
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('STRL')) {
       const lines = parseStringList(arc.get('STRL', id));
@@ -218,7 +218,7 @@ const ZB_GALLERIES = {
   },
 
   scripts(view) {
-    galleryHead(view, 'Scripts', 'Every animation script: SCRS move a snoid, which they name by their layer order, and SCRB anything else.', 'Scripts');
+    galleryHead(view, 'Scripts', 'Every animation script: SCRS scripts move a snoid, and their layer order shows which kind; SCRB scripts move anything else.', 'Scripts');
     let html = '';
     for (const { entry, arc } of openArchives()) {
       const s = arc.list('SCRS'), b = arc.list('SCRB');

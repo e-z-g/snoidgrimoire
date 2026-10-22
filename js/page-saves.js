@@ -44,12 +44,12 @@ function renderSaves() {
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Saves</span>';
   renderSide({ name: '#saves' }, { archive: null, tag: null, id: null });
   const view = $('view');
-  let html = '<h1>Saves</h1><p class="sub">A saved game is ZOOM0000.TXT, ZOOM0001.TXT and on, in the game’s folder once installed; ZOOMBINI.WHO beside them names each. Read here, nothing leaves the page.</p>'
+  let html = '<h1>Saves</h1><p class="sub">Saved games are ZOOM0000.TXT, ZOOM0001.TXT and so on, in the game’s folder once installed, with their names in ZOOMBINI.WHO beside them. They are read here, and nothing leaves the page.</p>'
     + '<div class="tools"><label class="btn">Open…<input type="file" id="saveFiles" multiple hidden></label>'
     + (ROSTER ? ` <span class="note">roster: ${ROSTER.map(e => `${esc(e.name)} (${esc(e.file)})`).join(', ') || 'empty'}</span>` : '') + '</div>';
   if (!SAVES.length) html += '<p class="note">None open yet.</p>';
   const z = ARCHIVES.get('ZOOMBINI'), sprites = z && z.bytes;
-  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are named.</p>';
+  if (SAVES.length && !sprites && z && z.remote) html += '<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are listed by name.</p>';
   const zb = e => sprites ? solveZoombiniImg(e.traits) : '';
   for (const s of SAVES) {
     const f = s.state;
@@ -66,7 +66,7 @@ function renderSaves() {
       + f.routes.map((r, k) => `<tr><td>${esc(r.name)}</td><td><select data-save-level="${esc(s.file)}" data-route="${k}" title="The route’s level">${ZB_LEVELS.map((n, i) => `<option value="${i}"${i + 1 === r.level ? ' selected' : ''}>${i + 1}: ${esc(n)}</option>`).join('')}</select></td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
     html += `<p><b>The town</b> <span class="note">${plural(f.population, 'Zoombini')}, ${plural(f.rewards.length, 'reward building')}</span></p>`;
     const changed = s.state.routeLevels.some((v, k) => v !== s.was[k]);
-    if (changed) html += `<p class="note">A route’s level is changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> writes the save with only those words changed, to put back in the game’s folder over a copy of the old one. The game has not been run on a save edited here.</p>`;
+    if (changed) html += `<p class="note">A route’s level is changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> writes the save with only those words changed. Keep a copy of the old file before putting this one in the game’s folder in its place. The game has not been tried with a save edited here.</p>`;
     html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads</button>`
       + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town</a>` : '') + '</div>';
   }

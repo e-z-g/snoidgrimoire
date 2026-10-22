@@ -297,7 +297,7 @@ function helpHtml(name) {
   if (!a || !a.help) return '';
   const z = ARCHIVES.get('ZOOMBINI');
   const arc = z && z.bytes ? openedArchive(z) : null;
-  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? ', <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
+  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? '; open <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
   let html = '<h2 style="font-size:15px;margin:22px 0 6px">The help</h2><div class="strings">';
   for (let k = 0; k < 4; k++) {
     const id = a.help + k * 20;
@@ -456,9 +456,9 @@ function showMidi(entry, id, bytes, body) {
   const m = parseMohawkMidi(bytes);
   body.innerHTML = `<p class="sub">A standard MIDI file of format ${m.header.format}, ${plural(m.header.tracks, 'track')}, ${m.header.division} ticks a beat. Its chunks: ${m.chunks.map(esc).join(', ')}.</p>`
     + `<div class="tools"><button id="save">Save as .mid</button></div><div id="tune" class="tools"></div>`
-    + `<p class="note">On a Mac the game played its tunes through QuickTime’s instruments; on Windows through whatever MIDI device the machine had. Play is the first, with QuickTime 3’s set, which is larger than the set a Mac of 1996 had.</p>`
-    + (m.programs ? `<p class="note">Its Prg# chunk, which has no place in a MIDI file: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
-    + `<p class="note">${entry.name === 'MIDIMAC' ? 'Authored for the Mac and QuickTime' : 'Authored for Windows'}, as ScummVM's branch describes the two music archives.</p>`;
+    + `<p class="note">On a Mac the game played its tunes through QuickTime’s instruments, and on Windows through the machine’s MIDI device. Play here uses QuickTime 3’s instruments, a larger set than a Mac of 1996 had.</p>`
+    + (m.programs ? `<p class="note">Its Prg# chunk, which is not part of the MIDI standard: <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code></p>` : '')
+    + `<p class="note">${entry.name === 'MIDIMAC' ? 'Written for the Mac and QuickTime' : 'Written for Windows'}, according to ScummVM's branch.</p>`;
   $('save').addEventListener('click', () => downloadBlob(m.file, `${entry.name.toLowerCase()}-tmid-${id}.mid`));
   tunePlayer(entry, openedArchive(entry), id, $('tune'));
 }
@@ -553,7 +553,7 @@ function walker(entry, arc, id, nodes, paths, c, box) {
   const home = ARCHIVES.get('ZOOMBINI'), zarc = home && home.bytes ? openedArchive(home) : null;
   if (!zarc) {
     box.innerHTML = '<p class="note">A Zoombini can walk these, drawn from zoombini.mhk: '
-      + (!home ? 'it is not among the files opened.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch</a> (24 MB).</p>');
+      + (!home ? 'that file is not open.</p>' : FETCHING.has('ZOOMBINI') ? 'fetching it…</p>' : '<a id="walkFetch">fetch</a> (24 MB).</p>');
     if ($('walkFetch')) $('walkFetch').addEventListener('click', () => { ensureBytes(home).then(() => { if (box.isConnected) render(); }); walker(entry, arc, id, nodes, paths, c, box); });
     return;
   }
@@ -671,7 +671,7 @@ function snoidPlayer(entry, arc, id, script, box) {
   const sheetArc = home ? openedArchive(home) : null;
   if (!sheetArc) {
     box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk: `
-      + (!home ? 'it is not among the files opened.</p>'
+      + (!home ? 'that file is not open.</p>'
         : FETCHING.has(K.archive) ? 'fetching it…</p>'
         : `<a id="snoidFetch">fetch</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
     if ($('snoidFetch')) $('snoidFetch').addEventListener('click', () => {
@@ -703,7 +703,7 @@ function snoidPlayer(entry, arc, id, script, box) {
   box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')} at ${1000 / SNOID_TICK_MS} a second.`
     + (own ? ` Its feet are written for ${names.feet[own - 1].toLowerCase()}.`
       : feetFor.length < 5 ? ` Its feet’s poses fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))} only.` : '')
-    + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} past ${movie.missing.length === 1 ? 'its' : 'their'} block, left out.</span>` : '') + '</p>'
+    + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} ${movie.missing.length === 1 ? 'lies' : 'lie'} past the end of ${movie.missing.length === 1 ? 'its' : 'their'} block and ${movie.missing.length === 1 ? 'is' : 'are'} not drawn.</span>` : '') + '</p>'
     + `<div class="tools">${['hair', 'eyes', 'nose', 'feet'].map(pick).join('')}</div>`
     + `<div class="tools"><button id="snoidPlay">Pause</button><button id="snoidStep">Step</button>`
     + `<input id="snoidAt" type="range" min="0" max="${ticks.length - 1}" value="0"><span id="snoidTick" class="note"></span>`
@@ -712,7 +712,7 @@ function snoidPlayer(entry, arc, id, script, box) {
     + (kind !== 'fleen' ? `<label><input type="checkbox" id="snoidSound"${SNOID_PICK.sound ? ' checked' : ''}> Sound</label>` : '')
     + `<label>Zoom <select id="snoidZoom">${[1, 2, 3, 4].map(n => `<option${n === zoom ? ' selected' : ''}>${n}</option>`).join('')}</select></label></div>`
     + '<div class="picture snoid"></div>';
-  if (!movie.width) { box.querySelector('.snoid').outerHTML = '<p class="note">No tick draws anything.</p>'; return; }
+  if (!movie.width) { box.querySelector('.snoid').outerHTML = '<p class="note">Every tick is empty.</p>'; return; }
 
   // The canvas: the room behind, cropped to where the snoid goes, or clear.
   const pad = onRoom ? 24 : 0;

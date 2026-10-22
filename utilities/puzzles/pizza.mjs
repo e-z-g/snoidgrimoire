@@ -256,18 +256,18 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
       }
       if (bad) break;
       worst = Math.min(worst, node.crossed);
-      if (node.crossed < st.sure) { bad = `only ${node.crossed} cross in one play, where the strategy guarantees ${st.sure}`; break; }
+      if (node.crossed < st.guaranteed) { bad = `only ${node.crossed} cross in one play, where the strategy guarantees ${st.guaranteed}`; break; }
       const end = S.zbStrategyPlay(P, level, band, hs, st);
       if (end !== node) { bad = `zbStrategyPlay ends ${end ? `with ${end.crossed} across` : 'on a move with no branch'}, not where the judge's play does, with ${node.crossed}`; break; }
       played++;
     }
-    if (!bad && st.exact && pickH.length === e.count && worst !== st.sure) bad = `marked exact at ${st.sure}, but ${worst} or more cross in every play`;
+    if (!bad && st.exact && pickH.length === e.count && worst !== st.guaranteed) bad = `marked exact at ${st.guaranteed}, but ${worst} or more cross in every play`;
     if (!bad && level === 1) {
-      const walk = (nd, depth) => { if (depth > 40) throw new Error('too deep'); if (!nd.outcomes.length) { if (nd.crossed < st.sure) bad = 'a branch short of the guarantee'; return 1; } return nd.outcomes.reduce((t, o) => t + walk(next(o), depth + 1), 0); };
+      const walk = (nd, depth) => { if (depth > 40) throw new Error('too deep'); if (!nd.outcomes.length) { if (nd.crossed < st.guaranteed) bad = 'a branch short of the guarantee'; return 1; } return nd.outcomes.reduce((t, o) => t + walk(next(o), depth + 1), 0); };
       walkedAll += walk(st.root, 0);
     }
     if (bad) { fail(`level ${level} (${knows}${state ? ', pit known' : ''}): ${bad}`); continue; }
-    results.push(`${level}${knows === 'form' ? 'f' : ''}${state ? 'p' : ''}:${st.sure}/${n}${st.exact ? '' : '?'}`);
+    results.push(`${level}${knows === 'form' ? 'f' : ''}${state ? 'p' : ''}:${st.guaranteed}/${n}${st.exact ? '' : '?'}`);
   }
   if (slowest > 3000) fail(`a strategy took ${slowest} ms, over twice its budget`);
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);

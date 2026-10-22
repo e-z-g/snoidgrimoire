@@ -39,7 +39,7 @@ function parseScript(bytes, tag) {
   const frameCount = u16be(b, 0);
   const layout = tag === 'SCRS' ? i16be(b, 2) : null;
   if (!frameCount) throw new Error(`${tag}: no frames`);
-  if (layout != null && layout !== -1 && !ZB_LAYER_ORDERS[layout]) throw new Error(`SCRS: layer order ${layout}`);
+  if (layout != null && layout !== -1 && !ZB_LAYER_ORDERS[layout]) throw new Error(`SCRS: unknown layer order ${layout}`);
   const frames = [];
   let p = head;
   for (let f = 0; f < frameCount; f++) {

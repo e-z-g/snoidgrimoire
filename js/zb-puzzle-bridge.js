@@ -102,7 +102,7 @@ function zbBridgeUpperMask(band, rule, upperMatches) {
 ZB_PUZZLES.set('BRIDGE', {
   about: 'Each Zoombini is sent over the upper bridge or the lower. The cliffs are allergic to some traits, and sneeze back a Zoombini on the wrong bridge.',
   levels: [
-    { rule: 'One trait value, such as a propeller: Zoombinis with it take one bridge, the rest the other. It is one of 20, chosen to send as near half the band one way as it can, never more than one over.',
+    { rule: 'One trait value, such as a propeller: Zoombinis with it take one bridge, the rest the other. It is one of 20, chosen to send as close to half the band as possible over one bridge, and never more than one over half.',
       chances: 'Six pegs hold the gate, and each sneeze knocks one out. After the sixth no one else may cross.' },
     { rule: 'One trait with either of two values, such as a red or a blue nose. One of 40, chosen the same way.',
       chances: 'Six pegs, as at every level.' },
@@ -113,7 +113,7 @@ ZB_PUZZLES.set('BRIDGE', {
   ],
   deal(level, band, rnd, journey = {}) {
     const { count, candidates } = zbBridgeCandidates(level, band), found = candidates.length;
-    if (count == null) return { setup: ['No rule of this level sends any of this band one way; the program would keep looking.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
+    if (count == null) return { setup: ['No rule at this level sends any of this band one way, so the program would keep looking for one.'], answer: [], marks: band.map(() => null), state: { stuck: true } };
     const rule = candidates[rnd.range(1, found) - 1];
     delete journey.bridgeSplit;
     if (level === 1 && found === 1) journey.bridgeSplit = count;
@@ -173,12 +173,12 @@ ZB_PUZZLES.set('BRIDGE', {
         steps: [
           up.length ? `Over the upper bridge, ${up.length}: ${zbPlacesWords(up)}.` : 'No one takes the upper bridge.',
           low.length ? `Over the lower bridge, ${low.length}: ${zbPlacesWords(low)}.` : 'No one takes the lower bridge.',
-          `The upper bridge takes the Zoombinis ${state.matchingTraitsUseUpperLane ? 'with' : 'without'} ${withWord}; in any order, and with no sneeze.`,
+          `The Zoombinis ${state.matchingTraitsUseUpperLane ? 'with' : 'without'} ${withWord} take the upper bridge, in any order, with no sneeze.`,
         ],
         crosses: band.map((_, i) => i),
         diagram: zbBridgeDiagram(band, { rule: state.rule, upperMatches: state.matchingTraitsUseUpperLane, up, low, near: [], pegs: 6 }),
       }],
-      notes: ['Known, the rule sends every Zoombini one way or the other, so all of them cross; the order they go in does not matter.'],
+      notes: ['With the rule known, every Zoombini can be sent over the right bridge, so all of them cross; the order does not matter.'],
     };
   },
   strategy(level, band, arc, opts = {}) { return zbBridgeStrategy(level, band, opts); },
@@ -245,7 +245,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
   const deadline = Date.now() + (opts.budget || 1500);
   let exact = true, guessOnly = false;
   const memo = new Map();
-  /* The most sure to cross from those in u (undetermined, still to go)
+  /* The most guaranteed to cross from those in u (undetermined, still to go)
      with p pegs; H is sorted. */
   const value = (H, u, p) => {
     if (!u || !p) return 0;
@@ -321,7 +321,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
     const left = weight(H);
     if (!u || !p) {
       const lost = bits(u);
-      return { move: !u ? `Every Zoombini's bridge is known now: all ${across} of the band that can cross have.` : `The sixth peg has fallen: ${lost} left behind.`,
+      return { move: !u ? `Every Zoombini's bridge is known now: all ${across} who can cross are across.` : `The sixth peg has fallen: ${lost} left behind.`,
         zoombini: null, left, crossed: across, spent: 6 - p, outcomes: [],
         diagram: zbBridgeDiagram(band, { near, up, low, pegs: p, caption: !u ? `All ${across} across` : `${across} across, ${lost} left behind` }) };
     }
@@ -353,19 +353,19 @@ function zbBridgeStrategy(level, band, opts = {}) {
   const H0 = all.slice().sort((x, y) => x - y), g0 = agreed(H0);
   const free0 = [...Array(n).keys()].filter(k => g0 >> k & 1);
   const u0 = full & ~g0;
-  const sure = free0.length + (H0.length ? value(H0, u0, 6) : 0);
+  const guaranteed = free0.length + (H0.length ? value(H0, u0, 6) : 0);
   /* With the whole band guaranteed, no play can do better, whether or not the budget ran out. */
-  if (sure === n) exact = true;
+  if (guaranteed === n) exact = true;
   const up0 = free0.filter(k => H0[0] >> k & 1), low0 = free0.filter(k => !(H0[0] >> k & 1));
   return {
-    hypotheses: weight(H0), sure, exact, knows,
+    hypotheses: weight(H0), guaranteed, exact, knows,
     root: node(H0, u0, 6, free0.length, [...Array(n).keys()].filter(k => !free0.includes(k)), up0, low0),
     notes: [
       knows === 'form'
-        ? `The player knows only the rule's form at this level: any of its ${rules.length} rules, each with either bridge, ${weight(H0)} hypotheses, ${H0.length} different to this band.`
-        : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge: ${weight(H0)} hypotheses, ${H0.length} different to this band. The player knows that.`,
+        ? `The player knows only the rule's form at this level: any of its ${rules.length} rules, each with either bridge, ${weight(H0)} hypotheses, ${H0.length} of them different for this band.`
+        : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge: ${weight(H0)} hypotheses, ${H0.length} of them different for this band. The player knows that.`,
       'Any Zoombini whose bridge is the same under every hypothesis left goes first, which costs nothing; otherwise the one whose worse outcome still gets the most across.',
-      exact ? (sure === n ? 'So the whole band is sure to cross.' : 'The search is complete: no way of playing guarantees more.')
+      exact ? (guaranteed === n ? 'So the whole band is guaranteed to cross.' : 'The search is complete: no way of playing guarantees more.')
         : 'The search stopped at its budget and played the rest by a rule of thumb: the Zoombini whose bridge is the same under most of the hypotheses goes next, over that bridge. So this many are guaranteed, and perhaps more could be.',
     ],
   };

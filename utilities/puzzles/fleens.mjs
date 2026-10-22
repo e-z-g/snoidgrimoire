@@ -198,7 +198,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     return out;
   };
   let played = 0, agreed = 0, stratCount = 0, walked = 0, slowest = 0, amb = 0, maxSent = 0;
-  const walkAll = (nd, sure, depth) => { if (depth > 20) throw new Error('too deep'); if (!nd.outcomes.length) return [nd.crossed, nd.crossed]; const r = nd.outcomes.map(o => walkAll(o.next(), sure, depth + 1)); walked++; return [Math.min(...r.map(x => x[0])), Math.max(...r.map(x => x[1]))]; };
+  const walkAll = (nd, guaranteed, depth) => { if (depth > 20) throw new Error('too deep'); if (!nd.outcomes.length) return [nd.crossed, nd.crossed]; const r = nd.outcomes.map(o => walkAll(o.next(), guaranteed, depth + 1)); walked++; return [Math.min(...r.map(x => x[0])), Math.max(...r.map(x => x[1]))]; };
   const twins = band => { const b = band.slice(); b[1] = { ...b[0] }; return b; };
   const diag = []; for (let k = 1; k <= 5; k++) diag.push({ hair: k, eyes: k, nose: k, feet: k }, { hair: k, eyes: k % 5 + 1, nose: (k + 1) % 5 + 1, feet: (k + 2) % 5 + 1 });
   const cases = [];
@@ -235,7 +235,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       maxSent = Math.max(maxSent, sent);
       const crossed = n - Math.max(0, sent - 6);
       if (lured !== Math.min(3, n) || node.crossed !== crossed) { bad = `a play ends with ${lured} lured and ${node.crossed} marked as crossing, ${crossed} by the count`; break; }
-      if (crossed < st.sure) { bad = `only ${crossed} cross in one play, where the strategy guarantees ${st.sure}`; break; }
+      if (crossed < st.guaranteed) { bad = `only ${crossed} cross in one play, where the strategy guarantees ${st.guaranteed}`; break; }
       worst = Math.min(worst, crossed);
       played++;
     }
@@ -243,16 +243,16 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (!bad) {
       const end = S.zbStrategyPlay(P, level, band, state, st);
       if (!end) bad = 'the game\'s answer to a move is not among the strategy\'s outcomes';
-      else if (end.crossed < st.sure) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.sure} guaranteed`;
+      else if (end.crossed < st.guaranteed) bad = `played against the dealt Fleens, ${end.crossed} across, fewer than the ${st.guaranteed} guaranteed`;
     }
-    if (!bad && st.exact && worst !== st.sure) bad = `marked exact at ${st.sure}, but ${worst} cross in every play`;
-    if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.sure, 0); if (lo < st.sure) bad = 'a branch short of the guarantee'; }
+    if (!bad && st.exact && worst !== st.guaranteed) bad = `marked exact at ${st.guaranteed}, but ${worst} cross in every play`;
+    if (!bad && n <= 7) { const [lo] = walkAll(st.root, st.guaranteed, 0); if (lo < st.guaranteed) bad = 'a branch short of the guarantee'; }
     // And with nothing seen: any of the band's places may be the beehive's.
     if (!bad) {
       const blind = P.strategy(level, band, null, { knows });
-      if (blind.sure !== n - Math.max(0, n - 6)) bad = `with nothing seen the strategy guarantees ${blind.sure}, not ${n - Math.max(0, n - 6)}`;
-      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.sure, 0); if (lo !== blind.sure) bad = `with nothing seen only ${lo} cross on the worst branch`; }
-      if (!bad) { const end = S.zbStrategyPlay(P, level, band, state, blind); if (!end || end.crossed < blind.sure) bad = `with nothing seen, played against the dealt Fleens, ${end ? end.crossed : 'no outcome'} across`; }
+      if (blind.guaranteed !== n - Math.max(0, n - 6)) bad = `with nothing seen the strategy guarantees ${blind.guaranteed}, not ${n - Math.max(0, n - 6)}`;
+      else if (n <= 7) { const [lo, hi] = walkAll(blind.root, blind.guaranteed, 0); if (lo !== blind.guaranteed) bad = `with nothing seen only ${lo} cross on the worst branch`; }
+      if (!bad) { const end = S.zbStrategyPlay(P, level, band, state, blind); if (!end || end.crossed < blind.guaranteed) bad = `with nothing seen, played against the dealt Fleens, ${end ? end.crossed : 'no outcome'} across`; }
     }
     if (bad) { fail(`level ${level} (${knows}, a band of ${n}): ${bad}`); continue; }
     stratCount++;

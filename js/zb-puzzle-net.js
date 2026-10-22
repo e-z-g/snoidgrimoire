@@ -462,15 +462,15 @@ function zbNetStrategy(level, band, opts = {}) {
   };
   const hypotheses = weight(H0);
   return {
-    hypotheses, sure: n, exact: true, knows,
+    hypotheses, guaranteed: n, exact: true, knows,
     root: node(H0, new Set(), 0, shots0, 0, []),
     notes: [
       level <= 2 ? `The player knows which way the rule could be (the colour or the shape for the rows${level === 2 ? ', a rotation of 2 or 3' : ''}) and nothing of the orders: ${hypotheses} rules. The program can deal every one of them, so knowing the program or only the level’s form is the same here.`
         : knows === 'form'
           ? `The player knows only the level’s form: ${level === 4 ? 'any of six ways for the three choices, a rotation of 2 or 3, and ' : 'the colour for the rows, the shape for the columns and its colour for the squares, and '}any order for each of the three: ${hypotheses} rules.`
           : `The player knows the program: ${level === 4 ? 'any of six ways for the three choices and a rotation of 2 or 3, with ' : 'the first way (the program’s at the start of a session), with '}the squares in the columns’ order, as the program always deals them: ${hypotheses} rules.`,
-      'First a mudball of one value in every choice, the values 0 to 3 in turn, which whatever the rule shows where each value goes; then, if the ways the wall could be are not yet told apart, one mudball of different values, which lands somewhere different under each; then each mark’s own mudball.',
-      `That is at most five mudballs that need hit nothing, and the tank holds ${ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0)} more than the marks, so every mark is hit and all ${n} are sure to cross.`,
+      'First a mudball with the same value in every choice, for each of the values 0 to 3 in turn, which shows where each value goes whatever the rule; then, if the ways the wall could be are still not distinguished, one mudball of different values, which lands somewhere different under each; then the mudball for each mark.',
+      `That is at most five mudballs that may hit nothing, and the tank has ${ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0)} more than the marks, so every mark is hit and all ${n} are guaranteed to cross.`,
       ...(opts.state && opts.state.rule ? [] : ['No deal was given, so the marks here are dealt from seed 1.']),
     ],
   };
@@ -483,7 +483,7 @@ ZB_PUZZLES.set('NET', {
   about: 'The band has to get over a wall. The player fires mudballs of a chosen colour and shape at it, and each marked section of the wall a mudball lands on sends 1 to 3 Zoombinis over; where a mudball lands follows a hidden rule.',
   levels: [
     { rule: 'A wall of 5 by 5 sections. The mudball’s colour picks the row and its shape the column, or the other way round, a coin toss; each in an order of the five drawn at random. One marked section for each group of the band (3, 2, 1, 3, ...), each drawn at random.',
-      chances: 'The tank holds a mudball for each marked section and seven more; each launch uses one, hit or miss, and a section counts once.' },
+      chances: 'The tank holds a mudball for each marked section and seven more; each launch uses one, hit or miss, and a section counts only the first time it is hit.' },
     { rule: 'As at level 1, but each row down moves the column’s values 2 or 3 places (drawn once) to the right, wrapping round, so the pattern runs diagonally.',
       chances: 'A mudball for each marked section and seven more, as at level 1.' },
     { rule: 'A wall of 5 rows and 5 columns, each column 5 squares wide. The mudball’s colour picks the row, its shape the column and the shape’s colour the square within the column, each in an order drawn at random; the shape and the shape’s colour follow the same order. One marked square for each group of the band.',
@@ -492,7 +492,7 @@ ZB_PUZZLES.set('NET', {
         'Which choice picks the row, the column and the square follows the way last drawn at level 4 in the same session (the first way if there has been none), since the program never resets it; ScummVM always uses the first way: colour for the row, shape for the column, the shape’s colour for the square.'] },
     { rule: 'As at level 3, but which of the three choices picks the row, the column and the square is one of six ways drawn at random, and each square to the right within a column moves the row’s values 2 or 3 places (drawn once) down, wrapping round.',
       chances: 'The tank holds a mudball for each marked square and eight more.',
-      notes: ['The program also tosses a coin here that it zeroes before testing, so the other branch, which would move the square’s values instead, never runs. ScummVM draws the coin and drops it.'] },
+      notes: ['The program also tosses a coin here that it zeroes before testing, so the other branch, which would move the square’s values instead, never runs. ScummVM draws the coin and ignores it.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     const n = band.length, groups = zbNetGroups(n);
@@ -574,7 +574,7 @@ ZB_PUZZLES.set('NET', {
     };
     let labels = rule.labels, way = rule.way;
     if (!high) {
-      if (values.rows !== 'colour' && values.rows !== 'shape') throw new Error('The row is picked by the mudball’s colour or by its shape.');
+      if (values.rows !== 'colour' && values.rows !== 'shape') throw new Error('The row must be picked by the mudball’s colour or by its shape.');
       labels = values.rows === 'colour' ? [2, 1, 0] : [1, 2, 0];
     } else {
       way = Number(values.way);
@@ -620,8 +620,8 @@ ZB_PUZZLES.set('NET', {
       }],
       notes: [
         'A Zoombini crosses when a mudball lands on a mark: the mark sends as many over as it has dots, in the band’s order. A mark counts only the first time it is hit.',
-        'Known, the rule gives each mark its mudball, and the tank always holds more mudballs than there are marks, so the whole band crosses.',
-        'The simplest fires each mark’s mudball once and nothing else. The order the marks are hit in only changes which Zoombinis go with which mark, so every order is counted as one way.',
+        'With the rule known, each mark has its mudball, and the tank always has more mudballs than there are marks, so the whole band crosses.',
+        'The simplest solution fires each mark’s mudball once and nothing else. The order the marks are hit in only changes which Zoombinis go with which mark, so every order is counted as one way.',
       ],
     };
   },

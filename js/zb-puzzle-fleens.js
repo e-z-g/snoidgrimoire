@@ -291,22 +291,22 @@ function zbFleensStrategy(level, band, opts = {}) {
       if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross.`, zoombini: null, left, crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
       return {
         move: `Send Zoombini ${sent + 1} down the lure path.`, zoombini: sent, left, crossed: 0,
-        diagram: diagram(sent, `${lured} of ${want} lured; ${left} ways the beehive’s may be left`),
+        diagram: diagram(sent, `${lured} of ${want} lured; ${left} possibilities left for the beehive’s Fleens`),
         outcomes: [
           ...(want - lured <= n - sent ? [{ label: `A beehive Fleen follows it${cost(sent + 1) ? `; Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured - 1), hive: true, next: () => node(sent + 1, lured + 1) }] : []),
           ...(want - lured < n - sent ? [{ label: `A Fleen from another branch follows it${cost(sent + 1) ? `; Zoombini ${cost(sent + 1)} is sent back` : ''}`, left: choose(n - sent - 1, want - lured), hive: false, next: () => node(sent + 1, lured) }] : []),
         ],
       };
     };
-    const sure = n - cost(n);
-    return { hypotheses: choose(n, want), sure, exact: true, knows, root: node(0, 0),
-      notes: [notesHead, `Without the dealt Fleens (opts.state) nothing is seen: the player learns only whether a beehive Fleen follows each one sent, and any ${want} of the band may be the beehive’s. So the worst case sends everyone, ${n}, and every order is as good.`,
-        n > ZB_FLEENS_WAITING ? `Six wait on the branch, so ${cost(n)} may be sent back to Shelter Rock and ${sure} are sure to cross.` : 'Six wait on the branch, so no one is sent back: everyone crosses.'] };
+    const guaranteed = n - cost(n);
+    return { hypotheses: choose(n, want), guaranteed, exact: true, knows, root: node(0, 0),
+      notes: [notesHead, `Without the dealt Fleens nothing is seen: the player learns only whether a beehive Fleen follows each one sent, and any ${want} of the band may be the beehive’s. So in the worst case all ${n} are sent, and every order is as good as any other.`,
+        n > ZB_FLEENS_WAITING ? `Six wait on the branch, so ${cost(n)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross.` : 'Six wait on the branch, so no one is sent back: everyone crosses.'] };
   }
   const { list } = zbFleensHypotheses(level, band, state, knows), vis = zbFleensVisible(state);
   const memo = new Map(), deadline = Date.now() + (opts.budget || 1500);
   let exact = true;
-  /* The fewest sends sure to finish, from hypotheses hs (indices into
+  /* The fewest sends guaranteed to finish, from hypotheses hs (indices into
      list) with the band members in sentMask sent and `lured` lured. */
   const split = (hs, z) => {
     const parts = new Map();
@@ -338,7 +338,7 @@ function zbFleensStrategy(level, band, opts = {}) {
     memo.set(key, best);
     return best;
   };
-  const all = list.map((_, i) => i), W = value(all, 0, 0).v, sure = n - cost(W);
+  const all = list.map((_, i) => i), W = value(all, 0, 0).v, guaranteed = n - cost(W);
   const weight = hs => hs.reduce((t, h) => t + list[h].weight, 0);
   const node = (hs, sentList, lured, history) => {
     const sentMask = sentList.reduce((m, i) => m | 1 << i, 0), sent = sentList.length;
@@ -359,7 +359,7 @@ function zbFleensStrategy(level, band, opts = {}) {
     });
     const diagram = (s, cap, done) => zbFleensDiagram(level, band, { hive: hiveCards, others: otherCards, grid, unsent: done ? [] : unsent, waiting: done ? [] : waiting, lost,
       across: done ? band.map((_, i) => i).filter(i => !lost.includes(i)) : [], sending: s, caption: cap });
-    if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} left cross, having sent ${sent}.`,
+    if (lured === want) return { move: `All ${want} beehive Fleen${want === 1 ? ' is' : 's are'} lured off: the bees chase the Fleens away, and the ${n - cost(sent)} still here cross; ${sent} were sent.`,
       zoombini: null, left: weight(hs), crossed: n - cost(sent), spent: sent - want, outcomes: [], diagram: diagram(null, `${n - cost(sent)} across`, true) };
     const z = value(hs, sentMask, lured).z;
     return {
@@ -374,12 +374,12 @@ function zbFleensStrategy(level, band, opts = {}) {
     };
   };
   return {
-    hypotheses: weight(all), sure, exact: exact || W <= ZB_FLEENS_WAITING, knows,
+    hypotheses: weight(all), guaranteed, exact: exact || W <= ZB_FLEENS_WAITING, knows,
     root: node(all, [], 0, []),
     notes: [notesHead,
-      `The Fleens seen leave ${weight(all)} hypotheses (${list.length} the player can tell apart). Each Zoombini sent shows whose Fleen is whose by the Fleen that follows it.`,
-      `Played so, at most ${W} are sent${W > ZB_FLEENS_WAITING ? `; six wait, so ${cost(W)} may be sent back to Shelter Rock and ${sure} are sure to cross` : ', and six may wait: everyone crosses'}. ${exact ? 'The search is complete: no play is sure of more.' : 'The search ran out of time and played the likeliest first; a better play may exist.'}`,
-      'Every move sends the Zoombini most often the beehive’s among the hypotheses left, unless another is surer to finish sooner.'],
+      `The Fleens seen leave ${weight(all)} hypotheses (${list.length} the player can tell apart). Each Zoombini sent shows, by the Fleen that follows it, which Fleen is whose.`,
+      `Played so, at most ${W} are sent${W > ZB_FLEENS_WAITING ? `; six wait, so ${cost(W)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross` : ', and six may wait: everyone crosses'}. ${exact ? 'The search is complete: no play guarantees more.' : 'The search ran out of time and played the likeliest first; a better play may exist.'}`,
+      'Each move sends the Zoombini whose Fleen is the beehive’s under the most hypotheses left, unless sending another finishes sooner in the worst case.'],
   };
 }
 
@@ -388,13 +388,13 @@ ZB_PUZZLES.set('FLEENS', {
   levels: [
     { rule: 'A Fleen’s hair, eyes, nose and feet go with its Zoombini’s, trait for trait; which Fleen value goes with which Zoombini value is a turn of the five, drawn for each trait. The three on the beehive branch are the Fleens of three Zoombinis drawn at random.',
       chances: 'The branch the lured Zoombinis wait on holds six, and every Zoombini sent waits there, right or wrong; each sent after the sixth pushes the first still waiting back to Shelter Rock. With three to lure, three wrong guesses are free.',
-      notes: ['The turns are kept in the saved game. This level draws them only when no visit has yet, and otherwise plays with whatever the last visit left, at any level.',
+      notes: ['The turns are stored in the saved game. This level draws them only if no earlier visit has, and otherwise uses the turns the last visit left, at whatever level.',
         'Two Zoombinis alike have Fleens alike, but only the one dealt the beehive Fleen lures it, at every level.'] },
     { rule: 'As level 1, trait for trait, with the values’ turns drawn anew on every visit.',
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.' },
     { rule: 'The traits are mixed as well: Zoombini hair goes with the Fleen’s eyes, nose or feet, drawn at random, and eyes, nose and feet with the other three in a random order. Values turn as at level 1; both are kept from visit to visit, but a visit at level 1 or 2 clears the mixing, and the next visit here draws it anew.',
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
-      notes: ['According to the help, one trait goes with its like at this level. The program does not see to it: hair never does, and eyes, nose and feet each may, so none, one or two of them do.'] },
+      notes: ['According to the help, one trait goes with its like at this level. The program does not make that happen: hair never does, and eyes, nose and feet each may, so none, one or two of them do.'] },
     { rule: 'Mixed as at level 3, and the traits and the values’ turns are drawn anew on every visit.',
       chances: 'Six wait on the branch, as at level 1; each sent after the sixth pushes the first still waiting back to Shelter Rock.',
       notes: ['According to the help, every trait is mixed at this level, but the program deals as at level 3: eyes, nose or feet may still go with their like.'] },

@@ -67,12 +67,12 @@ const VIEWS = [
   ['place=BRIDGE&level=2&deal=12345&band=11', `/The puzzle, level 2/.test(${panel}) && document.querySelectorAll('#jpanel .dealt table.band tr').length === 12 && !document.querySelector('#jpanel .bad') && !JMOVING`],
   // A puzzle taken apart: the answer known, and the strategy walked two steps in.
   ['solve=BRIDGE&level=2&deal=12345', `/of 16 can cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('#sdiagram svg image').length >= 16 && document.querySelectorAll('.szb').length === 16 && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are sure to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
+  ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
   // The scene: the place's picture with the band waiting, near and far off.
   // VVH Max: a search for the hardest deal, which the ferry
   // ends at once (it deals nothing at random), and a dealt one linked.
   ['solve=FERRY&level=max&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
-  ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /Level 4’s rules/.test(document.getElementById('spanel').textContent) && /sure to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
+  ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /Level 4’s rules/.test(document.getElementById('spanel').textContent) && /guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waiting at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
   ['solve=HOTEL&level=2&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Hotel Dimensia/.test(document.getElementById('scaption').textContent)"],
   ['solve=MAZE2&level=3&deal=9&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /Bubblewonder Abyss/.test(document.getElementById('scaption').textContent)"],
@@ -87,7 +87,7 @@ const VIEWS = [
     if (!P.strategy) return true;
     const st = P.strategy(2, d.band, arc, { budget: 300, state: d.state });
     const node = st.root.outcomes.length ? st.root.outcomes[0].next() : st.root;
-    return st.sure >= 0 && typeof node.move === 'string' && (!node.diagram || /<svg/.test(zbDiagramSvg(node.diagram, sprites)));
+    return st.guaranteed >= 0 && typeof node.move === 'string' && (!node.diagram || /<svg/.test(zbDiagramSvg(node.diagram, sprites)));
   })`],
   // Every puzzle's panel at every level, with one dealt, drawn without an error.
   ['journey&place=SMOKE', `ZB_PUZZLES.size === 12 && [...ZB_PUZZLES.keys()].every(k => [1, 2, 3, 4].every(l => {
@@ -193,7 +193,7 @@ const VIEWS = [
     if (window.__mod !== 'done') return false;
     const z = EDITS.get('ZOOMBINI'), p = EDITS.get('PICKER');
     return z && ['tBMP/3000', 'tBMP/3100', 'tBMP/3200', 'REGS/100'].every(k => z.changes.has(k)) && p && p.changes.has('tBMP/4400') && p.changes.has('tBMP/4300')
-      && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /As the archive draws them now:/.test(document.getElementById('modShow').textContent)
+      && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /As the archive has them now:/.test(document.getElementById('modShow').textContent)
       && document.querySelectorAll('#modShow canvas').length === 5 && openedArchive(ARCHIVES.get('ZOOMBINI')).list('tBMP').length === 6;
   })()`],
   ['changes', "/Fleen parts, lime green/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],

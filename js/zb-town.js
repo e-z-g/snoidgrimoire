@@ -103,7 +103,7 @@ function zbTownWorld(arc) {
   // One layer script's records in world pixels, with no thing in the list twice.
   const layer = id => {
     const s = script(id), out = [];
-    if (s.frames.length !== 6) throw new Error(`TOWN's SCRB ${id} has ${s.frames.length} frames, not one a column`);
+    if (s.frames.length !== 6) throw new Error(`TOWN's SCRB ${id} has ${s.frames.length} frames, not one for each column`);
     s.frames.forEach((fr, k) => {
       for (const r of fr.records) {
         const f = frameOf(1000, r.shape), x = wrap(r.x + ZB_TOWN_COLUMN * k), whole = r.x >= 0 && r.x + f.width <= 640;

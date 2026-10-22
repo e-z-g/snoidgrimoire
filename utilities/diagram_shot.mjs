@@ -64,7 +64,7 @@ sol.solutions.slice(0, 3).forEach((s, k) => add(`${k ? 'Solution' : 'Simplest'}:
 if (P.strategy) {
   const t1 = Date.now();
   const st = P.strategy(level, band, arc, { knows: flag('knows'), state });
-  add(`Unknown: ${st.sure} of ${band.length} guaranteed, over ${st.hypotheses} hypotheses${st.exact ? '' : ' (a bound)'} (${Date.now() - t1} ms)`, st.notes || [], null);
+  add(`Unknown: ${st.guaranteed} of ${band.length} guaranteed, over ${st.hypotheses} hypotheses${st.exact ? '' : ' (a bound)'} (${Date.now() - t1} ms)`, st.notes || [], null);
   let nd = st.root;
   for (let k = 0; k < (+flag('steps') || 3) && nd; k++) {
     add(`Step ${k + 1}: ${nd.move}`, nd.outcomes.map(o => '→ ' + o.label), nd.diagram || null);

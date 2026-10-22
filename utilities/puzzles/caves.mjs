@@ -154,7 +154,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     return out;
   };
   const valuesOf = form => Object.fromEntries(form.filter(f => f.kind !== 'note').map(f => [f.key, f.value]));
-  // Brute force: the most sure to be placed, every move tried, no shortcut.
+  // Brute force: the most guaranteed to be placed, every move tried, no shortcut.
   const brute = (band, rules, limit) => {
     const n = band.length, R = rules.map(r => rangeOf(band, r)), memo = new Map();
     const v = (H, occ, rem, m) => {
@@ -185,14 +185,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   let trips = 0, solved = 0, brutes = 0, walks = 0, ends = 0, played = 0, slowest = 0, slowNext = 0;
   // Walks: every branch, or twelve at random. The feedback given must be
   // possible under some rule the wall allows, each placement listed
-  // under "Sure now" must fit under every rule still possible, and the ends must count
-  // what is placed. Returns the fewest placed on any branch walked.
+  // under "Certain to fit" must fit under every rule still possible,
+  // and the ends must count what is placed. Returns the fewest placed on any branch walked.
   const walkAll = (band, rules, root, full, limit, seed) => {
     const n = band.length, R = rules.map(r => rangeOf(band, r)), rnd = S.zbRandom(seed + 9);
     let worst = Infinity, broken = null;
     const walk = (node, H, occ, placed, mistakes, depth) => {
       if (broken) return;
-      if (mistakes === limit && (node.outcomes.length || /Sure now/.test(node.move))) { broken = `a placement after the last mistake: ${node.move}`; return; }
+      if (mistakes === limit && (node.outcomes.length || /Certain to fit/.test(node.move))) { broken = `a placement after the last mistake: ${node.move}`; return; }
       const head = node.move.split('Put Zoombini')[0];
       for (const m of head.matchAll(/Zoombini (\d+) on stone (\d+)/g)) {
         const z = +m[1] - 1, j = +m[2] - (17 - n);
@@ -255,7 +255,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       // The unknown answer.
       const t0 = Date.now(), st = C.strategy(level, band, null, { state: d.state });
       slowest = Math.max(slowest, Date.now() - t0);
-      if (st.sure < Math.min(n, limit) || st.sure > n) { bad(`the strategy guarantees ${st.sure}`); break; }
+      if (st.guaranteed < Math.min(n, limit) || st.guaranteed > n) { bad(`the strategy guarantees ${st.guaranteed}`); break; }
       // Only the wall may count: the same wall over another hidden rule
       // (the places it does not show filled otherwise, and at level 4 the
       // traits too) gives the same strategy.
@@ -269,24 +269,24 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         const st2 = C.strategy(level, band, null, { state: other });
         /* A search stopped by its budget may stop elsewhere; compare its
            play only where both are complete. */
-        if (st2.hypotheses !== st.hypotheses || (st.exact && st2.exact && (st2.sure !== st.sure || st2.root.move !== st.root.move))) { bad('the strategy reads more of the puzzle than the wall'); break; }
+        if (st2.hypotheses !== st.hypotheses || (st.exact && st2.exact && (st2.guaranteed !== st.guaranteed || st2.root.move !== st.root.move))) { bad('the strategy reads more of the puzzle than the wall'); break; }
       }
       const rules = rulesFor(level, d.state);
       if (st.hypotheses !== rules.length) { bad(`the strategy counts ${st.hypotheses} rules, the wall allows ${rules.length}`); break; }
       if (st.exact && n > limit && rules.length <= 40 && n <= 7) {
         const b = brute(band, rules, limit);
-        if (b !== st.sure) { bad(`the strategy is exact at ${st.sure}, the brute force finds ${b}`); break; }
+        if (b !== st.guaranteed) { bad(`the strategy is exact at ${st.guaranteed}, the brute force finds ${b}`); break; }
         brutes++;
       }
       // Walks: every branch for small trees, else twelve at random. The
       // feedback given must be possible under some rule the wall allows,
-      // each placement listed under "Sure now" must fit under every rule
+      // each placement listed under "Certain to fit" must fit under every rule
       // still possible, and no branch places fewer than are guaranteed.
       const full = n <= 7 && level < 4;
       const { worst, broken } = walkAll(band, rules, st.root, full, limit, seed);
       if (broken) { bad(broken); break; }
-      if (worst < st.sure) { bad(`the strategy guarantees ${st.sure}, but one branch places only ${worst}`); break; }
-      if (full && st.exact && worst !== st.sure) { bad(`the strategy is exact at ${st.sure}, and its worst branch places ${worst}`); break; }
+      if (worst < st.guaranteed) { bad(`the strategy guarantees ${st.guaranteed}, but one branch places only ${worst}`); break; }
+      if (full && st.exact && worst !== st.guaranteed) { bad(`the strategy is exact at ${st.guaranteed}, and its worst branch places ${worst}`); break; }
       walks++;
       // Played against the dealt rule: the judge gives what the game does
       // with each move (it stays on a stone it fits, else is walked to a
@@ -298,7 +298,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         let node = st.root, wrong = null, placed = 0;
         for (let depth = 0; !wrong; depth++) {
           for (const m of node.move.split('Put Zoombini')[0].matchAll(/Zoombini (\d+) on stone (\d+)/g)) {
-            if (!fits(band[+m[1] - 1], sn(+m[2]), d.state) || used.has(sn(+m[2]))) wrong = `a placement listed under "Sure now" does not fit the dealt rule: ${m[0]}`;
+            if (!fits(band[+m[1] - 1], sn(+m[2]), d.state) || used.has(sn(+m[2]))) wrong = `a placement listed under "Certain to fit" does not fit the dealt rule: ${m[0]}`;
             used.add(sn(+m[2])); placed++;
           }
           if (wrong || !node.outcomes.length) break;
@@ -316,7 +316,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (!wrong && node.crossed !== placed) wrong = `played against the dealt rule, the end has ${node.crossed} crossing, ${placed} placed`;
         const end = wrong ? null : S.zbStrategyPlay(C, level, band, d.state, st);
         if (!wrong && (!end || end.crossed !== node.crossed)) wrong = 'zbStrategyPlay does not end where the judge does';
-        if (!wrong && end.crossed < st.sure) wrong = `played against the dealt rule, ${end.crossed} cross, fewer than the ${st.sure} guaranteed`;
+        if (!wrong && end.crossed < st.guaranteed) wrong = `played against the dealt rule, ${end.crossed} cross, fewer than the ${st.guaranteed} guaranteed`;
         if (wrong) { bad(wrong); break; }
         played++;
       }
@@ -330,11 +330,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const st = C.strategy(1, band, null, {});
     if (!st.exact) continue;
     const b = brute(band, rulesFor(1, null), S.ZB_CAVES_MISTAKES[0]);
-    if (b !== st.sure) { fail(`level 1, the wall unseen, a band of ${band.length}: the strategy is exact at ${st.sure}, the brute force finds ${b}`); break; }
-    if (st.sure < band.length) {
+    if (b !== st.guaranteed) { fail(`level 1, the wall unseen, a band of ${band.length}: the strategy is exact at ${st.guaranteed}, the brute force finds ${b}`); break; }
+    if (st.guaranteed < band.length) {
       short++;
       const { worst, broken } = walkAll(band, rulesFor(1, null), st.root, true, S.ZB_CAVES_MISTAKES[0], 5);
-      if (broken || worst !== st.sure) { fail(`level 1, the wall unseen: ${broken || `the strategy is exact at ${st.sure}, and its worst branch places ${worst}`}`); break; }
+      if (broken || worst !== st.guaranteed) { fail(`level 1, the wall unseen: ${broken || `the strategy is exact at ${st.guaranteed}, and its worst branch places ${worst}`}`); break; }
     }
     brutes++;
   }

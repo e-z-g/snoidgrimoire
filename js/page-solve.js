@@ -104,7 +104,7 @@ function solveCompute() {
   try {
     SDEALT = v.level === 5 ? zbDealOne(v.key, level, v.seed, solveHardBand(), solveOpen)
       : v.band ? zbDealFor(v.key, v.level, v.seed, v.band, solveOpen) : zbDealAt(v.key, v.level, v.seed, v.size, solveOpen);
-  } catch (e) { SERROR = `It could not be dealt: ${e.message}`; SDEALT = null; return; }
+  } catch (e) { SERROR = `The puzzle could not be dealt: ${e.message}`; SDEALT = null; return; }
   if (v.level === 5) try { SHARDSCORE = zbHardestScore(v.key, SDEALT.band, SDEALT, solveOpen); } catch (e) { SHARDSCORE = null; }
   let state = SDEALT.state;
   if (v.set && P.edit) {
@@ -205,8 +205,8 @@ function solvePanel() {
   if (!solveSheet()) {
     const e = ARCHIVES.get('ZOOMBINI');
     html += e ? (FETCHING.has('ZOOMBINI') ? '<p class="note">Fetching zoombini.mhk, for the Zoombinis’ pictures…</p>'
-      : `<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are numbers.</p>`)
-      : '<p class="note">ZOOMBINI.MHK is not among the files opened, so the Zoombinis are numbers.</p>';
+      : `<p class="note">The Zoombinis are drawn from zoombini.mhk: <a data-sact="sprites">fetch</a> (24 MB). Until then they are shown as numbers.</p>`)
+      : '<p class="note">ZOOMBINI.MHK is not among the files opened, so the Zoombinis are shown as numbers.</p>';
   }
 
   html += `<details class="sec" open><summary>The band, ${band.length}</summary>${solveBandHtml(band)}</details>`;
@@ -229,7 +229,7 @@ function solvePanel() {
 function solveKnownHtml(band) {
   const s = SSOLVED;
   if (!s) return '<p class="note">Nothing to solve.</p>';
-  if (s.error) return `<p class="bad">It could not be solved: ${esc(s.error)}</p>`;
+  if (s.error) return `<p class="bad">The puzzle could not be solved: ${esc(s.error)}</p>`;
   let html = `<p class="big"><b>${s.most}</b> of ${band.length} can cross${s.exact ? '' : ', the best found'}${s.ways != null ? `; ${s.ways.toLocaleString()} way${s.ways === 1 ? '' : 's'}` : ''}.</p>`;
   html += '<ol class="sols">' + s.solutions.map((sol, k) => `<li class="${k === SVIEW.pick ? 'on' : ''}" data-pick="${k}"><b>${k ? '' : 'Simplest: '}${esc(sol.title)}</b>`
     + (k === SVIEW.pick ? sol.steps.map(t => `<p>${esc(t)}</p>`).join('') : '') + '</li>').join('') + '</ol>';
@@ -239,14 +239,14 @@ function solveKnownHtml(band) {
 
 function solveUnknownHtml(band) {
   const P = SPUZZLE;
-  if (!P.strategy) return '<p class="note">Nothing is hidden here: the band can see all it needs, so the answer known is the whole of it.</p>';
+  if (!P.strategy) return '<p class="note">Nothing is hidden in this puzzle, so Answer known covers it fully.</p>';
   solveStrategy();
   const st = SSTRAT;
   if (!st) return '';
-  if (st.error) return `<p class="bad">It could not be worked out: ${esc(st.error)}</p>`;
+  if (st.error) return `<p class="bad">The strategy could not be worked out: ${esc(st.error)}</p>`;
   let html = `<div class="field"><span class="label">The player knows</span><select id="sknows"><option value="program"${SVIEW.knows === 'program' ? ' selected' : ''}>how the program deals</option>`
     + `<option value="form"${SVIEW.knows === 'form' ? ' selected' : ''}>only the rule’s form</option></select></div>`;
-  html += `<p class="big"><b>${st.sure}</b> of ${band.length} are sure to cross${st.exact ? '' : ', at least'}, over ${st.hypotheses.toLocaleString()} hypotheses.</p>`;
+  html += `<p class="big"><b>${st.guaranteed}</b> of ${band.length} are guaranteed to cross${st.exact ? '' : ' (a lower bound)'}, over ${st.hypotheses.toLocaleString()} hypotheses.</p>`;
   const node = SNODES[SNODES.length - 1];
   html += '<div class="walk">';
   html += `<div class="crumbs"><a data-back="0">Start</a>${SVIEW.path.map((o, k) => ` › <a data-back="${k + 1}">${esc(SNODES[k].outcomes[o].label.replace(/ \(.*\)$/, ''))}</a>`).join('')}</div>`;
@@ -291,10 +291,10 @@ function solveScene() {
   const key = SVIEW.key, place = ZB_PLACE_BY_KEY.get(key), band = SDEALT ? SDEALT.band : [];
   const home = ARCHIVES.get(key), z = ARCHIVES.get('ZOOMBINI');
   const waiting = zbBandWaiting(key, band);
-  $('scaption').textContent = waiting ? `The band waiting at ${place.name}, where the program puts it on coming there (ZOOMBINI.EXE's places).`
-    : `At ${place.name} the band stands off the screen, and the game's code for the toads draws it; the page does not draw it.`;
+  $('scaption').textContent = waiting ? `The band waiting at ${place.name}, where the program places it on arrival (the positions in ZOOMBINI.EXE).`
+    : `At ${place.name} the band stands off the screen until the game’s code for the toads draws it, so it is not drawn here.`;
   const missing = [home, z].filter(e => !e || !e.bytes);
-  if (missing.some(e => !e)) { $('sdiagram').innerHTML = `<p class="note">The scene needs ${esc(key.toLowerCase())}.mhk and zoombini.mhk, which are not both among the files opened.</p>`; return; }
+  if (missing.some(e => !e)) { $('sdiagram').innerHTML = `<p class="note">The scene needs ${esc(key.toLowerCase())}.mhk and zoombini.mhk, and they are not both open.</p>`; return; }
   if (missing.length) {
     $('sdiagram').innerHTML = missing.some(e => FETCHING.has(e.name)) ? '<p class="note">Fetching…</p>'
       : `<p class="note">The scene is drawn from ${missing.map(e => esc(e.name.toLowerCase()) + '.mhk').join(' and ')}: <a data-sact="scene">fetch ${missing.length > 1 ? 'them' : 'it'} from archive.org</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;
@@ -325,14 +325,14 @@ function solveHardBand() { return SVIEW.band || zbDealBand(zbRandom(SVIEW.seed |
 
 function solveHardWords(score, n) {
   if (!score) return '';
-  const across = score.crossed === score.sure ? `${score.crossed} of ${n} sure to cross` : `${score.sure} of ${n} sure to cross, and ${score.crossed} across against this deal`;
-  return `${score.all ? 'Known, the whole band can cross' : `Known, at most ${score.most} of ${n} can cross`}; played for the worst, ${across}`
-    + `${score.spent ? `, spending ${score.spent} chance${score.spent === 1 ? '' : 's'} on it` : ''}`
-    + `${score.ways !== Infinity ? `; ${score.ways.toLocaleString()} way${score.ways === 1 ? '' : 's'} across` : ''}; the simplest solution ${score.steps} step${score.steps === 1 ? '' : 's'}.`;
+  const across = score.crossed === score.guaranteed ? `${score.crossed} of ${n} are guaranteed to cross` : `${score.guaranteed} of ${n} are guaranteed to cross and ${score.crossed} cross against this deal`;
+  return `${score.all ? 'With the answer known, the whole band can cross' : `With the answer known, at most ${score.most} of ${n} can cross`}; played for the worst case, ${across}`
+    + `${score.spent ? `, with ${score.spent} chance${score.spent === 1 ? '' : 's'} spent` : ''}`
+    + `${score.ways !== Infinity ? `; ${score.ways.toLocaleString()} way${score.ways === 1 ? '' : 's'} across` : ''}; the simplest solution has ${score.steps} step${score.steps === 1 ? '' : 's'}.`;
 }
 function solveHardHtml(band) {
   const last = SHARDLAST && SHARDLAST.key === SVIEW.key && SHARDLAST.seed === SVIEW.seed ? SHARDLAST : null;
-  let html = `<p class="note">Level 4’s rules, dealt for this band by the program’s deal from seed ${SVIEW.seed}, the generator’s state as the puzzle starts to deal`
+  let html = `<p class="note">Level 4’s rules, dealt for this band by the program’s dealing code from seed ${SVIEW.seed} (the random-number generator’s state when the puzzle starts dealing)`
     + `${last ? `: the hardest of ${last.distinct.toLocaleString()} different deal${last.distinct === 1 ? '' : 's'} (${last.tried.toLocaleString()} seeds tried${last.stopped ? ', stopped early' : ''})` : ''}.</p>`;
   if (last && last.distinct === 1) html += '<p class="note">Every seed deals this puzzle the same: nothing in it is drawn at random.</p>';
   if (SHARDSCORE) html += `<p class="note">${esc(solveHardWords(SHARDSCORE, band.length))}</p>`;
@@ -348,7 +348,7 @@ function solveHardSearch() {
   SHARD = { token, search, stop: false };
   const show = p => {
     $('spanel').innerHTML = `<h2>${esc(ZB_PLACE_BY_KEY.get(key).name)}: ${esc(ZB_HARDEST_NAME)}</h2>`
-      + `<p class="note working">Dealing level 4 for this band again and again, for the hardest: ${p.tried.toLocaleString()} seeds, ${p.distinct.toLocaleString()} different deals.</p>`
+      + `<p class="note working">Dealing level 4 for this band again and again to find the hardest deal: ${p.tried.toLocaleString()} seeds, ${p.distinct.toLocaleString()} different deals.</p>`
       + (p.best ? `<p class="note">The hardest so far: ${esc(solveHardWords(p.best.score, band.length))}</p>` : '')
       + '<div class="actions"><button data-sact="hardstop">Stop</button></div>';
   };

@@ -348,13 +348,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 5) {
             const worst = walkH(level, band, st.root, boards, 0);
-            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, and a branch places ${worst}`); break; }
+            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, and a branch places ${worst}`); break; }
             walked++;
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
             const got = playH(level, band, st, state, boards);
-            if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.sure} guaranteed`); break; }
+            if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: played against the dealt traits, ${got} placed, fewer than the ${st.guaranteed} guaranteed`); break; }
             playedH++;
           }
         } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
@@ -381,8 +381,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (top !== sol.most || top !== 4) { fail(`level 3, band ${S.zbBandCode(band)}, boards ${state.boarded}: placing every way gives ${top}, the solver ${sol.most}`); break; }
     for (const knows of ['program', 'form']) {
       const st = P.strategy(3, band, null, { knows, state, budget: 400 });
-      if (knows === 'form' && st.sure > sol.most) { fail(`level 3: the strategy guarantees ${st.sure}, more than the ${sol.most} the answer known allows`); break; }
-      if (walkH(3, band, st.root, state.boarded, 0) < st.sure) { fail('level 3: a branch places fewer than the strategy guarantees'); break; }
+      if (knows === 'form' && st.guaranteed > sol.most) { fail(`level 3: the strategy guarantees ${st.guaranteed}, more than the ${sol.most} the answer known allows`); break; }
+      if (walkH(3, band, st.root, state.boarded, 0) < st.guaranteed) { fail('level 3: a branch places fewer than the strategy guarantees'); break; }
       walked++;
     }
     brute++; notAll++;
@@ -422,7 +422,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const tuples = tuplesOf(level);
       for (let c = 1; c <= 2; c++) {
         const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), want = plainH(level, band, tuples, boards, c);
-        if (!st.exact || st.sure !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+        if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
         plain++;
       }
     }

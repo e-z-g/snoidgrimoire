@@ -36,7 +36,7 @@ async function qtLoadInstruments() {
   let fork = null;
   try { fork = await qtCache('readonly', s => s.get(QT_KEY)); } catch (e) { console.warn('The remembered instruments were not read:', e); }
   if (fork) {
-    try { QT_LIB = qtInstrumentsFromFile(new Uint8Array(fork)); return QT_LIB; } catch (e) { console.warn('The remembered instruments would not open:', e); }
+    try { QT_LIB = qtInstrumentsFromFile(new Uint8Array(fork)); return QT_LIB; } catch (e) { console.warn('The remembered instruments could not be opened:', e); }
   }
   const res = await fetch(QT_INSTALLER_URL);
   if (!res.ok) throw new Error('archive.org answered ' + res.status);

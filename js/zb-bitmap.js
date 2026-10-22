@@ -94,11 +94,11 @@ function tbmpUnpack(bytes) {
   if (pack === ZB_PACK_LZ) {
     if (body.length < 10) throw new Error('tBMP: LZ header runs past the end');
     const usize = u32be(body, 0), csize = u32be(body, 4), dict = u16be(body, 8);
-    if (dict !== ZB_LZ_RING) throw new Error(`tBMP: LZ window 0x${dict.toString(16)}`);
+    if (dict !== ZB_LZ_RING) throw new Error(`tBMP: unexpected LZ window 0x${dict.toString(16)}`);
     if (10 + csize > body.length) throw new Error('tBMP: LZ data runs past the end');
     body = zbDecompressLZ(body.subarray(10, 10 + csize), usize);
   } else if (pack !== ZB_PACK_NONE) {
-    throw new Error(`tBMP: packing 0x${pack.toString(16)}`);
+    throw new Error(`tBMP: unknown packing 0x${pack.toString(16)}`);
   }
   return { width, height, bytesPerRow, format, payload: body };
 }
@@ -145,7 +145,7 @@ function decodeTbmp(bytes) {
   let pixels;
   if (draw === ZB_DRAW_RAW) pixels = tbmpDrawRaw(u.payload, u.width, u.height, u.bytesPerRow);
   else if (draw === ZB_DRAW_RLE8) pixels = tbmpDrawRLE8(u.payload, u.width, u.height);
-  else throw new Error(`tBMP: drawing 0x${draw.toString(16)}`);
+  else throw new Error(`tBMP: unknown drawing 0x${draw.toString(16)}`);
   return { width: u.width, height: u.height, pixels, format: u.format };
 }
 

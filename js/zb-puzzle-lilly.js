@@ -147,7 +147,7 @@ function zbLillyRouteMaps(arc) {
     if (v.length !== 144) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} is ${v.length} numbers long, not 12 x 12`);
     const [first, last] = ZB_LILLY_MAP_ROUTES[g];
     const bad = v.find(k => k && (k < first || k > last));
-    if (bad !== undefined) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} names route ${bad}, not one of ${first}-${last}`);
+    if (bad !== undefined) throw new Error(`Titanic Tattooed Toads: LILLY REGS ${id} has route ${bad}, not one of ${first}-${last}`);
     return [...Array(12).keys()].map(row => Array.from(v.subarray(row * 12, row * 12 + 12)));
   });
   zbLillyMapsRead.set(arc, maps);
@@ -406,7 +406,7 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
     let s = `Toad ${t.entrySlot + 1}, with ${t.words}: `;
     if (t.crossRows.length) s += `crosses from row ${rowsWords(t.crossRows)}.`;
     else if (t.turned) s += 'its family’s routes run from top to bottom, for the crabs, and none crosses as dealt.';
-    else if (t.routeRows.length && level > 1) s += `its route from row ${rowsWords(t.routeRows)} is cut, and wants the wand.`;
+    else if (t.routeRows.length && level > 1) s += `its route from row ${rowsWords(t.routeRows)} is cut and needs the wand.`;
     else s += 'no way across as dealt.';
     return s;
   });
@@ -738,7 +738,7 @@ ZB_PUZZLES.set('LILLY', {
   archive: 'LILLY',
   about: 'Each Zoombini rides a toad across a pond of lily pads. A toad hops only onto pads that share its tattoo, a colour, a pattern or a pad shape, so each must be set down on a row from which such pads lead to the far bank.',
   levels: [
-    { rule: 'Hidden is which toad crosses from which row. Three maps of routes, one for each of patterns, shapes and colours, are turned or mirrored at random and each route given one of the twelve tattoos; half the band, rounded up, of the twelve routes are left whole and the rest may be cut, so every Zoombini can cross, two to a toad.',
+    { rule: 'Hidden is which toad crosses from which row. Three maps of routes, one for each of patterns, shapes and colours, are turned or mirrored at random and each route given one of the twelve tattoos; as many of the twelve routes as half the band, rounded up, are left whole and the rest may be cut, so every Zoombini can cross, two to a toad.',
       chances: 'No wand and no count of mistakes. Each toad carries two Zoombinis at most, and one sent from a row it cannot cross stays in the pond with its rider, who is left behind when the band moves on.' },
     { rule: 'The same pond, but every one of the twelve routes may be cut, at one or two pads, and a route still whole where it meets the bottom row is cut there. The cuts are mended with a wand that swaps two pads.',
       chances: 'The wand makes six times (cuts + 5) / 6 swaps, rounded up, at least five more than the pads cut, and is then spent. A toad that cannot cross waits in the pond with its rider until a swap opens its way; each toad carries two at most.',
@@ -783,7 +783,7 @@ ZB_PUZZLES.set('LILLY', {
       if (v === 'half') over.transform = 0;
       else if (v === 'none') over.transform = 2;
       else if (m) { over.transform = 1; over.mirrors = m.slice(1).map(Number); }
-      else throw new Error('The maps are turned half round, mirrored, or left as laid.');
+      else throw new Error('The maps must be turned half round, mirrored, or left as laid.');
     }
     if (level === 1 && values.spared != null) {
       const sp = [...new Set([].concat(values.spared).map(Number))];
@@ -830,11 +830,11 @@ ZB_PUZZLES.set('LILLY', {
     return {
       most: cross, exact, ways: null, solutions,
       notes: [
-        'To cross is to be carried to the far bank; a toad carries two Zoombinis at most, so half the band, rounded up, of toads with a way across takes everyone.',
-        'A toad is taken to cross when pads of its tattoo join its row to the far bank. In the game a toad finds its way by a greedy search, and the crabs of levels 3 and 4 only hold it up.',
-        'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference; ways that differ only so are one way, and the ways are not counted.',
-        level === 1 ? 'At level 1 there is no wand, so the most is two for each toad with a way across: exact.'
-          : `Simplest is the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first; then, one toad at a time, the fewest swaps that let another across without shutting out one already across: the fewest the search found, not proven the fewest.`,
+        'To cross is to be carried to the far bank; a toad carries two Zoombinis at most, so toads with a way across, as many as half the band rounded up, take everyone.',
+        'A toad counts as crossing when pads of its tattoo join its row to the far bank. In the game a toad finds its way by a greedy search, and the crabs of levels 3 and 4 only hold it up.',
+        'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference; ways that differ only in that count as one, and the ways are not counted.',
+        level === 1 ? 'At level 1 there is no wand, so the most is exactly two for each toad with a way across.'
+          : `The simplest solution uses the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first; then, one toad at a time, the fewest swaps that let another across without shutting out one already across: the fewest the search found, which may not be the fewest possible.`,
         ...(exact ? [] : [plan.gaveUp ? 'The search stopped at its budget.' : `The search found no more toads to let across within the wand’s ${state.swapWandUses} swaps; more may be possible.`]),
       ],
     };

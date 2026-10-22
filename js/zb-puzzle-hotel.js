@@ -87,7 +87,7 @@ const ZB_HOTEL_LAST_STEP = 12;
 /* Most rooms boarded up at level 3. */
 const ZB_HOTEL_MOST_BOARDED = 8;
 /* ScummVM's reading, not checked in the program. */
-const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped, a bug that ScummVM’s option “Hotel Dimensia: Fix MIDI background music halt bug” mends; it is on by default, and turned off the music stops as it did. In ScummVM the music plays on in the 2001 release whatever the option.';
+const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped. ScummVM’s option “Hotel Dimensia: Fix MIDI background music halt bug” fixes this; the option is on by default, and with it off the music stops as in the original. In ScummVM the music plays on in the 2001 release with the option on or off.';
 
 /* How many of the five values of each trait (in ZB_HOTEL_AXES order) the
    band shows: the program's COUNTBODYPARTS. */
@@ -346,9 +346,10 @@ function zbHotelStrategy(level, band, opts = {}) {
     const free = ms.filter(m => m.acc.length === H.length);
     const least = Math.min(...ms.map(m => H.length - m.acc.length));
     if (level !== 3) return free.length ? free[0] : ms.find(m => H.length - m.acc.length === least);
-    /* At level 3 the boards matter: each move is judged a step ahead, by
-       the most guaranteed a room once the traits are known, as if that were
-       at once (fit): the worse of being let in and being turned away. A
+    /* At level 3 the boards matter, so each move is judged one step
+       ahead: by how many Zoombinis would have a room (fit) if the traits
+       became known straight after it, taking the worse of being let in
+       and being turned away. A
        free move is tried for the first two kinds of Zoombini that have
        one; otherwise the moves fewest hypotheses turn away, a dozen or two. */
     const kinds = [...new Set(free.map(m => m.i))].slice(0, 2);
@@ -458,10 +459,10 @@ function zbHotelStrategy(level, band, opts = {}) {
      cannot be bettered, however the search ended. */
   if (H0.length && plan0.v === Math.min(...H0.map(h => fit(h, P0).count))) exact = true;
   return {
-    hypotheses: hyp, sure: plan0.v, exact, knows,
+    hypotheses: hyp, guaranteed: plan0.v, exact, knows,
     root: node(P0, H0, C, plan0),
     notes: [
-      `${knows === 'form' ? 'The player knows only the level’s form: any' : 'The program could draw, for this band,'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}, ${H0.length} different to this band${knows === 'program' && level === 3 ? (boards.length ? ', counting only those the band fits round the boards (the program boards only rooms an arrangement leaves empty, so a puzzle set otherwise is not one it could deal)' : '; the boards were not given, so none are taken into account') : level === 3 && !boards.length ? '; the boards were not given, so none are taken into account' : ''}. Which floor, trunk or door takes which value is not hidden: the first Zoombini into each settles it.`,
+      `${knows === 'form' ? 'The player knows only the level’s form: any' : 'The program could draw, for this band,'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}, ${H0.length} of them different for this band${knows === 'program' && level === 3 ? (boards.length ? ', counting only those the band fits round the boards (the program boards only rooms an arrangement leaves empty, so a puzzle set otherwise is not one it could deal)' : '; the boards were not given, so none are taken into account') : level === 3 && !boards.length ? '; the boards were not given, so none are taken into account' : ''}. Which floor, trunk or door takes which value is not hidden: the first Zoombini into each settles it.`,
       'A move gives a Zoombini a room; it is let in or turned away, and each turning away moves the counter on.',
       'A room every hypothesis would let it into is taken first; otherwise the one fewest hypotheses would turn it away from, and where that does not guarantee everyone, the move whose worse outcome still gets the most in.',
       exact ? 'The search is complete: no way of playing guarantees more.' : 'The search stopped at its budget and played the rest by its rule of thumb, so this many are guaranteed, and perhaps more could be.',
@@ -472,10 +473,10 @@ function zbHotelStrategy(level, band, opts = {}) {
 ZB_PUZZLES.set('HOTEL', {
   about: 'The band is given rooms in a hotel built in five tree trunks. Only Zoombinis alike in the traits that matter tonight may share a room, and which traits those are is hidden.',
   levels: [
-    { rule: 'One trait, such as the nose: five rooms, one to a trunk, each for one of its values, whichever the first Zoombini in it has. The trait is drawn at random, and if the band shows all five values of two traits or more, it is one it shows at least four values of.',
+    { rule: 'One trait, such as the nose: five rooms, one to a trunk, each for one of its values, whichever the first Zoombini in it has. The trait is drawn at random; if the band shows all five values of two or more traits, the trait drawn is one of which the band shows at least four values.',
       chances: 'Seven Zoombinis may be turned away, the hotel growing darker each time; the seventh closes it to the rest of the band.',
       notes: [ZB_HOTEL_MIDI] },
-    { rule: 'Two different traits, one for the floor and the other for the trunk: 25 rooms, one for each pair of values. Drawn as at level 1, both of them.',
+    { rule: 'Two different traits, one for the floor and the other for the trunk: 25 rooms, one for each pair of values. Both are drawn as at level 1.',
       chances: 'Ten Zoombinis may be turned away; the tenth closes the hotel.',
       notes: [ZB_HOTEL_MIDI] },
     { rule: 'Two traits for floor and trunk, as at level 2, except that the test is whether the band shows four values or more of two traits or more; and between 1 and 8 rooms are boarded up, rooms that a random arrangement of the band left empty.',
@@ -631,8 +632,8 @@ ZB_PUZZLES.set('HOTEL', {
       most, exact: true, ways,
       solutions,
       notes: [
-        'In means given a room; a Zoombini left without one does not go on.',
-        'Known, the traits give each Zoombini the room of its values once an arrangement is chosen: which value each floor, trunk or door takes, settled by the first Zoombini into it. An arrangement is a way; the order of placing does not matter.',
+        'Being in means having a room; a Zoombini left without one does not go on.',
+        'With the traits known, each Zoombini has the room of its values once an arrangement is chosen: which value each floor, trunk or door takes, settled by the first Zoombini into it. Each arrangement is one way; the order of placing does not matter.',
         `Simplest: the band's values in the order of each trait (${zbWordsOr(traits.map(k => ZB_TRAIT_SHORT[k][0].toLowerCase() + ' first'), 'and')}) from the top floor and the leftmost trunk${level === 4 ? ' and door' : ''}; then the others by how far their values stray from that.`,
         ...(level === 3 ? [most === n ? `Round the boards ${ways} of the arrangements fit the whole band.` : `No arrangement fits the whole band round these boards: the most is ${most}, in ${ways} arrangement${ways === 1 ? '' : 's'}.`] : []),
       ],

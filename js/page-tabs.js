@@ -91,7 +91,7 @@ function openArchives() {
 function unfetchedNote(what) {
   const left = sortedArchives().filter(e => !e.bytes && e.remote);
   if (!left.length) return '';
-  return `<p class="note">${what} from the ${plural(openArchives().length, 'archive')} open; ${plural(left.length, 'more')} archive.org has not sent yet: <a data-fetchall>fetch</a> (about 100 MB in all).</p>`;
+  return `<p class="note">${what} from the ${plural(openArchives().length, 'archive')} open; ${left.length} more ${left.length === 1 ? 'is' : 'are'} still to come from archive.org: <a data-fetchall>fetch</a> (about 100 MB in all).</p>`;
 }
 function wireFetchAll(view) {
   const a = view.querySelector('[data-fetchall]');
@@ -119,7 +119,7 @@ const SCENARIO_PANES = {
   },
 
   puzzles(view) {
-    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles, each one’s rule at every level as the program deals it, and its chances.</p>';
+    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles: the rule the program deals for each at every level, and the chances it gives.</p>';
     for (const [key, P] of ZB_PUZZLES) {
       const place = ZB_PLACE_BY_KEY.get(key);
       html += `<details class="sec"><summary><b>${esc(place.name)}</b> <span class="note">${esc(key)}</span></summary>`
@@ -145,7 +145,7 @@ const SCENARIO_PANES = {
       const by = scripts[kind] || {}, n = Object.values(by).reduce((a, l) => a + l.length, 0);
       html += `<h2 class="h">${esc(K.name[0].toUpperCase() + K.name.slice(1))}</h2>`
         + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}, registration points <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
-        + (n ? `${plural(n, 'script')} draw it:` : kind === 'small' ? 'No script draws it; Hotel Dimensia’s band waits as it.' : 'Its scripts are in archives that are not open.') + '</p>';
+        + (n ? `${plural(n, 'script')} draw it:` : kind === 'small' ? 'No script uses it; the band waiting at Hotel Dimensia is drawn as this kind.' : 'Its scripts are in archives that are not open.') + '</p>';
       if (kind === 'zoombini' || kind === 'fleen') html += `<div class="traits" data-kind="${kind}"></div>`;
       for (const [arch, ids] of Object.entries(by)) html += `<div class="ids"><span class="note">${arch}</span>${ids.map(id => `<a href="#${arch}/SCRS/${id}">${id}</a>`).join('')}</div>`;
     }

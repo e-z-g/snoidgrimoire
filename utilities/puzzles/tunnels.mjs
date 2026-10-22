@@ -272,7 +272,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (nd.where.some((t, i) => t >= 0 && t !== real[i])) throw new Error('a strategy put a Zoombini through a tunnel that would turn it back');
     const end = S.zbStrategyPlay(P, level, band, state, st);
     if (!end || end.crossed !== nd.crossed || !same(end.where, nd.where)) throw new Error(`zbStrategyPlay ends ${end ? `with ${end.crossed} through` : 'with no answer'}, the judge's play with ${nd.crossed}`);
-    if (end.crossed < st.sure) throw new Error(`only ${end.crossed} go through in zbStrategyPlay, fewer than the ${st.sure} guaranteed`);
+    if (end.crossed < st.guaranteed) throw new Error(`only ${end.crossed} go through in zbStrategyPlay, fewer than the ${st.guaranteed} guaranteed`);
     answered++;
     return nd.crossed;
   };
@@ -310,11 +310,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         try {
           if (band.length <= 6 && (knows === 'program' || level <= 2)) {
             const worst = walk(band, st.root, 0);
-            if (worst < st.sure || (st.exact && worst !== st.sure)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.sure}, and ${worst} go through on its worst branch`); break; }
+            if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}: the strategy guarantees ${st.guaranteed}, and ${worst} go through on its worst branch`); break; }
             walked++;
           }
           const got = play(level, band, st, d.state);
-          if (got < st.sure) { fail(`level ${level}, knowing the ${knows}: played against the dealt rules, ${got} through, fewer than the ${st.sure} guaranteed`); break; }
+          if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}: played against the dealt rules, ${got} through, fewer than the ${st.guaranteed} guaranteed`); break; }
           played++;
         } catch (e) { fail(`level ${level}, knowing the ${knows}: ${e.message}`); break; }
       }
@@ -331,7 +331,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     const H = S.zbTunnelsHypotheses(1, band, 'program', d.state.bridgeSplit || 0);
     const dk = S.zbTunnelsKey(...[0, 1].map(bit => band.reduce((m, z, i) => { const t = S.zbTunnelsEntrance(z, d.state.guardRules, d.state.level1BlockedPairToggle); return (bit ? t === 0 || t === 3 : t < 2) ? m | 1 << i : m; }, 0)));
     if (st.hypotheses !== d.state.candidates * 4 || !H.has(dk)) { fail(`level 1 after the cliffs: ${st.hypotheses} hypotheses, the deal's ${d.state.candidates} candidates each way, the dealt one ${H.has(dk) ? '' : 'not '}among them`); break; }
-    try { if (play(1, band, st, d.state) < st.sure) { fail('level 1 after the cliffs: fewer through than guaranteed'); break; } } catch (e) { fail(`level 1 after the cliffs: ${e.message}`); break; }
+    try { if (play(1, band, st, d.state) < st.guaranteed) { fail('level 1 after the cliffs: fewer through than guaranteed'); break; } } catch (e) { fail(`level 1 after the cliffs: ${e.message}`); break; }
     splits++;
   }
   // Values the form must throw on.
@@ -367,8 +367,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (keys.length > 40) continue;
         for (let c = 1; c <= 3; c++) {
           const st = P.strategy(level, band, null, { knows, chances: c, budget: 5000 }), want = plain(band, keys, c);
-          if (!st.exact || st.sure !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.sure}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
-          if (walk(band, st.root, 0) < st.sure) { fail(`level ${level}, ${c} chances: a branch has fewer through than the strategy guarantees`); break; }
+          if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}: the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+          if (walk(band, st.root, 0) < st.guaranteed) { fail(`level ${level}, ${c} chances: a branch has fewer through than the strategy guarantees`); break; }
           brute++;
         }
       }

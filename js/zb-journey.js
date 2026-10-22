@@ -114,7 +114,7 @@ function zbJourneyMap(arc) {
   const places = [];
   for (const r of oneFrame(1000)) {
     const p = ZB_PLACES.find(q => q.shape === r.shape);
-    if (!p) throw new Error(`the map's SCRB 1000 draws shape ${r.shape}, which is no place`);
+    if (!p) throw new Error(`the map's SCRB 1000 draws shape ${r.shape}, which is not a place`);
     const f = frame(r.shape), lit = p.key === 'PICKER' ? 109 : r.shape + 93;
     frame(lit);
     places.push({ key: p.key, x: r.x, y: r.y, w: f.width, h: f.height, cx: r.x + f.width / 2, cy: r.y + f.height / 2, frame: r.shape - 1, lit: lit - 1 });
@@ -125,7 +125,7 @@ function zbJourneyMap(arc) {
   const roads = [];
   for (const r of oneFrame(1001)) {
     const route = ZB_ROUTES.findIndex(q => q.segments.includes(r.shape));
-    if (route < 0) throw new Error(`the map's SCRB 1001 draws shape ${r.shape}, which is no road`);
+    if (route < 0) throw new Error(`the map's SCRB 1001 draws shape ${r.shape}, which is not a road`);
     const at = ZB_ROUTES[route].segments.indexOf(r.shape);
     const frames = [0, 1, 2, 3].map(k => { frame(r.shape + 16 * k); return r.shape + 16 * k - 1; });
     roads.push({ shape: r.shape, route, from: ZB_ROUTES[route].places[at], to: ZB_ROUTES[route].places[at + 1], x: r.x, y: r.y,
@@ -142,7 +142,7 @@ function zbJourneyMap(arc) {
    they are drawn. */
 function zbPlacePicture(arc, key, level) {
   const p = ZB_PLACE_BY_KEY.get(key);
-  if (!p) throw new Error(`${key} is no place`);
+  if (!p) throw new Error(`${key} is not a place`);
   if (p.panorama) {
     const s = parseScript(arc.get('SCRB', p.panorama.script), 'SCRB');
     return { palette: p.background, layers: s.frames[0].records.map(r => ({ id: p.panorama.sheet, frame: r.shape - 1, x: r.x, y: r.y })) };
