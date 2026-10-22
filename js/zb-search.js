@@ -1,4 +1,4 @@
-/* zb-search.js -- search across what the site reads: the game's own text,
+/* zb-search.js -- search across what the site reads: the game's text,
    the places and the puzzles, and every resource by its archive, type and
    id.
    =========================================================================
@@ -6,12 +6,12 @@
 
    A document is { kind, title, text, href }. zbSearchDocs(archives) makes
    them from the archives open (a Map of name -> opened archive): every
-   string of every string list, one document a list, its title saying whose
-   help it is; every resource as 'FLEENS tBMP 4000', with its archive's
-   place; and from the site's own reading, each place and each puzzle with
-   its rules. zbSearch(docs, query) finds the documents holding every word
-   of the query, ignoring case and accents, a title match first; each hit
-   carries the line of text the first word is in. */
+   string of every string list, one document a list, titled by whose help
+   it is; every resource as 'FLEENS tBMP 4000', with its archive's place;
+   and from what the site reads, each place and each puzzle with its
+   rules. zbSearch(docs, query) finds the documents with every word of
+   the query, ignoring case and accents, a title match first; each hit
+   includes the line of text the first word is in. */
 
 function zbSearchFold(s) {
   return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‘’]/g, "'").toLowerCase();

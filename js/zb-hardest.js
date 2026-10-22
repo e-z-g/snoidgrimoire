@@ -4,16 +4,16 @@
    deal a band at level 4, the hardest, found by dealing it many times.
    =========================================================================
    Needs zb-puzzle.js and the puzzles. Nothing here is the game's: it has
-   four levels. A fifth is the fourth's rules, dealt by the program's own
+   four levels. A fifth is the fourth's rules, dealt by the program's
    deal (each puzzle's deal) from whichever seed makes it hardest, so a
    program whose random numbers were set to that seed as the puzzle deals
    would deal the same.
 
    The seed here is the generator's state as the puzzle itself starts to
    deal (zbDealOne), not a band's and a route's as the page's other deals
-   are (zbDealAt): that is the number a reseeded program needs. What a
-   session carries from one puzzle to the next (zb-puzzle.js's journey) is
-   as at the start of a session.
+   are (zbDealAt): that is the number a reseeded program needs. What one
+   puzzle leaves the next in a session (zb-puzzle.js's journey) is set as
+   at the start of a session.
 
    Hardest, in order:
      1. the whole band can cross, played with the answer known (solve's
@@ -24,7 +24,7 @@
         the most across, so the same for every deal that passed 1;
      3. the most chances that player spends against it (the end node's
         spent: pegs, mistakes, meals, mudballs, Zoombinis sent for
-        nothing), which is what tells deals apart when the whole band is
+        nothing), which is where deals differ when the whole band is
         sure to cross, as it mostly is at level 4;
      4. fewest sure to cross before the first move (the strategy's sure);
      5. fewest ways across, where the puzzle counts them;
@@ -35,8 +35,8 @@
        a search, run a slice at a time: .run(ms) works for about ms and
        returns .progress(), { tried, distinct, best, done }; best is
        { seed, deal, score }. from seeds the run of seeds tried; budget is
-       the whole search's milliseconds; each a deal's own (a solve's and a
-       strategy's). */
+       the whole search's milliseconds; each deal has a budget too (for a
+       solve and a strategy). */
 
 const ZB_HARDEST_NAME = 'VVH Max';
 const ZB_HARDEST_LEVEL = 4;
@@ -98,8 +98,9 @@ function zbHardestSearch(key, band, open = () => null, opts = {}) {
           try { score = zbHardestScore(key, band, deal, open, each); } catch (e) { error = e.message; }
           if (score && (!best || zbHardestCompare(score, best.score) < 0)) best = { seed, deal, score };
         }
-        /* A puzzle the seed makes no difference to is done at once; one
-           whose deals have all been seen, after enough tries to say so. */
+        /* A puzzle the seed makes no difference to is done immediately; one
+           whose deals have all turned up is done after enough tries to be
+           sure of it. */
         if (tried >= 64 && seen.size === 1) done = true;
         if (tried >= 4000 || tried >= 40 * seen.size + 400) done = true;
       }

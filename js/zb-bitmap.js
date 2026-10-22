@@ -7,7 +7,7 @@
    the pixels, packed with Brøderbund's LZ and drawn raw or with a simple
    RLE8. A **compound** tBMP is a sheet of sprites: its header's width is
    really a count, and the unpacked payload starts with that many offsets to
-   sub-images, each a tBMP of its own. Everything here returns palette
+   sub-images, each laid out as a tBMP is. Everything here returns palette
    indices; which palette, and whether index 0 is transparent (it is on a
    sprite sheet, and not on a full-screen picture), is the caller's choice.
 
@@ -15,8 +15,8 @@
    A port of the extraction project's tools/mohawk_bmp.py, which is itself a
    port of ScummVM's engines/mohawk/bitmap.cpp (MohawkBitmap::decompressLZ,
    drawRaw, drawRLE8, and decodeImages for the compound sheets).
-   utilities/bitmap_check.mjs holds it to the Python over every bitmap on the
-   disc, frame by frame, pixel for pixel.
+   utilities/bitmap_check.mjs compares it with the Python over every bitmap
+   on the disc, frame by frame, pixel for pixel.
 */
 
 /* ---- Brøderbund's LZ -------------------------------------------------- */
@@ -196,8 +196,8 @@ function parsePaletteResource(bytes, tag) {
   return { id: head ? u16be(b, 0) : null, flags: head ? u16be(b, 2) : null, start, colours };
 }
 
-/* The twenty colours Windows keeps for itself, at 0-9 and 246-255. A palette
-   supplies the rest; mohawk_bmp.py fills these slots the same way. Nothing
+/* The twenty colours Windows reserves for the system, at 0-9 and 246-255.
+   A palette supplies the rest; mohawk_bmp.py fills these slots the same way. Nothing
    on the disc is known to draw with them except 0 and 1. */
 const ZB_WINDOWS_COLOURS = {
   0: [0, 0, 0], 1: [0x80, 0, 0], 2: [0, 0x80, 0], 3: [0x80, 0x80, 0],

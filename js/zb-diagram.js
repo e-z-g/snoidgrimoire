@@ -12,7 +12,7 @@
    or null (then a placeholder is drawn). A Zoombini stands on the item's
    x, y: the bottom of its picture there, its origin above it (the script's
    origin is mid-body); a trait sprite is centred there. Sprites
-   are drawn pixel for pixel, a Zoombini at its own size and a trait at
+   are drawn pixel for pixel, a Zoombini at the size it has in the game and a trait at
    twice its size on a light chip (chip: false for none), unless the item
    gives a scale.
 */

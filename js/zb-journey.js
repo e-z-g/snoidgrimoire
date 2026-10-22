@@ -31,11 +31,11 @@
    colours are from ScummVM's Zoombinis branch (ied206/scummvm-zoombini,
    zoombini_pages/interactive_rodmap.h and .cpp, the page classes'
    setBackgroundBitmap, zoombini_state.h ZmbRouteId). The names are the
-   1996 program's own, the strings the map shows (ZOOMBINI.EXE, at the
+   1996 program's, the strings the map shows (ZOOMBINI.EXE, at the
    offsets ScummVM's kV11US_NETextEntries gives), capitalised here; the
-   program writes them in lower case. utilities/journey_check.mjs holds
-   the names to the program's bytes, and the icons read from the scripts
-   to the click points ScummVM's page carries separately.
+   program writes them in lower case. utilities/journey_check.mjs compares
+   the names with the program's bytes, and the icons read from the scripts
+   with the click points that ScummVM's page has separately.
 */
 
 /* The places, in the order a journey meets them. `shape` is the map icon;
@@ -61,10 +61,10 @@ const ZB_PLACES = [
   { key: 'TOWN', name: 'Zoombiniville', shape: 15, background: 1200, panorama: { script: 1000, sheet: 1000 }, help: 1600, kind: 'the end' },
 ];
 
-/* The routes, as the map names them. Road shape segments[i] runs from
-   places[i] to places[i + 1] and takes the colour of the level
-   places[i + 1] was crossed at (ScummVM's buildPageRouteLevelMap); the
-   last stretch of each, into a camp or the town, takes the route's. Shelter
+/* The routes, named as on the map. Road shape segments[i] runs from
+   places[i] to places[i + 1], in the colour of the level places[i + 1]
+   was crossed at (ScummVM's buildPageRouteLevelMap); the last stretch of
+   each, into a camp or the town, is drawn in the route's level. Shelter
    Rock has two ways on, north and south, and both come to Shade Tree. */
 const ZB_ROUTES = [
   { name: 'The Big, the Bad and the Hungry', places: ['PICKER', 'BRIDGE', 'TUNNELS', 'PIZZA', 'BASECAMP'], segments: [17, 18, 19, 20] },
@@ -73,7 +73,7 @@ const ZB_ROUTES = [
   { name: 'Mountains of Despair', places: ['BCTWO', 'CAVES', 'SMOKE', 'MAZE2', 'TOWN'], segments: [29, 30, 31, 32] },
 ];
 
-/* The four levels, as the map's legend names them. */
+/* The four levels, named as in the map's legend. */
 const ZB_LEVELS = ['Not So Easy', 'Oh, So Hard', 'Very Hard', 'Very, Very Hard'];
 
 const ZB_PLACE_BY_KEY = new Map(ZB_PLACES.map(p => [p.key, p]));
@@ -92,7 +92,7 @@ function zbPlaceRoutes(key) {
    the map, its middle, and the sheet frames of the icon and of the lit
    icon. A road is { shape, route, from, to, x, y, frames }: frames[level
    - 1] is the sheet frame for that level, all four drawn at x, y.
-   Anything the scripts put where this file does not expect says so. */
+   It throws on anything the scripts put where this file does not expect it. */
 function zbJourneyMap(arc) {
   const need = (tag, id) => { if (!arc.has(tag, id)) throw new Error(`the map has no ${mohawkTagLabel(tag)} ${id}`); return arc.get(tag, id); };
   const bg = decodeBitmapResource(need('tBMP', 300));

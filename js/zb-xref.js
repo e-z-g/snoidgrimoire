@@ -4,13 +4,14 @@
    Needs zb-mohawk.js, zb-bitmap.js, zb-script.js, zb-snoid.js, zb-journey.js
    and the puzzles (zb-puzzle-*.js).
 
-   A reference is taken only where something holds an id, as grimoire takes
-   one only where the format says an atom is, never by scanning bytes:
+   This file finds a reference only in a field that is an id, as grimoire
+   finds one only where the format has an atom, never by scanning bytes:
 
    - the formats: a script frame's sound (SCRS and SCRB end a frame with a
-     sound id), which is its own archive's sound, else ZOOMBINI's; a snoid
-     script's layout word, which names the snoid it draws and so the sheet
-     and registration points it draws with (ZB_SNOID_KINDS);
+     sound id), which is a sound in the script's archive, else in
+     ZOOMBINI's; a snoid script's layout word, which identifies the snoid
+     it draws and so the sheet and registration points it draws with
+     (ZB_SNOID_KINDS);
    - pairs the data proves: a sprite sheet and the REGS pair holding one
      point more than it has sprites (the points are one-based), taken when
      the pair has the sheet's id or is the only pair of that length; NODE
@@ -64,7 +65,7 @@ function zbSiteReads() {
   return out;
 }
 
-/* A sheet's frame count, or null for a picture, read once. */
+/* A sheet's frame count, or null for a picture, read the first time and then looked up. */
 const ZB_XREF_SHEETS = new WeakMap();
 function zbXrefFrameCount(arc, id) {
   if (!ZB_XREF_SHEETS.has(arc)) ZB_XREF_SHEETS.set(arc, new Map());

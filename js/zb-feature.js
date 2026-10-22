@@ -4,8 +4,8 @@
    Needs zb-script.js, zb-bitmap.js. No DOM.
 
    A SCRB's records are a shape, x and y, a tick to a frame (zb-script.js).
-   The file does not say which sheet the shapes number: the program's page
-   for the place does. What the disc shows instead is a rule of the
+   The file has nothing on which sheet the shapes number: the program's
+   code for the place sets it. What the disc shows instead is a rule of the
    numbering, which the extraction project's animate.py draws by
    (render_scrb: the sheet is the script's number with its last two digits
    dropped) and which this widens: THE SHEET IS THE LAST ONE NUMBERED AT OR
@@ -17,16 +17,16 @@
    them, and is plainly theirs: CAVES SCRB 9025-9028 use shapes 4, 3, 2 and
    1 of tBMP 9025's four, FERRY SCRB 1450-1452 shapes 2, 3 and 1 of tBMP
    1450's three, where animate.py's rule gives them tBMP 9000 and 1400. No
-   script anywhere asks for a shape its sheet does not have (HOTEL's 101xx
-   reach shape 40 of 40), and every one's sprites land on the room. That is
-   the evidence: it is not read out of the program, and
-   utilities/feature_check.mjs holds it to the whole disc.
+   script anywhere draws a shape its sheet lacks (HOTEL's 101xx reach shape
+   40 of 40), and every one's sprites land on the room. That is the
+   evidence: nobody has read the rule out of the program, and
+   utilities/feature_check.mjs checks it over the whole disc.
 
    A shape is one-based (shape n is the sheet's frame n - 1) and is drawn
    with its registration point at the record's x and y, which are the
    room's: animate.py's reading, and ScummVM's for a snoid's parts. */
 
-/* The sheets of an archive: [{ id, frames }], ascending, counted once. */
+/* The sheets of an archive: [{ id, frames }], ascending, counted the first time and then looked up. */
 const ZB_FEATURE_SHEETS = new WeakMap();
 function zbFeatureSheets(arc) {
   if (!ZB_FEATURE_SHEETS.has(arc)) {

@@ -1,5 +1,5 @@
-/* zb-save.js -- a saved game, ZOOM####.TXT, and the roster that names the
-   saved games, ZOOMBINI.WHO: read, and written back.
+/* zb-save.js -- a saved game, ZOOM####.TXT, and the roster of the saved
+   games' names, ZOOMBINI.WHO: read, and written back.
    =========================================================================
    Needs zb-mohawk.js (ZB_TEXT_DECODER), zb-write.js
    (zbCp1252, for a name written fresh), zb-journey.js (ZB_PLACE_BY_KEY,
@@ -7,7 +7,7 @@
    called, not when loaded.
 
    A saved game is one fixed record, read front to back with no gaps, and
-   its length says which release wrote it:
+   its length shows which release wrote it:
      44,549  v1.0BR   Europe v1.0 and v1.1;
      44,559  v1.1US   the 1996 US disc, and the Korean release: v1.0BR and
                       ten bytes more at the end, the routes' perfect-crossing
@@ -35,9 +35,9 @@
    (0 for none), and ScummVM's names for the values, in that order, are
    the site's (ZB_TRAIT_SHORT) under other words: Spiked is shaggy hair,
    Balding the tuft, NormalEyed wide eyes, Cyclops one eye, Yellow the
-   orange nose. So a trait is the site's own number, unconverted.
+   orange nose. So a trait is the site's number, unconverted.
 
-   zbSaveRead(bytes) returns every field the layout holds, under ScummVM's
+   zbSaveRead(bytes) returns every field in the layout, under ScummVM's
    member names without the underscore (pageFlagBridge, zmbPackActive,
    storedChunkTown ...), the bytes after a name's NUL kept as nameBytes and
    TLC's padding kept, so that zbSaveWrite(zbSaveRead(b)) is b. Beside them,
@@ -58,9 +58,9 @@
    getPopulatedEntryCount, setRouteCompletionFlag); the level nibbles as
    zoombini_pages/interactive_base.cpp routeNonOccupiedToRestingPack sets
    them, the map's colours as interactive_rodmap.cpp buildPageRouteLevelMap
-   reads them, and which pack entries are live as the packs' skip flags say
-   (ZmbStateActivePack). utilities/save_check.mjs holds it to a game saved
-   in the 1996 US program, byte for byte both ways. */
+   reads them, and which pack entries are live by the packs' skip flags
+   (ZmbStateActivePack). utilities/save_check.mjs reads and writes back a
+   game saved in the 1996 US program, byte for byte. */
 
 const ZB_SAVE_LAYOUTS = [
   { name: 'v1.0BR', size: 44549, tlc: false, counters: false },
@@ -77,7 +77,7 @@ const ZB_SAVE_PAGE_FLAGS = [
   ['pageFlagFleens', 'FLEENS'], ['pageFlagHotel', 'HOTEL'], ['pageFlagNet', 'NET'], ['pageFlagBasecamp2', 'BCTWO'],
   ['pageFlagCaves', 'CAVES'], ['pageFlagSmoke', 'SMOKE'], ['pageFlagMaze', 'MAZE2'], ['pageFlagTown', 'TOWN'],
 ];
-/* ZmbDestPageKind: the page ids the current page is saved as. */
+/* ZmbDestPageKind: the page ids that a save records for the current page. */
 const ZB_SAVE_PAGES = { 1: 'MAP', 3: 'PICKER', 4: 'BASECAMP', 5: 'BCTWO', 6: 'TOWN', 7: 'BRIDGE', 8: 'TUNNELS',
   9: 'PIZZA', 10: 'FERRY', 11: 'LILLY', 12: 'SLIDES', 13: 'FLEENS', 14: 'HOTEL', 15: 'NET', 16: 'CAVES', 17: 'SMOKE', 18: 'MAZE2' };
 
@@ -123,7 +123,7 @@ function zbSaveSerializer(bytes, saving, root) {
   return s;
 }
 
-/* A name: a fixed field, NUL-terminated within it; nameBytes keeps all of it. */
+/* A name: a fixed field, NUL-terminated within it; nameBytes is the whole field. */
 function zbSaveName(s, o, n) {
   if (s.saving && !o.nameBytes) {
     const b = zbCp1252(o.name || '');
@@ -262,7 +262,7 @@ function zbSaveViews(f) {
     hardFirst: !!(f[k] & 0x1000), hardSecond: !!(f[k] & 0x2000) }));
 
   // Each route: its three puzzles' bytes (pageLevelFlags[3 + 3r + i]) and
-  // its own nibble for the camp or town it ends at. The map colours every
+  // a separate nibble for the camp or town it ends at. The map colours every
   // place on a route at the route's level once it is past level 1, and
   // before that at the nibble itself (buildPageRouteLevelMap).
   const ends = [f.levelFlagRouteBigBadHungry & 15, f.levelFlagLoWhosBayouHiDeepDarkForest & 15,

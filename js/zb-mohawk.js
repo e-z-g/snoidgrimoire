@@ -1,15 +1,15 @@
-/* zb-mohawk.js -- a Mohawk archive opened, and the resource types the
-   Zoombinis disc holds besides its bitmaps, decoded to plain data.
+/* zb-mohawk.js -- a Mohawk archive opened, and the resource types on the
+   Zoombinis disc besides its bitmaps, decoded to plain data.
    =========================================================================
    Needs mac-bytes.js. zb-bitmap.js, beside it, does tBMP and the palettes.
 
-   Brøderbund's Mohawk engine keeps everything a scene needs in one `.MHK`
+   Brøderbund's Mohawk engine stores everything a scene needs in one `.MHK`
    archive: a `MHWK` header, a `RSRC` directory of four-letter types, each
-   with its ids and optional names, and a file table that says where each
-   resource's bytes are. `openMohawk(bytes)` returns the archive as an object,
+   with its ids and optional names, and a file table with the position of
+   each resource's bytes. `openMohawk(bytes)` returns the archive as an object,
    so any number can be open at once; every structural offset is checked
-   before it is followed, so a file that is not an archive says so rather than
-   listing invented resources.
+   before it is followed, so a file that is not an archive throws an error
+   rather than listing invented resources.
 
    WHERE THE FORMATS CAME FROM
    The container and the WAVE and MIDI chunks are ScummVM's
@@ -159,7 +159,7 @@ function parseMohawkWave(bytes) {
 
 /* The tMID resource: a standard MIDI file's chunks, MThd and MTrk, with a
    Prg# chunk among them in most. Returns the chunks and the file a MIDI
-   player takes, which is the MThd and MTrk chunks in order. */
+   player can read, which is the MThd and MTrk chunks in order. */
 function parseMohawkMidi(bytes) {
   const b = bytes;
   const chunks = mohawkChunks(b, 'MIDI');
@@ -182,8 +182,8 @@ function parseMohawkMidi(bytes) {
 
 /* ---- the small types -------------------------------------------------- */
 
-/* STRL: a count byte, then that many NUL-terminated strings, and nothing
-   after. The US release's text is Windows-1252. */
+/* STRL: a count byte, then that many NUL-terminated strings, which end the
+   resource. The US release's text is Windows-1252. */
 const ZB_TEXT_DECODER = new TextDecoder('windows-1252');
 function parseStringList(bytes) {
   const b = bytes;
@@ -251,7 +251,7 @@ function parseRegs(bytes) {
   return out;
 }
 
-/* The REGS pair that holds a sheet's registration points: ids n and n + 1,
+/* The REGS pair with a sheet's registration points: ids n and n + 1,
    each one longer than the sheet has frames (ScummVM's offsets are
    one-based). */
 function regsFor(arc, frameCount) {

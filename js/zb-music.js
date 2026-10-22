@@ -1,11 +1,11 @@
 /* zb-music.js -- a tune played, through QuickTime's instruments.
    =========================================================================
-   A tMID holds notes and never a sound. On a Mac the game handed its tunes
+   A tMID contains notes and never a sound. On a Mac the game handed its tunes
    to QuickTime, which played them through QuickTime Musical Instruments,
    Roland's samples; on Windows they went to whatever MIDI device the
    machine had, so there is no one sound to call the game's there. The
-   instruments and the synthesis are grimoire's (js/mac-qtmusic.js, which
-   says how each is read and what is not there), made for Cythera's QTMA
+   instruments and the synthesis are grimoire's (js/mac-qtmusic.js, where
+   the comments cover how each is read and what is missing), made for Cythera's QTMA
    tunes; a MIDI file reaches them as grimoire's MIDI import makes one a
    tune (midiToQtma).
 
@@ -18,16 +18,16 @@
 
    No DOM here. LOAD ORDER: after mac-qtmusic.js and zb-mohawk.js. */
 
-/* QTMA's controller numbers, which midiToQtma writes by name. Grimoire
-   keeps them in its page's script (page-export.js, QTC), which is not
-   copied here; these are that table, and are not MIDI's numbers. */
+/* QTMA's controller numbers, which midiToQtma writes by name. In grimoire
+   they are in its page's script (page-export.js, QTC), which this site
+   does not copy; these are that table, and are not MIDI's numbers. */
 const QTC = { ModWheel: 1, Breath: 2, Foot: 4, Volume: 7, Balance: 8, Pan: 10,
   Expression: 11, PitchBend: 32, AfterTouch: 33, PartTranspose: 40,
   TuneTranspose: 41, Sustain: 64, Portamento: 65, Sostenuto: 66, SoftPedal: 67,
   Reverb: 91, Tremolo: 92 };
 
 /* The fields of a tune's part a MIDI file has no word for, which midiToQtma
-   copies from a tune given it: QuickTime's own synthesizer, unnamed. */
+   copies from a tune given it: QuickTime's built-in synthesizer, unnamed. */
 function zbTuneModel() {
   return qtmaWrite([{ part: 0, channel: 1, info: new Uint8Array(8), synthType: new Uint8Array(4), synthName: qtmaStr31(''),
                       instName: qtmaStr31(''), instrument: 1, gm: 1 }], [], {});

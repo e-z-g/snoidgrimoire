@@ -5,7 +5,7 @@
    Needs zb-mohawk.js, zb-bitmap.js, zb-snoid.js and zb-write.js.
 
    Only palette entries 10-45 are the same in every scene, so a Zoombini's
-   art keeps to them, and so must a recolouring, or a colour right in one
+   art uses only those, and so must a recolouring, or a colour right in one
    scene is wrong in the next. They fall into families of shades
    (ZB_RECOLOUR_FAMILIES, read off the palette: each a hue, dark to light).
    A recolouring maps one family onto another shade for shade, by place in
@@ -20,8 +20,8 @@
    three sheets and the big figure, the skin's shades being on the parts
    too (eyelids, the shading under hair); the tiles' stone is left alone.
    A recoloured frame is written raw, as mod_red_shaggy.py writes it, and
-   utilities/recolour_check.mjs holds Shaggy's purples to reds to its
-   output byte for byte. */
+   utilities/recolour_check.mjs compares Shaggy's purples turned red with
+   its output byte for byte. */
 
 const ZB_RECOLOUR_FAMILIES = [
   { key: 'greys', name: 'Greys', shades: [11, 12, 13, 14, 10] },

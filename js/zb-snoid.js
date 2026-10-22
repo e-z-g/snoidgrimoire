@@ -6,7 +6,7 @@
    =========================================================================
    Needs zb-mohawk.js, zb-bitmap.js and zb-script.js.
 
-   A sheet holds every pose as a pair, facing one way and the other, and
+   A sheet has every pose as a pair, facing one way and the other, and
    each part's variants as blocks of poses. A snoid script's tick has five
    records, one a part, in the order its header's layout word gives
    (zb-script.js); a record's shape is the pose within that part's block,
@@ -15,7 +15,7 @@
    entry of each is not a sprite's). A snoid's traits pick the blocks: hair,
    eyes, nose and feet have five each, one a value; the body has one.
 
-   The layout word says which snoid a script draws (tools/README.md § Scripts):
+   The layout word sets which snoid a script draws (tools/README.md § Scripts):
    0 and 1 a Zoombini (1 in profile, the body and nose swapped), 2 the
    tumbling Zoombini, 3 a Fleen. A script's ticks close with events, and some
    of them turn the snoid round or change the layer order from the next tick
@@ -29,7 +29,7 @@
 
    tBMP 3100 is the Zoombini rejected, knocked back and tumbling: every part
    18 poses, all in step through one tumble, and after them 21 poses of
-   dust, rings and stars, which a script asks for by their place in the
+   dust, rings and stars, which a script numbers by their place in the
    whole sheet (poses 379-399). Its hair blocks are not in trait order.
 
    WHERE IT CAME FROM
@@ -39,9 +39,9 @@
    to them; the tumble's hair order and the events are the 1996 program's
    (SETSNOIDDRAWORDER and the snoid callbacks, Mac CODE 8); the layer orders
    are ScummVM's and the program's (zb-script.js). utilities/snoid_check.mjs
-   holds the blocks to animate.py's and to every tick of every snoid script
-   on the disc, the layers the events give to the ones animate.py fitted,
-   and the placements to animate.py's.
+   compares the blocks with animate.py's and with every tick of every snoid
+   script on the disc, the layers the events give with the ones animate.py
+   fitted, and the placements with animate.py's.
 */
 
 const ZB_SNOID_SHEET = 3000, ZB_SNOID_REGS = 100, ZB_SNOID_STANDING = 100;
@@ -59,7 +59,7 @@ const ZB_SNOID_TUMBLE_BLOCKS = {
   body: { base: [0], poses: [18] },
   nose: { base: [396, 432, 468, 504, 540], poses: [18, 18, 18, 18, 18] },
   eyes: { base: [216, 252, 288, 324, 360], poses: [18, 18, 18, 18, 18] },
-  // the program's table (A5+$7770): the sheet holds hair 1, 3, 4, 2, 5
+  // the program's table (A5+$7770): the sheet has hair 1, 3, 4, 2, 5 in that order
   hair: { base: [36, 144, 72, 108, 180], poses: [18, 18, 18, 18, 18] },
 };
 const ZB_SNOID_FLEEN_BLOCKS = {
@@ -91,8 +91,8 @@ const ZB_SNOID_KINDS = {
 };
 /* Which snoid a script's layout word draws. */
 const ZB_SNOID_KIND_OF_LAYOUT = { 0: 'zoombini', 1: 'zoombini', 2: 'tumble', 3: 'fleen' };
-/* A place's own events that set the layer order, beside the shared ones
-   (XFER's callback takes 0x1b as order 0). */
+/* The events particular to a place that set the layer order, beside the
+   shared ones (XFER's callback reads 0x1b as order 0). */
 const ZB_SNOID_PLACE_EVENTS = { XFER: { 0x1b: 0 } };
 /* The trait icons, frames 850-889: a pair each. */
 const ZB_SNOID_ICON_BASE = 850;
@@ -125,11 +125,11 @@ function zbSnoidFrame(part, value, pose, facing = 0, blocks = ZB_SNOID_BLOCKS) {
 
 /* A snoid script as the program steps it: each tick's records, with the
    layer order and the facing it is drawn in, and its sound and event. The
-   order starts at the header's word and the facing at `facing`; an event a
-   tick closes with takes effect from the next one (tools/README.md
+   order starts at the header's word and the facing at `facing`; an event
+   that closes a tick applies from the next one (tools/README.md
    § Scripts): 0x01 turns the snoid round, applying an order queued for
    then; 0xf1-0xf4 queue order 0-3 for the next turn; 0xfb-0xfe set order
-   0-3 now; `place`'s own (ZB_SNOID_PLACE_EVENTS) likewise. */
+   0-3 now; the events particular to `place` (ZB_SNOID_PLACE_EVENTS) likewise. */
 function zbSnoidTicks(script, facing = 0, place = null) {
   const own = ZB_SNOID_PLACE_EVENTS[place] || {};
   let layout = script.layout, queued = null;
@@ -151,8 +151,8 @@ function zbSnoidTicks(script, facing = 0, place = null) {
    in the whole sheet.
 
    Nine Zoombini ticks on the disc (FLEENS 7026-7030, NET 13003-13004) are
-   drawn in profile by code not traced, their script having said neither
-   order 1 nor anything since; read in the order the events give, their nose
+   drawn in profile by code not traced, though their script has set
+   neither order 1 nor any order since; read in the order the events give, their nose
    is past its four poses. There the body and nose swap, the rule
    animate.py fits to every tick (tools/README.md § The profile swap), and
    the tick is marked `fitted`. */
@@ -170,8 +170,8 @@ function zbSnoidParts(tick, effects = null) {
 
 /* A tick's sprites: [{ part, frame, x, y }] in the order drawn, x and y the
    sprite's top left in the script's coordinates. A pose past its part's
-   block is left out and named in `missing`, as a script written for other
-   feet asks for. */
+   block is left out and named in `missing`, as happens with a script
+   written for other feet. */
 function zbSnoidPlacements(sheet, traits, tick, missing = null) {
   const out = [];
   for (const p of zbSnoidParts(tick, sheet.effects)) {
@@ -183,8 +183,8 @@ function zbSnoidPlacements(sheet, traits, tick, missing = null) {
   return out;
 }
 
-/* The trait values a script's feet fit: those whose block holds every
-   pose its feet ask for (all five for most scripts). */
+/* The trait values a script's feet fit: those whose block has every
+   feet pose the script draws (all five for most scripts). */
 function zbSnoidFeetFor(sheet, ticks) {
   const want = new Set();
   for (const t of ticks) for (const p of zbSnoidParts(t, sheet.effects)) if (p.part === 'feet') want.add(p.shape);
@@ -195,7 +195,8 @@ function zbSnoidFeetFor(sheet, ticks) {
    (100 + 5 x feet + direction, as the program picks them) and feet shows
    146-150; FLEENS's Fleen runs 4026-4055 (tools/animate.py's reading) and
    Zoombinis 7000-7009 and 7011-7045. A walk's feet may fit other blocks
-   too, being shorter than theirs, but the program never asks that. */
+   too, being shorter than theirs, but the program never draws a walk with
+   other feet. */
 function zbSnoidFeetOf(place, id) {
   if (place === 'ZOOMBINI') return id >= 105 && id <= 129 ? Math.floor((id - 105) / 5) + 1 : id >= 146 && id <= 150 ? id - 145 : null;
   if (place === 'FLEENS') {
@@ -222,15 +223,15 @@ function zbZoombiniPlacements(sheet, z, frame = sheet.standing.frames[0], layout
 function zbZoombiniImage(sheet, z, facing = 0) {
   return zbSnoidCompose(sheet, zbZoombiniPlacements(sheet, z, undefined, undefined, facing));
 }
-/* A trait's own part, alone, as the Zoombini standing wears it: the
+/* The part that shows a trait, alone, as the Zoombini standing wears it: the
    nose's ball, the hair's tuft; the way a diagram shows a trait. */
 function zbTraitImage(sheet, kind, value) {
   const frame = sheet.standing.frames[0], k = ZB_LAYER_ORDERS[sheet.standing.layout].indexOf(kind);
   const f = zbSnoidFrame(kind, value, frame.records[k].shape);
   return zbSnoidCompose(sheet, [{ frame: f, x: 0, y: 0 }]);
 }
-/* A trait's icon, as an indexed image the same way; the game's own, all in
-   one orange, so the noses' five are alike. */
+/* A trait's icon, as an indexed image the same way. The game draws every
+   icon in one orange, so the noses' five are alike. */
 function zbTraitIcon(sheet, kind, value) {
   const f = ZB_SNOID_ICON_BASE + 2 * (ZB_SNOID_ICONS.indexOf(kind) * 5 + value - 1);
   return zbSnoidCompose(sheet, [{ frame: f, x: 0, y: 0 }]);
@@ -251,7 +252,7 @@ function zbSnoidShown(ticks, effects = null) {
    height, ox, oy, frames: [pixels], missing } with (ox, oy) where the
    script's origin falls and `missing` the parts its poses left out.
    `ticks` is zbSnoidTicks's; a tick that draws nothing shows the one
-   zbSnoidShown says. */
+   zbSnoidShown returns. */
 function zbSnoidMovie(sheet, traits, ticks) {
   const missing = [], placed = ticks.map(t => zbSnoidPlacements(sheet, traits, t, missing));
   const all = placed.flat();
@@ -318,9 +319,9 @@ function zbSnoidSound(event, z, random = Math.random) {
    feet + direction, turned round when going left, as it was when going
    straight up or down; its records are offsets from where the Zoombini is.
    Each tick it moves one step towards the point, then its script one tick,
-   looping, and a new leg carries on at the tick it had reached. The step is
-   ZB_WALK_SPEEDS's on the longer axis, and on the other so that both arrive
-   together: that axis's distance over (the longer's distance / its speed),
+   looping, and a new leg starts from the tick the last one reached. The
+   step is ZB_WALK_SPEEDS's on the longer axis, and on the other so that
+   the two distances run out on the same tick: that axis's distance over (the longer's distance / its speed),
    at least 1 (the whole distance when the longer is under one step). */
 const ZB_WALK_SPEEDS = [[5, 15], [13, 10], [16, 8], [13, 10], [5, 15]];
 function zbWalkDirection(dx, dy) {
@@ -348,8 +349,8 @@ function zbWalkLeg(x, y, tx, ty, feet, facing = 0) {
 }
 /* A walk through points [{ x, y }] from the first: each tick { x, y,
    script, tick, facing }, the script's tick counted on from `tick`. Ticks
-   of a script are `lengths[script]`'s, so the caller's scripts decide when
-   one loops. */
+   of a script are `lengths[script]`'s, so the lengths of the caller's
+   scripts set when one loops. */
 function zbWalk(points, feet, lengths, tick = 0, facing = 0) {
   const out = [];
   let { x, y } = points[0];

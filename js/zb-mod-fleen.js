@@ -9,7 +9,7 @@
    Needs mac-bytes.js, zb-mohawk.js, zb-bitmap.js, zb-script.js and
    zb-write.js.
 
-   zbFleenMod(archives, exeBytes, green) takes every archive on the disc,
+   zbFleenMod(archives, exeBytes, green) needs every archive on the disc,
    opened (a Map of name, without .MHK, to openMohawk's), since the pairing
    of hair poses to body poses is counted over every snoid script in them,
    and returns { ZOOMBINI: [{ tag, id, bytes }], PICKER: [...], exe }:
@@ -19,8 +19,8 @@
    the EXE (and, green, its body is dithered from the anchor the EXE gives
    it); exe is the EXE with those tables rewritten, or null.
 
-   How each part is fitted -- the eyes and noses where the Zoombini's own
-   sit, the hair on its partner bodies' head tops and lifted off the eyes,
+   How each part is fitted -- the eyes and noses where the Zoombini's eyes
+   and nose sit, the hair on its partner bodies' head tops and lifted off the eyes,
    the feet tucked under the egg and stepping, the small Zoombinis shrunk
    from the matching full-size pose, the tumbling ones turned, the builder's
    tiles redrawn on blank stone and its big figure enlarged -- is the long
@@ -39,8 +39,8 @@
    borrowed_feet, landmark, near_foot, leg_pixels, fleen_ride,
    fleen_device_on_zoombini, blank_tiles and their tables) and of
    tools/animate.py (the atlas blocks, load_regs, zoombini_records).
-   utilities/fleenmod_check.mjs holds it to the Python byte for byte, plain
-   and green, every resource and every changed byte of the EXE
+   utilities/fleenmod_check.mjs compares it with the Python byte for byte,
+   plain and green, every resource and every changed byte of the EXE
    (utilities/oracle.py fleenmod).
 */
 
@@ -80,7 +80,7 @@ const ZB_FLEEN_MOD_ATLAS = {
   ],
 };
 
-/* mod_fleen_parts.py's own. */
+/* The constants of mod_fleen_parts.py. */
 const ZB_FLEEN_MOD = {
   PARTS: ['hair', 'eyes', 'nose', 'feet'],
   LIFT_FEET: 5, SHOWN_FEET: 0.75, SHOWN_DEVICE: 0.95,
@@ -240,7 +240,7 @@ function zbFleenModRandom(seed) {
 
 /* ---- pixels ------------------------------------------------------------ */
 // A raw is [w, h, px] (px a palette index a pixel, 0 clear), a reg [rx, ry]:
-// where the origin is in the raw. A point set holds zbFleenModKey(x, y).
+// where the origin is in the raw. A point set is a Set of zbFleenModKey(x, y).
 
 const zbFleenModKey = (x, y) => (x + 4096) * 8192 + (y + 4096);
 const ZB_FLEEN_MOD_EMPTY = () => [[1, 1, [0]], [0, 0]];
@@ -344,8 +344,8 @@ function zbFleenModEpx([w, h, px]) {
   return [2 * w, 2 * h, out];
 }
 
-/* Each new pixel the commonest colour of what it covers, if `share` of it
-   is drawn: the vote shrink and enlarged both take. */
+/* Each new pixel the commonest colour among the old pixels under it, if
+   `share` of those are drawn: the vote that shrink and enlarged both use. */
 function zbFleenModVote(px, w, h, ys, ye, xs, xe, share) {
   const votes = new Map();
   let cells = 0, drawn = 0;
@@ -542,8 +542,8 @@ function zbFleenModPairings(archives) {
   return { bodies, eyes, tumble };
 }
 
-/* Counters, per feet pose, of the body poses feet variant v's own walks and
-   special draw it with. */
+/* Counters, per feet pose, of the body poses that the walks and special of
+   feet variant v draw it with. */
 function zbFleenModFeetPartners(z, v) {
   const W = ZB_FLEEN_MOD_WEB, out = new Map();
   const ids = [];
@@ -603,7 +603,7 @@ function zbFleenModFitter(archives, green) {
   const pairings = zbFleenModPairings(archives);
   const bodies = pairings.bodies, eyesOf = pairings.eyes;
 
-  // {Zoombini eye pose: [Fleen eye pose, Zoombini eye pose whose spot it takes]}
+  // {Zoombini eye pose: [Fleen eye pose, Zoombini eye pose in whose spot it goes]}
   const roles = new Map(), fe = W.EYE_FRAMES.fleen;
   for (const [facing, own] of W.EYE_FRAMES.zoombini) {
     roles.set(own.rest, [fe.rest, facing]);
@@ -855,7 +855,7 @@ function zbFleenModFitter(archives, green) {
     return d;
   };
 
-  /* The Zoombini's own shoes at a pose, left to right: [left, right, bottom]. */
+  /* The Zoombini's original shoes at a pose, left to right: [left, right, bottom]. */
   const ownFeet = (v, pose) => {
     const i = full.index('feet', v, pose), [w, h, px] = full.frames[i], [rx, ry] = full.regs[i];
     const solid = Array.from(px, c => !!c && !zfKey[c] && c !== W.OUTLINE);
@@ -1086,7 +1086,7 @@ function zbFleenModBuild(fit, z) {
       }
     }
   }
-  if (fit.green) {                                       // the Zoombini's own body, reskinned
+  if (fit.green) {                                       // the Zoombini's original body, reskinned
     for (const [bmp, atlas] of [[3000, full], [3100, tum], [3200, small]]) {
       for (let pose = 1; pose <= zbFleenModPoseCount(atlas.parts.body, 0); pose++) {
         const i = atlas.index('body', 0, pose);
@@ -1094,7 +1094,7 @@ function zbFleenModBuild(fit, z) {
       }
     }
   }
-  const [p1, p2, egg] = C.NOSELESS;                     // and without its own nose's socket
+  const [p1, p2, egg] = C.NOSELESS;                     // and without the original nose's socket
   for (const [bmp, atlas] of [[3000, full], [3200, small]]) {
     const i = atlas.index('body', 0, egg);
     for (const pose of [p1, p2]) put(bmp, 'body', 0, pose, [fit.body(atlas.frames[i]), atlas.regs[i]]);

@@ -15,8 +15,8 @@
    (tools/mohawk_script.py, tools/README.md § Scripts) and, separately, by
    ScummVM's Zoombinis branch (zoombini_scripts.cpp, decodeScriptFrames),
    which is where the layer orders and the event code are from. This follows
-   ScummVM's reading; utilities/script_check.mjs holds it to mohawk_script.py
-   over every script on the disc, record for record.
+   ScummVM's reading; utilities/script_check.mjs compares it with
+   mohawk_script.py over every script on the disc, record for record.
 */
 
 /* SCRS header word 2: which layer each of a section's five records draws, in

@@ -3,26 +3,26 @@
    =========================================================================
    Needs mac-bytes.js and zb-mohawk.js.
 
-   Kept as close to what the game already reads as the extraction project's
-   tools/mohawk_write.py keeps it, and held to it byte for byte by
-   utilities/write_check.mjs (the Zoombini maker's play-lib.js is the same
-   port):
+   As close to what the game already reads as the extraction project's
+   tools/mohawk_write.py writes, and the same byte for byte, which
+   utilities/write_check.mjs checks (the Zoombini maker's play-lib.js is
+   the same port):
 
    - a replaced resource is appended after the archive's directory and only
      its file-table entry is repointed, with the two file-size fields in the
      header; every other byte stays where it was (zbWriteArchive);
-   - a sprite sheet keeps its outer header and LZ packing, its frames behind
+   - a sprite sheet has its outer header and LZ packing as before, its frames behind
      an LZ stream of literals only, a 0xff flags byte before every eight
      bytes, which any reader of the format decodes (zbSheetBytes); a changed
      frame is a raw 8-bit sub-image, rows padded to an even length as the
-     game's own raw frames are (zbRawFrame), and a frame not changed keeps
-     its own bytes (zbSheetFrames);
+     game's raw frames are (zbRawFrame), and a frame not changed is written
+     with its original bytes (zbSheetFrames);
    - a string list is a count byte and the strings, each ended by a NUL, in
      Windows-1252 (zbStringListBytes), so every list on the disc writes back
-     to its own bytes;
+     to the bytes it came from;
    - a REGS is its numbers, signed 16-bit big-endian, nothing else
      (zbRegsBytes), as parseRegs reads it: a puzzle's layout (a maze's
-     squares, a pond's routes) is written so. */
+     squares, a pond's routes) is written in that form. */
 
 /* The archive's bytes with each of `changes`, [{ tag, id, bytes }], put in. */
 function zbWriteArchive(bytes, changes) {
@@ -46,7 +46,7 @@ function zbWriteArchive(bytes, changes) {
   return out;
 }
 
-/* A sheet's frames as their own bytes, each with its 8-byte header. */
+/* A sheet's frames, each as the bytes stored for it, with its 8-byte header. */
 function zbSheetFrames(tbmp) {
   const s = tbmpFrameOffsets(tbmp);
   if (!s) throw new Error('not a sprite sheet');
@@ -145,7 +145,7 @@ function zbQuantize(rgba, pal, allowed, clear = true) {
 /* A sound's bytes with new samples, raw unsigned 8-bit mono, its other
    chunks (a Cue#) kept and its Data chunk's header as before but for the
    count and the loop: `loop` [start, end] in samples, or by default the
-   original's loop where it still fits and the whole sound where not. */
+   original's loop where it still fits and otherwise the whole sound. */
 function zbWaveBytes(original, samples, rate = 11025, loop = null) {
   const old = parseMohawkWave(original);
   const chunks = mohawkChunks(original, 'WAVE').map(c => {

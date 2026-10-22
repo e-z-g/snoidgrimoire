@@ -22,7 +22,7 @@
    A reward building is earned by the first band to cross a route at a
    level, and goes in the first free slot, so the slots fill in the order
    they are earned: the fifth is the clock tower, whose hands (tBMP 6000,
-   REGS 6000 their pivots) then tell the time, at world (946, 218). The
+   REGS 6000 their pivots) then show the time, at world (946, 218). The
    inhabitants are SCRB 4000-4007 on tBMP 4000, looping, one more for each
    37 Zoombinis past the first 20 (up to 16, from 16 places, so each script
    twice); which of them the game shows is chosen at random.
@@ -33,9 +33,9 @@
    calculatePopulationDensity, overlay_preRenderShape,
    memorialMarkers_preRenderShape, clockHands_preRenderShape,
    updateClockHandTime; zoombini_state.cpp addFirstClearMemorial), and the
-   buildings' names are the plaques' own words in the 1996 program.
-   utilities/town_check.mjs holds the reading to those files and to the
-   scripts themselves, and the clock's hands to the program (below). Not
+   buildings' names are the plaques' words in the 1996 program.
+   utilities/town_check.mjs compares the reading with those files and with
+   the scripts themselves, and the clock's hands with the program (below). Not
    checked against the program: the order the layers are drawn in, and
    where the inhabitants stand, though zbtools' decompilation of another
    build of it (town.cpp) puts them at their scripts' own places too.
@@ -46,7 +46,7 @@ const ZB_TOWN_PEOPLE = 625;
 
 /* The reward buildings, by slot, which is the order they are earned in:
    ScummVM's kTownMemorialCardTextTypeBySlot picks each slot's plaque, and
-   the plaque names the building ("this band shell was built to honor the
+   the building's name is on the plaque ("this band shell was built to honor the
    zoombinis who:"). */
 const ZB_TOWN_REWARDS = ['Band Shell', 'Windmill', 'General Store', 'Swimming Pool', 'Clock Tower', 'Bowling Alley',
   'Firehouse', 'Opera House', 'Paper Clip Museum', 'Courthouse', 'Monument', 'Schoolhouse', 'City Hall', 'Library',
@@ -100,7 +100,7 @@ function zbTownWorld(arc) {
   const wrap = x => ((x % ZB_TOWN_WIDTH) + ZB_TOWN_WIDTH) % ZB_TOWN_WIDTH;
   const near = (a, b) => { const d = Math.abs(a - b); return Math.min(d, ZB_TOWN_WIDTH - d) <= 3; };
 
-  // One layer script's records in world pixels, each thing once.
+  // One layer script's records in world pixels, with no thing in the list twice.
   const layer = id => {
     const s = script(id), out = [];
     if (s.frames.length !== 6) throw new Error(`TOWN's SCRB ${id} has ${s.frames.length} frames, not one a column`);
