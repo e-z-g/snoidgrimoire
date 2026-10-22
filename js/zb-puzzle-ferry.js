@@ -77,8 +77,8 @@
    from tBMP 1500's frame k - 1. The most seats a raft registers, and the
    most neighbours a seat keeps. */
 const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbours: 8 };
-/* How many steps the quick search takes for each size of seating before
-   zbFerryMatch settles it. */
+/* The quick search's steps for each size of seating, before zbFerryMatch
+   settles it. */
 const ZB_FERRY_QUICK = 2000;
 
 /* A raft from an opened FERRY: its seats, in the program's order, each

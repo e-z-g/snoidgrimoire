@@ -74,9 +74,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   for (const [a, b] of S.ZB_TUNNELS_L4) for (let v = 1; v <= 5; v++) for (let w = 1; w <= 5; w++) scumm4.push([{ kind: a, values: [v] }, { kind: b, values: [w] }]);
 
   // ---- the chances ----------------------------------------------------------
-  const target = need(/switch \(_difficultyLevel\) \{\s*case kPuzzleLevel2:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel3:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel4:\s*perLevelTarget = (\d+);\s*break;\s*default:\s*perLevelTarget = (\d+);/, cpp, 'perLevelTarget');
+  const target = need(/switch \(_puzzleLevel\) \{\s*case kPuzzleLevel2:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel3:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel4:\s*perLevelTarget = (\d+);\s*break;\s*default:\s*perLevelTarget = (\d+);/, cpp, 'perLevelTarget');
   const chances = [target[4], target[1], target[2], target[3]].map(Number);
-  const [base, per] = need(/opportunities = static_cast<int16>\((\d+) \+ (\d+) \* _difficultyLevel\);/, cpp, 'debugGetChances').slice(1).map(Number);
+  const [base, per] = need(/opportunities = static_cast<int16>\((\d+) \+ (\d+) \* _puzzleLevel\);/, cpp, 'debugGetChances').slice(1).map(Number);
   if (!same(chances, S.ZB_TUNNELS_CHANCES) || chances.some((c, i) => c !== base + per * (i + 1))) fail(`the chances are ${S.ZB_TUNNELS_CHANCES}, ScummVM ${chances} and ${base} + ${per} x level`);
   const words = ['Sixteen', 'Eighteen', 'Twenty', 'Twenty-two'];
   P.levels.forEach((l, i) => { if (!l.chances.startsWith(words[i] + ' ')) fail(`level ${i + 1}'s chances do not say ${words[i]}`); });

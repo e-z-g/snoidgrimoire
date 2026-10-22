@@ -76,7 +76,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if ([...cpp.matchAll(/checkFirstTraitMatch\(_sortedSnoidIndices\[(\d)\], _sortedSnoidIndices\[(\d)\]\)/g)].map(m => m[1] + m[2]).join() !== '10,21,32,43') fail('level 4\'s short chain no longer looks its marks up twice in the sorted list');
   need(/if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*int16 result = placeNextZmbInCell\(91\);\s*result = placeNextZmbInCell\(19\);\s*placeNextZmbInCell\(55\);[\s\S]*?placeNextZmbInCell\(55\);\s*result = placeNextZmbInCell\(91\);\s*placeNextZmbInCell\(19\);[\s\S]*?placeNextZmbInCell\(19\);\s*result = placeNextZmbInCell\(55\);\s*placeNextZmbInCell\(91\);/, cpp, 'the rings\' three orders');
   need(/getRandomNumber\(0, 1000\);\s*if \(roll < 250\)[\s\S]*?roll < 500[\s\S]*?roll < 750/, cpp, 'the 0-1000 draw\'s quarters');
-  need(/if \(_difficultyLevel == kPuzzleLevel4\) \{\s*int16 randVal = _vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'level 4\'s look, drawn first');
+  need(/if \(_puzzleLevel == kPuzzleLevel4\) \{\s*int16 randVal = _vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'level 4\'s look, drawn first');
   // The program's first search at level 4 has no such stop; the port follows the program.
   need(/if \(_pageLoadedZmbCount <= snoidIdx \+ 1\)\s*break;\s*if \(!checkFirstTraitMatch\(snoidIdx \+ 1, snoidIdx\)\)/, cpp, 'the first search\'s stop one short');
   // The program's own words at level 4, which ScummVM does not have.

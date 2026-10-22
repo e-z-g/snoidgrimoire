@@ -39,8 +39,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   const arr = name => need(new RegExp(`${name}\\[4\\] = \\{([\\d, ]+)\\};`), params, name)[1].split(',').map(Number);
   const scummLevels = { slots: arr('kSlots'), minimum: arr('kTarget'), threshold: arr('kThreshold'), forgiven: arr('kMistakeAllowance') };
   for (const k of Object.keys(scummLevels)) if (!same(scummLevels[k], L.map(l => l[k]))) fail(`the levels' ${k} are ${L.map(l => l[k])}, ScummVM's ${scummLevels[k]}`);
-  need(/_machineToppingSlotCount = kSlots\[_difficultyLevel - 1\];[\s\S]*_initialMistakeAllowance = kMistakeAllowance\[_difficultyLevel - 1\];/, params, 'how the level picks its numbers');
-  const from = troll => Number(need(new RegExp(`if \\(kPuzzleLevel(\\d) <= _difficultyLevel\\)\\s*_trollOrderStates\\[TrollOrderLine::k${troll}\\d\\d\\] = TrollOrderState::kActive01;`), params, `when ${troll} comes`)[1]);
+  need(/_machineToppingSlotCount = kSlots\[_puzzleLevel - 1\];[\s\S]*_initialMistakeAllowance = kMistakeAllowance\[_puzzleLevel - 1\];/, params, 'how the level picks its numbers');
+  const from = troll => Number(need(new RegExp(`if \\(kPuzzleLevel(\\d) <= _puzzleLevel\\)\\s*_trollOrderStates\\[TrollOrderLine::k${troll}\\d\\d\\] = TrollOrderState::kActive01;`), params, `when ${troll} comes`)[1]);
   const trolls = [1, 2, 3, 4].map(l => 1 + (l >= from('Willa')) + (l >= from('Shyler')));
   if (!same(trolls, L.map(l => l.trolls))) fail(`the levels have ${L.map(l => l.trolls)} trolls, ScummVM ${trolls}`);
 
@@ -54,7 +54,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
     if ((k.on === 'sundae') !== (i >= S.ZB_PIZZA_SUNDAE_FROM)) fail(`topping ${i} goes on the ${k.on} in ScummVM`);
   });
   const gen = need(/void ZoombiniPuzzlePizza::generateToppingSet\(\) \{([\s\S]*?)\n\}/, cpp, 'generateToppingSet')[1];
-  const leftOut = need(/forbiddenSlot = \(_difficultyLevel == kPuzzleLevel(\d)\) \? (\d+) : -1;/, gen, 'the slot left out');
+  const leftOut = need(/forbiddenSlot = \(_puzzleLevel == kPuzzleLevel(\d)\) \? (\d+) : -1;/, gen, 'the slot left out');
   if (Number(leftOut[1]) !== 2 || Number(leftOut[2]) !== S.ZB_PIZZA_L2_LEFT_OUT) fail(`ScummVM leaves out slot ${leftOut[2]} at level ${leftOut[1]}`);
   need(/if \(_vm->_rnd->getRandomNumber\(1000\) < _toppingGenerationThreshold\) \{\s*if \(!_generatedToppings\[i\] && i != forbiddenSlot\)/, gen, 'the draw for each slot');
   need(/\} while \(0 < remaining\);/, gen, 'the rounds');

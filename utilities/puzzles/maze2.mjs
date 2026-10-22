@@ -103,12 +103,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
   // ---- the layouts, the counters and the draws, as ScummVM writes them -----
   const ids = Object.fromEntries([...h.matchAll(/kResRegs(\d+)_MazeLayout(\w+) = (\d+)/g)].map(m => [m[2], Number(m[3])]));
-  const config = need(/void ZoombiniPuzzleMaze::loadRegsConfigByLevel\(\) \{([\s\S]*?)\n\}/, cpp, 'loadRegsConfigByLevel')[1];
+  const config = need(/void ZoombiniPuzzleMaze::loadLayoutRegsConfigByLevel\(\) \{([\s\S]*?)\n\}/, cpp, 'loadLayoutRegsConfigByLevel')[1];
   const firsts = [...config.matchAll(/case kMazeLayoutLevel(\d):[^}]*?kResRegs\d+_MazeLayout(\w+) \+ _levelVariantIdx/g)].map(m => [Number(m[1]), ids[m[2]]]);
   if (firsts.length !== 4 || firsts.some(([l, id]) => S.ZB_MAZE2_FIRST_LAYOUT[l] !== id)) fail(`levels' first layouts are ScummVM's ${JSON.stringify(firsts)}`);
   const smallId = ids[need(/default:\s*\/\/ Fixed REGS \d+\.\s*_mazeLayoutRegsId = kResRegs\d+_MazeLayout(\w+);/, config, 'the small band\'s layout')[1]];
   if (smallId !== S.ZB_MAZE2_SMALL_LAYOUT) fail(`the small band's layout is ${smallId} in ScummVM`);
-  const smallUnder = Number(need(/_difficultyLevel == kPuzzleLevel4 && _pageLoadedZmbCount < (\d+)\)\s*_layoutLevel = kMazeLayoutLevel4SmallPack;/, cpp, 'the small band')[1]);
+  const smallUnder = Number(need(/_puzzleLevel == kPuzzleLevel4 && _pageLoadedZmbCount < (\d+)\)\s*_layoutLevel = kMazeLayoutLevel4SmallPack;/, cpp, 'the small band')[1]);
   if (smallUnder !== 5) fail(`ScummVM gives a band under ${smallUnder} the small layout, the port under 5`);
   const init = need(/void ZoombiniPuzzleMaze::initGridAndSelectPaths\(\) \{([\s\S]*?)\n\}/, cpp, 'initGridAndSelectPaths')[1];
   const dispatch = [
@@ -124,7 +124,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const list = need(/void ZoombiniPuzzleMaze::buildZmbAssignmentList\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbAssignmentList')[1];
   if ([...list.matchAll(/getRandomNumber\(1, 20\)/g)].length !== 2 || [...list.matchAll(/getRandomNumber\(0, 2\)/g)].length !== 1) fail(`level 4's own draws are not two of 1-20 and one of 0-2`);
   const sel2 = need(/void ZoombiniPuzzleMaze::selectPathSlots2\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots2')[1];
-  if (!/_difficultyLevel == kPuzzleLevel2 && phase == 0/.test(sel2)) fail('ScummVM no longer doubles level 2\'s first middle feature');
+  if (!/_puzzleLevel == kPuzzleLevel2 && phase == 0/.test(sel2)) fail('ScummVM no longer doubles level 2\'s first middle feature');
   // The two differences: ScummVM excludes the slot just drawn; the program (0x4339b6, 0x433ddf) excludes nothing.
   const sel1 = need(/void ZoombiniPuzzleMaze::selectPathSlots\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots')[1];
   for (const [text, fn] of [[sel2, 'selectPathSlots2'], [sel1, 'selectPathSlots']]) {

@@ -34,7 +34,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (P.levels.some((l, i) => !l.chances.startsWith(`${words[i]} mistakes`))) fail('a level\'s chances do not name its mistakes');
   need(/_snoidDragEnabled = \(_mistakeCount != _mistakeLimit\);/, cpp, 'placing stopping at the last mistake');
   need(/return \{ZmbChanceInfo::ZmbChanceType::kMistake, _mistakeLimit, _mistakeCount/, cpp, 'debugGetChances');
-  need(/_ruleTraitCount = \(_difficultyLevel <= kPuzzleLevel2\) \? 1 : 2;/, cpp, 'the traits per level');
+  need(/_ruleTraitCount = \(_puzzleLevel <= kPuzzleLevel2\) \? 1 : 2;/, cpp, 'the traits per level');
   need(/_firstUsableSeatNumber = CLIP<int16>\(21 - _pageLoadedZmbCount, 1, 20\);/, cpp, 'the first stone');
   need(/const int16 firstDisplayedSeat = firstSeatNumber - (\d+);/, cpp, 'the debugger\'s stone numbers');
   if (S.ZB_CAVES_HIDDEN !== 4 || S.ZB_CAVES_SEATS !== 20) fail('the path is not twenty stones, the first four hidden');

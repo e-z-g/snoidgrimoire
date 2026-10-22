@@ -81,7 +81,7 @@ for (const name of ['RODMAP', 'MAP']) {
   let roads = 0;
   for (const r of m.roads) {
     const word = [...shapeOf.entries()].find(([, v]) => v === r.shape);
-    const hit = word && /^Route(\w+)P(\d)/.exec(word[0]);
+    const hit = word && /^(?:\d+_)?Route(\w+)P(\d)/.exec(word[0]);
     if (!hit || ROUTE_WORD.indexOf(hit[1]) !== r.route || S.ZB_ROUTES[r.route].segments.indexOf(r.shape) !== +hit[2]) {
       fail(`${name}: road shape ${r.shape} is route ${r.route + 1} here and ${word ? word[0] : 'nothing'} in ScummVM`);
       continue;

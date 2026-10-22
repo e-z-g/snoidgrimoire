@@ -29,8 +29,8 @@ function zipDosStamp(d) {
  * written for (PNG, WAV) do not move at all. The caller compresses -- browsers
  * have CompressionStream and this file has no business owning a compressor --
  * and passes both, because the header still needs the uncompressed size and
- * the CRC of the ORIGINAL bytes. Omit it and the entry is stored, exactly as
- * before. */
+ * the CRC of the ORIGINAL bytes. Without it the entry is stored uncompressed,
+ * as every entry was before the option was added. */
 function buildZip(files) { return new Blob(buildZipParts(files), { type: 'application/zip' }); }
 // The same archive as one array of bytes, for a caller that has to read it
 // back at once (a check, or a zip made to be handed straight to a reader).

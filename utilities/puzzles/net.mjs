@@ -39,7 +39,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const cases = [...lookup.matchAll(/case (\d):\s*match = \(_rowAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_columnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_subcolumnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\]\);/g)];
   if (cases.length !== 6 || cases.some(m => !same([m[2], m[3], m[4]].map(Number), S.ZB_NET_WAYS[Number(m[1])]))) fail('findTargetSlotForSelection\'s six cases are not the six ways');
   need(/if \(_rowAxisSelectorIdx == 2\) \{\s*if \(_rowAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_columnAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)\s*return i;\s*\} else \{\s*if \(_columnAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_rowAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)/, cpp, 'the lookup at levels 1 and 2');
-  const spare = Number(need(/_remainingShotAllowance = _targetCount \+ \(_difficultyLevel == kPuzzleLevel4 \? 1 : 0\) \+ (\d+);/, cpp, 'the tank')[1]);
+  const spare = Number(need(/_remainingShotAllowance = _targetCount \+ \(_puzzleLevel == kPuzzleLevel4 \? 1 : 0\) \+ (\d+);/, cpp, 'the tank')[1]);
   if (spare !== S.ZB_NET_SPARE_SHOTS) fail(`ScummVM's tank has ${spare} spare mudballs, the port ${S.ZB_NET_SPARE_SHOTS}`);
   if (!/debugGetChances\(\) const \{[\s\S]*?kSubmit, _initialShotAllowance/.test(cpp)) fail('debugGetChances is not the tank');
   need(/_sortAnimRunning = false;\s*_remainingShotAllowance -= 1;/, cpp, 'a shot used on each launch');
@@ -52,7 +52,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   need(/_subcolumnAxisRuleValues\[25 \* planeIdx \+ 5 \* rowIdx \+ gridRowIdx\] = valB;/, cpp, 'the sections within a column taking the column\'s value');
   if ((cpp.match(/_axisRuleRotationStep = _vm->_rnd->getRandomNumber\(0, 1\) \+ 2;/g) || []).length !== 2) fail('the rotation is no longer 2 or 3 at levels 2 and 4');
   need(/_axisRuleRotationStep = _vm->_rnd->getRandomNumber\(0, 1\) \+ 2;\s*\/\/[^\n]*\n\s*_vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'the coin set aside at level 4');
-  need(/pos = _vm->_rnd->getRandomNumber\(0, \(kPuzzleLevel3 <= _difficultyLevel\) \? 124 : 24\);\s*\} while \(_targetLaunchCounts\[pos\] != 0\);/, cpp, 'the marks drawn');
+  need(/pos = _vm->_rnd->getRandomNumber\(0, \(kPuzzleLevel3 <= _puzzleLevel\) \? 124 : 24\);\s*\} while \(_targetLaunchCounts\[pos\] != 0\);/, cpp, 'the marks drawn');
   need(/if \(_vm->_rnd->getRandomBool\(\)\) \{\s*_rowAxisSelectorIdx = 2;\s*_columnAxisSelectorIdx = 1;/, cpp, 'the coin for the labels');
   // The program never resets the way at level 3; ScummVM does, and the port follows the program when it can.
   need(/_axisSelectorPermutationIdx = _vm->_rnd->getRandomNumber\(0, 5\);\s*else\s*_axisSelectorPermutationIdx = 0;/, cpp, 'the way, drawn at level 4 and reset otherwise');

@@ -52,7 +52,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (words[i] !== ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'][chances[i]] || !l.chances.startsWith(words[i] + ' ')) fail(`level ${i + 1}'s chances do not say ${chances[i]}`);
     if (!l.notes || !l.notes.some(n => /music stops/.test(n))) fail(`level ${i + 1} has no note on the music halt`);
   });
-  need(/_\("Fix 'Hotel Dimensia' MIDI background music halt bug"\)/, scumm('zoombini_dialogs.cpp'), 'the MIDI halt option\'s name');
+  need(/_\("Hotel Dimensia: Fix MIDI background music halt bug"\)/, scumm('zoombini_dialogs.cpp'), 'the MIDI halt option\'s name');
+  need(/const bool stopMidiAfterDrop = !_vm->getRelInfo\(\)\.isFamily\(ZmbReleaseInfo::kTlcV2\) && !ConfMan\.getBool\(MohawkMetaEngine_Zoombini::kOptionFixHotelMidiHaltBug\);/, scumm('zoombini_pages/puzzle_hotel.cpp'), 'the halt, not for the 2001 release');
+  if (!/Hotel Dimensia: Fix MIDI background music halt bug/.test(S.ZB_HOTEL_MIDI)) fail('the note on the music halt lacks ScummVM\'s option\'s name as it is now');
 
   // ---- the traits' order --------------------------------------------------------
   const axisEnum = [...need(/enum class TraitAxis : int16 \{([\s\S]*?)\};/, h, 'TraitAxis')[1].matchAll(/k(Feet|Nose|Eyes|Hair)0(\d) = (\d)/g)]

@@ -25,7 +25,8 @@ const S = site();
 const SCUMM = path.join(REF, 'scummvm-zoombini', 'engines', 'mohawk');
 const EXE = path.join(REF, 'zombs-lair', 'HDD', 'ZOOMBINI', 'ZOOMBINI.EXE');
 if (!haveDisc() || !fs.existsSync(SCUMM)) { console.log('SKIP: no reference/disc/DATA or reference/scummvm-zoombini'); process.exit(0); }
-const cpp = fs.readFileSync(path.join(SCUMM, 'zoombini_pages', 'shelter_town.cpp'), 'utf8');
+// The page class's source and its header, which now has most of its constants.
+const cpp = ['shelter_town.cpp', 'shelter_town.h'].map(f => fs.readFileSync(path.join(SCUMM, 'zoombini_pages', f), 'utf8')).join('\n');
 const hdr = fs.readFileSync(path.join(SCUMM, 'zoombini_pages', 'shelter_town.h'), 'utf8');
 const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Error(`could not read ${what} from ScummVM`); return m; };
 
@@ -94,7 +95,7 @@ else {
   const text = fs.readFileSync(path.join(SCUMM, 'zoombini_text.cpp'), 'utf8');
   const table = need(/kV11US_NETextEntries\[\] = \{([\s\S]*?)\n\};/, text, 'kV11US_NETextEntries')[1];
   const plaques = [...table.matchAll(/ZoombiniText::kMemorialHonor\w+, 0x([0-9A-F]+), (\d+)\}/g)].map(m => exe.subarray(parseInt(m[1], 16), parseInt(m[1], 16) + +m[2]).toString('latin1').replace(/\r/g, ' '));
-  const bySlot = need(/kTownMemorialCardTextTypeBySlot\[16\] = \{([^}]*)\}/, cpp, 'kTownMemorialCardTextTypeBySlot')[1].split(',').map(Number);
+  const bySlot = need(/kTownMemorialCardTextTypeBySlot\[16\](?: = )?\{([^}]*)\}/, cpp, 'kTownMemorialCardTextTypeBySlot')[1].split(',').map(Number);
   let n = 0;
   if (plaques.length !== 16) fail(`read ${plaques.length} plaques, not 16`);
   S.ZB_TOWN_REWARDS.forEach((name, slot) => {

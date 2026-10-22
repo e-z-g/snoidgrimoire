@@ -87,7 +87,7 @@ const ZB_HOTEL_LAST_STEP = 12;
 /* Most rooms boarded up at level 3. */
 const ZB_HOTEL_MOST_BOARDED = 8;
 /* ScummVM's reading, not checked in the program. */
-const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped, a bug that ScummVM’s option “Fix ‘Hotel Dimensia’ MIDI background music halt bug” mends; it is on by default, and turned off the music stops as it did.';
+const ZB_HOTEL_MIDI = 'The music stops when a Zoombini is dropped, a bug that ScummVM’s option “Hotel Dimensia: Fix MIDI background music halt bug” mends; it is on by default, and turned off the music stops as it did. In ScummVM the music plays on in the 2001 release whatever the option.';
 
 /* How many of the five values of each trait (in ZB_HOTEL_AXES order) the
    band shows: the program's COUNTBODYPARTS. */
