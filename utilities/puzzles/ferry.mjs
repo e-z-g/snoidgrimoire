@@ -17,19 +17,19 @@
 //     each member once at most, the marks name the seats, and a band no
 //     larger than the raft's largest set of seats with no two neighbors
 //     is always seated whole.
-export default function check({ S, fail, say, scumm, exe, need, bands, find, open }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find, open }) {
   const h = scumm('zoombini_pages/puzzle_ferry.h'), cpp = scumm('zoombini_pages/puzzle_ferry.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('FERRY');
 
   // ---- the raft for a level and band -----------------------------------------
-  const base = Number(need(/kResScrb1510_SeatingBase = (\d+),/, h, 'kResScrb1510_SeatingBase')[1]);
-  const per = Number(need(/kResScrb1510_SeatingBase \+ \(\(_puzzleLevel - 1\) \* (\d+)\)/, cpp, 'the raft\'s script')[1]);
-  const [lo, hi, dflt] = need(/if \(zmbCount < (\d+) \|\| (\d+) < zmbCount\)\s*zmbCount = (\d+);/, cpp, 'the band\'s clamp').slice(1).map(Number);
-  need(/_seatLayoutScrbId = scrbBase \+ \(zmbCount - 16\);/, cpp, 'the raft\'s script');
+  const base = Number(scummMatch(/kResScrb1510_SeatingBase = (\d+),/, h, 'kResScrb1510_SeatingBase')[1]);
+  const per = Number(scummMatch(/kResScrb1510_SeatingBase \+ \(\(_puzzleLevel - 1\) \* (\d+)\)/, cpp, 'the raft\'s script')[1]);
+  const [lo, hi, dflt] = scummMatch(/if \(zmbCount < (\d+) \|\| (\d+) < zmbCount\)\s*zmbCount = (\d+);/, cpp, 'the band\'s clamp').slice(1).map(Number);
+  scummMatch(/_seatLayoutScrbId = scrbBase \+ \(zmbCount - 16\);/, cpp, 'the raft\'s script');
   for (let level = 1; level <= 4; level++) for (let n = 1; n <= 22; n++) {
-    const want = base + per * (level - 1) + ((n < lo || n > hi ? dflt : n) - 16);
-    if (S.zbFerryRaftScript(level, n) !== want) { fail(`level ${level}, band ${n}, raft ${S.zbFerryRaftScript(level, n)}, ScummVM ${want}`); break; }
+    const expected = base + per * (level - 1) + ((n < lo || n > hi ? dflt : n) - 16);
+    if (S.zbFerryRaftScript(level, n) !== expected) { fail(`level ${level}, band ${n}, raft ${S.zbFerryRaftScript(level, n)}, ScummVM ${expected}`); break; }
   }
   // ZOOMBINI.EXE: add si, 1510 / 1515 / 1520 / 1525, each followed by a short jump.
   const adds = [0, 1, 2, 3].map(l => base + per * l);
@@ -43,11 +43,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   // Read again here, with the full picture decoder and a separate reading
   // of the scripts, and compared with what the port reads.
   const arc = open('FERRY');
-  const sheetId = Number(need(/kResBitmapShape1500_Seats = (\d+),/, h, 'kResBitmapShape1500_Seats')[1]);
-  const seatBase = Number(need(/kResScrb1500_SeatBase = (\d+),/, h, 'kResScrb1500_SeatBase')[1]);
+  const sheetId = Number(scummMatch(/kResBitmapShape1500_Seats = (\d+),/, h, 'kResBitmapShape1500_Seats')[1]);
+  const seatBase = Number(scummMatch(/kResScrb1500_SeatBase = (\d+),/, h, 'kResScrb1500_SeatBase')[1]);
   if (S.ZB_FERRY_SEAT.sheet !== sheetId || S.ZB_FERRY_SEAT.scripts !== seatBase) fail(`the port draws seats from tBMP ${S.ZB_FERRY_SEAT.sheet} by SCRB ${S.ZB_FERRY_SEAT.scripts}, ScummVM ${sheetId} by ${seatBase}`);
-  const [shapeLo, shapeHi] = need(/if \((\d+) <= shapeId && shapeId <= (\d+) && \(_drawOnRegCount - seatCountBefore\) < (\d+)\)/, cpp, 'the seats\' shapes').slice(1, 3).map(Number);
-  const cap = Number(need(/shapeId <= \d+ && \(_drawOnRegCount - seatCountBefore\) < (\d+)\)/, cpp, 'the most seats')[1]);
+  const [shapeLo, shapeHi] = scummMatch(/if \((\d+) <= shapeId && shapeId <= (\d+) && \(_drawOnRegCount - seatCountBefore\) < (\d+)\)/, cpp, 'the seats\' shapes').slice(1, 3).map(Number);
+  const cap = Number(scummMatch(/shapeId <= \d+ && \(_drawOnRegCount - seatCountBefore\) < (\d+)\)/, cpp, 'the most seats')[1]);
   if (!same(S.ZB_FERRY_SEAT.shapes, [shapeLo, shapeHi]) || S.ZB_FERRY_SEAT.most !== cap) fail(`the port's seats are shapes ${S.ZB_FERRY_SEAT.shapes}, at most ${S.ZB_FERRY_SEAT.most}. ScummVM's ${shapeLo}-${shapeHi}, at most ${cap}`);
   const frames = S.decodeBitmapResource(arc.get('tBMP', sheetId)).frames;
   const seatScripts = [];
@@ -57,10 +57,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   for (let l = 0; l < 4; l++) for (let n = lo; n <= hi; n++) scripts.push([l + 1, base + per * l + n - 16]);
   const read = new Map();
   for (const [, id] of scripts) {
-    const theirs = S.parseScript(arc.get('SCRB', id), 'SCRB').frames[0].records.filter(r => r.shape >= shapeLo && r.shape <= shapeHi).slice(0, cap)
+    const seatRects = S.parseScript(arc.get('SCRB', id), 'SCRB').frames[0].records.filter(r => r.shape >= shapeLo && r.shape <= shapeHi).slice(0, cap)
       .map(r => ({ x: r.x, y: r.y, w: frames[r.shape - 1].width, h: frames[r.shape - 1].height }));
-    read.set(id, theirs);
-    if (!same(S.zbFerryRaft(arc, id), theirs)) fail(`the port's reading of FERRY SCRB ${id} is not the seats' corners and pictures`);
+    read.set(id, seatRects);
+    if (!same(S.zbFerryRaft(arc, id), seatRects)) fail(`the port's reading of FERRY SCRB ${id} is not the seats' corners and pictures`);
   }
   const sizes = [...new Set([...read.values()].flat().map(s => `${s.w} x ${s.h}`))];
   // Without the rafts the deal throws, naming what is missing.
@@ -68,18 +68,18 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   try { P.deal(1, bands(1, 1)[0].band, S.zbRandom(1), {}, bare); fail('a FERRY without SCRB 1510 deals anyway'); } catch (e) { if (!/SCRB 1510/.test(e.message)) fail(`a FERRY without SCRB 1510 fails with "${e.message}"`); }
 
   // ---- the neighbors, from ScummVM's rectangles --------------------------------------
-  const less = Number(need(/const int16 halfHeight = MAX<int16>\(0, \(rectK\.bottom - rectK\.top\) \/ 2 - (\d+)\);/, cpp, 'halfHeight')[1]);
+  const less = Number(scummMatch(/const int16 halfHeight = MAX<int16>\(0, \(rectK\.bottom - rectK\.top\) \/ 2 - (\d+)\);/, cpp, 'halfHeight')[1]);
   const coeff = t => t === '' ? 0 : t === ' + halfHeight' ? 1 : t === ' - halfHeight' ? -1 : NaN;
   const tests = [...cpp.matchAll(/Common::Rect expandedK\(rectK\.left((?: [+-] halfHeight)?), rectK\.top((?: [+-] halfHeight)?), rectK\.right((?: [+-] halfHeight)?), rectK\.bottom((?: [+-] halfHeight)?)\);/g)].map(m => m.slice(1, 5).map(coeff));
   if (tests.length !== 3 || tests.flat().some(Number.isNaN)) fail(`read ${tests.length} stretched rectangles from buildAdjacencyMatrix, not 3`);
-  need(/if \(!adjacent && kPuzzleLevel4 <= _puzzleLevel\) \{\s*Common::Rect expandedK/, cpp, 'the third rectangle\'s level');
-  const most = Number(need(/if \(adjacent && slotCount < (\d+)\)/, cpp, 'the most neighbors')[1]);
-  if (most !== S.ZB_FERRY_SEAT.neighbours) fail(`ScummVM has ${most} neighbors a seat, the port ${S.ZB_FERRY_SEAT.neighbours}`);
+  scummMatch(/if \(!adjacent && kPuzzleLevel4 <= _puzzleLevel\) \{\s*Common::Rect expandedK/, cpp, 'the third rectangle\'s level');
+  const most = Number(scummMatch(/if \(adjacent && slotCount < (\d+)\)/, cpp, 'the most neighbors')[1]);
+  if (most !== S.ZB_FERRY_SEAT.neighbors) fail(`ScummVM has ${most} neighbors a seat, the port ${S.ZB_FERRY_SEAT.neighbors}`);
   const edges = [];
   for (const [level, id] of scripts) {
     const seats = read.get(id);
-    const mine = S.zbFerryNeighbours(S.zbFerryRaft(arc, id), level);
-    const theirs = seats.map((K, k) => {
+    const siteNeighbors = S.zbFerryNeighbors(S.zbFerryRaft(arc, id), level);
+    const scummNeighbors = seats.map((K, k) => {
       const out = [], hh = Math.max(0, Math.trunc(K.h / 2) - less);
       seats.forEach((M, m) => {
         if (m === k || out.length >= most) return;
@@ -91,21 +91,21 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       });
       return out;
     });
-    if (!same(mine, theirs)) fail(`SCRB ${id}, level ${level}, the port's neighbors are not ScummVM's`);
-    if (mine.some((ns, k) => ns.some(m => !mine[m].includes(k)))) fail(`SCRB ${id}: a seat is next to one that is not next to it`);
-    if (id === base + per * (level - 1)) edges.push(mine.flat().length / 2);
+    if (!same(siteNeighbors, scummNeighbors)) fail(`SCRB ${id}, level ${level}, the port's neighbors are not ScummVM's`);
+    if (siteNeighbors.some((ns, k) => ns.some(m => !siteNeighbors[m].includes(k)))) fail(`SCRB ${id}: a seat is next to one that is not next to it`);
+    if (id === base + per * (level - 1)) edges.push(siteNeighbors.flat().length / 2);
   }
 
   // ---- the rule and the chances ------------------------------------------------------
-  const judge = need(/bool ZoombiniPuzzleFerry::testAdjacentMatch\([\s\S]*?\n\}\n/, cpp, 'testAdjacentMatch')[0];
-  need(/for \(int16 slot = 0; slot < 8 && valid; slot\+\+\)[\s\S]*?valid = false;\s*for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\) \{\s*if \(droppedSnoid->_trait\[traitIdx\] == neighborSnoid->_trait\[traitIdx\]\)/, judge, 'every neighbor sharing a trait');
-  need(/ZmbChanceInfo ZoombiniPuzzleFerry::debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kInfinite/, cpp, 'debugGetChances');
+  const judge = scummMatch(/bool ZoombiniPuzzleFerry::testAdjacentMatch\([\s\S]*?\n\}\n/, cpp, 'testAdjacentMatch')[0];
+  scummMatch(/for \(int16 slot = 0; slot < 8 && valid; slot\+\+\)[\s\S]*?valid = false;\s*for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\) \{\s*if \(droppedSnoid->_trait\[traitIdx\] == neighborSnoid->_trait\[traitIdx\]\)/, judge, 'every neighbor sharing a trait');
+  scummMatch(/ZmbChanceInfo ZoombiniPuzzleFerry::debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kInfinite/, cpp, 'debugGetChances');
   if (!/As many tries as it takes/.test(P.levels[0].chances)) fail('the chances do not say there is no limit');
 
   // ---- deals -------------------------------------------------------------------------
   // The most seats with no two neighbors: any band that size or smaller sits whole.
   const alpha = [0, 1, 2, 3].map(l => {
-    const nb = S.zbFerryNeighbours(S.zbFerryRaft(arc, base + per * l), l + 1), mask = nb.map(ns => ns.reduce((a, m) => a | 1 << m, 0));
+    const nb = S.zbFerryNeighbors(S.zbFerryRaft(arc, base + per * l), l + 1), mask = nb.map(ns => ns.reduce((a, m) => a | 1 << m, 0));
     let best = 0;
     for (let set = 0; set < 1 << nb.length; set++) {
       let ok = true, c = 0;
@@ -152,35 +152,35 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   let proofs = 0, settled = 0, noes = 0, pbad = null;
   const byRule = (band, nb, seating) => seating.every((z, k) => z < 0 || nb[k].every(m => seating[m] < 0 || share(band[z], band[seating[m]])));
   const pfail = m => { if (!pbad) pbad = m; };
-  const proofOk = (level, band, nb, want, m) => {
+  const proofOk = (level, band, nb, toSeat, m) => {
     if (m.answer === 'yes') {
       const z = m.seating.filter(x => x >= 0);
-      if (z.length < want || new Set(z).size !== z.length || z.some(x => x >= band.length) || !byRule(band, nb, m.seating)) pfail(`level ${level}: zbFerryMatch's seating of ${want} of ${band.length} breaks the rule or the count`);
+      if (z.length < toSeat || new Set(z).size !== z.length || z.some(x => x >= band.length) || !byRule(band, nb, m.seating)) pfail(`level ${level}: zbFerryMatch's seating of ${toSeat} of ${band.length} breaks the rule or the count`);
     } else if (m.seating) pfail(`level ${level}: zbFerryMatch answers ${m.answer} with a seating`);
   };
   for (let level = 1; level <= 4 && !pbad; level++) {
     for (const seats of [16, 20]) {
-      const nb = S.zbFerryNeighbours(S.zbFerryRaft(arc, base + per * (level - 1) + seats - 16), level);
+      const nb = S.zbFerryNeighbors(S.zbFerryRaft(arc, base + per * (level - 1) + seats - 16), level);
       const some = bands(8, 700 + level * 10 + seats, seats === 16 ? [16, 14, 10, 6] : [20, 17]);
       /* and each of those with its first Zoombini made one who shares nothing (trait values 0, which no other has) */
       for (const { band, loner } of [...some, ...some.map(({ band }) => ({ band: [{ hair: 0, eyes: 0, nose: 0, feet: 0 }, ...band.slice(1)], loner: true }))]) {
-        for (let want = band.length; want >= band.length - 2 && !pbad; want--) {
-          const m = S.zbFerryMatch(band, nb, want, Date.now() + 5000);
-          proofOk(level, band, nb, want, m);
+        for (let toSeat = band.length; toSeat >= band.length - 2 && !pbad; toSeat--) {
+          const m = S.zbFerryMatch(band, nb, toSeat, Date.now() + 5000);
+          proofOk(level, band, nb, toSeat, m);
           proofs++;
           /* A raft filled with one who shares nothing: every seat has a neighbor, so no. */
-          if (loner && want === nb.length && m.answer !== 'no') pfail(`level ${level}: ${want} on ${nb.length} seats, one sharing nothing, and zbFerryMatch answers ${m.answer}`);
+          if (loner && toSeat === nb.length && m.answer !== 'no') pfail(`level ${level}: ${toSeat} on ${nb.length} seats, one sharing nothing, and zbFerryMatch answers ${m.answer}`);
           let found = false;
-          const r = S.zbFerryEngine(band, nb).run(want, Infinity, Date.now() + 300, () => { found = true; return true; });
+          const r = S.zbFerryEngine(band, nb).run(toSeat, Infinity, Date.now() + 300, () => { found = true; return true; });
           if (r.gaveUp) continue;
           settled++;
           if (!found) noes++;
-          if (m.answer !== (found ? 'yes' : 'no')) pfail(`level ${level}, ${seats} seats, ${want} of a band of ${band.length} ${found ? 'can' : 'cannot'} sit, zbFerryMatch answers ${m.answer}`);
+          if (m.answer !== (found ? 'yes' : 'no')) pfail(`level ${level}, ${seats} seats, ${toSeat} of a band of ${band.length} ${found ? 'can' : 'cannot'} sit, zbFerryMatch answers ${m.answer}`);
         }
       }
     }
   }
-  const sixteen = [1, 2, 3, 4].map(level => S.zbFerryNeighbours(S.zbFerryRaft(arc, base + per * (level - 1)), level));
+  const sixteen = [1, 2, 3, 4].map(level => S.zbFerryNeighbors(S.zbFerryRaft(arc, base + per * (level - 1)), level));
   const splitBand = [];
   for (let v = 0; splitBand.length < 8; v++) splitBand.push({ hair: 1 + v % 3, eyes: 1 + (v / 3 | 0) % 3, nose: 1 + (v / 9 | 0) % 3, feet: 1 + (v + 1) % 3 });
   for (let v = 0; splitBand.length < 16; v++) splitBand.push({ hair: 4 + (v & 1), eyes: 4 + (v >> 1 & 1), nose: 4 + (v >> 2 & 1), feet: 4 });
@@ -194,7 +194,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     if (whole.answer !== 'no' || less.answer !== 'yes') pfail(`level 4, seed ${seed}, zbFerryMatch answers ${whole.answer} to 16 and ${less.answer} to 15, where 15 is the most`);
   }
   if (pbad) fail(pbad);
-  else say(`zbFerryMatch: ${proofs} answers, ${settled} of them also settled by the plain search with the same answer (${noes} that cannot sit), every seating by the rule, no to every raft filled with one sharing nothing. The split band cannot sit whole at any level, seeds 1026 and 1051 seat 15 at level 4 and not 16`);
+  else print(`zbFerryMatch: ${proofs} answers, ${settled} of them also settled by the plain search with the same answer (${noes} that cannot sit), every seating by the rule, no to every raft filled with one sharing nothing. The split band cannot sit whole at any level, seeds 1026 and 1051 seat 15 at level 4 and not 16`);
 
   // ---- the workbench -----------------------------------------------------------
   // Nothing to choose: the form is a note and gives back nothing. Each
@@ -254,7 +254,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   for (let level = 1; level <= 4 && !wb; level++) {
     const full = S.zbFerryRaft(arc, base + per * (level - 1));
     for (const [size, members] of [[6, 5], [7, 6], [7, 7]]) {
-      const seats = full.slice(0, size), nb = S.zbFerryNeighbours(seats, level);
+      const seats = full.slice(0, size), nb = S.zbFerryNeighbors(seats, level);
       const rnd = S.zbRandom(size * 31 + members + level);
       for (let trial = 0; trial < 4; trial++) {
         const band = S.zbDealBand(rnd, members).map((z, i) => i < trial ? loner(i + 1) : z);
@@ -290,6 +290,6 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (P.strategy) fail('Captain Cajun’s Ferryboat hides nothing from the player, and has a strategy');
   if (worstMs > 1000) fail(`a solve took ${worstMs} ms on a budget of 500`);
   if (wb) fail(wb);
-  say(`${solved} solves read back and seated by the rule (bands of 16 as level:most/ways ${summary.join(' ')}. The slowest ${worstMs} ms), ${lines} full lines counted, ${brute} small rafts where every seating was tried match (${bruteShort} of them unable to seat everyone)`);
-  say(`rafts SCRB ${scripts[0][1]}-${scripts[scripts.length - 1][1]} read as ScummVM places them (seats ${sizes.join(', ')}. The sixteen-seat ones' ${adds.join(', ')} added at 0x${(at[0] || 0).toString(16)} in ZOOMBINI.EXE), ${edges.join(', ')} pairs of neighbors by ScummVM's rectangles. ${dealt} deals seated by the rule, ${whole} whole (${unproven} where the search gave up on a larger seating)`);
+  print(`${solved} solves read back and seated by the rule (bands of 16 as level:most/ways ${summary.join(' ')}. The slowest ${worstMs} ms), ${lines} full lines counted, ${brute} small rafts where every seating was tried match (${bruteShort} of them unable to seat everyone)`);
+  print(`rafts SCRB ${scripts[0][1]}-${scripts[scripts.length - 1][1]} read as ScummVM places them (seats ${sizes.join(', ')}. The sixteen-seat ones' ${adds.join(', ')} added at 0x${(at[0] || 0).toString(16)} in ZOOMBINI.EXE), ${edges.join(', ')} pairs of neighbors by ScummVM's rectangles. ${dealt} deals seated by the rule, ${whole} whole (${unproven} where the search gave up on a larger seating)`);
 }

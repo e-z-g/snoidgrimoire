@@ -103,16 +103,16 @@ const ZB_SNOID_ICONS = ['hair', 'eyes', 'feet', 'nose'];
 const ZB_SNOID_CACHE = new WeakMap();
 function zbSnoidSheet(arc, kind = 'zoombini') {
   if (!ZB_SNOID_CACHE.has(arc)) ZB_SNOID_CACHE.set(arc, {});
-  const got = ZB_SNOID_CACHE.get(arc);
-  if (!got[kind]) {
+  const sheets = ZB_SNOID_CACHE.get(arc);
+  if (!sheets[kind]) {
     const K = ZB_SNOID_KINDS[kind];
     const d = decodeBitmapResource(arc.get('tBMP', K.sheet));
     const xs = parseRegs(arc.get('REGS', K.regs)), ys = parseRegs(arc.get('REGS', K.regs + 1));
     if (xs.length !== d.frames.length + 1 || ys.length !== d.frames.length + 1) throw new Error(`REGS ${K.regs} and ${K.regs + 1} do not fit tBMP ${K.sheet}'s ${d.frames.length} sprites`);
     const standing = kind === 'zoombini' || kind === 'small' ? parseScript(arc.get('SCRS', ZB_SNOID_STANDING), 'SCRS') : null;
-    got[kind] = { kind, blocks: K.blocks, effects: K.effects || null, frames: d.frames, xs, ys, standing };
+    sheets[kind] = { kind, blocks: K.blocks, effects: K.effects || null, frames: d.frames, xs, ys, standing };
   }
-  return got[kind];
+  return sheets[kind];
 }
 
 /* The sprite of a part at a pose (1-based) facing one way (0) or the other
@@ -186,9 +186,9 @@ function zbSnoidPlacements(sheet, traits, tick, missing = null) {
 /* The trait values a script's feet fit: those whose block has every
    feet pose the script draws (all five for most scripts). */
 function zbSnoidFeetFor(sheet, ticks) {
-  const want = new Set();
-  for (const t of ticks) for (const p of zbSnoidParts(t, sheet.effects)) if (p.part === 'feet') want.add(p.shape);
-  return [1, 2, 3, 4, 5].filter(v => [...want].every(s => zbSnoidFrame('feet', v, s, 0, sheet.blocks) != null));
+  const feetShapes = new Set();
+  for (const t of ticks) for (const p of zbSnoidParts(t, sheet.effects)) if (p.part === 'feet') feetShapes.add(p.shape);
+  return [1, 2, 3, 4, 5].filter(v => [...feetShapes].every(s => zbSnoidFrame('feet', v, s, 0, sheet.blocks) != null));
 }
 /* The feet a script is written for, by its number, where the scripts come
    one for each feet in trait order, or null: ZOOMBINI's walks 105-129

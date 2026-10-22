@@ -21,47 +21,47 @@
 //     and places no fewer than it guarantees.
 import { site, archiveBytes } from '../load.mjs';
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_caves.h'), cpp = scumm('zoombini_pages/puzzle_caves.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('CAVES');
 
   // ---- ScummVM's numbers ---------------------------------------------------
-  const init = need(/void ZoombiniPuzzleCaves::initDifficultyParams\(\) \{([\s\S]*?)\n\}/, cpp, 'initDifficultyParams')[1];
+  const init = scummMatch(/void ZoombiniPuzzleCaves::initDifficultyParams\(\) \{([\s\S]*?)\n\}/, cpp, 'initDifficultyParams')[1];
   const limits = [...init.matchAll(/case kPuzzleLevel(\d):(?:\s*default:)?\s*_mistakeLimit = (\d+);/g)].map(m => [Number(m[1]), Number(m[2])]);
   if (limits.length !== 4 || limits.some(([l, v]) => S.ZB_CAVES_MISTAKES[l - 1] !== v)) fail(`the mistakes allowed are not ScummVM's (${JSON.stringify(limits)})`);
   const words = ['Four', 'Five', 'Six', 'Seven'];
   if (P.levels.some((l, i) => !l.chances.startsWith(`${words[i]} mistakes`))) fail('a level\'s chances do not name its mistakes');
-  need(/_snoidDragEnabled = \(_mistakeCount != _mistakeLimit\);/, cpp, 'placing stopping at the last mistake');
-  need(/return \{ZmbChanceInfo::ZmbChanceType::kMistake, _mistakeLimit, _mistakeCount/, cpp, 'debugGetChances');
-  need(/_ruleTraitCount = \(_puzzleLevel <= kPuzzleLevel2\) \? 1 : 2;/, cpp, 'the traits per level');
-  need(/_firstUsableSeatNumber = CLIP<int16>\(21 - _pageLoadedZmbCount, 1, 20\);/, cpp, 'the first stone');
-  need(/const int16 firstDisplayedSeat = firstSeatNumber - (\d+);/, cpp, 'the debugger\'s stone numbers');
+  scummMatch(/_snoidDragEnabled = \(_mistakeCount != _mistakeLimit\);/, cpp, 'placing stopping at the last mistake');
+  scummMatch(/return \{ZmbChanceInfo::ZmbChanceType::kMistake, _mistakeLimit, _mistakeCount/, cpp, 'debugGetChances');
+  scummMatch(/_ruleTraitCount = \(_puzzleLevel <= kPuzzleLevel2\) \? 1 : 2;/, cpp, 'the traits per level');
+  scummMatch(/_firstUsableSeatNumber = CLIP<int16>\(21 - _pageLoadedZmbCount, 1, 20\);/, cpp, 'the first stone');
+  scummMatch(/const int16 firstDisplayedSeat = firstSeatNumber - (\d+);/, cpp, 'the debugger\'s stone numbers');
   if (S.ZB_CAVES_HIDDEN !== 4 || S.ZB_CAVES_SEATS !== 20) fail('the path is not twenty stones, the first four hidden');
   // Both rows are drawn at every level, and the one-shot is the third kind.
-  const pattern = need(/void ZoombiniPuzzleCaves::initEntranceTraitPattern\(\) \{([\s\S]*?)\n\}/, cpp, 'initEntranceTraitPattern')[1];
+  const pattern = scummMatch(/void ZoombiniPuzzleCaves::initEntranceTraitPattern\(\) \{([\s\S]*?)\n\}/, cpp, 'initEntranceTraitPattern')[1];
   if (!/for \(int ruleRowIdx = 0; ruleRowIdx < 2; ruleRowIdx\+\+\) \{\s*\/\/ Selectable/.test(pattern)) fail('ScummVM no longer draws both rows at every level');
-  const oneShot = Number(need(/if \(_vm->_cavesFirstRuleTraitPending\) \{\s*traitPoolIdx = (\d);/, pattern, 'the one-shot')[1]);
-  const kinds = [...need(/enum TraitKind : byte \{([\s\S]*?)\};/, scumm('zoombini_state.h'), 'TraitKind')[1].matchAll(/kTrait(\w+) = (\d)/g)].map(m => [m[1].toLowerCase(), Number(m[2])]);
+  const oneShot = Number(scummMatch(/if \(_vm->_cavesFirstRuleTraitPending\) \{\s*traitPoolIdx = (\d);/, pattern, 'the one-shot')[1]);
+  const kinds = [...scummMatch(/enum TraitKind : byte \{([\s\S]*?)\};/, scumm('zoombini_state.h'), 'TraitKind')[1].matchAll(/kTrait(\w+) = (\d)/g)].map(m => [m[1].toLowerCase(), Number(m[2])]);
   if (!same(kinds.map(k => k[0]), S.ZB_TRAIT_KINDS) || S.ZB_TRAIT_KINDS[oneShot] !== 'nose') fail(`the one-shot's kind is ${S.ZB_TRAIT_KINDS[oneShot]}, the traits ${JSON.stringify(kinds)}`);
   // The clues.
-  const dist = need(/void ZoombiniPuzzleCaves::distributeEntranceTraits\(\) \{([\s\S]*?)\n\}/, cpp, 'distributeEntranceTraits')[1];
-  need(/case kPuzzleLevel1:[^\n]*\n\s*for \(int clueSlot = 1; clueSlot < 6; clueSlot\+\+\)\s*_ruleGlyphVisibility\[clueSlot\] = 1;/, dist, 'level 1\'s clues');
+  const dist = scummMatch(/void ZoombiniPuzzleCaves::distributeEntranceTraits\(\) \{([\s\S]*?)\n\}/, cpp, 'distributeEntranceTraits')[1];
+  scummMatch(/case kPuzzleLevel1:[^\n]*\n\s*for \(int clueSlot = 1; clueSlot < 6; clueSlot\+\+\)\s*_ruleGlyphVisibility\[clueSlot\] = 1;/, dist, 'level 1\'s clues');
   if ([...dist.matchAll(/int16 numActive = _vm->_rnd->getRandomNumber\(2, 2\);/g)].length !== 2) fail('the clues are no longer two a row');
-  need(/case kPuzzleLevel3: \{[\s\S]*?for \(int clueRowIdx = 0; clueRowIdx < 2; clueRowIdx\+\+\)/, dist, 'level 3\'s two rows');
-  need(/default: \/\/ Level 4 leaves all entrances inactive\./, dist, 'level 4\'s bare wall');
+  scummMatch(/case kPuzzleLevel3: \{[\s\S]*?for \(int clueRowIdx = 0; clueRowIdx < 2; clueRowIdx\+\+\)/, dist, 'level 3\'s two rows');
+  scummMatch(/default: \/\/ Level 4 leaves all entrances inactive\./, dist, 'level 4\'s bare wall');
   const shown = [5, 2, 4, 0];
   // The music.
-  need(/if \(routeLevel < 3 \|\| ConfMan\.getBool\(MohawkMetaEngine_Zoombini::kOptionFixCavesL4MidiSilentBug\)\)/, cpp, 'the level 4 music');
-  const base = Number(need(/kResMidi30025_CavesBgmBase = (\d+),/, h, 'the tunes\' base')[1]);
+  scummMatch(/if \(routeLevel < 3 \|\| ConfMan\.getBool\(MohawkMetaEngine_Zoombini::kOptionFixCavesL4MidiSilentBug\)\)/, cpp, 'the level 4 music');
+  const base = Number(scummMatch(/kResMidi30025_CavesBgmBase = (\d+),/, h, 'the tunes\' base')[1]);
   const M = site({ files: ['js/mac-bytes.js', 'js/zb-mohawk.js'] });
   for (const a of ['MIDIMPC', 'MIDIMAC']) if (!M.openMohawk(archiveBytes(a)).has('tMID', base + 3)) fail(`${a} has no tMID ${base + 3}`);
   if (!P.levels[3].notes.some(n => n.includes(`tMID ${base + 3}`))) fail('level 4\'s notes do not name its tune');
 
   // ---- places ------------------------------------------------------------
   const points = body => [...body.matchAll(/Common::Point\((-?\d+), (-?\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
-  const seats = points(need(/kSeatEntrancePositions\[20\]\{([\s\S]*?)\};/, h, 'kSeatEntrancePositions')[1]);
-  const numbers = name => [...need(new RegExp(`${name}\\[11\\]\\{([\\s\\S]*?)\\};`), h, name)[1].matchAll(/-?\d+/g)].map(Number);
+  const seats = points(scummMatch(/kSeatEntrancePositions\[20\]\{([\s\S]*?)\};/, h, 'kSeatEntrancePositions')[1]);
+  const numbers = name => [...scummMatch(new RegExp(`${name}\\[11\\]\\{([\\s\\S]*?)\\};`), h, name)[1].matchAll(/-?\d+/g)].map(Number);
   const gx = numbers('kRuleGlyphScreenX'), gy = numbers('kRuleGlyphScreenY');
   const le16 = v => [v & 255, v >> 8 & 255];
   const atSeats = find(exe, seats.flatMap(([x, y]) => [...le16(x), ...le16(y)]));
@@ -341,8 +341,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (!short) fail('no band came out short with the wall unseen, so the brute force held nothing but the whole band');
   if (slowest > 2500) fail(`a strategy took ${slowest} ms`);
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
-  say(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends. Slowest ${slowest} ms, a step ${slowNext} ms), ${played} played against the dealt rule, the puzzle answering every move as the judge does`);
+  print(`workbench: ${trips} forms given back, ${solved} known answers each Zoombini on a stone it fits, ${brutes} exact strategies matched by brute force (${short} short of the band), ${walks} strategies walked (${ends} ends. Slowest ${slowest} ms, a step ${slowNext} ms), ${played} played against the dealt rule, the puzzle answering every move as the judge does`);
 
-  say(`mistakes ${S.ZB_CAVES_MISTAKES.join(', ')} as ScummVM's. Stones and clues in ZOOMBINI.EXE at 0x${(atSeats[0] || 0).toString(16)} and 0x${(atGlyphs[0] || 0).toString(16)}; `
+  print(`mistakes ${S.ZB_CAVES_MISTAKES.join(', ')} as ScummVM's. Stones and clues in ZOOMBINI.EXE at 0x${(atSeats[0] || 0).toString(16)} and 0x${(atGlyphs[0] || 0).toString(16)}; `
     + `tMID ${base + 3} in both MIDI archives. ${dealt} deals judged, ${runs} runs of stones each holding exactly its Zoombinis`);
 }

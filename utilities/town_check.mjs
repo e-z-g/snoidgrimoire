@@ -29,25 +29,25 @@ if (!haveDisc() || !fs.existsSync(SCUMM)) { console.log('SKIP: no reference/disc
 // The page class's source and its header, which now has most of its constants.
 const cpp = ['shelter_town.cpp', 'shelter_town.h'].map(f => fs.readFileSync(path.join(SCUMM, 'zoombini_pages', f), 'utf8')).join('\n');
 const hdr = fs.readFileSync(path.join(SCUMM, 'zoombini_pages', 'shelter_town.h'), 'utf8');
-const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Error(`could not read ${what} from ScummVM`); return m; };
+const scummMatch = (re, text, what) => { const m = re.exec(text); if (!m) throw new Error(`could not read ${what} from ScummVM`); return m; };
 
 // ---- the rules, against shelter_town.cpp --------------------------------
 {
-  const d = need(/density = (\d+) \* static_cast<int32>\(population\) \/ (\d+) \+ (\d+);[\s\S]*?MIN<int32>\(density, (\d+)\) \+ (\d+)\)/, cpp, 'calculatePopulationDensity');
+  const d = scummMatch(/density = (\d+) \* static_cast<int32>\(population\) \/ (\d+) \+ (\d+);[\s\S]*?MIN<int32>\(density, (\d+)\) \+ (\d+)\)/, cpp, 'calculatePopulationDensity');
   const [k, total, plus, cap, base] = d.slice(1).map(Number);
-  const i = need(/populationAfterFirstTwenty = f\._zmbStoredTownCount - (\d+);\s*populationAfterFirstTwenty = CLIP<int16>\(populationAfterFirstTwenty, (\d+), (\d+)\);\s*_inhabitantCount = CLIP<int16>\(populationAfterFirstTwenty \/ (\d+), (\d+), (\d+)\);/, cpp, 'the inhabitant count');
+  const i = scummMatch(/populationAfterFirstTwenty = f\._zmbStoredTownCount - (\d+);\s*populationAfterFirstTwenty = CLIP<int16>\(populationAfterFirstTwenty, (\d+), (\d+)\);\s*_inhabitantCount = CLIP<int16>\(populationAfterFirstTwenty \/ (\d+), (\d+), (\d+)\);/, cpp, 'the inhabitant count');
   const [first, lo, hi, per, min, max] = i.slice(1).map(Number);
   let bad = 0;
   for (let p = 0; p <= 625; p++) {
-    const want = Math.min(Math.trunc(k * p / total) + plus, cap) + base;
-    if (S.zbTownDensity(p) !== want) { if (bad++ < 3) fail(`density at ${p} is ${S.zbTownDensity(p)}, ScummVM's ${want}`); }
+    const expected = Math.min(Math.trunc(k * p / total) + plus, cap) + base;
+    if (S.zbTownDensity(p) !== expected) { if (bad++ < 3) fail(`density at ${p} is ${S.zbTownDensity(p)}, ScummVM's ${expected}`); }
     const inh = Math.min(max, Math.max(min, Math.trunc(Math.min(hi, Math.max(lo, p - first)) / per)));
     if (S.zbTownInhabitants(p) !== inh) { if (bad++ < 3) fail(`inhabitants at ${p} are ${S.zbTownInhabitants(p)}, ScummVM's ${inh}`); }
   }
   if (total !== S.ZB_TOWN_PEOPLE) fail(`the town has room for ${S.ZB_TOWN_PEOPLE}, ScummVM ${total}`);
   if (!bad) console.log(`rules: density and inhabitants as ScummVM's for all 626 populations (density ${S.zbTownDensity(0)} to ${S.zbTownDensity(625)})`);
 
-  const clk = need(/int16 xPos = \(scrollCol == 1\) \? (\d+) : (\d+);[\s\S]*?hotspots\[0\]\._y = (\d+);/, cpp, 'the clock\'s place');
+  const clk = scummMatch(/int16 xPos = \(scrollCol == 1\) \? (\d+) : (\d+);[\s\S]*?hotspots\[0\]\._y = (\d+);/, cpp, 'the clock\'s place');
   const [x1, x2, y] = clk.slice(1).map(Number);
   const w = S.zbTownWorld(S.openMohawk(archiveBytes('TOWN')));
   // A pixel apart from the two columns, as the layers' things are.
@@ -76,7 +76,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
       handsFrom = `its hands for every minute of the day as ZOOMBINI.EXE's (time read at file offset 0x${read[0].index.toString(16)})`;
     }
   }
-  const slot = +need(/kTownClockTowerMemorialSlot = (\d+);/, cpp, 'the clock tower\'s slot')[1];
+  const slot = +scummMatch(/kTownClockTowerMemorialSlot = (\d+);/, cpp, 'the clock tower\'s slot')[1];
   if (slot !== S.ZB_TOWN_CLOCK_SLOT) fail(`the clock tower is slot ${S.ZB_TOWN_CLOCK_SLOT} here, ${slot} in ScummVM`);
   if (!hands) console.log(`the clock: at ${w.clock.x}, ${w.clock.y}, ${handsFrom}, slot ${slot}`);
 
@@ -98,7 +98,7 @@ const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Er
       }
     });
   }
-  const table = [...need(/kInhabitantScrbTable\[16\]\{([\s\S]*?)\};/, hdr, 'kInhabitantScrbTable')[1].matchAll(/(\d+)/g)].map(m => +m[1]);
+  const table = [...scummMatch(/kInhabitantScrbTable\[16\]\{([\s\S]*?)\};/, hdr, 'kInhabitantScrbTable')[1].matchAll(/(\d+)/g)].map(m => +m[1]);
   const scripts = [...new Set(table)].sort((a, b) => a - b);
   if (scripts.join() !== w.inhabitants.map(i => i.script).join()) fail(`the inhabitants are SCRB ${w.inhabitants.map(i => i.script).join(',')}. ScummVM's table has ${scripts.join(',')}`);
   for (const id of [3000, 3001, 3002, 3003]) if (!arc.has('\0SND', id)) fail(`TOWN has no SND ${id}`);
@@ -110,9 +110,9 @@ if (!fs.existsSync(EXE)) console.log('SKIP names: no ' + path.relative(process.c
 else {
   const exe = fs.readFileSync(EXE);
   const text = fs.readFileSync(path.join(SCUMM, 'zoombini_text.cpp'), 'utf8');
-  const table = need(/kV11US_NETextEntries\[\] = \{([\s\S]*?)\n\};/, text, 'kV11US_NETextEntries')[1];
+  const table = scummMatch(/kV11US_NETextEntries\[\] = \{([\s\S]*?)\n\};/, text, 'kV11US_NETextEntries')[1];
   const plaques = [...table.matchAll(/ZoombiniText::kMemorialHonor\w+, 0x([0-9A-F]+), (\d+)\}/g)].map(m => exe.subarray(parseInt(m[1], 16), parseInt(m[1], 16) + +m[2]).toString('latin1').replace(/\r/g, ' '));
-  const bySlot = need(/kTownMemorialCardTextTypeBySlot\[16\](?: = )?\{([^}]*)\}/, cpp, 'kTownMemorialCardTextTypeBySlot')[1].split(',').map(Number);
+  const bySlot = scummMatch(/kTownMemorialCardTextTypeBySlot\[16\](?: = )?\{([^}]*)\}/, cpp, 'kTownMemorialCardTextTypeBySlot')[1].split(',').map(Number);
   let n = 0;
   if (plaques.length !== 16) fail(`read ${plaques.length} plaques, not 16`);
   S.ZB_TOWN_REWARDS.forEach((name, slot) => {

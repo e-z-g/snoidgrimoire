@@ -4,7 +4,7 @@
    Cythera shipped as one file: "Cythera Installer", an application built with
    MindVision's Installer VISE 3.6. Its data fork is an `SVCT` archive holding
    the whole install tree -- the game, its data file, the Combat AI scripts,
-   the documentation, the licence, the InputSprocket drivers -- with both forks
+   the documentation, the license, the InputSprocket drivers -- with both forks
    of every file. `parseViseArchive()` reads that catalog and `viseExtract()`
    gives back a file's two forks. Nothing here depends on Cythera: it is the
    installer's format, and a MacBinary of any VISE 3 installer opens the same
@@ -18,7 +18,7 @@
    `src/game/vise.rs` in ratlizard/wolflizard (GPL-3.0-or-later), which in turn
    credits ScummVM's `common/compression/vise.cpp` for the table. The
    DelvTechWiki page on the installer (delvmod/wiki/) documents the same
-   catalog fields from the community side, and identified the CRC.
+   catalog fields from the community side and identified the CRC.
 
    Three things were established here, against the 1.0.4 installer, and are
    not in either source:
@@ -315,7 +315,7 @@ function looksLikeVise(bytes) {
  * each decoded stream on the archive, so the nine files that share one
  * stream cost one inflate between them. */
 function parseViseArchive(bytes) {
-  if (!looksLikeVise(bytes)) throw new Error('not an Installer VISE archive: no SVCT signature');
+  if (!looksLikeVise(bytes)) throw new Error('not an Installer VISE archive, since it has no SVCT signature');
   const version = u32be(bytes, 16);
   const versionName = VISE_VERSIONS[version];
   if (!versionName) throw new Error('unsupported Installer VISE archive version 0x' + version.toString(16));
@@ -332,7 +332,7 @@ function parseViseArchive(bytes) {
     if (fourcc(bytes, cursor) !== 'PACK') throw new Error('extended catalog without its PACK prefix');
     cursor += VISE_EXTENDED_CATALOG_PREFIX_LEN;
   }
-  const need = (n, what) => {
+  const requireBytes = (n, what) => {
     if (cursor + n > bytes.length) throw new Error('catalog truncated in ' + what);
   };
 
@@ -340,11 +340,11 @@ function parseViseArchive(bytes) {
   const dirById = new Map();
   const entries = [];
   for (let index = 0; index < entryCount; index++) {
-    need(4, 'entry ' + index);
+    requireBytes(4, 'entry ' + index);
     const magic = fourcc(bytes, cursor);
     cursor += 4;
     if (magic === 'DVCT') {
-      need(VISE_DIRECTORY_RECORD_LEN, 'directory ' + index);
+      requireBytes(VISE_DIRECTORY_RECORD_LEN, 'directory ' + index);
       const rec = cursor;
       const id = u32be(bytes, rec + 24);
       const parentId = u32be(bytes, rec + 28);
@@ -352,7 +352,7 @@ function parseViseArchive(bytes) {
       cursor += VISE_DIRECTORY_RECORD_LEN;
       if (version === 0x80010300) cursor += 6;
       else if (extended) cursor += VISE_EXTENDED_DIRECTORY_SUFFIX_LEN;
-      need(nameLen, 'directory name ' + index);
+      requireBytes(nameLen, 'directory name ' + index);
       const name = decodeMacRoman(bytes.subarray(cursor, cursor + nameLen));
       cursor += nameLen;
       const parent = dirById.get(parentId);
@@ -360,7 +360,7 @@ function parseViseArchive(bytes) {
       dirs.push(dir);
       dirById.set(id, dir);
     } else if (magic === 'FVCT') {
-      need(VISE_FILE_RECORD_LEN, 'file ' + index);
+      requireBytes(VISE_FILE_RECORD_LEN, 'file ' + index);
       const rec = cursor;
       const type = fourcc(bytes, rec + 40), creator = fourcc(bytes, rec + 44);
       const finderFlags = u16be(bytes, rec + 48);
@@ -376,7 +376,7 @@ function parseViseArchive(bytes) {
       const nameLen = bytes[rec + 118];
       cursor += VISE_FILE_RECORD_LEN;
       if (extended) cursor += VISE_EXTENDED_FILE_SUFFIX_LEN;
-      need(nameLen, 'file name ' + index);
+      requireBytes(nameLen, 'file name ' + index);
       const name = decodeMacRoman(bytes.subarray(cursor, cursor + nameLen));
       cursor += nameLen;
       // A grouped file has an offset inside the shared stream for each
@@ -416,7 +416,7 @@ function viseDecodeStream(packed, needed) {
     try { return inflateRaw(plain, needed, align); }
     catch (e) { if (!firstErr) firstErr = e; }
   }
-  throw new Error('stream would not inflate: ' + firstErr.message);
+  throw new Error('stream would not inflate (' + firstErr.message + ')');
 }
 
 /* The decoded bytes of the stream at `offset`, long enough to hold `needed`.

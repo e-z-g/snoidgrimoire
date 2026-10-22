@@ -94,11 +94,11 @@ function zbPlaceRoutes(key) {
    - 1] is the sheet frame for that level, all four drawn at x, y.
    It throws on anything the scripts put where this file does not expect it. */
 function zbJourneyMap(arc) {
-  const need = (tag, id) => { if (!arc.has(tag, id)) throw new Error(`the map has no ${mohawkTagLabel(tag)} ${id}`); return arc.get(tag, id); };
-  const bg = decodeBitmapResource(need('tBMP', 300));
+  const requireResource = (tag, id) => { if (!arc.has(tag, id)) throw new Error(`the map has no ${mohawkTagLabel(tag)} ${id}`); return arc.get(tag, id); };
+  const bg = decodeBitmapResource(requireResource('tBMP', 300));
   if (bg.sheet) throw new Error('the map\'s tBMP 300 is a sprite sheet, not a picture');
-  const palette = parsePaletteResource(need('SHPL', 300), 'SHPL');
-  const sheet = decodeBitmapResource(need('tBMP', 1000));
+  const palette = parsePaletteResource(requireResource('SHPL', 300), 'SHPL');
+  const sheet = decodeBitmapResource(requireResource('tBMP', 1000));
   if (!sheet.sheet) throw new Error('the map\'s tBMP 1000 is not a sprite sheet');
   const frame = shape => {
     const f = sheet.frames[shape - 1];
@@ -106,7 +106,7 @@ function zbJourneyMap(arc) {
     return f;
   };
   const oneFrame = id => {
-    const s = parseScript(need('SCRB', id), 'SCRB');
+    const s = parseScript(requireResource('SCRB', id), 'SCRB');
     if (s.frames.length !== 1) throw new Error(`the map's SCRB ${id} has ${s.frames.length} frames, not one`);
     return s.frames[0].records;
   };

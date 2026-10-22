@@ -249,9 +249,9 @@ function zbDealWith(key, level, rnd, band, open) {
   for (const k of route ? route.places.slice(1, route.places.indexOf(key)) : []) if (ZB_PUZZLES.has(k)) deal(k);
   return Object.assign({ band }, deal(key));
 }
-/* The archives a puzzle's deal needs: the puzzle's, and those of the
+/* The archives a puzzle's deal reads: the puzzle's, and those of the
    puzzles before it on its route that have one. */
-function zbDealNeeds(key) {
+function zbDealArchives(key) {
   const route = ZB_ROUTES.find(r => r.places.slice(1, -1).includes(key));
   const keys = route ? route.places.slice(1, route.places.indexOf(key) + 1) : [key];
   return [...new Set(keys.filter(k => ZB_PUZZLES.has(k) && ZB_PUZZLES.get(k).archive).map(k => ZB_PUZZLES.get(k).archive))];

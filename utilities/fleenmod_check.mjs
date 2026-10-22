@@ -30,27 +30,27 @@ for (const green of [false, true]) {
   const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'fleenmod', ...(green ? ['--green'] : [])],
     { encoding: 'utf8', maxBuffer: 1 << 26 });
   if (r.status !== 0) { console.log('SKIP: the oracle did not run, ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
-  const want = JSON.parse(r.stdout);
+  const expected = JSON.parse(r.stdout);
 
   const t0 = performance.now();
-  const got = S.zbFleenMod(archives, exe, green);
+  const actual = S.zbFleenMod(archives, exe, green);
   const ms = performance.now() - t0;
 
   let n = 0;
   for (const name of ['ZOOMBINI', 'PICKER']) {
-    const mine = Object.fromEntries(got[name].map(c => [`${c.tag}/${c.id}`, sha1(c.bytes)]));
-    for (const k of new Set([...Object.keys(want[name]), ...Object.keys(mine)])) {
-      if (mine[k] !== want[name][k]) fail(`${label} ${name} ${k}: ${mine[k] || 'missing'}, the Python ${want[name][k] || 'missing'}`);
+    const siteHashes = Object.fromEntries(actual[name].map(c => [`${c.tag}/${c.id}`, sha1(c.bytes)]));
+    for (const k of new Set([...Object.keys(expected[name]), ...Object.keys(siteHashes)])) {
+      if (siteHashes[k] !== expected[name][k]) fail(`${label} ${name} ${k}: ${siteHashes[k] || 'missing'}, the Python ${expected[name][k] || 'missing'}`);
       n++;
     }
   }
   const changed = {};
-  for (let i = 0; i < exe.length; i++) if (got.exe[i] !== exe[i]) changed[i] = got.exe[i];
-  if (got.exe.length !== exe.length) fail(`${label} EXE: ${got.exe.length} bytes, not ${exe.length}`);
-  for (const k of new Set([...Object.keys(want.EXE), ...Object.keys(changed)])) {
-    if (changed[k] !== want.EXE[k]) fail(`${label} EXE byte ${k}: ${changed[k] ?? 'unchanged'}, the Python ${want.EXE[k] ?? 'unchanged'}`);
+  for (let i = 0; i < exe.length; i++) if (actual.exe[i] !== exe[i]) changed[i] = actual.exe[i];
+  if (actual.exe.length !== exe.length) fail(`${label} EXE: ${actual.exe.length} bytes, not ${exe.length}`);
+  for (const k of new Set([...Object.keys(expected.EXE), ...Object.keys(changed)])) {
+    if (changed[k] !== expected.EXE[k]) fail(`${label} EXE byte ${k}: ${changed[k] ?? 'unchanged'}, the Python ${expected.EXE[k] ?? 'unchanged'}`);
   }
-  if (JSON.stringify(got.lift) !== JSON.stringify(want.lift)) fail(`${label} lift ${JSON.stringify(got.lift)}, the Python ${JSON.stringify(want.lift)}`);
+  if (JSON.stringify(actual.lift) !== JSON.stringify(expected.lift)) fail(`${label} lift ${JSON.stringify(actual.lift)}, the Python ${JSON.stringify(expected.lift)}`);
 
   // Without the EXE: the same, bar the big figure, which the EXE places.
   const bare = S.zbFleenMod(archives, null, green);
@@ -58,8 +58,8 @@ for (const green of [false, true]) {
   const keys = ['ZOOMBINI', 'PICKER'].flatMap(name => bare[name].map(c => [name, `${c.tag}/${c.id}`, sha1(c.bytes)]));
   if (keys.some(([, k]) => k === 'tBMP/4300')) fail(`${label} without the EXE, PICKER tBMP 4300 came back`);
   if (keys.length !== n - 1) fail(`${label} without the EXE: ${keys.length} resources, not ${n - 1}`);
-  for (const [name, k, h] of keys) if (h !== want[name][k]) fail(`${label} without the EXE: ${name} ${k} is not the Python's`);
-  summary.push(`${label} ${n} resources and ${Object.keys(want.EXE).length} EXE bytes in ${(ms / 1000).toFixed(1)} s`);
+  for (const [name, k, h] of keys) if (h !== expected[name][k]) fail(`${label} without the EXE: ${name} ${k} is not the Python's`);
+  summary.push(`${label} ${n} resources and ${Object.keys(expected.EXE).length} EXE bytes in ${(ms / 1000).toFixed(1)} s`);
 }
 
 if (fails) { console.log(`${fails} failures`); process.exit(1); }

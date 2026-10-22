@@ -34,32 +34,32 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REF, archiveBytes } from '../load.mjs';
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_fleens.h'), cpp = scumm('zoombini_pages/puzzle_fleens.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('FLEENS'), KINDS = S.ZB_TRAIT_KINDS;
 
   // ---- the dealing, as ScummVM writes it -------------------------------
-  const setup = need(/void ZoombiniPuzzleFleens::buildZmbTraitSetup\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbTraitSetup')[1];
-  need(/_targetSnoidOrdinals\[0\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*if \(zmbCount == 1\) \{\s*_matchedTargetCount = 2;[\s\S]*?\} else if \(zmbCount == 2\) \{\s*_matchedTargetCount = 1;/, setup, 'the first place and the count already lured');
-  need(/if \(2 <= zmbCount\) \{\s*do \{\s*_targetSnoidOrdinals\[1\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*\} while \(_targetSnoidOrdinals\[1\] == _targetSnoidOrdinals\[0\]\);/, setup, 'the second place');
-  need(/if \(3 <= zmbCount\) \{\s*do \{\s*_targetSnoidOrdinals\[2\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*\} while \(_targetSnoidOrdinals\[2\] == _targetSnoidOrdinals\[0\] \|\| _targetSnoidOrdinals\[2\] == _targetSnoidOrdinals\[1\]\);/, setup, 'the third place');
-  const rot = need(/if \(traitValueRotations\[0\] == 0((?: \|\| _puzzleLevel == kPuzzleLevel\d)+)\) \{\s*for \(int i = 0; i < 4; i\+\+\)\s*traitValueRotations\[i\] = static_cast<byte>\(_vm->_rnd->getRandomNumber\((\d), (\d)\)\);/, setup, 'the turns');
+  const setup = scummMatch(/void ZoombiniPuzzleFleens::buildZmbTraitSetup\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbTraitSetup')[1];
+  scummMatch(/_targetSnoidOrdinals\[0\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*if \(zmbCount == 1\) \{\s*_matchedTargetCount = 2;[\s\S]*?\} else if \(zmbCount == 2\) \{\s*_matchedTargetCount = 1;/, setup, 'the first place and the count already lured');
+  scummMatch(/if \(2 <= zmbCount\) \{\s*do \{\s*_targetSnoidOrdinals\[1\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*\} while \(_targetSnoidOrdinals\[1\] == _targetSnoidOrdinals\[0\]\);/, setup, 'the second place');
+  scummMatch(/if \(3 <= zmbCount\) \{\s*do \{\s*_targetSnoidOrdinals\[2\] = _vm->_rnd->getRandomNumber\(1, zmbCount\);\s*\} while \(_targetSnoidOrdinals\[2\] == _targetSnoidOrdinals\[0\] \|\| _targetSnoidOrdinals\[2\] == _targetSnoidOrdinals\[1\]\);/, setup, 'the third place');
+  const rot = scummMatch(/if \(traitValueRotations\[0\] == 0((?: \|\| _puzzleLevel == kPuzzleLevel\d)+)\) \{\s*for \(int i = 0; i < 4; i\+\+\)\s*traitValueRotations\[i\] = static_cast<byte>\(_vm->_rnd->getRandomNumber\((\d), (\d)\)\);/, setup, 'the turns');
   const rotLevels = [...rot[1].matchAll(/kPuzzleLevel(\d)/g)].map(m => Number(m[1]));
   if (rot[2] !== '1' || rot[3] !== '5') fail(`ScummVM draws the turns from ${rot[2]} to ${rot[3]}`);
-  const mix = need(/if \(_puzzleLevel <= kPuzzleLevel(\d)\) \{\s*for \(int i = 0; i < 4; i\+\+\)\s*traitDestSlots\[i\] = 0;\s*\} else if \(traitDestSlots\[0\] == 0((?: \|\| _puzzleLevel == kPuzzleLevel\d)+)\) \{[\s\S]*?traitDestSlots\[0\] = static_cast<byte>\(_vm->_rnd->getRandomNumber\((\d), (\d)\)\);\s*[\s\S]*?uint32 poolState = 1u << \(traitDestSlots\[0\] - 1\);\s*for \(int i = 1; i < 4; i\+\+\)\s*traitDestSlots\[i\] = static_cast<byte>\(_vm->_rnd->getNonRepeatRandom\(4, poolState\) \+ 1\);/, setup, 'the mixing');
+  const mix = scummMatch(/if \(_puzzleLevel <= kPuzzleLevel(\d)\) \{\s*for \(int i = 0; i < 4; i\+\+\)\s*traitDestSlots\[i\] = 0;\s*\} else if \(traitDestSlots\[0\] == 0((?: \|\| _puzzleLevel == kPuzzleLevel\d)+)\) \{[\s\S]*?traitDestSlots\[0\] = static_cast<byte>\(_vm->_rnd->getRandomNumber\((\d), (\d)\)\);\s*[\s\S]*?uint32 poolState = 1u << \(traitDestSlots\[0\] - 1\);\s*for \(int i = 1; i < 4; i\+\+\)\s*traitDestSlots\[i\] = static_cast<byte>\(_vm->_rnd->getNonRepeatRandom\(4, poolState\) \+ 1\);/, setup, 'the mixing');
   const clearTo = Number(mix[1]), mixLevels = [...mix[2].matchAll(/kPuzzleLevel(\d)/g)].map(m => Number(m[1]));
   if (mix[3] !== '2' || mix[4] !== '4') fail(`ScummVM draws hair's Fleen trait from ${mix[3]} to ${mix[4]}`);
-  need(/static_cast<byte>\(\(_traitValueRotations\[traitIndex\] \+ zmbTrait\[traitIndex\] - 2\) % 5 \+ 1\);\s*transformedTrait\[_traitDestinationKinds\[traitIndex\]\] = value;/, cpp, 'the Fleen value');
-  const hive = Number(need(/kSpecialPositionCount = (\d+);/, cpp, 'the beehive\'s places')[1]);
+  scummMatch(/static_cast<byte>\(\(_traitValueRotations\[traitIndex\] \+ zmbTrait\[traitIndex\] - 2\) % 5 \+ 1\);\s*transformedTrait\[_traitDestinationKinds\[traitIndex\]\] = value;/, cpp, 'the Fleen value');
+  const hive = Number(scummMatch(/kSpecialPositionCount = (\d+);/, cpp, 'the beehive\'s places')[1]);
   if (hive !== S.ZB_FLEENS_HIVE) fail(`ScummVM's beehive has ${hive} places, the port ${S.ZB_FLEENS_HIVE}`);
 
   // ---- the chances and the judging --------------------------------------
-  const chances = Number(need(/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kSubmit, (\d+),/, cpp, 'debugGetChances')[1]);
-  const evict = Number(need(/mustEvictOldestPair = _submittedPairCount == (\d+);/, cpp, 'the eviction')[1]);
+  const chances = Number(scummMatch(/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kSubmit, (\d+),/, cpp, 'debugGetChances')[1]);
+  const evict = Number(scummMatch(/mustEvictOldestPair = _submittedPairCount == (\d+);/, cpp, 'the eviction')[1]);
   if (chances !== S.ZB_FLEENS_WAITING || evict !== S.ZB_FLEENS_WAITING + 1) fail(`ScummVM gives ${chances} chances and sends back the first of ${evict}, the port has ${S.ZB_FLEENS_WAITING}`);
-  const board = need(/void ZoombiniPuzzleFleens::beginBoardingAnimation\([^)]*\) \{([\s\S]*?)\n\}/, cpp, 'beginBoardingAnimation')[1];
-  need(/if \(creature\.isTarget && creature\.posCode <= kFleenPosCode19_TargetBranchLast\) \{\s*_matchedTargetCount \+= 1;[\s\S]*?\}\s*if \(appendQueue && _submittedPairCount < 7\) \{/, board, 'a submission joining the waiting pairs whether it lured a beehive Fleen or not');
+  const board = scummMatch(/void ZoombiniPuzzleFleens::beginBoardingAnimation\([^)]*\) \{([\s\S]*?)\n\}/, cpp, 'beginBoardingAnimation')[1];
+  scummMatch(/if \(creature\.isTarget && creature\.posCode <= kFleenPosCode19_TargetBranchLast\) \{\s*_matchedTargetCount \+= 1;[\s\S]*?\}\s*if \(appendQueue && _submittedPairCount < 7\) \{/, board, 'a submission joining the waiting pairs whether it lured a beehive Fleen or not');
   if (!/six/.test(P.levels[0].chances) || !P.levels.every(l => /Six|six/.test(l.chances))) fail('the chances do not say six at every level');
 
   // ---- the program and the disc -----------------------------------------
@@ -72,14 +72,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (hivePlaces !== S.ZB_FLEENS_HIVE || hivePlaces + branchPlaces < 16) fail(`FLEENS REGS 5000 has ${hivePlaces} places and 5001 ${branchPlaces}`);
 
   // ---- the names ----------------------------------------------------------
-  const scummNames = need(/kTraitValueNames\[4\]\[5\] = \{([\s\S]*?)\};/, h, 'kTraitValueNames')[1];
+  const scummNames = scummMatch(/kTraitValueNames\[4\]\[5\] = \{([\s\S]*?)\};/, h, 'kTraitValueNames')[1];
   const rows = [...scummNames.matchAll(/\{([^}]*)\}/g)].map(m => [...m[1].matchAll(/"(\w+)"/g)].map(n => n[1]));
   if (rows.length !== 4 || rows.some(r => r.length !== 5)) fail('read ScummVM\'s Fleen trait names wrong');
   KINDS.forEach((k, i) => rows[i].forEach((name, v) => {
     // Where ScummVM's name shares a word with a maker's name, it is at the same place.
     const words = name.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().split(' ');
-    S.ZB_FLEENS_TRAIT_SHORT[k].forEach((mine, w) => {
-      if (w !== v && words.some(x => x.length > 3 && mine.toLowerCase().split(' ').includes(x))) fail(`Fleen ${k} ${v + 1} is ScummVM's ${name}, but the port has it at ${w + 1}, ${mine}`);
+    S.ZB_FLEENS_TRAIT_SHORT[k].forEach((siteName, w) => {
+      if (w !== v && words.some(x => x.length > 3 && siteName.toLowerCase().split(' ').includes(x))) fail(`Fleen ${k} ${v + 1} is ScummVM's ${name}, but the port has it at ${w + 1}, ${siteName}`);
     });
   }));
   const spritesJs = path.join(REF, 'site', 'sprites.js');
@@ -87,9 +87,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (fs.existsSync(spritesJs)) {
     const lists = [...fs.readFileSync(spritesJs, 'utf8').matchAll(/"names":(\{[^}]*\})/g)].map(m => JSON.parse(m[1]));
     const fleen = lists.find(l => l.hair && l.hair.includes('Mohawk'));
-    const mine = Object.fromEntries(KINDS.map(k => [k, S.ZB_FLEENS_TRAIT_SHORT[k].map(n => k === 'nose' ? n + ' nose' : n)]));
+    const siteNames = Object.fromEntries(KINDS.map(k => [k, S.ZB_FLEENS_TRAIT_SHORT[k].map(n => k === 'nose' ? n + ' nose' : n)]));
     // The maker's list has a Fleen's five first, then extras it can wear (Captain Cajun's feet, ...).
-    if (!fleen || !same(KINDS.map(k => fleen[k].slice(0, 5)), KINDS.map(k => mine[k]))) fail(`the Fleen names are not the maker's (${JSON.stringify(fleen)})`);
+    if (!fleen || !same(KINDS.map(k => fleen[k].slice(0, 5)), KINDS.map(k => siteNames[k]))) fail(`the Fleen names are not the maker's (${JSON.stringify(fleen)})`);
     makerChecked = true;
     KINDS.forEach(k => S.ZB_FLEENS_TRAIT_WITH[k].forEach((w, v) => { if (!w.toLowerCase().includes(S.ZB_FLEENS_TRAIT_SHORT[k][v].toLowerCase())) fail(`Fleen ${k} ${v + 1} reads "${w}" after "with"`); }));
   }
@@ -105,9 +105,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     let bad = null;
     for (const { band, seed } of bands(300, 900 + level, [16, 11, 5, 2, 1])) {
       const d = P.deal(level, band, S.zbRandom(seed), {});
-      const s = d.state, n = band.length, want = Math.min(3, n);
+      const s = d.state, n = band.length, targetCount = Math.min(3, n);
       const places = s.targetSnoidOrdinals.filter(t => t);
-      if (places.length !== want || new Set(places).size !== want || places.some(t => t < 1 || t > n) || s.targetSnoidOrdinals.slice(want).some(t => t) || s.matchedTargetCount !== 3 - want) bad = `places ${s.targetSnoidOrdinals} and ${s.matchedTargetCount} already lured for a band of ${n}`;
+      if (places.length !== targetCount || new Set(places).size !== targetCount || places.some(t => t < 1 || t > n) || s.targetSnoidOrdinals.slice(targetCount).some(t => t) || s.matchedTargetCount !== 3 - targetCount) bad = `places ${s.targetSnoidOrdinals} and ${s.matchedTargetCount} already lured for a band of ${n}`;
       else if (s.traitValueRotations.some(r => r < 1 || r > 5)) bad = `turns ${s.traitValueRotations}`;
       else if (new Set(s.traitDestinationKinds).size !== 4 || (level <= 2 ? !same(s.traitDestinationKinds, KINDS) : s.traitDestinationKinds[0] === 'hair')) bad = `the traits mix as ${s.traitDestinationKinds} at level ${level}`;
       else if (band.some((z, i) => !same(s.fleens[i], fleenOf(z, s.traitValueRotations, s.traitDestinationKinds)))) bad = 'a Fleen is not its Zoombini\'s';
@@ -187,10 +187,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (remember && r) break;
         const images = band.map(z => { const f = {}; KINDS.forEach((k, i) => { f[KINDS[mix[i]]] = (rot[i] + z[k] - 2) % 5 + 1; }); return look(f); });
         if (!same(images.slice().sort((a, b) => a - b), seen)) continue;
-        const want = Math.min(3, band.length), n = band.length;
+        const targetCount = Math.min(3, band.length), n = band.length;
         for (let m = 0; m < 1 << n; m++) {
           let c = 0; for (let x = m; x; x &= x - 1) c++;
-          if (c !== want) continue;
+          if (c !== targetCount) continue;
           if (same(band.map((_, i) => i).filter(i => m >> i & 1).map(i => images[i]).sort((a, b) => a - b), hive)) out.push({ images, mask: m });
         }
       }
@@ -260,7 +260,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowest > 1500) fail(`a strategy took ${slowest} ms`);
 
   const pct = n => `${Math.round(100 * n / (keepsLike[0] + keepsLike[1] + keepsLike[2]))}%`;
-  say(`${trips} forms given back and solved. ${stratCount} strategies played against every hidden part that fits what is seen (${played} plays, the port's answer the check's at all ${agreed} moves, ${amb} strategies with more than one, at most  sent, all across and played against the dealt Fleens), ${walked} branches walked, slowest ${slowest} ms; `
+  print(`${trips} forms given back and solved. ${stratCount} strategies played against every hidden part that fits what is seen (${played} plays, the port's answer the check's at all ${agreed} moves, ${amb} strategies with more than one, at most  sent, all across and played against the dealt Fleens), ${walked} branches walked, slowest ${slowest} ms; `
     + `dealing as ScummVM's, table in ZOOMBINI.EXE at 0x${(tableAt[0] || 0).toString(16)}, beehive REGS 5000's ${hivePlaces}${makerChecked ? ', the maker\'s names' : ''}. ${dealt} deals of the level's form, `
     + `${visits} visits storing what the program stores. At levels 3 and 4 no trait stays the same in ${pct(keepsLike[0])}, one in ${pct(keepsLike[1])}, two in ${pct(keepsLike[2])}`);
 }

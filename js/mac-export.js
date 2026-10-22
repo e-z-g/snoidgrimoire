@@ -50,8 +50,8 @@ function buildZipParts(files) {
     const name = enc.encode(f.name);
     const crc = crc32(f.bytes);
     const size = f.bytes.length;
-    // Method 8 is deflate; the payload is what goes in the file, the size
-    // above is what it unpacks to.
+    // Method 8 is deflate. The payload is what goes in the file, and the
+    // size above is the size once it is unpacked.
     const payload = f.deflated || f.bytes;
     const method = f.deflated ? 8 : 0;
     const stored = payload.length;

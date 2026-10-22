@@ -47,13 +47,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT } from '../load.mjs';
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find, open }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find, open }) {
   const h = scumm('zoombini_pages/puzzle_maze.h'), cpp = scumm('zoombini_pages/puzzle_maze.cpp');
   const base = scumm('zoombini_pages/puzzle_base.cpp');
   const port = fs.readFileSync(path.join(ROOT, 'js', 'zb-puzzle-maze2.js'), 'utf8');
   const P = S.ZB_PUZZLES.get('MAZE2');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const table = (name, text = h) => need(new RegExp(`${name.replace(/[[\]]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\};`), text, name)[1].replace(/\/\/.*$/gm, '');
+  const table = (name, text = h) => scummMatch(new RegExp(`${name.replace(/[[\]]/g, '\\$&')}\\s*\\{([\\s\\S]*?)\\};`), text, name)[1].replace(/\/\/.*$/gm, '');
   const nums = body => [...body.matchAll(/-?\d+/g)].map(m => Number(m[0]));
   const points = body => [...body.matchAll(/Common::Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
   const words = a => a.flatMap(v => [v & 255, v >> 8 & 255]);
@@ -74,11 +74,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const loops = nums(table('kScoreToLoopCount[17]'));
   if (!same(loops, S.ZB_MAZE2_LOOPS)) fail(`level 4's counts ${loops}, the port ${S.ZB_MAZE2_LOOPS}`);
   const pool = nums(table('kStaticPathPool[11]'));
-  if (!same(pool, S.ZB_MAZE2_COLOUR_POOL)) fail(`color pool ${pool}, the port ${S.ZB_MAZE2_COLOUR_POOL}`);
-  const colourNames = Object.fromEntries([...need(/enum class MazeColorShapeBase : int16 \{([\s\S]*?)\};/, h, 'MazeColorShapeBase')[1]
+  if (!same(pool, S.ZB_MAZE2_COLOR_POOL)) fail(`color pool ${pool}, the port ${S.ZB_MAZE2_COLOR_POOL}`);
+  const colorNames = Object.fromEntries([...scummMatch(/enum class MazeColorShapeBase : int16 \{([\s\S]*?)\};/, h, 'MazeColorShapeBase')[1]
     .matchAll(/k([A-Z][a-z]+)(\d+) = \2/g)].map(m => [m[2], m[1].toLowerCase()]));
-  for (const [shape, name] of Object.entries(colourNames)) if (S.ZB_MAZE2_COLOURS[shape] !== name) fail(`color ${shape} is ${name} in ScummVM, ${S.ZB_MAZE2_COLOURS[shape]} in the port`);
-  if (Object.keys(colourNames).length !== 7) fail(`read ${Object.keys(colourNames).length} colors from MazeColorShapeBase, not 7`);
+  for (const [shape, name] of Object.entries(colorNames)) if (S.ZB_MAZE2_COLORS[shape] !== name) fail(`color ${shape} is ${name} in ScummVM, ${S.ZB_MAZE2_COLORS[shape]} in the port`);
+  if (Object.keys(colorNames).length !== 7) fail(`read ${Object.keys(colorNames).length} colors from MazeColorShapeBase, not 7`);
   const kinds = [...table('kTraitSlotKind[21]').matchAll(/ZmbTrait::kTrait(\w+)/g)].map(m => m[1].toLowerCase());
   const values = nums(table('kTraitSlotValue[21]'));
   const slotTraits = [...Array(21).keys()].map(s => S.zbMaze2SlotTrait(s));
@@ -90,7 +90,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const exitSquares = points(table('kBaseNodeCoords[18]'));
   if (!same(exitTypes.map((t, i) => [t, ...exitSquares[i]]), S.ZB_MAZE2_EXITS)) fail(`the exits are not ScummVM's kBaseNodeTypes and kBaseNodeCoords`);
   const flags = nums(table('kSeatFlagValue[14]'));
-  const rects = [...need(/_dragConstraintRects\[4\] = \{([\s\S]*?)\};/, h, '_dragConstraintRects')[1].matchAll(/Common::Rect\(([\d, ]+)\)/g)].flatMap(m => nums(m[1]));
+  const rects = [...scummMatch(/_dragConstraintRects\[4\] = \{([\s\S]*?)\};/, h, '_dragConstraintRects')[1].matchAll(/Common::Rect\(([\d, ]+)\)/g)].flatMap(m => nums(m[1]));
 
   // In ZOOMBINI.EXE, as the program packs them.
   const run1 = [...pool, ...slotTraits.flatMap(t => [S.ZB_TRAIT_KINDS.indexOf(t.kind), t.value]), ...offsets, ...thr];
@@ -103,14 +103,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
   // ---- the layouts, the counters and the draws, as ScummVM writes them -----
   const ids = Object.fromEntries([...h.matchAll(/kResRegs(\d+)_MazeLayout(\w+) = (\d+)/g)].map(m => [m[2], Number(m[3])]));
-  const config = need(/void ZoombiniPuzzleMaze::loadLayoutRegsConfigByLevel\(\) \{([\s\S]*?)\n\}/, cpp, 'loadLayoutRegsConfigByLevel')[1];
+  const config = scummMatch(/void ZoombiniPuzzleMaze::loadLayoutRegsConfigByLevel\(\) \{([\s\S]*?)\n\}/, cpp, 'loadLayoutRegsConfigByLevel')[1];
   const firsts = [...config.matchAll(/case kMazeLayoutLevel(\d):[^}]*?kResRegs\d+_MazeLayout(\w+) \+ _levelVariantIdx/g)].map(m => [Number(m[1]), ids[m[2]]]);
   if (firsts.length !== 4 || firsts.some(([l, id]) => S.ZB_MAZE2_FIRST_LAYOUT[l] !== id)) fail(`levels' first layouts are ScummVM's ${JSON.stringify(firsts)}`);
-  const smallId = ids[need(/default:\s*\/\/ Fixed REGS \d+\.\s*_mazeLayoutRegsId = kResRegs\d+_MazeLayout(\w+);/, config, 'the small band\'s layout')[1]];
+  const smallId = ids[scummMatch(/default:\s*\/\/ Fixed REGS \d+\.\s*_mazeLayoutRegsId = kResRegs\d+_MazeLayout(\w+);/, config, 'the small band\'s layout')[1]];
   if (smallId !== S.ZB_MAZE2_SMALL_LAYOUT) fail(`the small band's layout is ${smallId} in ScummVM`);
-  const smallUnder = Number(need(/_puzzleLevel == kPuzzleLevel4 && _pageLoadedZmbCount < (\d+)\)\s*_layoutLevel = kMazeLayoutLevel4SmallPack;/, cpp, 'the small band')[1]);
+  const smallUnder = Number(scummMatch(/_puzzleLevel == kPuzzleLevel4 && _pageLoadedZmbCount < (\d+)\)\s*_layoutLevel = kMazeLayoutLevel4SmallPack;/, cpp, 'the small band')[1]);
   if (smallUnder !== 5) fail(`ScummVM gives a band under ${smallUnder} the small layout, the port under 5`);
-  const init = need(/void ZoombiniPuzzleMaze::initGridAndSelectPaths\(\) \{([\s\S]*?)\n\}/, cpp, 'initGridAndSelectPaths')[1];
+  const init = scummMatch(/void ZoombiniPuzzleMaze::initGridAndSelectPaths\(\) \{([\s\S]*?)\n\}/, cpp, 'initGridAndSelectPaths')[1];
   const dispatch = [
     [/case kMazeLayoutLevel1:\s*buildZmbAssignmentAlt2\(\);\s*variantState\._level1 \+= 1;\s*if \(1 < variantState\._level1\)\s*variantState\._level1 = 0;/, 'level 1'],
     [/case kMazeLayoutLevel2:\s*if \(variantState\._level2\)\s*selectPathSlots2\(\);\s*else\s*buildZmbAssignmentAlt\(\);\s*variantState\._level2 \+= 1;\s*if \(1 < variantState\._level2\)/, 'level 2'],
@@ -119,14 +119,14 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     [/default:[^\n]*\n\s*selectPathSlots\(\);/, 'the small band'],
   ];
   for (const [re, what] of dispatch) if (!re.test(init)) fail(`ScummVM's initGridAndSelectPaths differs from the port for ${what}`);
-  const shuffle = need(/lastAvailablePathPoolIdx = (\d+);\s*for \(int16 group = (\d+); group < (\d+); group\+\+\) \{\s*const int16 randIdx = _vm->_rnd->getRandomNumber\((\d+), lastAvailablePathPoolIdx\);/, init, 'the color shuffle').slice(1).map(Number);
+  const shuffle = scummMatch(/lastAvailablePathPoolIdx = (\d+);\s*for \(int16 group = (\d+); group < (\d+); group\+\+\) \{\s*const int16 randIdx = _vm->_rnd->getRandomNumber\((\d+), lastAvailablePathPoolIdx\);/, init, 'the color shuffle').slice(1).map(Number);
   if (!same(shuffle, [8, 2, 9, 2])) fail(`the color shuffle is ScummVM's ${shuffle}`);
-  const list = need(/void ZoombiniPuzzleMaze::buildZmbAssignmentList\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbAssignmentList')[1];
+  const list = scummMatch(/void ZoombiniPuzzleMaze::buildZmbAssignmentList\(\) \{([\s\S]*?)\n\}/, cpp, 'buildZmbAssignmentList')[1];
   if ([...list.matchAll(/getRandomNumber\(1, 20\)/g)].length !== 2 || [...list.matchAll(/getRandomNumber\(0, 2\)/g)].length !== 1) fail(`level 4's extra draws are not two of 1-20 and one of 0-2`);
-  const sel2 = need(/void ZoombiniPuzzleMaze::selectPathSlots2\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots2')[1];
+  const sel2 = scummMatch(/void ZoombiniPuzzleMaze::selectPathSlots2\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots2')[1];
   if (!/_puzzleLevel == kPuzzleLevel2 && phase == 0/.test(sel2)) fail('ScummVM no longer doubles level 2\'s first middle feature');
   // The two differences: ScummVM excludes the slot just drawn; the program (0x4339b6, 0x433ddf) excludes nothing.
-  const sel1 = need(/void ZoombiniPuzzleMaze::selectPathSlots\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots')[1];
+  const sel1 = scummMatch(/void ZoombiniPuzzleMaze::selectPathSlots\(\) \{([\s\S]*?)\n\}/, cpp, 'selectPathSlots')[1];
   for (const [text, fn] of [[sel2, 'selectPathSlots2'], [sel1, 'selectPathSlots']]) {
     if (!/int16 secondFinalSlot = findHighestScoredSlot\(firstFinalSlot\);/.test(text)) fail(`ScummVM's ${fn} no longer excludes firstFinalSlot, the port's note on the difference is stale`);
   }
@@ -139,16 +139,16 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
   // ---- no chance count ------------------------------------------------------
   if (/debugGetChances/.test(cpp) || /debugGetChances/.test(h)) fail('ScummVM\'s maze page now counts chances');
-  need(/ZmbChanceInfo ZoombiniPuzzle::debugGetChances\(\) const \{\s*ZmbChanceInfo info;\s*info\.type = ZmbChanceInfo::ZmbChanceType::kAmorphous;/, base, 'the base debugGetChances');
+  scummMatch(/ZmbChanceInfo ZoombiniPuzzle::debugGetChances\(\) const \{\s*ZmbChanceInfo info;\s*info\.type = ZmbChanceInfo::ZmbChanceType::kAmorphous;/, base, 'the base debugGetChances');
   if (P.levels.some(l => !/^None are counted/.test(l.chances))) fail('the port counts chances');
 
   // ---- the layouts, read from MAZE2 -------------------------------------
   const arc = open('MAZE2');
-  const want = [...Object.values(ids)].filter(id => id !== ids.L4Unused).sort();
-  if (!same(S.ZB_MAZE2_LAYOUT_IDS.slice().sort(), want)) fail(`the port reads layouts ${S.ZB_MAZE2_LAYOUT_IDS}, ScummVM's used ones are ${want}`);
+  const usedIds = [...Object.values(ids)].filter(id => id !== ids.L4Unused).sort();
+  if (!same(S.ZB_MAZE2_LAYOUT_IDS.slice().sort(), usedIds)) fail(`the port reads layouts ${S.ZB_MAZE2_LAYOUT_IDS}, ScummVM's used ones are ${usedIds}`);
   const layouts = S.zbMaze2Layouts(arc), regs = {};
   let records = 0;
-  for (const id of want) {
+  for (const id of usedIds) {
     if (!arc.has('REGS', id)) { fail(`MAZE2 has no REGS ${id}`); continue; }
     const w = regs[id] = [...S.parseRegs(arc.get('REGS', id))], L = layouts[id];
     const cells = [];
@@ -173,10 +173,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
     if (sc.frameCount !== S.ZB_MAZE2_STEP || ev[0] || ev.slice(1, -1).some(e => e !== claimByte) || ev[ev.length - 1] !== claimByte + 1) fail(`SCRS ${id} is not a ${S.ZB_MAZE2_STEP}-frame step claiming and reaching its square as the port has it (${ev})`);
     else scripts++;
   }
-  const claimFrame = Number(need(/snoid->getLastFrameIdx\(\) != (\d)\)/, cpp, 'the claim frame')[1]);
+  const claimFrame = Number(scummMatch(/snoid->getLastFrameIdx\(\) != (\d)\)/, cpp, 'the claim frame')[1]);
   if (claimFrame !== S.ZB_MAZE2_CLAIM) fail(`ScummVM claims a square on frame ${claimFrame}, the port on ${S.ZB_MAZE2_CLAIM}`);
-  need(/if \(count == 1\) \{\s*firstRunner = runnerIdx;\s*\} else if \(count == 2\) \{/, cpp, 'the collision pairing');
-  need(/if \(rs\.direction == kMazeDirection00_West\)\s*rs\.col = rs\.oldCol - 1;/, cpp, 'where a launch to the left starts');
+  scummMatch(/if \(count == 1\) \{\s*firstRunner = runnerIdx;\s*\} else if \(count == 2\) \{/, cpp, 'the collision pairing');
+  scummMatch(/if \(rs\.direction == kMazeDirection00_West\)\s*rs\.col = rs\.oldCol - 1;/, cpp, 'where a launch to the left starts');
   const firstSquares = S.ZB_MAZE2_SEATS.map((st, seat) => { const [r, c, d] = S.zbMaze2SeatStart(seat); return d === 0 ? [r, c - 1] : d === 1 ? [r + 1, c] : d === 2 ? [r, c + 1] : [r - 1, c]; });
   if (firstSquares.some((sq, seat) => !same(sq, S.ZB_MAZE2_SEATS[seat][2] === 0 ? [S.ZB_MAZE2_SEATS[seat][0], S.ZB_MAZE2_SEATS[seat][1] - 1] : S.ZB_MAZE2_SEATS[seat].slice(0, 2)))) fail('a launch does not first meet the square the program starts it on');
 
@@ -476,8 +476,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   }
 
   const tally = [...outcomes].sort((a, b) => b[1] - a[1]).map(([o, c]) => `${c} ${o}`).join(', ');
-  say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${at1.toString(16)}, 0x${at2.toString(16)}, 0x${at3.toString(16)}, 0x${at4.toString(16)} and 0x${at5.toString(16)}; `
-    + `${want.length} layouts read from MAZE2 as a second reading of its REGS gives (${records} records), and an Error without them. ${scripts} movement scripts ${S.ZB_MAZE2_STEP} frames a square, claiming on frame ${S.ZB_MAZE2_CLAIM}. ${dealt} deals with a slot for every feature arrow, the key the ranges pick and the repeats each level makes (${nobody} arrows showing a feature nobody in the band has); `
+  print(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${at1.toString(16)}, 0x${at2.toString(16)}, 0x${at3.toString(16)}, 0x${at4.toString(16)} and 0x${at5.toString(16)}; `
+    + `${usedIds.length} layouts read from MAZE2 as a second reading of its REGS gives (${records} records), and an Error without them. ${scripts} movement scripts ${S.ZB_MAZE2_STEP} frames a square, claiming on frame ${S.ZB_MAZE2_CLAIM}. ${dealt} deals with a slot for every feature arrow, the key the ranges pick and the repeats each level makes (${nobody} arrows showing a feature nobody in the band has); `
     + `first launches as a second reading gives (${tally}. ${crossed} of ${sent} Zoombinis at levels 1-3 cross from some launcher); `
     + `workbench: ${trips} forms given back and ${rejects} bad values thrown on, ${sols} solutions played again as listed, ${brutes} small bands' most matched by trying every order, `
     + `${fewer} puzzles where not everyone can cross one at a time (${unsettled} of them short of the bound for launches that overlap), ${exactBig} of ${bigs} with 11 or more proven, the slowest solve ${worst} ms`);
@@ -502,11 +502,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       const empty = [...Array(169).keys()].find(k => !L.cells.some(c => c.row * 13 + c.col === k) && !S.ZB_MAZE2_EXITS.some(e => e[1] * 13 + e[2] === k));
       const [r, c] = [Math.floor(empty / 13), empty % 13];
       const put = S.zbMaze2EditSquare(words, r, c, { type: 1, group: 1, ways: [true, true, true, true], dir: 0, turns: false });
-      const got = S.zbMaze2ParseLayout(id, put).cells;
-      if (got.length !== L.cells.length + 1 || got[got.length - 1].type !== 1 || got[got.length - 1].row !== r) fail(`REGS ${id}: a whirlpool put at ${r},${c} does not read back last`);
+      const readBack = S.zbMaze2ParseLayout(id, put).cells;
+      if (readBack.length !== L.cells.length + 1 || readBack[readBack.length - 1].type !== 1 || readBack[readBack.length - 1].row !== r) fail(`REGS ${id}: a whirlpool put at ${r},${c} does not read back last`);
       if (JSON.stringify(S.zbMaze2EditSquare(put, r, c, null)) !== JSON.stringify(words)) fail(`REGS ${id}: a whirlpool put on and taken off does not give the words back`);
       if (JSON.stringify(S.zbMaze2EditSeats(words, L.seats)) !== JSON.stringify(words)) fail(`REGS ${id}: its seats put back change its words`);
     }
-    say(`layouts edited: ${squares} squares made what they are, and a whirlpool put on and off, in each of ${S.ZB_MAZE2_LAYOUT_IDS.length} layouts, give their words back`);
+    print(`layouts edited: ${squares} squares made what they are, and a whirlpool put on and off, in each of ${S.ZB_MAZE2_LAYOUT_IDS.length} layouts, give their words back`);
   }
 }

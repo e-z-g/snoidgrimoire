@@ -64,7 +64,7 @@
 /* A mudball's three choices, as the program numbers them: 0 the shape's
    color (levels 3 and 4), 1 the shape, 2 the mudball's color; each a
    value 0-4, named as ScummVM's kMudballSelectorValueNames. */
-const ZB_NET_COLOURS = ['yellow', 'blue', 'green', 'red', 'purple'];
+const ZB_NET_COLORS = ['yellow', 'blue', 'green', 'red', 'purple'];
 const ZB_NET_SHAPES = ['rectangle', 'triangle', 'star', 'circle', 'diamond'];
 const ZB_NET_CHOICES = ['the shape’s color', 'the shape', 'the mudball’s color'];
 /* Levels 3 and 4: the six ways, as the choice (0-2) that picks the row,
@@ -227,15 +227,15 @@ function zbNetMudball(rule, cell) {
 }
 
 function zbNetMudballWords(choice) {
-  const [inner, shape, colour] = choice;
-  return `a ${ZB_NET_COLOURS[colour]} mudball with a ${inner == null ? '' : ZB_NET_COLOURS[inner] + ' '}${ZB_NET_SHAPES[shape]}`;
+  const [inner, shape, color] = choice;
+  return `a ${ZB_NET_COLORS[color]} mudball with a ${inner == null ? '' : ZB_NET_COLORS[inner] + ' '}${ZB_NET_SHAPES[shape]}`;
 }
 function zbNetCellWords(rule, cell) {
   return rule.level <= 2 ? `row ${Math.floor(cell / 5) + 1}, column ${cell % 5 + 1}`
     : `row ${Math.floor(cell / 25) + 1}, column ${Math.floor(cell % 25 / 5) + 1}, square ${cell % 5 + 1}`;
 }
 /* A value of choice k, by name. */
-function zbNetValueWord(k, v) { return k === 1 ? ZB_NET_SHAPES[v] : ZB_NET_COLOURS[v]; }
+function zbNetValueWord(k, v) { return k === 1 ? ZB_NET_SHAPES[v] : ZB_NET_COLORS[v]; }
 
 /* ---- Taken apart ------------------------------------------------------
    A Zoombini crosses when a mudball lands on a mark and it is among those
@@ -247,8 +247,8 @@ function zbNetValueWord(k, v) { return k === 1 ? ZB_NET_SHAPES[v] : ZB_NET_COLOU
    center, for the diagrams. */
 const ZB_NET_PAINT = ['#e8cf3a', '#3d6fe0', '#3fae4f', '#d9433a', '#8f4fcf'];
 function zbNetMudballItems(choice, x, y, r) {
-  const [inner, shape, colour] = choice, s = r * 0.62, ink = inner == null ? '#20242c' : ZB_NET_PAINT[inner];
-  const items = [{ t: 'circle', x, y, r, fill: colour == null ? 'panel' : ZB_NET_PAINT[colour], stroke: 'line' }];
+  const [inner, shape, color] = choice, s = r * 0.62, ink = inner == null ? '#20242c' : ZB_NET_PAINT[inner];
+  const items = [{ t: 'circle', x, y, r, fill: color == null ? 'panel' : ZB_NET_PAINT[color], stroke: 'line' }];
   const pts = [
     [-s, -0.7 * s, s, -0.7 * s, s, 0.7 * s, -s, 0.7 * s],
     [0, -s, s, 0.8 * s, -s, 0.8 * s],

@@ -86,7 +86,7 @@ function roomPage(view, key) {
         g.lineWidth = 2; g.globalAlpha = .8;
         w.paths.forEach((p, i) => {
           const pts = p.filter(n => n).map(n => w.nodes[n - 1]);
-          g.strokeStyle = WALK_COLOURS[i % WALK_COLOURS.length];
+          g.strokeStyle = WALK_COLORS[i % WALK_COLORS.length];
           g.beginPath();
           pts.forEach((n, k) => (k ? g.lineTo(n.x, n.y) : g.moveTo(n.x, n.y)));
           g.stroke();

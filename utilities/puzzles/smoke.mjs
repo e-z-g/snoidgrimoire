@@ -4,7 +4,7 @@
 //   - the places: the eight reflections (ScummVM's cliff crystals) and the
 //     six filter homes are
 //     ScummVM's kCliffRunnerPositions and kGridRunnerPositions, in reading
-//     order as their names say, and both tables are in ZOOMBINI.EXE as
+//     order as their names print, and both tables are in ZOOMBINI.EXE as
 //     (x, y) pairs; level 2's four filters stand two either side of the
 //     mirror;
 //   - the counts buildRunnerStacks deals at each level, the ranges and
@@ -20,7 +20,7 @@
 //     the port finds at levels 3 and 4 (both Zoombinis of a pair); the
 //     filters have the forms the levels give them, and the marks follow
 //     the judge.
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_smoke.h'), cpp = scumm('zoombini_pages/puzzle_smoke.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const points = body => [...body.matchAll(/Common::Point\((-?\d+), (-?\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
@@ -28,11 +28,11 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const fnText = f => S[f].toString();
 
   // ---- places ------------------------------------------------------------
-  const cliff = points(need(/kCliffRunnerPositions\[8\]\{([\s\S]*?)\};/, h, 'kCliffRunnerPositions')[1]);
-  const grid = points(need(/kGridRunnerPositions\[8\]\{([\s\S]*?)\};/, h, 'kGridRunnerPositions')[1]);
-  const l2 = points(need(/kLevel2RunnerPositions\[4\]\{([\s\S]*?)\};/, h, 'kLevel2RunnerPositions')[1]);
-  const mirror = points(need(/kBottomRunnerPositions\[2\]\{([\s\S]*?)\};/, h, 'kBottomRunnerPositions')[1]);
-  const snap = points(need(/kCliffDropSnapPosition = (Common::Point\(\d+, \d+\))/, h, 'kCliffDropSnapPosition')[1]);
+  const cliff = points(scummMatch(/kCliffRunnerPositions\[8\]\{([\s\S]*?)\};/, h, 'kCliffRunnerPositions')[1]);
+  const grid = points(scummMatch(/kGridRunnerPositions\[8\]\{([\s\S]*?)\};/, h, 'kGridRunnerPositions')[1]);
+  const l2 = points(scummMatch(/kLevel2RunnerPositions\[4\]\{([\s\S]*?)\};/, h, 'kLevel2RunnerPositions')[1]);
+  const mirror = points(scummMatch(/kBottomRunnerPositions\[2\]\{([\s\S]*?)\};/, h, 'kBottomRunnerPositions')[1]);
+  const snap = points(scummMatch(/kCliffDropSnapPosition = (Common::Point\(\d+, \d+\))/, h, 'kCliffDropSnapPosition')[1]);
   if (!same(cliff, S.ZB_SMOKE_REFLECTIONS.map(c => [c.x, c.y]))) fail(`the reflections' places are not ScummVM's (${JSON.stringify(cliff)})`);
   if (!same(grid.slice(0, 6), S.ZB_SMOKE_FILTER_HOMES.map(c => [c.x, c.y]))) fail(`the filters' homes are not ScummVM's (${JSON.stringify(grid)})`);
   if (!same(grid[6], snap[0])) fail('grid runner 7 (the mirror\'s reflection) is not at the cliff drop');
@@ -69,26 +69,26 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (stacks[3]?.Grid !== S.ZB_SMOKE_GRID[2] || stacks[4]?.Grid !== S.ZB_SMOKE_GRID[3]) fail(`ScummVM's grids are ${stacks[3]?.Grid} and ${stacks[4]?.Grid} runners`);
   if (S.ZB_SMOKE_REFLECTIONS.length !== S.ZB_SMOKE_REFLECTION_COUNT) fail('a reflection without a place');
   // The reflections: 1-5 as dealt on arrival, 1-4 when dealt again (level 1's note).
-  need(/case RunnerType::kCliff01:\s*for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\)\s*tempState\.traits\[traitIdx\] = _vm->_rnd->getRandomNumber\(1, 5\);/, cpp, 'the reflections\' values');
-  need(/for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\)\s*state->traits\[traitIdx\] = _vm->_rnd->getRandomNumber\(1, 4\);/, cpp, 'the reflections\' values when dealt again');
+  scummMatch(/case RunnerType::kCliff01:\s*for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\)\s*tempState\.traits\[traitIdx\] = _vm->_rnd->getRandomNumber\(1, 5\);/, cpp, 'the reflections\' values');
+  scummMatch(/for \(int16 traitIdx = 0; traitIdx < 4; traitIdx\+\+\)\s*state->traits\[traitIdx\] = _vm->_rnd->getRandomNumber\(1, 4\);/, cpp, 'the reflections\' values when dealt again');
   if (!/rnd\.range\(1, 5\)/.test(fnText('zbSmokeReflection'))) fail('the port does not deal reflections 1-5');
   // Where the two part (level 1's note): ScummVM draws the match from all eight when dealing again.
   if (!/int16 randTarget = \(0 < cliffCount\) \? _vm->_rnd->getRandomNumber\(cliffCount - 1\) : 0;/.test(cpp))
     fail('ScummVM\'s initLowLevelQuestionRunners no longer draws from all eight reflections. Revisit level 1\'s note');
   // Level 2's filters.
-  const l2src = need(/void ZoombiniPuzzleSmoke::assignLevel2RunnerTraits[\s\S]*?\n\}/, cpp, 'assignLevel2RunnerTraits')[0];
+  const l2src = scummMatch(/void ZoombiniPuzzleSmoke::assignLevel2RunnerTraits[\s\S]*?\n\}/, cpp, 'assignLevel2RunnerTraits')[0];
   const port2 = fnText('zbSmokeLevel2Filter');
-  for (const [re, what, want] of [
+  for (const [re, what, expectedText] of [
     [/byte slotShuffle\[5\] = \{([\d, ]+)\};/, 'the slot shuffle', m => `slotShuffle = [${m[1]}]`],
     [/byte valueShuffle\[6\] = \{([\d, ]+)\};/, 'the value shuffle', m => `valueShuffle = [${m[1]}]`],
     [/int16 valueCursorBound = (\d+);\s*int16 slotCursorBound = (\d+);/, 'the bounds', m => `valueBound = ${m[1]}, slotBound = ${m[2]}`],
     [/int16 randBudget = _vm->_rnd->getRandomNumber\((\d+), (\d+)\);/, 'the budget', m => `rnd.range(${m[1]}, ${m[2]})`],
     [/int16 slotIdx = _vm->_rnd->getRandomNumber\((\d+), (\d+)\);/, 'the mirror side\'s trait', m => `rnd.range(${m[1]}, ${m[2]})`],
-  ]) { const m = need(re, l2src, what); if (!port2.includes(want(m))) fail(`level 2's ${what} are not ScummVM's (${m[0]})`); }
-  const reuse = Number(need(/const bool reuseRoll = (\d+) < _vm->_rnd->getRandomNumber\(0, 100\);/, l2src, 'the reuse roll')[1]);
+  ]) { const m = scummMatch(re, l2src, what); if (!port2.includes(expectedText(m))) fail(`level 2's ${what} are not ScummVM's (${m[0]})`); }
+  const reuse = Number(scummMatch(/const bool reuseRoll = (\d+) < _vm->_rnd->getRandomNumber\(0, 100\);/, l2src, 'the reuse roll')[1]);
   if (reuse !== S.ZB_SMOKE_ROLL.reuse) fail(`the reuse roll is ${S.ZB_SMOKE_ROLL.reuse}, ScummVM ${reuse}`);
   // The grid.
-  const gsrc = need(/void ZoombiniPuzzleSmoke::generateTraitGrid[\s\S]*?\n\}/, cpp, 'generateTraitGrid')[0];
+  const gsrc = scummMatch(/void ZoombiniPuzzleSmoke::generateTraitGrid[\s\S]*?\n\}/, cpp, 'generateTraitGrid')[0];
   const steps = [...gsrc.matchAll(/(\d+) < _vm->_rnd->getRandomNumber\(0, 100\)/g)].map(m => Number(m[1]));
   const plain = [...gsrc.matchAll(/getRandomNumber\(0, 100\) <= (\d+)/g)].map(m => Number(m[1]));
   if (!same(steps, [S.ZB_SMOKE_ROLL.step, S.ZB_SMOKE_ROLL.fill, S.ZB_SMOKE_ROLL.step, S.ZB_SMOKE_ROLL.fill]) || !same(plain, [S.ZB_SMOKE_ROLL.step]))
@@ -98,10 +98,10 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (!same(cols, [4, 3]) || !/matchColumn = rnd\.range\(0, 4\)/.test(gport) || !/matchColumn = rnd\.range\(0, 3\)/.test(gport)) fail(`the grid's step columns are drawn from 0-${cols.join(' and 0-')}`);
   if (!/byte valuePool\[8\];/.test(gsrc) || [...gsrc.matchAll(/int16 lastValueIndex = (\d+);/g)].some(m => m[1] !== '5') || /last = [^5]/.test(gport)) fail('the grid\'s value pools are not 1-5');
   // The judge, and the chances.
-  need(/for \(int16 traitRowIdx = 7; 3 < traitRowIdx; traitRowIdx--\)/, cpp, 'compareTwoOrderLines\' mirror side');
-  need(/state->traits\[cycleTrait - 1\] = val \+ 1;\s*if \(5 < state->traits\[cycleTrait - 1\]\)\s*state->traits\[cycleTrait - 1\] = 1;/, cpp, 'a step');
+  scummMatch(/for \(int16 traitRowIdx = 7; 3 < traitRowIdx; traitRowIdx--\)/, cpp, 'compareTwoOrderLines\' mirror side');
+  scummMatch(/state->traits\[cycleTrait - 1\] = val \+ 1;\s*if \(5 < state->traits\[cycleTrait - 1\]\)\s*state->traits\[cycleTrait - 1\] = 1;/, cpp, 'a step');
   if (/debugGetChances/.test(cpp) || !/None are counted/.test(P.levels[0].chances)) fail('ScummVM counts chances here, or the port\'s chances count some');
-  need(/if \(_placedZmbCount == _pageLoadedZmbCount\)/, cpp, 'the page ending when every Zoombini has ridden');
+  scummMatch(/if \(_placedZmbCount == _pageLoadedZmbCount\)/, cpp, 'the page ending when every Zoombini has ridden');
 
   // ---- the judge -----------------------------------------------------------
   // ScummVM's display rows: 0 the Zoombini, 1-3 the cart's side from the
@@ -252,8 +252,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     }
   }
   if (slow > 1500) fail(`a known answer took ${slow} ms`);
-  say(`workbench: ${trips} forms given back, ${edits} picks edited and still matched, ${solved} known answers held to the judge (${ways} placements counted again), slowest ${slow} ms. No strategy, nothing being hidden`);
+  print(`workbench: ${trips} forms given back, ${edits} picks edited and still matched, ${solved} known answers held to the judge (${ways} placements counted again), slowest ${slow} ms. No strategy, nothing being hidden`);
 
-  say(`places as ScummVM's and in ZOOMBINI.EXE at 0x${(atCliff[0] || 0).toString(16)} and 0x${(atGrid[0] || 0).toString(16)}. Counts, ranges and rolls as ScummVM's; `
+  print(`places as ScummVM's and in ZOOMBINI.EXE at 0x${(atCliff[0] || 0).toString(16)} and 0x${(atGrid[0] || 0).toString(16)}. Counts, ranges and rolls as ScummVM's; `
     + `${dealt} deals judged (at levels 1 and 2, ${chance} with a second Zoombini matching by chance. At 3 and 4 the made placement passes in all ${madeWorks}, a shorter one found in ${shorter})`);
 }

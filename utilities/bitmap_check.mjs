@@ -15,10 +15,10 @@ const S = site();
 let bad = 0, bitmaps = 0, frames = 0, sheets = 0;
 for (const name of archiveNames()) {
   const arc = S.openMohawk(archiveBytes(name));
-  const theirs = new Map(oracle[name].map(e => [e.id, e]));
+  const pythonBitmaps = new Map(oracle[name].map(e => [e.id, e]));
   for (const r of arc.list('tBMP')) {
     bitmaps++;
-    const t = theirs.get(r.id & 0xffff);
+    const t = pythonBitmaps.get(r.id & 0xffff);
     let d;
     try { d = S.decodeBitmapResource(arc.get('tBMP', r.id)); } catch (e) { console.log(`FAIL ${name} tBMP ${r.id} (${e.message})`); bad++; continue; }
     if (!t) { console.log(`FAIL ${name} tBMP ${r.id}, the Python has no such bitmap`); bad++; continue; }
@@ -30,9 +30,9 @@ for (const name of archiveNames()) {
     d.frames.forEach((f, i) => {
       frames++;
       const [w, h, sha] = t.frames[i];
-      const ours = crypto.createHash('sha1').update(f.pixels).digest('hex');
-      if (f.width !== w || f.height !== h || ours !== sha) {
-        if (bad < 20) console.log(`FAIL ${name} tBMP ${r.id} frame ${i}, ${f.width}x${f.height} here, ${w}x${h} in the Python${ours !== sha ? ', pixels differ' : ''}`);
+      const siteSha = crypto.createHash('sha1').update(f.pixels).digest('hex');
+      if (f.width !== w || f.height !== h || siteSha !== sha) {
+        if (bad < 20) console.log(`FAIL ${name} tBMP ${r.id} frame ${i}, ${f.width}x${f.height} here, ${w}x${h} in the Python${siteSha !== sha ? ', pixels differ' : ''}`);
         bad++;
       }
     });

@@ -13,7 +13,7 @@
 //     x, y pairs at the offset given in ZOOMBINI.EXE;
 //
 // and the rules particular to each puzzle by utilities/puzzles/<archive>.mjs, whose
-// default export is given { S, fail, say, scumm, exe, need, bands, find,
+// default export is given { S, fail, print, scumm, exe, scummMatch, bands, find,
 // open }; open(name) is an archive of the 1996 disc, opened, which a deal
 // for a puzzle with an archive is given.
 //
@@ -27,7 +27,7 @@ import { site, pageScripts, haveDisc, archiveBytes, ROOT, REF } from './load.mjs
 
 let fails = 0;
 const fail = m => { console.log('FAIL ' + m); fails++; };
-const say = m => console.log(m);
+const print = m => console.log(m);
 const SCUMM = path.join(REF, 'scummvm-zoombini', 'engines', 'mohawk');
 const EXE = path.join(REF, 'zombs-lair', 'HDD', 'ZOOMBINI', 'ZOOMBINI.EXE');
 if (!haveDisc() || !fs.existsSync(SCUMM) || !fs.existsSync(EXE)) {
@@ -37,15 +37,15 @@ if (!haveDisc() || !fs.existsSync(SCUMM) || !fs.existsSync(EXE)) {
 
 // The page's scripts, and any puzzle file it does not load yet (listed
 // below). Given puzzles to check, only their files are loaded.
-const want = process.argv.slice(2);
-const wanted = f => !want.length || want.some(w => f === `js/zb-puzzle-${w}.js`);
+const puzzleArgs = process.argv.slice(2);
+const isSelected = f => !puzzleArgs.length || puzzleArgs.some(w => f === `js/zb-puzzle-${w}.js`);
 const onDisk = fs.readdirSync(path.join(ROOT, 'js')).filter(f => /^zb-puzzle-.+\.js$/.test(f)).sort().map(f => 'js/' + f);
 const listed = pageScripts().filter(f => f.startsWith('js/') && !f.startsWith('js/page-'));
-for (const f of onDisk) if (!listed.includes(f) && wanted(f)) fail(`index.html does not load ${f}`);
+for (const f of onDisk) if (!listed.includes(f) && isSelected(f)) fail(`index.html does not load ${f}`);
 for (const f of listed) if (/zb-puzzle-/.test(f) && !fs.existsSync(path.join(ROOT, f))) fail(`index.html loads ${f}, which is not there`);
 const files = listed.filter(f => !/zb-puzzle-/.test(f));
 if (!files.includes('js/zb-puzzle.js')) files.push('js/zb-puzzle.js');
-for (const f of onDisk) if (wanted(f)) files.push(f);
+for (const f of onDisk) if (isSelected(f)) files.push(f);
 const S = site({ files });
 
 const scummCache = new Map();
@@ -56,7 +56,7 @@ const scumm = f => {
 const exe = new Uint8Array(fs.readFileSync(EXE));
 const opened = new Map();
 const open = name => { if (!opened.has(name)) opened.set(name, S.openMohawk(archiveBytes(name))); return opened.get(name); };
-const need = (re, text, what) => { const m = re.exec(text); if (!m) throw new Error(`could not read ${what} from ScummVM`); return m; };
+const scummMatch = (re, text, what) => { const m = re.exec(text); if (!m) throw new Error(`could not read ${what} from ScummVM`); return m; };
 // Every offset of a byte string in a byte array.
 const find = (hay, bytes) => {
   const out = [];
@@ -76,7 +76,7 @@ const bands = (n, seed, sizes = [16]) => {
 // ---- the random numbers ---------------------------------------------------
 {
   const src = scumm('zoombini_random.cpp');
-  const m = need(/_randState = (\d+)u \* _randState \+ (\d+)u;\s*return static_cast<uint16>\(\(_randState >> 16\) % \(max \+ 1\)\);/, src, 'getOriginalRandomNumber');
+  const m = scummMatch(/_randState = (\d+)u \* _randState \+ (\d+)u;\s*return static_cast<uint16>\(\(_randState >> 16\) % \(max \+ 1\)\);/, src, 'getOriginalRandomNumber');
   const [mul, add] = [Number(m[1]), Number(m[2])];
   const le = v => [v & 255, v >> 8 & 255, v >> 16 & 255, v >>> 24];
   const at = find(exe, [...le(mul), 0x66, 0x05, ...le(add)]);
@@ -85,12 +85,12 @@ const bands = (n, seed, sizes = [16]) => {
   const rnd = S.zbRandom(12345);
   for (let i = 0; i < 1000; i++) {
     const max = i % 37;
-    let want = 0;
-    if (max) { s = Number((BigInt(mul) * BigInt(s) + BigInt(add)) % 4294967296n); want = (s >>> 16) % (max + 1); }
-    if (rnd.number(max) !== want) bad++;
+    let expected = 0;
+    if (max) { s = Number((BigInt(mul) * BigInt(s) + BigInt(add)) % 4294967296n); expected = (s >>> 16) % (max + 1); }
+    if (rnd.number(max) !== expected) bad++;
   }
   if (bad) fail(`zbRandom differs from ScummVM's generator in ${bad} of 1000 draws`);
-  else say(`random: ScummVM's generator (x ${mul} + ${add}), which ZOOMBINI.EXE has at 0x${(at[0] - 4).toString(16)}, for 1000 draws`);
+  else print(`random: ScummVM's generator (x ${mul} + ${add}), which ZOOMBINI.EXE has at 0x${(at[0] - 4).toString(16)}, for 1000 draws`);
 }
 
 // ---- every puzzle ---------------------------------------------------------
@@ -127,27 +127,27 @@ const WAITING_IN_SCUMMVM = {
     if (!w !== !sv) { fail(`${k} (${w ? 'a waiting table ScummVM is not read for' : 'no waiting table'})`); continue; }
     if (!w) continue;
     const text = scumm(path.join('zoombini_pages', sv[0]));
-    const m = need(new RegExp(`${sv[1]}\\[(\\d+)\\]\\s*\\{([^}]*)\\}`), text, `${k}'s ${sv[1]}`);
-    const theirs = [...m[2].matchAll(/Point\((-?\d+),\s*(-?\d+)\)/g)].flatMap(p => [+p[1], +p[2]]);
-    if (theirs.length !== 2 * +m[1]) fail(`${k}: read ${theirs.length / 2} of ScummVM's ${m[1]} places`);
-    if (w.at.length !== 32 || JSON.stringify(theirs.slice(0, 32)) !== JSON.stringify(w.at)) fail(`${k}: the waiting places are not ScummVM's ${sv[1]}`);
+    const m = scummMatch(new RegExp(`${sv[1]}\\[(\\d+)\\]\\s*\\{([^}]*)\\}`), text, `${k}'s ${sv[1]}`);
+    const scummPlaces = [...m[2].matchAll(/Point\((-?\d+),\s*(-?\d+)\)/g)].flatMap(p => [+p[1], +p[2]]);
+    if (scummPlaces.length !== 2 * +m[1]) fail(`${k}: read ${scummPlaces.length / 2} of ScummVM's ${m[1]} places`);
+    if (w.at.length !== 32 || JSON.stringify(scummPlaces.slice(0, 32)) !== JSON.stringify(w.at)) fail(`${k}: the waiting places are not ScummVM's ${sv[1]}`);
     const dv = new DataView(exe.buffer, exe.byteOffset);
-    const ours = Array.from({ length: theirs.length }, (_, i) => dv.getInt16(w.exe + 2 * i, true));
-    if (JSON.stringify(ours) !== JSON.stringify(theirs)) fail(`${k}: ZOOMBINI.EXE at 0x${w.exe.toString(16)} is not ScummVM's ${sv[1]}`);
+    const exePlaces = Array.from({ length: scummPlaces.length }, (_, i) => dv.getInt16(w.exe + 2 * i, true));
+    if (JSON.stringify(exePlaces) !== JSON.stringify(scummPlaces)) fail(`${k}: ZOOMBINI.EXE at 0x${w.exe.toString(16)} is not ScummVM's ${sv[1]}`);
     if (find(exe, new Uint8Array(exe.buffer, exe.byteOffset + w.exe, 8)).length < 1) fail(`${k}: lost the table in ZOOMBINI.EXE`);
     tables++;
   }
   if (S.ZB_WAITING.LILLY) fail('LILLY has a waiting table, though its band stands off the screen');
-  say(`waiting: ${tables} puzzles' places for the band as ScummVM's and in ZOOMBINI.EXE`);
+  print(`waiting: ${tables} puzzles' places for the band as ScummVM's and in ZOOMBINI.EXE`);
 }
 
 for (const f of modules) {
   const key = f.replace(/\.mjs$/, '');
-  if (want.length && !want.includes(key)) continue;
+  if (puzzleArgs.length && !puzzleArgs.includes(key)) continue;
   if (!S.ZB_PUZZLES.has(key.toUpperCase())) { fail(`utilities/puzzles/${f} checks ${key.toUpperCase()}, which no js/zb-puzzle-*.js adds`); continue; }
   const mod = await import(pathToFileURL(path.join(dir, f)).href);
   try {
-    await mod.default({ S, fail, say: m => say(`${key} (${m})`), scumm, exe, need, bands, find, open });
+    await mod.default({ S, fail, print: m => print(`${key} (${m})`), scumm, exe, scummMatch, bands, find, open });
   } catch (e) {
     fail(`${key} (${e.stack || e})`);
   }

@@ -24,7 +24,7 @@
                                             the hardest is searched for
 
    The page's script: DOM here. LOAD ORDER: after page-browse.js, whose
-   $, esc, ARCHIVES, ensureBytes, openedArchive and sharedColours it uses;
+   $, esc, ARCHIVES, ensureBytes, openedArchive and sharedColors it uses;
    page-browse.js's route() calls solveRoute. */
 
 const SVIEW = { key: null, level: 1, seed: 1, size: 16, band: null, set: null, view: 'known', knows: 'program', path: [], pick: 0, stage: 'diagram' };
@@ -85,9 +85,9 @@ function solveApplyHash() {
 /* The archives a view needs that are not in yet: the puzzle's layouts,
    and ZOOMBINI's sprites, which a diagram uses when they are open and
    otherwise replaces with numbered placeholders. */
-function solveNeeds() {
+function solveMissingArchives() {
   const out = [];
-  for (const name of zbDealNeeds(SVIEW.key)) {
+  for (const name of zbDealArchives(SVIEW.key)) {
     const e = ARCHIVES.get(name);
     if (!e) return { missing: name };
     if (!e.bytes) out.push(e);
@@ -137,8 +137,8 @@ function solveStrategy() {
 /* ---- sprites ---------------------------------------------------------------- */
 
 function solvePalette() {
-  const pal = zbPalette(null), sc = sharedColours();
-  if (sc) sc.colours.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
+  const pal = zbPalette(null), sc = sharedColors();
+  if (sc) sc.colors.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
   return pal;
 }
 function solveSheet() {
@@ -377,14 +377,14 @@ function solveRoute() {
   solveApplyHash();
   const place = ZB_PLACE_BY_KEY.get(SVIEW.key);
   $('crumbs').innerHTML = `<a href="#scenario">Scenario</a><span class="sep">›</span><a href="#scenario/puzzles">Puzzles</a>${place ? `<span class="sep">›</span><span>${esc(place.name)}</span>` : ''}`;
-  const need = solveNeeds();
-  if (need.missing) {
-    $('spanel').innerHTML = `<p class="warn">This puzzle’s layout is in ${esc(need.missing)}.MHK, which is not open.</p>`;
+  const pending = solveMissingArchives();
+  if (pending.missing) {
+    $('spanel').innerHTML = `<p class="warn">This puzzle’s layout is in ${esc(pending.missing)}.MHK, which is not open.</p>`;
     $('sdiagram').innerHTML = ''; return;
   }
-  if (need.fetch.length) {
-    $('spanel').innerHTML = `<p class="note">Fetching ${need.fetch.map(e => esc(e.name.toLowerCase()) + '.mhk').join(' and ')} from archive.org…</p>`;
-    Promise.all(need.fetch.map(ensureBytes)).then(() => { if (isSolveHash()) solveRoute(); });
+  if (pending.fetch.length) {
+    $('spanel').innerHTML = `<p class="note">Fetching ${pending.fetch.map(e => esc(e.name.toLowerCase()) + '.mhk').join(' and ')} from archive.org…</p>`;
+    Promise.all(pending.fetch.map(ensureBytes)).then(() => { if (isSolveHash()) solveRoute(); });
     return;
   }
   if (SVIEW.level === 5 && !SVIEW.seed) return solveHardSearch();
@@ -413,8 +413,8 @@ function wireSolve() {
     if (!a) return;
     e.preventDefault();
     if (a.dataset.stage) { SVIEW.stage = a.dataset.stage; solveWriteHash(); return solveStage(); }
-    const want = [ARCHIVES.get(SVIEW.key), ARCHIVES.get('ZOOMBINI')].filter(x => x && !x.bytes);
-    Promise.all(want.map(ensureBytes)).then(() => { SSPRITES.clear(); if (isSolveHash()) solveStage(); });
+    const toFetch = [ARCHIVES.get(SVIEW.key), ARCHIVES.get('ZOOMBINI')].filter(x => x && !x.bytes);
+    Promise.all(toFetch.map(ensureBytes)).then(() => { SSPRITES.clear(); if (isSolveHash()) solveStage(); });
     solveStage();
   });
   panel.addEventListener('change', e => {

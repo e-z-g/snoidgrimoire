@@ -26,32 +26,32 @@
 //     mark is on a toad that crosses from its row, two a toad at most.
 const nums = body => [...body.matchAll(/-?\d+/g)].map(m => Number(m[0]));
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find, open }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find, open }) {
   const h = scumm('zoombini_pages/puzzle_lilly.h'), cpp = scumm('zoombini_pages/puzzle_lilly.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const table = (name, n) => nums(need(new RegExp(`${name}\\[${n}\\]\\{([\\s\\S]*?)\\};`), h, name)[1]);
+  const table = (name, n) => nums(scummMatch(new RegExp(`${name}\\[${n}\\]\\{([\\s\\S]*?)\\};`), h, name)[1]);
   // A function's text, from its definition to the brace that closes it.
-  const fn = name => need(new RegExp(`\\n\\w[\\w ]* ZoombiniPuzzleLilly::${name}\\([^)]*\\)[^\\n;]*\\{[\\s\\S]*?\\n\\}\\n`), cpp, name)[0];
+  const fn = name => scummMatch(new RegExp(`\\n\\w[\\w ]* ZoombiniPuzzleLilly::${name}\\([^)]*\\)[^\\n;]*\\{[\\s\\S]*?\\n\\}\\n`), cpp, name)[0];
   const P = S.ZB_PUZZLES.get('LILLY');
 
   // ---- the tables, as ScummVM's text has them ----------------------------
-  const enumBody = need(/enum PadAttrType : byte \{([\s\S]*?)\};/, h, 'PadAttrType')[1];
+  const enumBody = scummMatch(/enum PadAttrType : byte \{([\s\S]*?)\};/, h, 'PadAttrType')[1];
   const attr = Object.fromEntries([...enumBody.matchAll(/(kPadAttr\w+) = (\d+)/g)].map(m => [m[1], Number(m[2])]));
-  const types = [...need(/kPatternAttrType\[13\]\{([\s\S]*?)\};/, h, 'kPatternAttrType')[1].matchAll(/ZmbLillyGridWalker::(kPadAttr\w+)/g)].map(m => attr[m[1]]);
+  const types = [...scummMatch(/kPatternAttrType\[13\]\{([\s\S]*?)\};/, h, 'kPatternAttrType')[1].matchAll(/ZmbLillyGridWalker::(kPadAttr\w+)/g)].map(m => attr[m[1]]);
   if (!same(types, S.ZB_LILLY_TATTOO_TYPE)) fail(`the tattoos' families are not ScummVM's (${types})`);
   if (!same([null, attr.kPadAttrPattern, attr.kPadAttrShape, attr.kPadAttrColor].map(v => v === null ? null : S.ZB_LILLY_FAMILY[v]), [null, 'pattern', 'shape', 'color'])) fail('the families are not numbered as ScummVM numbers them');
   const values = table('kPatternAttrValue', 13), extra = table('kPatternAttrExtra', 13);
   if (!same(values, S.ZB_LILLY_TATTOO_VALUE)) fail(`the tattoos' values are not ScummVM's (${values})`);
   if (!same(extra, S.ZB_LILLY_TATTOO_EXTRA)) fail(`the tattoos' numbers are not ScummVM's (${extra})`);
   if (extra.slice(0, 12).some((v, i) => v !== i)) fail('a tattoo\'s number is not its place in the table, which the port assumes');
-  const needed = table('kZmbToRowCount', 21), cuttable = table('kRowColValidity', 13);
-  if (!same(needed, S.ZB_LILLY_ROUTES_NEEDED)) fail(`the routes a band needs are not ScummVM's (${needed})`);
-  if (needed.some((v, n) => n && v !== Math.ceil(n / 2))) fail('kZmbToRowCount is not half the band rounded up, as the rules say');
+  const routeCounts = table('kZmbToRowCount', 21), cuttable = table('kRowColValidity', 13);
+  if (!same(routeCounts, S.ZB_LILLY_ROUTES_REQUIRED)) fail(`the routes a band needs are not ScummVM's (${routeCounts})`);
+  if (routeCounts.some((v, n) => n && v !== Math.ceil(n / 2))) fail('kZmbToRowCount is not half the band rounded up, as the rules say');
   if (!same(cuttable, S.ZB_LILLY_CUTTABLE)) fail(`the rows and columns that may be cut are not ScummVM's (${cuttable})`);
   // The pictures the names come from: a pad's shape drawn as shape + 1,
   // its mark as 5 + 3 x color + pattern.
   if (!same(table('kCombinedAttrBase', 5), [5, 8, 11, 14, 17])) fail('the marks are not drawn as 5 + 3 x color + pattern, as the names assume');
-  need(/int16 padShapeIdx = _padShape\[row\]\[col\] \+ 1;/, cpp, 'the pad\'s shape as drawn');
+  scummMatch(/int16 padShapeIdx = _padShape\[row\]\[col\] \+ 1;/, cpp, 'the pad\'s shape as drawn');
   const col = table('kSwapPairCol', 20), row = table('kSwapPairRow', 20);
   const init = fn('initGridWithAttributes');
   const idx = [...init.matchAll(/_(first|second)SwapCellCol = kSwapPairCol\[(\d+)\];\s*_\1SwapCellRow = kSwapPairRow\[(\d+)\];/g)].map(m => Number(m[2]));
@@ -61,8 +61,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   // The maps: which REGS, which route numbers each has, and where each wraps around.
   const regs = [...init.matchAll(/loadGridPatternRegs\((\d), (\d+)\);/g)].map(m => Number(m[2]));
   if (!same(regs, [15000, 15001, 15002])) fail(`ScummVM loads the maps from REGS ${regs}`);
-  const first = nums(need(/kFirstPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kFirstPatternIndex')[1]);
-  const last = nums(need(/kLastPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kLastPatternIndex')[1]);
+  const first = nums(scummMatch(/kFirstPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kFirstPatternIndex')[1]);
+  const last = nums(scummMatch(/kLastPatternIndex\[3\] = \{([^}]*)\}/, cpp, 'kLastPatternIndex')[1]);
   const wraps = [...init.matchAll(/if \((\d+) < adjustedIdx\)\s*adjustedIdx = (\d+);/g)].map(m => [Number(m[2]), Number(m[1])]);
   if (!same(first.map((f, i) => [f, last[i]]), S.ZB_LILLY_MAP_ROUTES) || !same(wraps, S.ZB_LILLY_MAP_ROUTES)) fail(`the maps' routes are not ScummVM's, ${first} to ${last}, wrapping ${JSON.stringify(wraps)}`);
   const pools = fn('generateChallengePatterns');
@@ -70,15 +70,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (!same(poolTop, S.ZB_LILLY_MAP_ROUTES.map(([a, b]) => b - a))) fail(`the pools' sizes are not ScummVM's (${poolTop})`);
 
   // The rules the deal and the chances lean on, as ScummVM writes them.
-  const cut = need(/_challengeEnabledMarkers\[rawVal\] == 0 && _challengePlacementCounts\[rawVal\] < (\d+)\) \{\s*int16 rndCheck = _vm->_rnd->getRandomNumber\(0, (\d+)\);\s*if \((\d+) < rndCheck \|\| \(gridColIdx == 11 && _challengePlacementCounts\[rawVal\] == 0\)\)/, init, 'the cut');
+  const cut = scummMatch(/_challengeEnabledMarkers\[rawVal\] == 0 && _challengePlacementCounts\[rawVal\] < (\d+)\) \{\s*int16 rndCheck = _vm->_rnd->getRandomNumber\(0, (\d+)\);\s*if \((\d+) < rndCheck \|\| \(gridColIdx == 11 && _challengePlacementCounts\[rawVal\] == 0\)\)/, init, 'the cut');
   if (!same([cut[1], cut[2], cut[3]].map(Number), [S.ZB_LILLY_CUT.most, S.ZB_LILLY_CUT.draw, S.ZB_LILLY_CUT.above])) fail(`a cut is tried and made as ScummVM does not (${cut.slice(1)})`);
-  need(/slotsToEnable = 12 - kZmbToRowCount\[_pageLoadedZmbCount\];/, init, 'the routes spared at level 1');
-  need(/maxObstacleEntries = 2;[\s\S]*maxObstacleEntries = 3;/, init, 'the crabs\' entries');
-  need(/const int16 swapProgressNumerator = patternPlacedCount \+ 5;\s*_swapsPerWandStage = \(swapProgressNumerator \+ 5\) \/ 6;/, init, 'the wand\'s stages');
-  need(/const int16 totalUses = static_cast<int16>\(6 \* _swapsPerWandStage\);/, cpp, 'debugGetChances');
-  need(/rs\.completedCrossingCount \+= 1;[\s\S]{0,80}if \(rs\.completedCrossingCount == 2\)/, cpp, 'a toad\'s two crossings');
+  scummMatch(/slotsToEnable = 12 - kZmbToRowCount\[_pageLoadedZmbCount\];/, init, 'the routes spared at level 1');
+  scummMatch(/maxObstacleEntries = 2;[\s\S]*maxObstacleEntries = 3;/, init, 'the crabs\' entries');
+  scummMatch(/const int16 swapProgressNumerator = patternPlacedCount \+ 5;\s*_swapsPerWandStage = \(swapProgressNumerator \+ 5\) \/ 6;/, init, 'the wand\'s stages');
+  scummMatch(/const int16 totalUses = static_cast<int16>\(6 \* _swapsPerWandStage\);/, cpp, 'debugGetChances');
+  scummMatch(/rs\.completedCrossingCount \+= 1;[\s\S]{0,80}if \(rs\.completedCrossingCount == 2\)/, cpp, 'a toad\'s two crossings');
   for (const re of [/temp\[col\]\[11 - row\] = grid\[row\]\[col\];/, /temp\[11 - row\]\[11 - col\] = grid\[row\]\[col\];/, /temp\[11 - col\]\[row\] = grid\[row\]\[col\];/,
-    /temp\[row\]\[11 - col\] = grid\[row\]\[col\];/, /temp\[11 - row\]\[col\] = grid\[row\]\[col\];/]) need(re, cpp, 'rotateGrid and flipGrid');
+    /temp\[row\]\[11 - col\] = grid\[row\]\[col\];/, /temp\[11 - row\]\[col\] = grid\[row\]\[col\];/]) scummMatch(re, cpp, 'rotateGrid and flipGrid');
   // The port's turns and mirrors, as those five lines place a cell.
   const grid = [...Array(12)].map((_, r) => [...Array(12)].map((_, c) => r * 12 + c));
   const moved = [S.zbLillyTurn(grid, 0), S.zbLillyTurn(grid, 1), S.zbLillyTurn(grid, 2), S.zbLillyMirror(grid, 0), S.zbLillyMirror(grid, 1)];
@@ -99,7 +99,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   const exeTattoos = one(w([...T, ...V]), 'the twelve tattoos\' families and values');
   // The numbers run straight into the crabs' kObstacleBFSOffset, of which ZOOMBINI.EXE has four words.
   const exeNumbers = one(w([...S.ZB_LILLY_TATTOO_EXTRA, ...table('kObstacleBFSOffset', 5).slice(0, 4)]), 'the tattoos\' numbers');
-  const exeNeeded = one(w([...S.ZB_LILLY_ROUTES_NEEDED, ...S.ZB_LILLY_CUTTABLE]), 'the routes needed and the rows that may be cut');
+  const exeRouteCounts = one(w([...S.ZB_LILLY_ROUTES_REQUIRED, ...S.ZB_LILLY_CUTTABLE]), 'the routes needed and the rows that may be cut');
   const exeSwaps = one(w([...S.ZB_LILLY_DEMO_SWAPS.flat().map(p => p[0]), 0, ...S.ZB_LILLY_DEMO_SWAPS.flat().map(p => p[1]), 0]), 'the demonstration swaps');
   const deck = [...Array(12).keys(), 0, ...T.slice(0, 12), ...V.slice(0, 12)];
   const exeToads = find(exe, w(deck)).filter(o => latin(o + deck.length * 2, 24).includes('Lilly.MHK'));
@@ -107,15 +107,15 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
 
   // ---- LILLY's route maps ------------------------------------------------------
   if (!same(S.ZB_LILLY_ROUTE_REGS, regs)) fail(`the port reads the maps from REGS ${S.ZB_LILLY_ROUTE_REGS}, ScummVM ${regs}`);
-  need(/const int16 patternIndex = stream->readSint16BE\(\);[\s\S]*?parsedGrid\[row\]\[col\] = patternIndex;/, cpp, 'loadGridPatternRegs');
+  scummMatch(/const int16 patternIndex = stream->readSint16BE\(\);[\s\S]*?parsedGrid\[row\]\[col\] = patternIndex;/, cpp, 'loadGridPatternRegs');
   const arc = open('LILLY'), maps = S.zbLillyRouteMaps(arc);
   for (let i = 0; i < 3; i++) {
     const bytes = arc.get('REGS', regs[i]), dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const raw = [...Array(bytes.length / 2).keys()].map(k => dv.getInt16(2 * k));
-    const mine = maps[i].flat();
-    if (raw.length !== 144 || !same(raw, mine)) fail(`map ${i} is not LILLY REGS ${regs[i]} read row by row`);
+    const siteMap = maps[i].flat();
+    if (raw.length !== 144 || !same(raw, siteMap)) fail(`map ${i} is not LILLY REGS ${regs[i]} read row by row`);
     const [a, b] = [first[i], last[i]];
-    if (mine.some(v => v && (v < a || v > b)) || [...Array(b - a + 1).keys()].some(k => !mine.includes(a + k))) fail(`map ${i} has routes other than ${a}-${b}, or lacks one`);
+    if (siteMap.some(v => v && (v < a || v > b)) || [...Array(b - a + 1).keys()].some(k => !siteMap.includes(a + k))) fail(`map ${i} has routes other than ${a}-${b}, or lacks one`);
   }
   // Without the maps the deal throws, naming what is missing.
   const bare = { has: () => false, get: () => { throw new Error('no resource'); } };
@@ -135,16 +135,16 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       const n = band.length, { log, rnd } = recording(seed);
       const d = P.deal(level, band, rnd, {}, arc);
       const s = d.state, pads = { pattern: s.padPattern, shape: s.padShape, color: s.padColor };
-      const fam = s.obstacleGridFamily, need8 = S.ZB_LILLY_ROUTES_NEEDED[n] < 8;
+      const fam = s.obstacleGridFamily, routesUnder8 = S.ZB_LILLY_ROUTES_REQUIRED[n] < 8;
 
       // The draws, in order.
       let i = 0;
       const next = () => log[i++] || [];
-      if (level === 3 && need8) { if (!same(next(), [3, 5])) bad(`level 3: the family is not drawn 3-5 first`); }
-      if (level === 4 && need8) { if (!same(next(), [4, 5])) bad(`level 4: the family is not drawn 4-5 first`); }
+      if (level === 3 && routesUnder8) { if (!same(next(), [3, 5])) bad(`level 3: the family is not drawn 3-5 first`); }
+      if (level === 4 && routesUnder8) { if (!same(next(), [4, 5])) bad(`level 4: the family is not drawn 4-5 first`); }
       if (!same(next(), [0, 2])) bad(`level ${level}: the transform is not drawn 0-2`);
       if (s.transformType === 1) for (let k = 0; k < 3; k++) if (!same(next(), [0, 1])) bad(`level ${level}: a mirror is not drawn 0-1`);
-      const toCut = level === 1 ? 12 - S.ZB_LILLY_ROUTES_NEEDED[n] : 12;
+      const toCut = level === 1 ? 12 - S.ZB_LILLY_ROUTES_REQUIRED[n] : 12;
       for (let k = 0; k < toCut; k++) if (!same(next(), [1, 12 - k])) bad(`level ${level}: the routes to cut are not drawn from 1-12 down`);
       for (const top of [2, 1, 0, 3, 2, 1, 0, 4, 3, 2, 1, 0]) if (!same(next(), [0, top])) bad(`level ${level}: the pools are not drawn in turn`);
       const fills = [];
@@ -193,13 +193,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
         }
         if (level > 1) mended++;
       }
-      if (level === 1 && s.challengeEnabledMarkers.slice(1).filter(v => v !== 0).length !== S.ZB_LILLY_ROUTES_NEEDED[n]) bad(`level 1: not half the band's routes spared`);
+      if (level === 1 && s.challengeEnabledMarkers.slice(1).filter(v => v !== 0).length !== S.ZB_LILLY_ROUTES_REQUIRED[n]) bad(`level 1: not half the band's routes spared`);
       if (level === 1 && d.marks.some(m => !m)) bad(`level 1: a Zoombini of ${n} has no toad to ride`);
 
       // The turned family, the crabs and the wand.
       if (level < 3 && fam) bad(`level ${level}: a map is turned`);
-      if (level === 3 && !(need8 ? [3, 4, 5] : [4]).includes(fam)) bad(`level 3: family ${fam} turned for a band of ${n}`);
-      if (level === 4 && !(need8 ? [4, 5] : [4]).includes(fam)) bad(`level 4: family ${fam} turned for a band of ${n}`);
+      if (level === 3 && !(routesUnder8 ? [3, 4, 5] : [4]).includes(fam)) bad(`level 3: family ${fam} turned for a band of ${n}`);
+      if (level === 4 && !(routesUnder8 ? [4, 5] : [4]).includes(fam)) bad(`level 4: family ${fam} turned for a band of ${n}`);
       if (level >= 3) {
         if (s.crabEntries.length > level - 1 || s.crabEntries.some(e => e.type !== fam - 2 || pads[FAM[e.type]][0][e.col] !== e.value || !s.authoredPathGrids[fam - 3][0][e.col])) bad(`level ${level}: a crab starts off its routes' top row`);
       }
@@ -241,13 +241,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       if (!same([again.padPattern, again.padShape, again.padColor, again.toads.map(t => t.tattooIdx)], [st.padPattern, st.padShape, st.padColor, st.toads.map(t => t.tattooIdx)])) { wbad(`level ${level}: dealing again with the choices as dealt deals another pond`); break; }
       // A changed choice: two patterns' tattoos swapped, the maps left as laid.
       const v2 = Object.assign({}, v, { transform: 'none', tattoos: [v.tattoos[1], v.tattoos[0], ...v.tattoos.slice(2)] });
-      if (level === 1) v2.spared = [...Array(12).keys()].map(k => k + 1).slice(0, S.ZB_LILLY_ROUTES_NEEDED[n]);
+      if (level === 1) v2.spared = [...Array(12).keys()].map(k => k + 1).slice(0, S.ZB_LILLY_ROUTES_REQUIRED[n]);
       const e2 = P.edit(level, band, st, v2, arc);
       if (!same(valuesOf(P.form(level, band, e2, arc)), v2) || e2.transformType !== 2) { wbad(`level ${level}: a changed choice is not kept`); break; }
       const refused = vals => { try { P.edit(level, band, st, Object.assign({}, v, vals), arc); return false; } catch (e) { return /\w/.test(e.message); } };
       if (!refused({ tattoos: [v.tattoos[3], ...v.tattoos.slice(1, 3), v.tattoos[0], ...v.tattoos.slice(4)] })) { wbad(`level ${level}: a shape's tattoo on a pattern's route is taken`); break; }
       if (!refused({ transform: 'sideways' })) { wbad(`level ${level}: a transform the program has not is taken`); break; }
-      if (level === 1 && !refused({ spared: [1] }) && S.ZB_LILLY_ROUTES_NEEDED[n] !== 1) { wbad('level 1: the wrong number of routes left whole is taken'); break; }
+      if (level === 1 && !refused({ spared: [1] }) && S.ZB_LILLY_ROUTES_REQUIRED[n] !== 1) { wbad('level 1: the wrong number of routes left whole is taken'); break; }
       if (level >= 3 && n > 14 && !refused({ family: 3 })) { wbad(`level ${level}: a turned family the program would not choose for ${n} is taken`); break; }
       trips++;
 
@@ -296,8 +296,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
   if (P.strategy) fail('Titanic Tattooed Toads hides nothing from the player, and has a strategy');
   if (slow) fail(`${slow} solves took more than 1.2 s on a budget of 0.6 s`);
   if (wb) fail(wb);
-  say(`${trips} forms given back and dealt again as dealt. ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms. Bands of 16 as level:most/swaps ${summary.join(' ')})`);
-  say(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeNeeded.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}). Maps as REGS 15000-15002. ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 every band crosses by the ${spared} spared routes`);
+  print(`${trips} forms given back and dealt again as dealt. ${solved} solves replayed from their words (${whole} whole, the slowest ${worstMs} ms. Bands of 16 as level:most/swaps ${summary.join(' ')})`);
+  print(`tables as ScummVM's and in ZOOMBINI.EXE (tattoos 0x${exeTattoos.toString(16)}, numbers 0x${exeNumbers.toString(16)}, routes needed 0x${exeRouteCounts.toString(16)}, swaps 0x${exeSwaps.toString(16)}, the toads' copy 0x${(exeToads[0] || 0).toString(16)}). Maps as REGS 15000-15002. ${dealt} deals drawn in the program's order, every route whole once mended (${mended}), and at level 1 every band crosses by the ${spared} spared routes`);
 
   // ---- a route map edited (the page's layout editor) ----------------------
   // Every route on the disc runs from the first column to the last, a pad
@@ -317,6 +317,6 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find, ope
       try { S.zbLillyEditMap(words, g, 0, 0, g === 0 ? 4 : 1); } catch (e) { refused = true; }
       if (!refused) fail(`map ${g + 1} accepts another family's route`);
     }
-    say('route maps edited: every route on the disc across, a pad painted back as it was, a route cut in its last column not across, another family\'s route turned away');
+    print('route maps edited: every route on the disc across, a pad painted back as it was, a route cut in its last column not across, another family\'s route turned away');
   }
 }

@@ -29,7 +29,7 @@ for (const name of archiveNames()) {
           note('tMID', `format ${m.header.format}, ${m.header.tracks} track(s), ${m.programs ? 'Prg#' : 'no Prg#'}`);
         } else if (tag === 'SHPL' || tag === 'tPAL') {
           const p = S.parsePaletteResource(b, tag);
-          note(tag, `from ${p.start}, ${p.colours.length} colors`);
+          note(tag, `from ${p.start}, ${p.colors.length} colors`);
         } else if (tag === 'STRL') {
           note('STRL', `${S.parseStringList(b).length} string(s)`);
         } else if (tag === 'CURS') {

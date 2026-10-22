@@ -832,7 +832,7 @@ function qtmaWrite(parts, events, opts) {
    through the file's tempo map. Formats 0 and 1; a file in SMPTE time
    is rejected by name. */
 function midiRead(bytes) {
-  if (fourcc(bytes, 0) !== 'MThd') throw new Error('not a MIDI file: it does not begin MThd');
+  if (fourcc(bytes, 0) !== 'MThd') throw new Error('not a MIDI file, since it does not begin with MThd');
   const format = u16be(bytes, 8), ntrk = u16be(bytes, 10), division = u16be(bytes, 12);
   if (format > 1) throw new Error('a format ' + format + ' MIDI file, where the page reads 0 and 1');
   if (division & 0x8000) throw new Error('a MIDI file timed in SMPTE frames, where the page reads beats');

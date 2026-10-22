@@ -29,18 +29,18 @@
 //     move, then walked again by zbStrategyPlay to the same end, never
 //     serves a meal twice or off the machine and never has fewer across
 //     than it guarantees; level 1's every branch walked; within its time.
-export default function check({ S, fail, say, scumm, exe, need, bands }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands }) {
   const h = scumm('zoombini_pages/puzzle_pizza.h'), cpp = scumm('zoombini_pages/puzzle_pizza.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('PIZZA'), L = S.ZB_PIZZA_LEVELS;
 
   // ---- the levels' numbers ---------------------------------------------
-  const params = need(/void ZoombiniPuzzlePizza::setDifficultyParams\(\) \{([\s\S]*?)\n\}/, cpp, 'setDifficultyParams')[1];
-  const arr = name => need(new RegExp(`${name}\\[4\\] = \\{([\\d, ]+)\\};`), params, name)[1].split(',').map(Number);
+  const params = scummMatch(/void ZoombiniPuzzlePizza::setDifficultyParams\(\) \{([\s\S]*?)\n\}/, cpp, 'setDifficultyParams')[1];
+  const arr = name => scummMatch(new RegExp(`${name}\\[4\\] = \\{([\\d, ]+)\\};`), params, name)[1].split(',').map(Number);
   const scummLevels = { slots: arr('kSlots'), minimum: arr('kTarget'), threshold: arr('kThreshold'), forgiven: arr('kMistakeAllowance') };
   for (const k of Object.keys(scummLevels)) if (!same(scummLevels[k], L.map(l => l[k]))) fail(`the levels' ${k} are ${L.map(l => l[k])}, ScummVM's ${scummLevels[k]}`);
-  need(/_machineToppingSlotCount = kSlots\[_puzzleLevel - 1\];[\s\S]*_initialMistakeAllowance = kMistakeAllowance\[_puzzleLevel - 1\];/, params, 'how the level picks its numbers');
-  const from = troll => Number(need(new RegExp(`if \\(kPuzzleLevel(\\d) <= _puzzleLevel\\)\\s*_trollOrderStates\\[TrollOrderLine::k${troll}\\d\\d\\] = TrollOrderState::kActive01;`), params, `when ${troll} comes`)[1]);
+  scummMatch(/_machineToppingSlotCount = kSlots\[_puzzleLevel - 1\];[\s\S]*_initialMistakeAllowance = kMistakeAllowance\[_puzzleLevel - 1\];/, params, 'how the level picks its numbers');
+  const from = troll => Number(scummMatch(new RegExp(`if \\(kPuzzleLevel(\\d) <= _puzzleLevel\\)\\s*_trollOrderStates\\[TrollOrderLine::k${troll}\\d\\d\\] = TrollOrderState::kActive01;`), params, `when ${troll} comes`)[1]);
   const trolls = [1, 2, 3, 4].map(l => 1 + (l >= from('Willa')) + (l >= from('Shyler')));
   if (!same(trolls, L.map(l => l.trolls))) fail(`the levels have ${L.map(l => l.trolls)} trolls, ScummVM ${trolls}`);
 
@@ -49,24 +49,24 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
     .map(m => ({ word: m[3].toLowerCase(), on: m[2], slot: Number(m[4]) }));
   if (kinds.length !== 8 || kinds.some((k, i) => k.slot !== i)) fail(`read ${kinds.length} toppings from ScummVM's MealIngredient, not eight in order`);
   kinds.forEach((k, i) => {
-    const mine = S.ZB_PIZZA_TOPPINGS[i].replace(/^an? /, '').replace(/ /g, '');
-    if (!mine.endsWith(k.word)) fail(`topping ${i} is "${S.ZB_PIZZA_TOPPINGS[i]}", ScummVM's ${k.word}`);
+    const toppingWord = S.ZB_PIZZA_TOPPINGS[i].replace(/^an? /, '').replace(/ /g, '');
+    if (!toppingWord.endsWith(k.word)) fail(`topping ${i} is "${S.ZB_PIZZA_TOPPINGS[i]}", ScummVM's ${k.word}`);
     if ((k.on === 'sundae') !== (i >= S.ZB_PIZZA_SUNDAE_FROM)) fail(`topping ${i} goes on the ${k.on} in ScummVM`);
   });
-  const gen = need(/void ZoombiniPuzzlePizza::generateToppingSet\(\) \{([\s\S]*?)\n\}/, cpp, 'generateToppingSet')[1];
-  const leftOut = need(/forbiddenSlot = \(_puzzleLevel == kPuzzleLevel(\d)\) \? (\d+) : -1;/, gen, 'the slot left out');
+  const gen = scummMatch(/void ZoombiniPuzzlePizza::generateToppingSet\(\) \{([\s\S]*?)\n\}/, cpp, 'generateToppingSet')[1];
+  const leftOut = scummMatch(/forbiddenSlot = \(_puzzleLevel == kPuzzleLevel(\d)\) \? (\d+) : -1;/, gen, 'the slot left out');
   if (Number(leftOut[1]) !== 2 || Number(leftOut[2]) !== S.ZB_PIZZA_L2_LEFT_OUT) fail(`ScummVM leaves out slot ${leftOut[2]} at level ${leftOut[1]}`);
-  need(/if \(_vm->_rnd->getRandomNumber\(1000\) < _toppingGenerationThreshold\) \{\s*if \(!_generatedToppings\[i\] && i != forbiddenSlot\)/, gen, 'the draw for each slot');
-  need(/\} while \(0 < remaining\);/, gen, 'the rounds');
+  scummMatch(/if \(_vm->_rnd->getRandomNumber\(1000\) < _toppingGenerationThreshold\) \{\s*if \(!_generatedToppings\[i\] && i != forbiddenSlot\)/, gen, 'the draw for each slot');
+  scummMatch(/\} while \(0 < remaining\);/, gen, 'the rounds');
 
   // ---- the sharing out -------------------------------------------------
-  const dist = need(/void ZoombiniPuzzlePizza::distributeToppings\(\) \{([\s\S]*?)\n\}/, cpp, 'distributeToppings')[1];
-  need(/if \(!_vm->_rnd->getRandomBool\(\)\) \{\s*_arnoToppings\[i\] = true;/, dist, 'level 2\'s coin toss');
-  need(/int16 category = _vm->_rnd->getRandomNumber\(0, 2\);\s*switch \(category\) \{\s*case 0:\s*_arnoToppings\[i\] = true;[\s\S]*?case 1:\s*_willaToppings\[i\] = true;/, dist, 'levels 3 and 4\'s share');
+  const dist = scummMatch(/void ZoombiniPuzzlePizza::distributeToppings\(\) \{([\s\S]*?)\n\}/, cpp, 'distributeToppings')[1];
+  scummMatch(/if \(!_vm->_rnd->getRandomBool\(\)\) \{\s*_arnoToppings\[i\] = true;/, dist, 'level 2\'s coin toss');
+  scummMatch(/int16 category = _vm->_rnd->getRandomNumber\(0, 2\);\s*switch \(category\) \{\s*case 0:\s*_arnoToppings\[i\] = true;[\s\S]*?case 1:\s*_willaToppings\[i\] = true;/, dist, 'levels 3 and 4\'s share');
   const ties = [...dist.matchAll(/if \((\w+)ToppingCount <= (\w+)ToppingCount\) \{\s*do \{\s*slot = [^;]+;\s*\} while \(!_(\w+)Toppings\[slot\]\);/g)].map(m => [m[1], m[2], m[3]]);
   if (!same(ties, [['willa', 'shyler', 'shyler'], ['arno', 'shyler', 'shyler'], ['arno', 'willa', 'willa']])) fail(`the ties in the sharing out read ${JSON.stringify(ties)}`);
-  need(/\{dominantOrderToppingA, otherOrderToppingA\},\s*\{dominantOrderToppingB, otherOrderToppingA\},\s*\{dominantOrderToppingB, otherOrderToppingB\},\s*\{dominantOrderToppingA, otherOrderToppingB\},/, cpp, 'the four pit meals');
-  need(/TrollOrderLine dominantOrderLine = TrollOrderLine::kArno00;\s*if \(willaToppingCount <= arnoToppingCount\) \{\s*if \(arnoToppingCount < shylerToppingCount\)/, dist, 'the troll who wants the most');
+  scummMatch(/\{dominantOrderToppingA, otherOrderToppingA\},\s*\{dominantOrderToppingB, otherOrderToppingA\},\s*\{dominantOrderToppingB, otherOrderToppingB\},\s*\{dominantOrderToppingA, otherOrderToppingB\},/, cpp, 'the four pit meals');
+  scummMatch(/TrollOrderLine dominantOrderLine = TrollOrderLine::kArno00;\s*if \(willaToppingCount <= arnoToppingCount\) \{\s*if \(arnoToppingCount < shylerToppingCount\)/, dist, 'the troll who wants the most');
 
   // The same, played out: the port dealt from numbers chosen to reach each
   // coin toss and tie, which it must settle as ScummVM's text does. After
@@ -94,13 +94,13 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   if (!same(pit, [[0, 2], [1, 2], [1, 4], [0, 4]])) fail(`with two toppings each, Arno should give two to the pit. The port's pit is ${JSON.stringify(pit)}`);
 
   // ---- the judging and the chances ---------------------------------------
-  const judge = need(/classifySubmittedMeal\(TrollOrderLine orderLine\) const \{([\s\S]*?)\n\}/, cpp, 'classifySubmittedMeal')[1];
+  const judge = scummMatch(/classifySubmittedMeal\(TrollOrderLine orderLine\) const \{([\s\S]*?)\n\}/, cpp, 'classifySubmittedMeal')[1];
   const cls = [...judge.matchAll(/(?:if \(([^)]+)\)\s*)?return SubmittedMealClassification::k\w+?(\d\d);/g)].map(m => [m[1] || '', Number(m[2])]);
   if (!same(cls, [['nonMatching == 1', 0], ['1 < nonMatching', 4], ['orderCount == matching', 2], ['', 1]])) fail(`classifySubmittedMeal reads ${JSON.stringify(cls)}`);
   const cases = [[[0, 2], [0, 2], 2], [[0, 2], [0], 1], [[0, 2], [], 1], [[0, 2], [0, 1], 0], [[0, 2], [1, 3], 4], [[0, 2], [0, 2, 5], 0], [[], [], 2], [[], [4], 0]];
-  for (const [wants, meal, want] of cases) if (S.zbPizzaJudge(wants, meal) !== want) fail(`zbPizzaJudge(${wants}, ${meal}) is ${S.zbPizzaJudge(wants, meal)}, ScummVM ${want}`);
-  need(/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kMistake, _initialMistakeAllowance,/, cpp, 'debugGetChances');
-  need(/_remainingMistakeAllowance -= 1;\s*_postmanSurvivedAttempt = 0 <= _remainingMistakeAllowance;/, cpp, 'evaluateDelivery');
+  for (const [wants, meal, expected] of cases) if (S.zbPizzaJudge(wants, meal) !== expected) fail(`zbPizzaJudge(${wants}, ${meal}) is ${S.zbPizzaJudge(wants, meal)}, ScummVM ${expected}`);
+  scummMatch(/debugGetChances\(\) const \{[\s\S]*?ZmbChanceType::kMistake, _initialMistakeAllowance,/, cpp, 'debugGetChances');
+  scummMatch(/_remainingMistakeAllowance -= 1;\s*_postmanSurvivedAttempt = 0 <= _remainingMistakeAllowance;/, cpp, 'evaluateDelivery');
   const words = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
   P.levels.forEach((l, i) => { if (!l.chances.toLowerCase().includes(words[L[i].forgiven])) fail(`level ${i + 1}'s chances do not say ${words[L[i].forgiven]}`); });
 
@@ -121,8 +121,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   runs.forEach(({ st }, i) => {
     const l = L[i];
     if (!l) return;
-    const got = { slots: st.get(0x896c), threshold: st.get(0x896e), minimum: st.get(0x8970), forgiven: st.get(0x8968), trolls: [0x8960, 0x8962, 0x8964].filter(a => st.get(a) === 1).length };
-    for (const k of Object.keys(got)) if (got[k] !== l[k]) fail(`ZOOMBINI.EXE gives level ${i + 1} ${k} ${got[k]}, the port ${l[k]}`);
+    const exeLevel = { slots: st.get(0x896c), threshold: st.get(0x896e), minimum: st.get(0x8970), forgiven: st.get(0x8968), trolls: [0x8960, 0x8962, 0x8964].filter(a => st.get(a) === 1).length };
+    for (const k of Object.keys(exeLevel)) if (exeLevel[k] !== l[k]) fail(`ZOOMBINI.EXE gives level ${i + 1} ${k} ${exeLevel[k]}, the port ${l[k]}`);
   });
 
   // ---- deals -------------------------------------------------------------
@@ -165,9 +165,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
         const most = count[1] <= count[0] ? (count[0] < count[2] ? 2 : 0) : (count[1] < count[2] ? 2 : 1);
         const whose = i => wants.findIndex(w => w.includes(i));
         const pit = s.rejectExamples || [];
-        const mine = new Set(pit.flat().filter(i => whose(i) === most)), others = pit.flat().filter(i => whose(i) !== most);
+        const mostToppings = new Set(pit.flat().filter(i => whose(i) === most)), others = pit.flat().filter(i => whose(i) !== most);
         if (pit.length !== 4 || new Set(pit.map(m => m.join())).size !== 4) bad = `the pit has ${JSON.stringify(pit)}, not four different meals`;
-        else if (mine.size !== 2 || new Set(others.map(whose)).size !== 2 || pit.some(m => m.length !== 2 || m.filter(i => whose(i) === most).length !== 1)) bad = `the pit's meals ${JSON.stringify(pit)} do not pair two of ${S.ZB_PIZZA_TROLLS[most]}'s toppings with one of each other troll's`;
+        else if (mostToppings.size !== 2 || new Set(others.map(whose)).size !== 2 || pit.some(m => m.length !== 2 || m.filter(i => whose(i) === most).length !== 1)) bad = `the pit's meals ${JSON.stringify(pit)} do not pair two of ${S.ZB_PIZZA_TROLLS[most]}'s toppings with one of each other troll's`;
         else if (pit.some(m => S.zbPizzaServe(s, hungry, m).eaten >= 0 || S.zbPizzaServe(s, hungry, m).rock >= 0)) bad = 'a pit meal is eaten or put on a rock';
       } else if (level < 4 && s.rejectExamples) bad = 'a pit meal below level 4';
       if (bad) { fail(`level ${level} (${bad})`); break; }
@@ -273,7 +273,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands }) {
   if (slowNext > 500) fail(`a step of a strategy took ${slowNext} ms`);
 
   const tail = runs.map(r => '0x' + r.at.toString(16)).join(', ');
-  say(`${trips} forms given back and solved. Strategies (level, f form, p pit known, guaranteed/band) ${results.join(' ')}, played against ${played} hypotheses (the puzzle's answer the judge's at all ${answered} moves, zbStrategyPlay's ends the same. Level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
+  print(`${trips} forms given back and solved. Strategies (level, f form, p pit known, guaranteed/band) ${results.join(' ')}, played against ${played} hypotheses (the puzzle's answer the judge's at all ${answered} moves, zbStrategyPlay's ends the same. Level 1 every branch, ${walkedAll} ends), slowest ${slowest} ms, step ${slowNext} ms; `
     + `levels' numbers and trolls as ScummVM's and ZOOMBINI.EXE's (${tail}). ${dealt} deals, toppings wanted once each, each troll's meal eaten by it alone, `
     + `every topping wanted in ${allWanted.map((n, i) => `${n}/${perLevel[i]}`).join(', ')} by level. Level 2 left a troll wanting nothing in ${wantNothing} of ${level2}`);
 }

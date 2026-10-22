@@ -36,7 +36,7 @@
 //     times are kept.
 const KIND = { kTraitHair: 'hair', kTraitEyes: 'eyes', kTraitNose: 'nose', kTraitFeet: 'feet' };
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_tunnels.h'), cpp = scumm('zoombini_pages/puzzle_tunnels.cpp');
   const page = scumm('zoombini_page.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -44,12 +44,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const kinds = body => [...body.matchAll(/ZmbTrait::(kTrait\w+)/g)].map(m => KIND[m[1]]);
 
   // ---- tables, against ScummVM's text --------------------------------------
-  const order = kinds(need(/kRuleSlotTraitKinds\[4\] = \{([\s\S]*?)\};/, cpp, 'kRuleSlotTraitKinds')[1]);
+  const order = kinds(scummMatch(/kRuleSlotTraitKinds\[4\] = \{([\s\S]*?)\};/, cpp, 'kRuleSlotTraitKinds')[1]);
   if (!same(order, S.ZB_TUNNELS_ORDER)) fail(`the rules' order is not ScummVM's (${order})`);
-  const pairs = [...need(/kAlternativeValueSetTable\[10\] = \{([\s\S]*?)\};/, cpp, 'kAlternativeValueSetTable')[1]
+  const pairs = [...scummMatch(/kAlternativeValueSetTable\[10\] = \{([\s\S]*?)\};/, cpp, 'kAlternativeValueSetTable')[1]
     .matchAll(/\{(\d+), (\d+)\}/g)].map(m => [Number(m[1]), Number(m[2])]);
   if (!same(pairs, S.ZB_TUNNELS_PAIRS)) fail(`level 3's value pairs are not ScummVM's (${JSON.stringify(pairs)})`);
-  const l4 = [...need(/kTraitKindPairs\[6\] = \{([\s\S]*?)\};/, cpp, 'kTraitKindPairs')[1].matchAll(/\{([^{}]*)\}/g)].map(m => kinds(m[1]));
+  const l4 = [...scummMatch(/kTraitKindPairs\[6\] = \{([\s\S]*?)\};/, cpp, 'kTraitKindPairs')[1].matchAll(/\{([^{}]*)\}/g)].map(m => kinds(m[1]));
   if (!same(l4, S.ZB_TUNNELS_L4)) fail(`level 4's pairs of traits are not ScummVM's (${JSON.stringify(l4)})`);
 
   const sizes = [20, 20, 40, 150];
@@ -58,9 +58,9 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (rules.length !== sizes[level - 1] || keys.size !== rules.length) fail(`level ${level} lists ${rules.length} rules (${keys.size} different), not ${sizes[level - 1]}`);
   }
   // ScummVM's pair tables are the rules squared: 400, 1600 and 22500.
-  const squares = [Number(need(/const int16 pairCount = (\d+);/, cpp, 'level 2\'s pair count')[1]),
-    Number(need(/int pairIdx = 0; pairIdx < (\d+); pairIdx\+\+\) \{\s*int descA = pairIdx \/ 40;/, cpp, 'level 3\'s pair count')[1]),
-    Number(need(/int pairIdx = 0; pairIdx < (\d+); pairIdx\+\+\) \{\s*int descAIdx = pairIdx \/ 150;/, cpp, 'level 4\'s pair count')[1])];
+  const squares = [Number(scummMatch(/const int16 pairCount = (\d+);/, cpp, 'level 2\'s pair count')[1]),
+    Number(scummMatch(/int pairIdx = 0; pairIdx < (\d+); pairIdx\+\+\) \{\s*int descA = pairIdx \/ 40;/, cpp, 'level 3\'s pair count')[1]),
+    Number(scummMatch(/int pairIdx = 0; pairIdx < (\d+); pairIdx\+\+\) \{\s*int descAIdx = pairIdx \/ 150;/, cpp, 'level 4\'s pair count')[1])];
   if (!same(squares, [20 * 20, 40 * 40, 150 * 150])) fail(`ScummVM scores ${squares} pairs, not the rules squared`);
 
   // Level 4's order: ScummVM's loops, second value innermost; the port's first value changes fastest.
@@ -74,45 +74,45 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   for (const [a, b] of S.ZB_TUNNELS_L4) for (let v = 1; v <= 5; v++) for (let w = 1; w <= 5; w++) scumm4.push([{ kind: a, values: [v] }, { kind: b, values: [w] }]);
 
   // ---- the chances ----------------------------------------------------------
-  const target = need(/switch \(_puzzleLevel\) \{\s*case kPuzzleLevel2:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel3:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel4:\s*perLevelTarget = (\d+);\s*break;\s*default:\s*perLevelTarget = (\d+);/, cpp, 'perLevelTarget');
+  const target = scummMatch(/switch \(_puzzleLevel\) \{\s*case kPuzzleLevel2:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel3:\s*perLevelTarget = (\d+);\s*break;\s*case kPuzzleLevel4:\s*perLevelTarget = (\d+);\s*break;\s*default:\s*perLevelTarget = (\d+);/, cpp, 'perLevelTarget');
   const chances = [target[4], target[1], target[2], target[3]].map(Number);
-  const [base, per] = need(/opportunities = static_cast<int16>\((\d+) \+ (\d+) \* _puzzleLevel\);/, cpp, 'debugGetChances').slice(1).map(Number);
+  const [base, per] = scummMatch(/opportunities = static_cast<int16>\((\d+) \+ (\d+) \* _puzzleLevel\);/, cpp, 'debugGetChances').slice(1).map(Number);
   if (!same(chances, S.ZB_TUNNELS_CHANCES) || chances.some((c, i) => c !== base + per * (i + 1))) fail(`the chances are ${S.ZB_TUNNELS_CHANCES}, ScummVM ${chances} and ${base} + ${per} x level`);
   const words = ['Sixteen', 'Eighteen', 'Twenty', 'Twenty-two'];
   P.levels.forEach((l, i) => { if (!l.chances.startsWith(words[i] + ' ')) fail(`level ${i + 1}'s chances do not say ${words[i]}`); });
 
   // ---- which entrance lets in whom ------------------------------------------
   // evaluateRule with two guards: the expression each zone accepts on.
-  const zone = [1, 2, 3, 4].map(z => need(new RegExp(`case ${z}:\\s*guardSideMatch = !?guardAMatch;\\s*result = ([^;]+);`), cpp, `evaluateRule's zone ${z}`)[1]);
-  zone[0] = need(/\? \(([^)]+)\) : guardAMatch/, zone[0], 'zone 1 with two guards')[1];
+  const zone = [1, 2, 3, 4].map(z => scummMatch(new RegExp(`case ${z}:\\s*guardSideMatch = !?guardAMatch;\\s*result = ([^;]+);`), cpp, `evaluateRule's zone ${z}`)[1]);
+  zone[0] = scummMatch(/\? \(([^)]+)\) : guardAMatch/, zone[0], 'zone 1 with two guards')[1];
   const js = e => new Function('guardAMatch', 'guardBMatch', `return ${e};`);
   const accepts = zone.map(js);
-  const oneGuard = need(/if \(_guardAxisCount == 1\) \{[\s\S]*?bool result = dropZone <= (\d) \? guardAMatch : !guardAMatch;/, cpp, 'evaluateRule with one guard')[1];
-  const closed = need(/if \(_level1BlockedPairToggle\) \{\s*if \(zone == (\d) \|\| zone == (\d)\)\s*isRejection = true;\s*\} else \{\s*if \(zone == (\d) \|\| zone == (\d)\)/, cpp, 'the level 1 closed pair').slice(1).map(Number);
+  const oneGuard = scummMatch(/if \(_guardAxisCount == 1\) \{[\s\S]*?bool result = dropZone <= (\d) \? guardAMatch : !guardAMatch;/, cpp, 'evaluateRule with one guard')[1];
+  const closed = scummMatch(/if \(_level1BlockedPairToggle\) \{\s*if \(zone == (\d) \|\| zone == (\d)\)\s*isRejection = true;\s*\} else \{\s*if \(zone == (\d) \|\| zone == (\d)\)/, cpp, 'the level 1 closed pair').slice(1).map(Number);
   let cases = 0;
   for (const sideA of [false, true]) for (const sideB of [false, true]) for (const feet of [1, 2]) for (const hair of [1, 2]) {
     // Guard A's rule is sneakers and guard B's shaggy hair; the Zoombini has each of them or lacks it.
     const guards = [{ rule: [{ kind: 'feet', values: [1] }], traitMatchOnPrimarySide: sideA }, { rule: [{ kind: 'hair', values: [1] }], traitMatchOnPrimarySide: sideB }];
     const z = { hair, eyes: 1, nose: 1, feet };
     const A = (feet === 1) === sideA, B = (hair === 1) === sideB;
-    const want = accepts.map(f => f(A, B)).indexOf(true);
-    if (accepts.filter(f => f(A, B)).length !== 1 || S.zbTunnelsEntrance(z, guards, false) !== want) fail(`two guards: A ${A}, B ${B}, ScummVM's zone ${want + 1}, the port's ${S.zbTunnelsEntrance(z, guards, false) + 1}`);
+    const expectedZone = accepts.map(f => f(A, B)).indexOf(true);
+    if (accepts.filter(f => f(A, B)).length !== 1 || S.zbTunnelsEntrance(z, guards, false) !== expectedZone) fail(`two guards: A ${A}, B ${B}, ScummVM's zone ${expectedZone + 1}, the port's ${S.zbTunnelsEntrance(z, guards, false) + 1}`);
     for (const toggle of [false, true]) {
       const shut = toggle ? closed.slice(0, 2) : closed.slice(2);
       const open = [1, 2, 3, 4].filter(k => !shut.includes(k) && (k <= Number(oneGuard) ? A : !A));
-      const got = S.zbTunnelsEntrance(z, guards.slice(0, 1), toggle) + 1;
-      if (open.length !== 1 || got !== open[0]) fail(`one guard, A ${A}, closed ${shut}, ScummVM's open zone ${open}, the port's ${got}`);
+      const portZone = S.zbTunnelsEntrance(z, guards.slice(0, 1), toggle) + 1;
+      if (open.length !== 1 || portZone !== open[0]) fail(`one guard, A ${A}, closed ${shut}, ScummVM's open zone ${open}, the port's ${portZone}`);
     }
     cases++;
   }
 
   // ---- the draws before the rule ----------------------------------------------
-  need(/_level1BlockedPairToggle = _vm->_rnd->getRandomBool\(\);/, need(/void ZoombiniPuzzleTunnels::initStates\(\) \{([\s\S]*?)\n\}/, cpp, 'initStates')[1], 'the coin in initStates');
-  need(/idleTickCounter = static_cast<uint8>\(_vm->_rnd->getRandomNumber\(0, 64\)\);/, page, 'the idle phase in loadSnoidsFromPack');
-  const load = need(/void ZoombiniPuzzleTunnels::loadFeatures\(\) \{([\s\S]*?)\n\}/, cpp, 'loadFeatures')[1];
+  scummMatch(/_level1BlockedPairToggle = _vm->_rnd->getRandomBool\(\);/, scummMatch(/void ZoombiniPuzzleTunnels::initStates\(\) \{([\s\S]*?)\n\}/, cpp, 'initStates')[1], 'the coin in initStates');
+  scummMatch(/idleTickCounter = static_cast<uint8>\(_vm->_rnd->getRandomNumber\(0, 64\)\);/, page, 'the idle phase in loadSnoidsFromPack');
+  const load = scummMatch(/void ZoombiniPuzzleTunnels::loadFeatures\(\) \{([\s\S]*?)\n\}/, cpp, 'loadFeatures')[1];
   if (!(load.indexOf('loadZoombinisFromPack()') >= 0 && load.indexOf('loadZoombinisFromPack()') < load.indexOf('generateRules()'))) fail('ScummVM no longer loads the band before dealing the rule');
-  need(/checkVal \+= searchDelta;\s*searchDelta = -\(searchDelta \+ 1\);/, cpp, 'the level 1 search\'s step');
-  need(/hasAlternateSplit = matchCounts\[slot\] != 0 &&\s*matchCounts\[slot\] != excludedSplitCount;/, cpp, 'the Allergic Cliffs\' count left out');
+  scummMatch(/checkVal \+= searchDelta;\s*searchDelta = -\(searchDelta \+ 1\);/, cpp, 'the level 1 search\'s step');
+  scummMatch(/hasAlternateSplit = matchCounts\[slot\] != 0 &&\s*matchCounts\[slot\] != excludedSplitCount;/, cpp, 'the Allergic Cliffs\' count left out');
 
   // ---- ZOOMBINI.EXE -----------------------------------------------------------
   // Level 3's pairs as (second << 4 | first), then level 4's first and second traits' unit bytes.
@@ -122,7 +122,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   const latin = (o, n) => new TextDecoder('latin1').decode(exe.subarray(o, o + n));
   const at = find(exe, bytes).filter(o => latin(o + bytes.length, 11) === 'Tunnels.MHK');
   if (at.length !== 1) fail('the 22 words of levels 3 and 4 are not in ZOOMBINI.EXE before "Tunnels.MHK"');
-  const pos = [...need(/kTunnelEntryPositions\[4\]\{([\s\S]*?)\};/, h, 'kTunnelEntryPositions')[1].matchAll(/Common::Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
+  const pos = [...scummMatch(/kTunnelEntryPositions\[4\]\{([\s\S]*?)\};/, h, 'kTunnelEntryPositions')[1].matchAll(/Common::Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
   if (pos.length !== 4 || pos.some((p, i) => i && p[0] <= pos[i - 1][0])) fail(`the entrances are not left to right (${JSON.stringify(pos)})`);
   const posAt = find(exe, pos.flatMap(([x, y]) => [x & 255, x >> 8, y & 255, y >> 8]));
   if (posAt.length !== 1) fail(`the entrances' positions are in ZOOMBINI.EXE ${posAt.length} times, not once`);
@@ -217,8 +217,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   // ---- the workbench ------------------------------------------------------
   // The feedback: hoverData from the zone and whether the side guardian
   // lets it by, and the guardian its gate type animates on a turning back.
-  const hover = [1, 2, 3, 4].map(z => need(new RegExp(`case ${z}:\\s*hoverData = guardAMatch \\? (\\d) : (\\d);`), cpp, `hoverData for zone ${z}`).slice(1).map(Number));
-  const gateType = [...need(/kHoverDataToGateType\[8\]\{([\s\S]*?)\};/, h, 'kHoverDataToGateType')[1].matchAll(/(\d+)/g)].map(m => Number(m[1]));
+  const hover = [1, 2, 3, 4].map(z => scummMatch(new RegExp(`case ${z}:\\s*hoverData = guardAMatch \\? (\\d) : (\\d);`), cpp, `hoverData for zone ${z}`).slice(1).map(Number));
+  const gateType = [...scummMatch(/kHoverDataToGateType\[8\]\{([\s\S]*?)\};/, h, 'kHoverDataToGateType')[1].matchAll(/(\d+)/g)].map(m => Number(m[1]));
   const GUARD = ['left', 'upper', 'lower', 'right'];
   // ScummVM's judging of Zoombini z sent into tunnel t (0-3): null when it goes through, else the guardian who turns it back.
   const judgeOf = (level, guards, toggle, z, t) => {
@@ -313,8 +313,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
             if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}, the strategy guarantees ${st.guaranteed}, and ${worst} go through on its worst branch`); break; }
             walked++;
           }
-          const got = play(level, band, st, d.state);
-          if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt rules, ${got} through, fewer than the ${st.guaranteed} guaranteed`); break; }
+          const crossedCount = play(level, band, st, d.state);
+          if (crossedCount < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt rules, ${crossedCount} through, fewer than the ${st.guaranteed} guaranteed`); break; }
           played++;
         } catch (e) { fail(`level ${level}, knowing the ${knows} (${e.message})`); break; }
       }
@@ -366,8 +366,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         const keys = [...S.zbTunnelsHypotheses(level, band, knows).keys()].sort((a, b) => a - b);
         if (keys.length > 40) continue;
         for (let c = 1; c <= 3; c++) {
-          const st = P.strategy(level, band, null, { knows, chances: c, budget: 5000 }), want = plain(band, keys, c);
-          if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+          const st = P.strategy(level, band, null, { knows, chances: c, budget: 5000 }), minimax = plain(band, keys, c);
+          if (!st.exact || st.guaranteed !== minimax) { fail(`level ${level}, knowing the ${knows}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${minimax}`); break; }
           if (walk(band, st.root, 0) < st.guaranteed) { fail(`level ${level}, ${c} chances, a branch has fewer through than the strategy guarantees`); break; }
           brute++;
         }
@@ -377,8 +377,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowRoot > 2000) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
   const bench = `workbench: ${trips} forms given back; ${walked} strategies walked down every branch (${ends} ends) and ${played} played against dealt rules, none short of what they guarantee; the puzzle's answer the judge's at every move of ${answered} plays; ${brute} held to a plain minimax with fewer chances; ${splits} dealt after the Allergic Cliffs, their count read from the state; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
-  say(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}, the entrances at 0x${(posAt[0] || 0).toString(16)}. Chances ${chances}; `
+  print(`tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}, the entrances at 0x${(posAt[0] || 0).toString(16)}. Chances ${chances}; `
     + `${cases} guard cases as evaluateRule. ${dealt} deals as ScummVM deals them (level 4 in the program's order, ScummVM's picks another rule in ${other4} of ${dealt4}); `
     + `the Allergic Cliffs' count avoided in ${avoided}`);
-  say(bench);
+  print(bench);
 }

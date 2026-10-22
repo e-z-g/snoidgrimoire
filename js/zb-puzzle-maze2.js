@@ -134,9 +134,9 @@ const ZB_MAZE2_THRESHOLDS = [0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 
 const ZB_MAZE2_LOOPS = [1, 1, 1, 1, 4, 4, 4, 7, 7, 7, 10, 10, 10, 13, 13, 13, 16];
 /* kStaticPathPool: each color group's first shape in tBMP 5100; 31 is
    white, group 1's, and 52-178 the seven shuffled among groups 2-8. */
-const ZB_MAZE2_COLOUR_POOL = [0, 31, 52, 73, 94, 115, 136, 157, 178, 0, 0];
+const ZB_MAZE2_COLOR_POOL = [0, 31, 52, 73, 94, 115, 136, 157, 178, 0, 0];
 /* ScummVM's names for them (MazeColorShapeBase). */
-const ZB_MAZE2_COLOURS = { 31: 'white', 52: 'red', 73: 'orange', 94: 'yellow', 115: 'green', 136: 'cyan', 157: 'purple', 178: 'magenta' };
+const ZB_MAZE2_COLORS = { 31: 'white', 52: 'red', 73: 'orange', 94: 'yellow', 115: 'green', 136: 'cyan', 157: 'purple', 178: 'magenta' };
 
 /* The launcher seats, 0-13 (1-14 in the layout): the grid square
    each stands on (row, column) and the way its bubbles leave, 0-3.
@@ -250,9 +250,9 @@ function zbMaze2Layout(arc, id) {
 /* The colors: groups 2-8 each take one of the pool's seven, drawn in
    turn from those left (initGridAndSelectPaths, 0x431754). Returns
    waveGroupShapeBase, groups 0-8. */
-function zbMaze2Colours(rnd) {
-  const pool = ZB_MAZE2_COLOUR_POOL.slice(), shape = new Array(9).fill(0);
-  shape[1] = ZB_MAZE2_COLOUR_POOL[1];
+function zbMaze2Colors(rnd) {
+  const pool = ZB_MAZE2_COLOR_POOL.slice(), shape = new Array(9).fill(0);
+  shape[1] = ZB_MAZE2_COLOR_POOL[1];
   let last = 8;
   for (let group = 2; group < 9; group++) {
     const i = rnd.range(2, last);
@@ -609,7 +609,7 @@ function zbMaze2Grid(layout, slots, shapes) {
   for (const [type, row, col] of ZB_MAZE2_EXITS) grid[row][col] = { type, row, col };
   let next = 0;
   const cells = layout.cells.map((c, i) => {
-    const cell = { ...c, index: i, color: ZB_MAZE2_COLOURS[shapes[c.group]] || null };
+    const cell = { ...c, index: i, color: ZB_MAZE2_COLORS[shapes[c.group]] || null };
     if (c.type === 2 && next < slots.length) Object.assign(cell, zbMaze2SlotTrait(slots[next]), { slot: slots[next++] });
     grid[c.row][c.col] = cell;
     return cell;
@@ -712,7 +712,7 @@ ZB_PUZZLES.set('MAZE2', {
     const variant = small ? 0 : next[level - 1];
     const id = small ? ZB_MAZE2_SMALL_LAYOUT : ZB_MAZE2_FIRST_LAYOUT[level] + variant;
     const layout = zbMaze2Layout(arc, id);
-    const shapes = zbMaze2Colours(rnd);
+    const shapes = zbMaze2Colors(rnd);
     const slots = zbMaze2Slots(layoutLevel, variant, band, rnd);
     if (!small) next[level - 1] = level === 4 ? (variant + 2 > 2 ? 0 : variant + 2) : (variant + 1 > 1 ? 0 : variant + 1);
     const state = zbMaze2State(level, band, layout, variant, slots, shapes);
@@ -721,14 +721,14 @@ ZB_PUZZLES.set('MAZE2', {
     const arrows = dealt.cells.filter(c => c.type === 2);
     const count = t => dealt.cells.filter(c => c.type === t).length;
     const white = dealt.cells.filter(c => (c.type === 3 || c.type === 4) && c.group <= 1);
-    const coloured = dealt.cells.filter(c => c.type === 4 && c.group > 1);
-    const colours = [...new Set(dealt.cells.filter(c => c.group > 1 && c.type >= 4 && c.type <= 6).map(c => c.color))];
+    const coloredArrows = dealt.cells.filter(c => c.type === 4 && c.group > 1);
+    const colors = [...new Set(dealt.cells.filter(c => c.group > 1 && c.type >= 4 && c.type <= 6).map(c => c.color))];
     const lowerLeft = layout.seats.filter(s => s < 6), others = layout.seats.filter(s => s >= 6);
     const where = c => `${c.row + 1} across and ${c.col + 1} down`;
     const many = (n, one) => `${n || 'no'} ${one}${n === 1 ? '' : 's'}`;
     const parts = [many(arrows.length, 'feature arrow'),
       `${many(white.length, 'white arrow')} (${white.filter(c => c.turns).length || 'none'} turning after a bubble passes)`];
-    if (coloured.length) parts.push(many(coloured.length, 'colored arrow'), many(count(6), 'colored square'));
+    if (coloredArrows.length) parts.push(many(coloredArrows.length, 'colored arrow'), many(count(6), 'colored square'));
     if (count(5)) parts.push(many(count(5), 'sticky square'));
     parts.push(many(count(1), 'whirlpool'));
     const setup = [
@@ -736,7 +736,7 @@ ZB_PUZZLES.set('MAZE2', {
       `${many(band.length, 'Zoombini')} wait${band.length === 1 ? 's' : ''} at the lower left, with ${many(lowerLeft.length, 'launcher')} there`
         + (others.length ? ` and one more at the ${others.map(s => (s < 9 ? 'upper left' : 'lower right')).join(' and ')}.` : '.'),
     ];
-    if (colours.length) setup.push(`Its colors are ${zbWordsOr(colours, 'and')}.`);
+    if (colors.length) setup.push(`Its colors are ${zbWordsOr(colors, 'and')}.`);
 
     const launches = state.launches;
     const answer = ['Nothing is hidden, because each feature arrow shows its feature. The deal set these features.'];
@@ -1031,10 +1031,10 @@ function zbMaze2CanCross(B) {
   };
   let movable = new Set(B.ctrl);
   for (let round = 0; round < 20; round++) {
-    const got = new Set();
-    for (const kind of B.kinds) for (const q of follow(kind, movable).squares) got.add(q);
-    const pressed = new Set(B.cells.filter(c => c.type === 6 && got.has(c.row * 13 + c.col)).map(c => c.group));
-    const next = new Set(B.ctrl.filter(a => { const c = B.cells[a]; return (c.turns && got.has(c.row * 13 + c.col)) || (c.type === 4 && c.group > 1 && pressed.has(c.group)); }));
+    const reached = new Set();
+    for (const kind of B.kinds) for (const q of follow(kind, movable).squares) reached.add(q);
+    const pressed = new Set(B.cells.filter(c => c.type === 6 && reached.has(c.row * 13 + c.col)).map(c => c.group));
+    const next = new Set(B.ctrl.filter(a => { const c = B.cells[a]; return (c.turns && reached.has(c.row * 13 + c.col)) || (c.type === 4 && c.group > 1 && pressed.has(c.group)); }));
     if (next.size === movable.size) break;
     movable = next;
   }

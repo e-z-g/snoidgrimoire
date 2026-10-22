@@ -53,8 +53,8 @@ for (const name of ['MIDIMAC', 'MIDIMPC']) {
   const arc = S.openMohawk(archiveBytes('MIDIMAC')), file = S.parseMohawkMidi(arc.get('tMID', 30001)).file;
   let threw = false;
   const bad = file.slice(); bad[0] = 0x58;
-  try { S.zbTuneFromMidi(bad, lib); } catch (e) { threw = /does not begin MThd/.test(e.message); }
-  if (!threw) fail('a file that does not begin MThd was made into a tune');
+  try { S.zbTuneFromMidi(bad, lib); } catch (e) { threw = /does not begin with MThd/.test(e.message); }
+  if (!threw) fail('a file that does not begin with MThd was made into a tune');
 }
 console.log(`${tunes} tunes made, ${notes} notes, nothing left out` + (lib ? `. Every part has one of the ${lib.ids.length} instruments. ${rendered} rendered, the same twice` : '. No reference/quicktime/QUICKTIM.EXE, so nothing rendered'));
 process.exit(fails ? 1 : 0);

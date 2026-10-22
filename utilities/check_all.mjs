@@ -21,7 +21,7 @@ const CHECKS = [
   ['maker', 'the snoids\' idles, feet shows and walks as the Zoombini maker plays them'],
   ['write', 'writing an archive back, against mohawk_write.py byte for byte, and read back'],
   ['fleenmod', 'the Fleen-parts mod, plain and green, against mod_fleen_parts.py byte for byte, resources and EXE'],
-  ['recolour', 'a part recolored, against mod_red_shaggy.py byte for byte, every part read back'],
+  ['recolor', 'a part recolored, against mod_red_shaggy.py byte for byte, every part read back'],
   ['xref', 'the cross-references, every one there, and search across the disc'],
   ['save', 'a saved game and its roster, read as ScummVM reads them, against one made in the game'],
   ['feature', 'every feature script\'s sheet found by the numbering, and its sprites on the room'],
@@ -29,8 +29,8 @@ const CHECKS = [
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
   ['page', 'index.html in headless Chrome, the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
 ];
-const want = process.argv.slice(2);
-const run = CHECKS.filter(([n]) => !want.length || want.some(w => n.includes(w)));
+const filters = process.argv.slice(2);
+const run = CHECKS.filter(([n]) => !filters.length || filters.some(w => n.includes(w)));
 const rows = [];
 for (const [name, what] of run) {
   const t0 = Date.now();

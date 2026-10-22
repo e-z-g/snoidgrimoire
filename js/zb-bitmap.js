@@ -188,18 +188,18 @@ function parsePaletteResource(bytes, tag) {
   if (b.length < head + 4) throw new Error(`${tag}: shorter than its header`);
   const start = u16be(b, head), count = u16be(b, head + 2);
   if (b.length !== head + 4 + count * 4) throw new Error(`${tag}: ${count} colors do not fill ${b.length} bytes`);
-  const colours = [];
+  const colors = [];
   for (let i = 0; i < count; i++) {
     const o = head + 4 + i * 4;
-    colours.push([b[o], b[o + 1], b[o + 2], b[o + 3]]);
+    colors.push([b[o], b[o + 1], b[o + 2], b[o + 3]]);
   }
-  return { id: head ? u16be(b, 0) : null, flags: head ? u16be(b, 2) : null, start, colours };
+  return { id: head ? u16be(b, 0) : null, flags: head ? u16be(b, 2) : null, start, colors };
 }
 
 /* The twenty colors Windows reserves for the system, at 0-9 and 246-255.
    A palette supplies the rest; mohawk_bmp.py fills these slots the same way. Nothing
    on the disc is known to draw with them except 0 and 1. */
-const ZB_WINDOWS_COLOURS = {
+const ZB_WINDOWS_COLORS = {
   0: [0, 0, 0], 1: [0x80, 0, 0], 2: [0, 0x80, 0], 3: [0x80, 0x80, 0],
   4: [0, 0, 0x80], 5: [0x80, 0, 0x80], 6: [0, 0x80, 0x80], 7: [0xc0, 0xc0, 0xc0],
   8: [0xc0, 0xdc, 0xc0], 9: [0xa6, 0xca, 0xf0],
@@ -212,7 +212,7 @@ const ZB_WINDOWS_COLOURS = {
    magenta in any slot neither fills, so that it shows. */
 function zbPalette(parsed) {
   const pal = [];
-  for (let i = 0; i < 256; i++) pal.push(ZB_WINDOWS_COLOURS[i] ? ZB_WINDOWS_COLOURS[i].slice() : [255, 0, 255]);
-  if (parsed) parsed.colours.forEach((c, i) => { if (parsed.start + i < 256) pal[parsed.start + i] = [c[0], c[1], c[2]]; });
+  for (let i = 0; i < 256; i++) pal.push(ZB_WINDOWS_COLORS[i] ? ZB_WINDOWS_COLORS[i].slice() : [255, 0, 255]);
+  if (parsed) parsed.colors.forEach((c, i) => { if (parsed.start + i < 256) pal[parsed.start + i] = [c[0], c[1], c[2]]; });
   return pal;
 }

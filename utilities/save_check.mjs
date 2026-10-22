@@ -33,7 +33,7 @@ if (fs.existsSync(HDR)) {
   const h = fs.readFileSync(HDR, 'utf8');
   const body = h.slice(h.indexOf('struct ZmbStateFile {'), h.indexOf('struct ZmbRosterEntry {'));
   // Each doc comment's "(release) 0xNNNN" lines belong to the next member declared.
-  const want = {}, eof = {};
+  const headerOffsets = {}, eof = {};
   let pending = null;
   for (const m of body.matchAll(/\/\*\*([\s\S]*?)\*\/|^\s*[\w:]+\s+_(\w+)\s*(?:\[\d+\])?\s*[=;]/gm)) {
     if (m[1] !== undefined) {
@@ -44,7 +44,7 @@ if (fs.existsSync(HDR)) {
       }
       if (/EOF:/.test(m[1])) { Object.assign(eof, tags); break; }
       if (Object.keys(tags).length) pending = tags;
-    } else if (pending) { want[m[2]] = pending; pending = null; }
+    } else if (pending) { headerOffsets[m[2]] = pending; pending = null; }
   }
   const tagFor = { 'v1.0BR': ['v1.0BR'], 'v1.1US': ['v1.1US'], 'v2.0TLC small': ['v2.0TLC small', 'v2.0TLC'], 'v2.0TLC': ['v2.0TLC current', 'v2.0TLC'] };
   for (const L of S.ZB_SAVE_LAYOUTS) {
@@ -52,16 +52,16 @@ if (fs.existsSync(HDR)) {
     const pick = tags => { for (const t of tagFor[L.name]) if (t in tags) return tags[t]; return undefined; };
     if (end !== L.size) fail(`${L.name} reads ${end} bytes, not ${L.size}`);
     if (pick(eof) !== L.size) fail(`${L.name}: the header's EOF is ${pick(eof)}, not ${L.size}`);
-    for (const [k, tags] of Object.entries(want)) {
+    for (const [k, tags] of Object.entries(headerOffsets)) {
       const w = pick(tags);
       if (w === undefined) continue;                  // the header gives this field no offset in this release
-      const got = k in offsets ? offsets[k] : null;
-      if (got !== w) fail(`${L.name} ${k} at ${got === null ? 'nowhere' : '0x' + got.toString(16)}, the header has ${w === null ? 'absent' : '0x' + w.toString(16)}`);
+      const actual = k in offsets ? offsets[k] : null;
+      if (actual !== w) fail(`${L.name} ${k} at ${actual === null ? 'nowhere' : '0x' + actual.toString(16)}, the header has ${w === null ? 'absent' : '0x' + w.toString(16)}`);
       offsetsChecked++;
     }
-    for (const k of Object.keys(offsets)) if (!(k in want)) fail(`${k} is not a ZmbStateFile member with an offset`);
+    for (const k of Object.keys(offsets)) if (!(k in headerOffsets)) fail(`${k} is not a ZmbStateFile member with an offset`);
   }
-  if (Object.keys(want).length < 60) fail(`only ${Object.keys(want).length} fields found in the header`);
+  if (Object.keys(headerOffsets).length < 60) fail(`only ${Object.keys(headerOffsets).length} fields found in the header`);
 } else console.log('SKIP the header offsets, no reference/scummvm-zoombini');
 
 let threw = 0;
@@ -125,8 +125,8 @@ if (fs.existsSync(HDR)) {
     const norm = s => s.toLowerCase().replace(/[^a-z]/g, '').replace(/eyed$/, 'eyes').replace(/^roller/, '').replace(/^green(?=cap)/, '');
     let matched = 0;
     S.ZB_TRAIT_KINDS.forEach((kind, k) => {
-      const site = S.ZB_TRAIT_SHORT[kind].map(norm), theirs = sv[k].map(norm);
-      theirs.forEach((n, v) => {
+      const site = S.ZB_TRAIT_SHORT[kind].map(norm), scummNames = sv[k].map(norm);
+      scummNames.forEach((n, v) => {
         const i = site.indexOf(n);
         if (i >= 0) { matched++; if (i !== v) fail(`${kind}: ScummVM's ${sv[k][v]} is ${v + 1}, the site's ${S.ZB_TRAIT_SHORT[kind][i]} ${i + 1}`); }
       });

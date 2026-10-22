@@ -243,7 +243,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
   const agreed = H => { let one = full, zero = full; for (const m of H) { one &= m; zero &= ~m; } return (one | zero) & full; };
   const bits = x => { let c = 0; while (x) { x &= x - 1; c++; } return c; };
   const deadline = Date.now() + (opts.budget || 1500);
-  let exact = true, guessOnly = false;
+  let exact = true, heuristicOnly = false;
   const memo = new Map();
   /* The most guaranteed to cross from those in u (undetermined, still to go)
      with p pegs; H is sorted. */
@@ -272,49 +272,49 @@ function zbBridgeStrategy(level, band, opts = {}) {
   /* A move's worse outcome; the sneeze first, which is usually the worse,
      and the crossing not looked at when the sneeze is already no better
      than a move in hand (bound). */
-  const outcome = (H, u, p, i, upper, guess, bound) => {
+  const outcome = (H, u, p, i, upper, heuristic, bound) => {
     const [a, s] = split(H, i, upper);
     let vs = 0;
     if (p > 1) {
       const us = u & ~agreed(s), freeS = bits(u & agreed(s));
-      vs = freeS + (guess ? guessValue(s, us, p - 1) : value(s, us, p - 1));
+      vs = freeS + (heuristic ? heuristicValue(s, us, p - 1) : value(s, us, p - 1));
     }
     if (vs <= bound) return vs;
     const ua = u & ~(1 << i) & ~agreed(a), freeA = bits(u & ~(1 << i) & agreed(a));
-    const va = 1 + freeA + (guess ? guessValue(a, ua, p) : value(a, ua, p));
+    const va = 1 + freeA + (heuristic ? heuristicValue(a, ua, p) : value(a, ua, p));
     return Math.min(va, vs);
   };
-  const bestMove = (H, u, p, guess) => {
-    if (guess && !guessOnly) exact = false;
+  const bestMove = (H, u, p, heuristic) => {
+    if (heuristic && !heuristicOnly) exact = false;
     let best = { v: -1, i: -1, upper: true };
     const ms = moves(H, u);
     /* The value the even-split rule gives, first: when all of them cross by
        it there is nothing to search, and otherwise it is the move to beat. */
-    if (!guess) {
-      guessOnly = true;
-      const g = guessValue(H, u, p);
-      guessOnly = false;
-      const gm = guessMemo.get(H.join(',') + '|' + u + '|' + p);
+    if (!heuristic) {
+      heuristicOnly = true;
+      const g = heuristicValue(H, u, p);
+      heuristicOnly = false;
+      const gm = heuristicMemo.get(H.join(',') + '|' + u + '|' + p);
       if (g === bits(u)) return gm;
       best = { v: g, i: gm.i, upper: gm.upper };
     }
     /* The most even splits first, so the best is found soonest. */
     ms.sort((x, y) => Math.abs(2 * split(H, x, true)[0].length - H.length) - Math.abs(2 * split(H, y, true)[0].length - H.length));
-    for (const i of guess ? ms.slice(-1) : ms) {
+    for (const i of heuristic ? ms.slice(-1) : ms) {
       for (const upper of [split(H, i, true)[0].length >= H.length / 2, split(H, i, true)[0].length < H.length / 2]) {
-        const v = outcome(H, u, p, i, upper, guess, best.v);
+        const v = outcome(H, u, p, i, upper, heuristic, best.v);
         if (v > best.v) best = { v, i, upper };
         if (best.v === bits(u)) return best;
       }
     }
     return best;
   };
-  const guessMemo = new Map();
-  const guessValue = (H, u, p) => {
+  const heuristicMemo = new Map();
+  const heuristicValue = (H, u, p) => {
     if (!u || !p) return 0;
     const key = H.join(',') + '|' + u + '|' + p;
-    if (!guessMemo.has(key)) guessMemo.set(key, bestMove(H, u, p, true));
-    return guessMemo.get(key).v;
+    if (!heuristicMemo.has(key)) heuristicMemo.set(key, bestMove(H, u, p, true));
+    return heuristicMemo.get(key).v;
   };
   const weight = H => H.reduce((t, m) => t + count.get(m), 0);
   const node = (H, u, p, across, near, up, low) => {
@@ -327,7 +327,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
     }
     const key = H.join(',') + '|' + u + '|' + p;
     value(H, u, p);
-    const m = (memo.get(key) || guessMemo.get(key)), i = m.i, upper = m.upper;
+    const m = (memo.get(key) || heuristicMemo.get(key)), i = m.i, upper = m.upper;
     const [a, s] = split(H, i, upper);
     const place = (H2, u2, p2, crossedNow) => {
       const nearNow = [], up2 = up.slice(), low2 = low.slice();

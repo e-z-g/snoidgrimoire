@@ -1,4 +1,4 @@
-/* zb-recolour.js -- a Zoombini part recoloured wherever the game draws it:
+/* zb-recolor.js -- a Zoombini part recolored wherever the game draws it:
    the generalising of the extraction project's tools/mod_red_shaggy.py,
    which turned Shaggy hair's purples into the red nose's reds.
    =========================================================================
@@ -7,10 +7,10 @@
    Only palette entries 10-45 are the same in every scene, so a Zoombini's
    art uses only those, and so must a recoloring, or a color right in one
    scene is wrong in the next. They fall into families of shades
-   (ZB_RECOLOUR_FAMILIES, read off the palette: each a hue, dark to light).
+   (ZB_RECOLOR_FAMILIES, read off the palette: each a hue, dark to light).
    A recoloring maps one family onto another shade for shade, by place in
    the family, darkest to darkest and lightest to lightest
-   (zbRecolourMap).
+   (zbRecolorMap).
 
    A part's frames are its variant's block in each Zoombini sheet (tBMP 3000
    walking, 3100 tumbling, 3200 far off, as zb-snoid.js has them), the
@@ -20,10 +20,10 @@
    three sheets and the big figure, the skin's shades being on the parts
    too (eyelids, the shading under hair); the tiles' stone is left alone.
    A recolored frame is written raw, as mod_red_shaggy.py writes it, and
-   utilities/recolour_check.mjs compares Shaggy's purples turned red with
+   utilities/recolor_check.mjs compares Shaggy's purples turned red with
    its output byte for byte. */
 
-const ZB_RECOLOUR_FAMILIES = [
+const ZB_RECOLOR_FAMILIES = [
   { key: 'grays', name: 'Grays', shades: [11, 12, 13, 14, 10] },
   { key: 'skin', name: 'Zoombini blue', shades: [15, 16, 17, 18, 19, 20] },
   { key: 'purples', name: 'Purples', shades: [21, 22, 23] },
@@ -34,21 +34,21 @@ const ZB_RECOLOUR_FAMILIES = [
   { key: 'reds', name: 'Reds', shades: [38, 39, 40] },
   { key: 'earth', name: 'Brown to lemon', shades: [41, 42, 43] },
 ];
-const ZB_RECOLOUR_BIG = { body: 0, hair: 1, eyes: 6, nose: 11, feet: 16 };
-const ZB_RECOLOUR_TILE_ROW = { hair: 0, eyes: 1, nose: 2, feet: 3 };
+const ZB_RECOLOR_BIG = { body: 0, hair: 1, eyes: 6, nose: 11, feet: 16 };
+const ZB_RECOLOR_TILE_ROW = { hair: 0, eyes: 1, nose: 2, feet: 3 };
 
-function zbRecolourFamilyOf(index) { return ZB_RECOLOUR_FAMILIES.find(f => f.shades.includes(index)) || null; }
+function zbRecolorFamilyOf(index) { return ZB_RECOLOR_FAMILIES.find(f => f.shades.includes(index)) || null; }
 
 /* Source family onto target family, shade for shade by place. */
-function zbRecolourMap(from, to) {
-  const a = ZB_RECOLOUR_FAMILIES.find(f => f.key === from).shades, b = ZB_RECOLOUR_FAMILIES.find(f => f.key === to).shades;
+function zbRecolorMap(from, to) {
+  const a = ZB_RECOLOR_FAMILIES.find(f => f.key === from).shades, b = ZB_RECOLOR_FAMILIES.find(f => f.key === to).shades;
   const map = new Map();
   a.forEach((c, i) => map.set(c, b[a.length === 1 ? b.length - 1 : Math.round(i * (b.length - 1) / (a.length - 1))]));
   return map;
 }
 
 /* Which frames draw a part's variant (1-5), or skin: [{ archive, sheet, frames }]. */
-function zbRecolourFrames(part, v) {
+function zbRecolorFrames(part, v) {
   const out = [];
   const block = (blocks, sheet) => {
     const b = blocks[part], k = part === 'body' ? 0 : v - 1;
@@ -63,24 +63,24 @@ function zbRecolourFrames(part, v) {
   block(ZB_SNOID_BLOCKS, 3000);
   block(ZB_SNOID_TUMBLE_BLOCKS, 3100);
   block(ZB_SNOID_SMALL_BLOCKS, 3200);
-  out.push({ archive: 'PICKER', sheet: 4300, frames: [ZB_RECOLOUR_BIG[part] + (part === 'body' ? 0 : v - 1)] });
-  if (part in ZB_RECOLOUR_TILE_ROW) { const t = 2 * (ZB_RECOLOUR_TILE_ROW[part] * 5 + v - 1); out.push({ archive: 'PICKER', sheet: 4400, frames: [t, t + 1] }); }
+  out.push({ archive: 'PICKER', sheet: 4300, frames: [ZB_RECOLOR_BIG[part] + (part === 'body' ? 0 : v - 1)] });
+  if (part in ZB_RECOLOR_TILE_ROW) { const t = 2 * (ZB_RECOLOR_TILE_ROW[part] * 5 + v - 1); out.push({ archive: 'PICKER', sheet: 4400, frames: [t, t + 1] }); }
   return out;
 }
 
 /* How often each shared color is drawn in a part's frames of tBMP 3000:
    Map index -> pixels. */
-function zbRecolourColours(zoombini, part, v) {
+function zbRecolorColors(zoombini, part, v) {
   const d = decodeBitmapResource(zoombini.get('tBMP', 3000)), counts = new Map();
-  for (const f of zbRecolourFrames(part, v).find(x => x.sheet === 3000).frames) for (const c of d.frames[f].pixels) if (c) counts.set(c, (counts.get(c) || 0) + 1);
+  for (const f of zbRecolorFrames(part, v).find(x => x.sheet === 3000).frames) for (const c of d.frames[f].pixels) if (c) counts.set(c, (counts.get(c) || 0) + 1);
   return counts;
 }
 
-/* The recoloured resources, by archive: { ZOOMBINI: [{ tag, id, bytes }],
+/* The recolored resources, by archive: { ZOOMBINI: [{ tag, id, bytes }],
    PICKER: [...] }, each sheet built from the archive as it is now. */
-function zbRecolour(archives, part, v, map) {
+function zbRecolor(archives, part, v, map) {
   const out = { ZOOMBINI: [], PICKER: [] }, bySheet = new Map();
-  for (const g of zbRecolourFrames(part, v)) {
+  for (const g of zbRecolorFrames(part, v)) {
     const k = `${g.archive} ${g.sheet}`;
     if (!bySheet.has(k)) bySheet.set(k, { archive: g.archive, sheet: g.sheet, frames: [] });
     bySheet.get(k).frames.push(...g.frames);

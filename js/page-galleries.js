@@ -198,7 +198,7 @@ const ZB_GALLERIES = {
     for (const { entry, arc } of openArchives()) for (const tag of ['SHPL', 'tPAL']) for (const { id } of arc.list(tag)) {
       const p = parsePaletteResource(arc.get(tag, id), tag);
       html += `<div class="palrow"><a href="${link(entry.name, tag, id)}">${entry.name} ${tagLabel(tag)} ${id}</a><span class="strip">`
-        + p.colours.map(c => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('') + '</span></div>';
+        + p.colors.map(c => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('') + '</span></div>';
     }
     view.insertAdjacentHTML('beforeend', html);
   },

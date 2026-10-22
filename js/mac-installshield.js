@@ -1,5 +1,5 @@
 /* mac-installshield.js -- the files inside an InstallShield 3 `data.z`, and
-   the PKWARE Data Compression Library "implode" each one is packed with.
+   the PKWARE Data Compression Library "implode" that packs each one.
    =========================================================================
 
    WHY A WINDOWS INSTALLER, IN A TREE ABOUT CLASSIC MAC FILES. QuickTime's

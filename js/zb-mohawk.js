@@ -27,20 +27,20 @@
 
 function openMohawk(bytes) {
   const b = bytes;
-  const need = (off, len, what) => {
+  const requireBytes = (off, len, what) => {
     if (off < 0 || off + len > b.length) throw new Error(`not a Mohawk archive (${what} runs past the end)`);
   };
-  need(0, 28, 'the header');
+  requireBytes(0, 28, 'the header');
   if (fourcc(b, 0) !== 'MHWK' || fourcc(b, 8) !== 'RSRC') throw new Error('not a Mohawk archive');
   const absOff = u32be(b, 20), ftOff = u16be(b, 24);
-  need(absOff, 4, 'the resource directory');
+  requireBytes(absOff, 4, 'the resource directory');
   const strTabOff = u16be(b, absOff), typeCount = u16be(b, absOff + 2);
-  need(absOff + 4, typeCount * 8, 'the type list');
+  requireBytes(absOff + 4, typeCount * 8, 'the type list');
 
   const ft = absOff + ftOff;
-  need(ft, 4, 'the file table');
+  requireBytes(ft, 4, 'the file table');
   const fileCount = u32be(b, ft);
-  need(ft + 4, fileCount * 10, 'the file table');
+  requireBytes(ft + 4, fileCount * 10, 'the file table');
   const files = [];
   for (let i = 0; i < fileCount; i++) {
     const e = ft + 4 + i * 10;
@@ -55,13 +55,13 @@ function openMohawk(bytes) {
     const o = absOff + 4 + t * 8;
     const tag = latin1(b.subarray(o, o + 4));   // not fourcc(), which shows the NUL of \0SND as '?'
     const rt = absOff + u16be(b, o + 4), nt = absOff + u16be(b, o + 6);
-    need(rt, 2, `${tag}'s resource table`);
+    requireBytes(rt, 2, `${tag}'s resource table`);
     const n = u16be(b, rt);
-    need(rt + 2, n * 4, `${tag}'s resource table`);
+    requireBytes(rt + 2, n * 4, `${tag}'s resource table`);
     const names = new Map();
-    need(nt, 2, `${tag}'s name table`);
+    requireBytes(nt, 2, `${tag}'s name table`);
     const nn = u16be(b, nt);
-    need(nt + 2, nn * 4, `${tag}'s name table`);
+    requireBytes(nt + 2, nn * 4, `${tag}'s name table`);
     for (let k = 0; k < nn; k++) {
       const p = absOff + strTabOff + u16be(b, nt + 2 + k * 4);
       let e = p;
@@ -73,7 +73,7 @@ function openMohawk(bytes) {
       const id = i16be(b, rt + 2 + k * 4), index = u16be(b, rt + 4 + k * 4);
       const f = files[index - 1];
       if (!f) throw new Error(`not a Mohawk archive (${tag} ${id} points to file ${index} of ${fileCount})`);
-      need(f.offset, f.size, `${tag} ${id}`);
+      requireBytes(f.offset, f.size, `${tag} ${id}`);
       list.push({ tag, id, index, name: names.get(index) || '', offset: f.offset, size: f.size });
     }
     types.set(tag, list);

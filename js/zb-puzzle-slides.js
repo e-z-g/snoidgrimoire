@@ -1053,16 +1053,16 @@ function zbSlidesSolve(level, band, state, opts = {}) {
       const grow = tuple => {
         if (tuple.length) {
           const at = tuple.map((z, p) => ({ z, s: row.chain[p] })).sort((x, y) => x.s - y.s);
-          let inner = 0, mask = 0, need = 0, bad = false;
+          let inner = 0, mask = 0, requiredMask = 0, bad = false;
           at.forEach((x, p) => {
             mask |= 1 << x.z;
             for (let q = 0; q < p; q++) if (at[q].z > x.z) inner++;
             const y = prevTwin[x.z];
             if (y < 0) return;
             const q = at.findIndex(w => w.z === y);
-            if (q < 0) need |= 1 << y; else if (q > p) bad = true;
+            if (q < 0) requiredMask |= 1 << y; else if (q > p) bad = true;
           });
-          if (!bad) row.options.push({ tuple, mask, need, inner });
+          if (!bad) row.options.push({ tuple, mask, requiredMask, inner });
         }
         if (tuple.length === row.chain.length) return;
         for (let z = 0; z < n; z++) {
@@ -1072,7 +1072,7 @@ function zbSlidesSolve(level, band, state, opts = {}) {
       };
       grow([]);
     }
-    const R = rows.length, fits = (o, mask) => !(o.mask & mask) && !(o.need & ~mask);
+    const R = rows.length, fits = (o, mask) => !(o.mask & mask) && !(o.requiredMask & ~mask);
     const cost = (o, mask) => { let c = o.inner; for (const z of o.tuple) c += bits(mask >>> (z + 1)); return c; };
     // The sum: which masks the rows can leave, and in how many ways.
     let layer = new Map([[0, 1]]);

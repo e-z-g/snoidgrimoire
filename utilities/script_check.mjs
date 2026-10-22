@@ -17,7 +17,7 @@ let bad = 0, pyNone = 0;
 const fail = m => { if (bad++ < 20) console.log('FAIL ' + m); };
 for (const name of archiveNames()) {
   const arc = S.openMohawk(archiveBytes(name));
-  const theirs = new Map(oracle[name].map(e => [e.tag + ' ' + e.id, e]));
+  const pythonScripts = new Map(oracle[name].map(e => [e.tag + ' ' + e.id, e]));
   for (const tag of ['SCRS', 'SCRB']) for (const r of arc.list(tag)) {
     count[tag]++;
     const where = `${name} ${tag} ${r.id}`;
@@ -25,7 +25,7 @@ for (const name of archiveNames()) {
     try { s = S.parseScript(arc.get(tag, r.id), tag); } catch (e) { fail(`${where} (${e.message})`); continue; }
     if (tag === 'SCRS') layouts.set(s.layout, (layouts.get(s.layout) || 0) + 1);
     for (const f of s.frames) if (f.event) events.set(f.end.toString(16), (events.get(f.end.toString(16)) || 0) + 1);
-    const t = theirs.get(tag + ' ' + (r.id & 0xffff));
+    const t = pythonScripts.get(tag + ' ' + (r.id & 0xffff));
     if (!t) { fail(`${where}: the Python has no such script`); continue; }
     if (!t.sections) { pyNone++; fail(`${where}: mohawk_script.py does not parse it`); continue; }
     if (t.header[0] !== s.frameCount || (tag === 'SCRS' && (t.header[1] << 16 >> 16) !== s.layout)) { fail(`${where}: header differs`); continue; }

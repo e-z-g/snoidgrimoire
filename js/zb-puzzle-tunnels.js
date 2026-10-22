@@ -348,19 +348,19 @@ function zbTunnelsStrategy(level, band, opts = {}) {
   };
   const END = { v: 0, end: true };
   /* The rule of thumb's plan, all of it. */
-  const guess = (H, u, c) => {
+  const heuristicPlan = (H, u, c) => {
     if (!u || !c) return END;
     const m = moves(H, u, true)[0], [acc, ra, rb] = split3(H, m.i, m.t), kids = [null, null, null];
     let v = Infinity;
     [ra, rb].forEach((R, j) => {
       if (!R.length) return;
       let w = 0;
-      if (c > 1) { const g = agreed(R); kids[j + 1] = guess(R, u & ~g, c - 1); w = bits(u & g) + kids[j + 1].v; } else kids[j + 1] = END;
+      if (c > 1) { const g = agreed(R); kids[j + 1] = heuristicPlan(R, u & ~g, c - 1); w = bits(u & g) + kids[j + 1].v; } else kids[j + 1] = END;
       v = Math.min(v, w);
     });
     if (acc.length) {
       const g = agreed(acc), u2 = u & ~(1 << m.i);
-      kids[0] = guess(acc, u2 & ~g, c);
+      kids[0] = heuristicPlan(acc, u2 & ~g, c);
       v = Math.min(v, 1 + bits(u2 & g) + kids[0].v);
     }
     return { v, i: m.i, t: m.t, kids };
@@ -372,7 +372,7 @@ function zbTunnelsStrategy(level, band, opts = {}) {
     if (!u || !c) return END;
     const key = hashOf(H) + '|' + u + '|' + c;
     if (memo.has(key)) return memo.get(key);
-    let b = guess(H, u, c);
+    let b = heuristicPlan(H, u, c);
     const all = bits(u);
     if (b.v < all) {
       for (const m of moves(H, u, false)) {
@@ -402,7 +402,7 @@ function zbTunnelsStrategy(level, band, opts = {}) {
     }
     return worst;
   };
-  const planFor = (H, u, c) => (!u || !c) ? END : memo.get(hashOf(H) + '|' + u + '|' + c) || guess(H, u, c);
+  const planFor = (H, u, c) => (!u || !c) ? END : memo.get(hashOf(H) + '|' + u + '|' + c) || heuristicPlan(H, u, c);
   const weight = H => H.reduce((t, k) => t + count.get(k), 0);
   const sideWord = t => t < 2 ? 'left' : 'right', vertWord = t => t === 0 || t === 3 ? 'upper' : 'lower';
   const node = (H, u, c, where, plan) => {

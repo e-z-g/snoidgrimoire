@@ -23,11 +23,11 @@
 //     stone stops at least one from rising; each level has its form.
 const KIND = { kTraitHair: 'hair', kTraitEyes: 'eyes', kTraitNose: 'nose', kTraitFeet: 'feet' };
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_slides.h'), cpp = scumm('zoombini_pages/puzzle_slides.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const nums = body => [...body.matchAll(/-?\d+/g)].map(m => Number(m[0]));
-  const table = (name, text = h) => nums(need(new RegExp(`${name}\\[\\d+\\](?: = |)\\{([\\s\\S]*?)\\};`), text, name)[1]);
+  const table = (name, text = h) => nums(scummMatch(new RegExp(`${name}\\[\\d+\\](?: = |)\\{([\\s\\S]*?)\\};`), text, name)[1]);
   const P = S.ZB_PUZZLES.get('SLIDES');
 
   // ---- the tables, as ScummVM has them --------------------------------------
@@ -39,46 +39,46 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     ['kLinkCellIndices', S.ZB_SLIDES_L4_PATHS], ['kEvenRowLinkCells', S.ZB_SLIDES_L4_RISING],
     ['kOddRowLinkCells', S.ZB_SLIDES_L4_FALLING],
   ];
-  for (const [name, mine] of tables) if (!same(table(name), mine)) fail(`${name} is not ScummVM's (${table(name)})`);
-  for (const [name, mine] of [['kCascadeCells', S.ZB_SLIDES_L4_CASCADE], ['kReassignCells', S.ZB_SLIDES_L4_SPARE], ['kChainCells', S.ZB_SLIDES_L4_JUDGED]]) {
-    if (!same(table(name, cpp), mine)) fail(`${name} is not ScummVM's (${table(name, cpp)})`);
+  for (const [name, siteTable] of tables) if (!same(table(name), siteTable)) fail(`${name} is not ScummVM's (${table(name)})`);
+  for (const [name, siteTable] of [['kCascadeCells', S.ZB_SLIDES_L4_CASCADE], ['kReassignCells', S.ZB_SLIDES_L4_SPARE], ['kChainCells', S.ZB_SLIDES_L4_JUDGED]]) {
+    if (!same(table(name, cpp), siteTable)) fail(`${name} is not ScummVM's (${table(name, cpp)})`);
   }
-  const cells = [...need(/kCellPositions\[117\]\{([\s\S]*?)\};/, h, 'kCellPositions')[1].matchAll(/Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
+  const cells = [...scummMatch(/kCellPositions\[117\]\{([\s\S]*?)\};/, h, 'kCellPositions')[1].matchAll(/Point\((\d+), (\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
   if (cells.length !== 117 || cells.some(([x, y], c) => S.zbSlidesCellXY(c).x !== x || S.zbSlidesCellXY(c).y !== y)) fail('zbSlidesCellXY is not kCellPositions');
-  const middles = [...need(/case kPuzzleLevel3:[\s\S]*?(maybeSetMatchTrait[\s\S]*?)int16 occupiedCount/, cpp, 'level 3\'s middles')[1].matchAll(/maybeSetMatchTrait\((\d+), (\d+), (\d+)\)/g)].map(m => m.slice(1).map(Number));
+  const middles = [...scummMatch(/case kPuzzleLevel3:[\s\S]*?(maybeSetMatchTrait[\s\S]*?)int16 occupiedCount/, cpp, 'level 3\'s middles')[1].matchAll(/maybeSetMatchTrait\((\d+), (\d+), (\d+)\)/g)].map(m => m.slice(1).map(Number));
   if (!same(middles, S.ZB_SLIDES_L3_MIDDLES)) fail(`level 3's middle stones are not ScummVM's (${JSON.stringify(middles)})`);
   const prune = [...cpp.matchAll(/pickNextCellForLink\((\d+), (\d+), (\d+)\);/g)].map(m => m.slice(1).map(Number));
   if (!same(prune, S.ZB_SLIDES_L4_PRUNE)) fail(`level 4's pruning is not ScummVM's (${JSON.stringify(prune)})`);
-  const chain = [...need(/else if \(_pageLoadedZmbCount <= 5\) \{([\s\S]*?)buildHexAdjacencyTable/, cpp, 'level 4\'s short chain')[1].matchAll(/setCellStateData\((\d+), kCell(Path|Occupied)/g)];
+  const chain = [...scummMatch(/else if \(_pageLoadedZmbCount <= 5\) \{([\s\S]*?)buildHexAdjacencyTable/, cpp, 'level 4\'s short chain')[1].matchAll(/setCellStateData\((\d+), kCell(Path|Occupied)/g)];
   const chainStones = chain.filter(m => m[2] === 'Occupied').map(m => Number(m[1])), chainJoins = chain.filter(m => m[2] === 'Path').map(m => Number(m[1]));
   if (!same(chainStones, S.ZB_SLIDES_L4_CHAIN) || !same(chainJoins, S.ZB_SLIDES_L4_CHAIN_JOINS)) fail(`level 4's short chain is not ScummVM's, ${chainStones} / ${chainJoins}`);
   const bit = { kAdjNorthWest: 1, kAdjWest: 2, kAdjSouthWest: 4, kAdjSouthEast: 8, kAdjEast: 16, kAdjNorthEast: 32 };
   const short = { kAdjNorthWest: 'NW', kAdjWest: 'W', kAdjSouthWest: 'SW', kAdjSouthEast: 'SE', kAdjEast: 'E', kAdjNorthEast: 'NE' };
   for (const [name, v] of Object.entries(bit)) {
-    if (parseInt(need(new RegExp(`${name} = 0x(\\w+)`), h, name)[1], 16) !== v || S['ZB_SLIDES_' + short[name]] !== v) fail(`${name} is not ${v}`);
+    if (parseInt(scummMatch(new RegExp(`${name} = 0x(\\w+)`), h, name)[1], 16) !== v || S['ZB_SLIDES_' + short[name]] !== v) fail(`${name} is not ${v}`);
   }
-  const l4 = need(/case kPuzzleLevel4: \{([\s\S]*?)for \(int16 i = 0; i < ARRAYSIZE\(kSlotCellIndices\)/, cpp, 'level 4\'s ways')[1];
+  const l4 = scummMatch(/case kPuzzleLevel4: \{([\s\S]*?)for \(int16 i = 0; i < ARRAYSIZE\(kSlotCellIndices\)/, cpp, 'level 4\'s ways')[1];
   const masks = [...l4.matchAll(/_cellAdjacencyMasks\[(\d+)\] = ([^;]+);/g)].map(m => [Number(m[1]), m[2].split('|').reduce((a, t) => a | bit[t.trim()], 0)]);
   if (!same(masks, S.ZB_SLIDES_L4_MASKS)) fail(`level 4's ways are not ScummVM's (${JSON.stringify(masks)})`);
-  for (const [name, mine] of [['kCellInert', S.ZB_SLIDES_INERT], ['kCellPath', S.ZB_SLIDES_PATH], ['kCellMatched', S.ZB_SLIDES_MATCHED],
+  for (const [name, siteValue] of [['kCellInert', S.ZB_SLIDES_INERT], ['kCellPath', S.ZB_SLIDES_PATH], ['kCellMatched', S.ZB_SLIDES_MATCHED],
     ['kCellSlotBase1', S.ZB_SLIDES_BASE], ['kCellConnector', S.ZB_SLIDES_SLOT], ['kCellOccupied', S.ZB_SLIDES_TAKEN],
     ['kCellLocked', S.ZB_SLIDES_LOCKED], ['kTraitHair', S.ZB_SLIDES_HAIR]]) {
-    const v = Number(need(new RegExp(`${name} = (\\d+)`), h, name)[1]);
-    if (v !== mine) fail(`${name} is ${v} in ScummVM, ${mine} here`);
+    const v = Number(scummMatch(new RegExp(`${name} = (\\d+)`), h, name)[1]);
+    if (v !== siteValue) fail(`${name} is ${v} in ScummVM, ${siteValue} here`);
   }
-  const kinds = [...need(/enum TraitKind : int16 \{([\s\S]*?)\};/, h, 'TraitKind')[1].matchAll(/(kTrait\w+) = (\d+)/g)];
+  const kinds = [...scummMatch(/enum TraitKind : int16 \{([\s\S]*?)\};/, h, 'TraitKind')[1].matchAll(/(kTrait\w+) = (\d+)/g)];
   if (!same(kinds.map(m => KIND[m[1]]), S.ZB_TRAIT_KINDS) || kinds.some((m, i) => Number(m[2]) !== S.ZB_SLIDES_HAIR + i)) fail('the trait codes are not hair, eyes, nose, feet from 510');
 
   // ---- what the port copies, and where it follows the program instead -----
-  need(/int16 traitCursor = _vm->_rnd->getRandomNumber\(0, 3\);\s*int16 unpairedCount = 0;\s*for \(int16 attempt = 0; attempt < 10; attempt\+\+\) \{\s*memset/, cpp, 'the pairing\'s count of singles, set once for all ten tries');
-  need(/if \(unpairedCount == 0 \|\| \(unpairedCount == 1 && \(_pageLoadedZmbCount % 2\) == 1\)\)\s*break;/, cpp, 'the pairing\'s stop');
-  need(/_pairGroupCount = _pageLoadedZmbCount \/ 3;\s*if \(\(_pageLoadedZmbCount % 3\) != 0\)\s*_pairGroupCount \+= 1;/, cpp, 'level 2\'s count of chains');
+  scummMatch(/int16 traitCursor = _vm->_rnd->getRandomNumber\(0, 3\);\s*int16 unpairedCount = 0;\s*for \(int16 attempt = 0; attempt < 10; attempt\+\+\) \{\s*memset/, cpp, 'the pairing\'s count of singles, set once for all ten tries');
+  scummMatch(/if \(unpairedCount == 0 \|\| \(unpairedCount == 1 && \(_pageLoadedZmbCount % 2\) == 1\)\)\s*break;/, cpp, 'the pairing\'s stop');
+  scummMatch(/_pairGroupCount = _pageLoadedZmbCount \/ 3;\s*if \(\(_pageLoadedZmbCount % 3\) != 0\)\s*_pairGroupCount \+= 1;/, cpp, 'level 2\'s count of chains');
   if ([...cpp.matchAll(/checkFirstTraitMatch\(_sortedSnoidIndices\[(\d)\], _sortedSnoidIndices\[(\d)\]\)/g)].map(m => m[1] + m[2]).join() !== '10,21,32,43') fail('level 4\'s short chain no longer looks its marks up twice in the sorted list');
-  need(/if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*int16 result = placeNextZmbInCell\(91\);\s*result = placeNextZmbInCell\(19\);\s*placeNextZmbInCell\(55\);[\s\S]*?placeNextZmbInCell\(55\);\s*result = placeNextZmbInCell\(91\);\s*placeNextZmbInCell\(19\);[\s\S]*?placeNextZmbInCell\(19\);\s*result = placeNextZmbInCell\(55\);\s*placeNextZmbInCell\(91\);/, cpp, 'the rings\' three orders');
-  need(/getRandomNumber\(0, 1000\);\s*if \(roll < 250\)[\s\S]*?roll < 500[\s\S]*?roll < 750/, cpp, 'the 0-1000 draw\'s quarters');
-  need(/if \(_puzzleLevel == kPuzzleLevel4\) \{\s*int16 randVal = _vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'level 4\'s look, drawn first');
+  scummMatch(/if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*if \(50 <= _vm->_rnd->getRandomNumber\(0, 100\)\) \{\s*int16 result = placeNextZmbInCell\(91\);\s*result = placeNextZmbInCell\(19\);\s*placeNextZmbInCell\(55\);[\s\S]*?placeNextZmbInCell\(55\);\s*result = placeNextZmbInCell\(91\);\s*placeNextZmbInCell\(19\);[\s\S]*?placeNextZmbInCell\(19\);\s*result = placeNextZmbInCell\(55\);\s*placeNextZmbInCell\(91\);/, cpp, 'the rings\' three orders');
+  scummMatch(/getRandomNumber\(0, 1000\);\s*if \(roll < 250\)[\s\S]*?roll < 500[\s\S]*?roll < 750/, cpp, 'the 0-1000 draw\'s quarters');
+  scummMatch(/if \(_puzzleLevel == kPuzzleLevel4\) \{\s*int16 randVal = _vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'level 4\'s look, drawn first');
   // The program's first search at level 4 has no such stop; the port follows the program.
-  need(/if \(_pageLoadedZmbCount <= snoidIdx \+ 1\)\s*break;\s*if \(!checkFirstTraitMatch\(snoidIdx \+ 1, snoidIdx\)\)/, cpp, 'the first search\'s stop one short');
+  scummMatch(/if \(_pageLoadedZmbCount <= snoidIdx \+ 1\)\s*break;\s*if \(!checkFirstTraitMatch\(snoidIdx \+ 1, snoidIdx\)\)/, cpp, 'the first search\'s stop one short');
   // The program's words at level 4, which ScummVM does not have.
   const zone = 'You have entered the psychedelic ZB Zone!';
   if (!find(exe, [...zone].map(ch => ch.charCodeAt(0))).length || /psychedelic/.test(cpp + h) || !P.levels[3].notes.some(t => t.includes(zone))) fail('the ZB Zone is not the program\'s alone, or the note does not quote it');
@@ -246,7 +246,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     for (const v of [{ [key]: 'plain' }, { [key]: 'ears' }, { j999: 'hair' }]) { try { P.edit(1, band, d.state, v); } catch (e) { caught++; } }
     if (caught !== 3) fail('the form accepts a plain stone at level 1, a trait that is none, or a stone that is not there');
   }
-  say(`tables as ScummVM's, and in ZOOMBINI.EXE (0x${(at[0] || 0).toString(16)}. 0x${(found[0] || 0).toString(16)} to 0x${(found[3] || 0).toString(16)}. 0x${(judged[0] || 0).toString(16)}, before "Slides.MHK"); `
+  print(`tables as ScummVM's, and in ZOOMBINI.EXE (0x${(at[0] || 0).toString(16)}. 0x${(found[0] || 0).toString(16)} to 0x${(found[3] || 0).toString(16)}. 0x${(judged[0] || 0).toString(16)}, before "Slides.MHK"); `
     + `${counts.deals} deals over bands of 16 to 1, every placement one stone each, every marked stone satisfied, all risen by the program's judge, `
     + `${counts.caught} wrong swaps caught. ${counts.quirks} where the program goes astray. The ZB Zone's words in ZOOMBINI.EXE and not in ScummVM; `
     + `workbench: ${bench.trips} forms given back, ${bench.solved} solved (${bench.edited} after edits, ${bench.short} short of the whole band, ${bench.zone} solutions entering the ZB Zone), ${bench.brute} held to trying every placement`);

@@ -58,12 +58,12 @@ function solveLayout() {
 function layoutMaze() {
   const st = SDEALT.edited || SDEALT.state, arc = solveOpen('MAZE2'), id = st.mazeLayoutRegsId, t = LAYOUT_TOOL.maze;
   const B = zbMaze2Board(SDEALT.band, st, arc), shapes = st.waveGroupShapeBase;
-  const colourName = g => g === 1 ? 'white' : ZB_MAZE2_COLOURS[shapes[g]] || `group ${g}`;
+  const colorName = g => g === 1 ? 'white' : ZB_MAZE2_COLORS[shapes[g]] || `group ${g}`;
   const arrows = B.cells.filter(c => c.type === 2).length, dealt = st.selectedPathSlots.length;
   const edited = isEdited('MAZE2', 'REGS', id);
   let html = `<div class="ltools"><label>Place <select data-lt="type">${LAYOUT_MAZE_TYPES.map(([v, n]) => `<option value="${v}"${v === t.type ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>`
     + ` <label>pointing <select data-lt="dir">${ZB_MAZE2_WAYS.map((w, k) => `<option value="${k}"${k === t.dir ? ' selected' : ''}>${w}</option>`).join('')}</select></label>`
-    + ` <label>in <select data-lt="group">${[1, 2, 3, 4, 5, 6, 7, 8].map(g => `<option value="${g}"${g === t.group ? ' selected' : ''}>${esc(colourName(g))}</option>`).join('')}</select></label>`
+    + ` <label>in <select data-lt="group">${[1, 2, 3, 4, 5, 6, 7, 8].map(g => `<option value="${g}"${g === t.group ? ' selected' : ''}>${esc(colorName(g))}</option>`).join('')}</select></label>`
     + ` <label><input type="checkbox" data-lt="turns"${t.turns ? ' checked' : ''}> turns when passed, toward</label>`
     + ZB_MAZE2_WAYS.map((w, k) => ` <label><input type="checkbox" data-lt="way" value="${k}"${t.ways[k] ? ' checked' : ''}> ${w}</label>`).join('') + '</div>'
     + `<div class="ltools">Launchers: ${ZB_MAZE2_SEATS.map((s, k) => `<label title="${esc(zbMaze2Corner(k) || 'the lower left')}"><input type="checkbox" data-seat="${k}"${B.seats.includes(k) ? ' checked' : ''}> ${k + 1}</label>`).join(' ')}</div>`;

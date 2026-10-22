@@ -42,13 +42,13 @@ else {
   const at = new Map([...table.matchAll(/ZoombiniText::k(\w+), 0x([0-9A-F]+), (\d+)\}/g)].map(m => [m[1], exe.subarray(parseInt(m[2], 16), parseInt(m[2], 16) + +m[3]).toString('latin1')]));
   let n = 0;
   for (const [k, arch] of Object.entries(KEY)) {
-    const p = S.ZB_PLACE_BY_KEY.get(arch), want = at.get(k);
-    if (!want) { fail(`kV11US_NETextEntries has no k${k}`); continue; }
-    if (!same(p.name, want)) fail(`${arch} is "${p.name}". The program has "${want}"`); else n++;
+    const p = S.ZB_PLACE_BY_KEY.get(arch), programName = at.get(k);
+    if (!programName) { fail(`kV11US_NETextEntries has no k${k}`); continue; }
+    if (!same(p.name, programName)) fail(`${arch} is "${p.name}". The program has "${programName}"`); else n++;
     if (S.ZB_ARCHIVES[arch].place !== p.name) fail(`ZB_ARCHIVES calls ${arch} "${S.ZB_ARCHIVES[arch].place}", the journey "${p.name}"`);
   }
-  S.ZB_ROUTES.forEach((r, i) => { const want = at.get('Route' + (i + 1)); if (!same(r.name, want)) fail(`route ${i + 1} is "${r.name}". The program has ${JSON.stringify(want)}`); else n++; });
-  S.ZB_LEVELS.forEach((l, i) => { const want = at.get('Level' + (i + 1)); if (!same(l, want)) fail(`level ${i + 1} is "${l}". The program has ${JSON.stringify(want)}`); else n++; });
+  S.ZB_ROUTES.forEach((r, i) => { const programName = at.get('Route' + (i + 1)); if (!same(r.name, programName)) fail(`route ${i + 1} is "${r.name}". The program has ${JSON.stringify(programName)}`); else n++; });
+  S.ZB_LEVELS.forEach((l, i) => { const programName = at.get('Level' + (i + 1)); if (!same(l, programName)) fail(`level ${i + 1} is "${l}". The program has ${JSON.stringify(programName)}`); else n++; });
   console.log(`names: ${n} of 24 are the program's`);
 }
 
@@ -108,8 +108,8 @@ for (const f of fs.readdirSync(path.join(SCUMM, 'zoombini_pages')).filter(f => f
   if (!arch || !body || !S.ZB_PLACE_BY_KEY.has(arch[1])) continue;
   const ids = [...new Set([...body[1].matchAll(/kResBackground(\d+)/g)].map(x => +x[1]))].sort((a, b) => a - b);
   const p = S.ZB_PLACE_BY_KEY.get(arch[1]);
-  const mine = [p.background, p.hard].filter(x => x != null);
-  if (ids.join() !== mine.join()) fail(`${p.key}: background ${mine.join(', ')} here, ${ids.join(', ')} in ${f}`);
+  const siteIds = [p.background, p.hard].filter(x => x != null);
+  if (ids.join() !== siteIds.join()) fail(`${p.key}: background ${siteIds.join(', ')} here, ${ids.join(', ')} in ${f}`);
   const arc = S.openMohawk(archiveBytes(p.key));
   for (const level of [1, 2, 3, 4]) {
     const pic = S.zbPlacePicture(arc, p.key, level);

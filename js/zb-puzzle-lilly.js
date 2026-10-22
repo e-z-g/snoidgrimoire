@@ -117,7 +117,7 @@ const ZB_LILLY_TATTOO_VALUE = [0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 4, 0];
 const ZB_LILLY_TATTOO_EXTRA = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0];
 /* By band size 0-20, the routes it needs whole: half the band, rounded
    up (ScummVM's kZmbToRowCount). */
-const ZB_LILLY_ROUTES_NEEDED = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10];
+const ZB_LILLY_ROUTES_REQUIRED = [1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10];
 /* By row, and again by column, whether a pad there may be cut: not in
    the first two (ScummVM's kRowColValidity; the thirteenth is unused). */
 const ZB_LILLY_CUTTABLE = [0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0];
@@ -239,7 +239,7 @@ function zbLillyCrosses(pads, type, value, row) {
 
 /* The families a level may turn for a band of n (3-5, for maps 0-2). */
 function zbLillyFamilies(level, n) {
-  const small = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)] < 8;
+  const small = ZB_LILLY_ROUTES_REQUIRED[Math.min(n, 20)] < 8;
   return level === 3 ? (small ? [3, 4, 5] : [4]) : level === 4 ? (small ? [4, 5] : [4]) : [0];
 }
 
@@ -255,19 +255,19 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
   /* By route 1-12 (0 unused, and a fourteenth word the program clears):
      0 where the route may be cut, the route's number where it is spared. */
   const markers = [...Array(13).keys(), 0], shuffle = [...Array(13).keys(), 0];
-  const needed = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)];
+  const routesKept = ZB_LILLY_ROUTES_REQUIRED[Math.min(n, 20)];
 
   /* The family whose map is turned to run top to bottom, 3-5 for maps
      0-2 (ScummVM's _obstacleGridFamily; 0 none), and the most crab
      entries. */
   let family = 0, maxCrabEntries = 0, toCut = 12;
-  if (level === 1) toCut = 12 - needed;
+  if (level === 1) toCut = 12 - routesKept;
   if (level === 3) {
     maxCrabEntries = 2;
-    family = needed < 8 ? rnd.range(3, 5) : 4;
+    family = routesKept < 8 ? rnd.range(3, 5) : 4;
   } else if (level === 4) {
     maxCrabEntries = 3;
-    family = needed < 8 && rnd.range(4, 5) !== 4 ? 5 : 4;
+    family = routesKept < 8 && rnd.range(4, 5) !== 4 ? 5 : 4;
   }
   if (over.family != null) family = over.family;
   if (family) maps[family - 3] = zbLillyTurn(maps[family - 3], 0);
@@ -455,7 +455,7 @@ function zbLillyDeal(level, band, rnd, arc, over = {}) {
 /* ---- the workbench: the pond's choices, solving it, drawing it -------- */
 
 /* The marks' colors, as tBMP 13000 paints them. */
-const ZB_LILLY_COLOURS = ['#ff52f6', '#fc2c44', '#ff7b00', '#4cfff3', '#f7ffbf'];
+const ZB_LILLY_COLORS = ['#ff52f6', '#fc2c44', '#ff7b00', '#4cfff3', '#f7ffbf'];
 /* The turns and mirrors the program chooses between, as the form offers
    them: transform 0 turns all three maps a half, 1 mirrors each (0 left to
    right, 1 top to bottom), 2 leaves them. */
@@ -546,7 +546,7 @@ function zbLillyPath(pads, type, value, row) {
 function zbLillyPlan(level, n, state, deadline, jitter = null) {
   const FAM = ['pattern', 'shape', 'color'];
   const pads = zbLillyCopyPads({ pattern: state.padPattern, shape: state.padShape, color: state.padColor });
-  const toads = state.toads, need = Math.ceil(n / 2), wand = state.swapWandUses || 0;
+  const toads = state.toads, toadCount = Math.ceil(n / 2), wand = state.swapWandUses || 0;
   /* By family, the cells on a chosen way: 1 + the toad's slot. */
   const held = { pattern: new Int8Array(144), shape: new Int8Array(144), color: new Int8Array(144) };
   /* The cheapest way for a toad: a 0-1 search, a pad not of its value
@@ -597,7 +597,7 @@ function zbLillyPlan(level, n, state, deadline, jitter = null) {
   };
   const swaps = [], chosen = [], failed = new Set();
   let gaveUp = false;
-  while (chosen.length < need) {
+  while (chosen.length < toadCount) {
     if (Date.now() > deadline) { gaveUp = true; break; }
     let pick = null;
     const ways = [];
@@ -659,7 +659,7 @@ function zbLillyBestPlan(level, n, state, deadline) {
    figure, or a pad's outline with its notches or leaves. */
 function zbLillyTattooItems(type, value, x, y, extra = {}) {
   const it = o => Object.assign(o, extra);
-  if (type === 3) return [it({ t: 'circle', x, y, r: 7, fill: ZB_LILLY_COLOURS[value], stroke: 'line' })];
+  if (type === 3) return [it({ t: 'circle', x, y, r: 7, fill: ZB_LILLY_COLORS[value], stroke: 'line' })];
   if (type === 1) {
     if (value === 0) return [it({ t: 'poly', points: [x, y - 8, x + 7, y, x, y + 8, x - 7, y], fill: 'ink' })];
     if (value === 1) return [it({ t: 'line', x1: x - 6, y1: y - 6, x2: x + 6, y2: y + 6, stroke: 'ink', width: 3 }), it({ t: 'line', x1: x + 6, y1: y - 6, x2: x - 6, y2: y + 6, stroke: 'ink', width: 3 })];
@@ -677,7 +677,7 @@ function zbLillyTattooItems(type, value, x, y, extra = {}) {
   return [...Array(leaves).keys()].map(k => it({ t: 'circle', x: x + 4.2 * Math.cos(k * 2 * Math.PI / leaves - Math.PI / 2), y: y + 4.2 * Math.sin(k * 2 * Math.PI / leaves - Math.PI / 2), r: 4.2, fill: 'good', stroke: 'line' }));
 }
 /* The line a toad's way is drawn in: its color, or a role. */
-function zbLillyInk(type, value) { return type === 3 ? ZB_LILLY_COLOURS[value] : type === 1 ? 'accent' : 'good'; }
+function zbLillyInk(type, value) { return type === 3 ? ZB_LILLY_COLORS[value] : type === 1 ? 'accent' : 'good'; }
 
 /* The pond drawn: the pads by their marks' colors, the swaps, each
    crossing toad's way, the toads on the bank, and the band: those across
@@ -690,7 +690,7 @@ function zbLillyDiagram(band, state, plan, caption) {
   items.push({ t: 'rect', x: X + 12 * C + 10, y: 36, w: W - X - 12 * C - 10, h: 12 * C + 32, fill: 'grass' });
   for (let r = 0; r < 12; r++) {
     items.push({ t: 'text', x: X - 16, y: Y + r * C + C / 2 + 4, text: String(r + 1), size: 10, anchor: 'end', fill: 'dim' });
-    for (let c = 0; c < 12; c++) items.push({ t: 'circle', x: X + c * C + C / 2, y: Y + r * C + C / 2, r: 10, fill: ZB_LILLY_COLOURS[pads.color[r][c]], faded: true });
+    for (let c = 0; c < 12; c++) items.push({ t: 'circle', x: X + c * C + C / 2, y: Y + r * C + C / 2, r: 10, fill: ZB_LILLY_COLORS[pads.color[r][c]], faded: true });
   }
   for (const e of state.crabEntries || []) {
     const x = X + e.col * C + C / 2;
@@ -753,7 +753,7 @@ ZB_PUZZLES.set('LILLY', {
      turn or mirrors, the routes left whole at level 1 and the routes'
      tattoos. */
   form(level, band, state) {
-    const n = band.length, fams = zbLillyFamilies(level, n), need = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)], fields = [];
+    const n = band.length, fams = zbLillyFamilies(level, n), routesKept = ZB_LILLY_ROUTES_REQUIRED[Math.min(n, 20)], fields = [];
     const famWord = f => ['patterns', 'shapes', 'colors'][f - 3];
     if (level >= 3) {
       if (fams.length > 1) fields.push({ key: 'family', label: 'Routes rotated for the crabs', kind: 'choice', value: state.obstacleGridFamily, options: fams.map(f => ({ value: f, label: `the ${famWord(f)}’` })) });
@@ -761,7 +761,7 @@ ZB_PUZZLES.set('LILLY', {
     }
     fields.push({ key: 'transform', label: 'The maps', kind: 'choice', value: zbLillyTransformValue(state), options: ZB_LILLY_TRANSFORMS.map(o => ({ ...o })) });
     if (level === 1) {
-      fields.push({ key: 'spared', label: `Routes left whole (${need})`, kind: 'several', min: need, max: need,
+      fields.push({ key: 'spared', label: `Routes left whole (${routesKept})`, kind: 'several', min: routesKept, max: routesKept,
         value: [...Array(12).keys()].map(k => k + 1).filter(k => state.challengeEnabledMarkers[k] !== 0),
         options: [...Array(12).keys()].map(k => ({ value: k + 1, label: zbLillyRouteName(k + 1) })) });
     }
@@ -772,7 +772,7 @@ ZB_PUZZLES.set('LILLY', {
   },
   edit(level, band, state, values, arc) {
     if (state.rndStart == null) throw new Error('This pond was not dealt here, so it cannot be dealt again with changes.');
-    const n = band.length, need = ZB_LILLY_ROUTES_NEEDED[Math.min(n, 20)], over = {};
+    const n = band.length, routesKept = ZB_LILLY_ROUTES_REQUIRED[Math.min(n, 20)], over = {};
     if (level >= 3 && values.family != null) {
       const f = Number(values.family);
       if (!zbLillyFamilies(level, n).includes(f)) throw new Error(`With ${n} Zoombinis at this level the program rotates only the ${zbWordsOr(zbLillyFamilies(level, n).map(x => ['patterns', 'shapes', 'colors'][x - 3]))}’ routes.`);
@@ -788,7 +788,7 @@ ZB_PUZZLES.set('LILLY', {
     if (level === 1 && values.spared != null) {
       const sp = [...new Set([].concat(values.spared).map(Number))];
       if (sp.some(k => !(k >= 1 && k <= 12))) throw new Error('There are twelve routes.');
-      if (sp.length !== need) throw new Error(`With ${n} Zoombinis the program leaves ${need} route${need === 1 ? '' : 's'} whole, one for every two Zoombinis.`);
+      if (sp.length !== routesKept) throw new Error(`With ${n} Zoombinis the program leaves ${routesKept} route${routesKept === 1 ? '' : 's'} whole, one for every two Zoombinis.`);
       over.spared = sp;
     }
     if (values.tattoos != null) {

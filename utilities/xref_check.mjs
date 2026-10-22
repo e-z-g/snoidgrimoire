@@ -38,8 +38,8 @@ for (const r of reads) if (!there(r.key)) fail(`${r.by} reads ${r.key}, which is
 // The sheets' REGS pairs, against the site's pairs for them.
 const pairs = new Map();
 for (const [n, a] of archives) for (const p of S.zbXrefSheetRegs(a)) pairs.set(`${n}/tBMP/${p.sheet}`, `${n}/REGS/${p.regs}`);
-const want = [...Object.values(S.ZB_SNOID_KINDS).map(K => [`${K.archive}/tBMP/${K.sheet}`, `${K.archive}/REGS/${K.regs}`]), ['TOWN/tBMP/6000', 'TOWN/REGS/6000']];
-for (const [sheet, regs] of want) if (pairs.get(sheet) !== regs) fail(`${sheet}'s points are ${pairs.get(sheet) || 'not found'}, not ${regs}`);
+const expectedPairs = [...Object.values(S.ZB_SNOID_KINDS).map(K => [`${K.archive}/tBMP/${K.sheet}`, `${K.archive}/REGS/${K.regs}`]), ['TOWN/tBMP/6000', 'TOWN/REGS/6000']];
+for (const [sheet, regs] of expectedPairs) if (pairs.get(sheet) !== regs) fail(`${sheet}'s points are ${pairs.get(sheet) || 'not found'}, not ${regs}`);
 const used = new Map();
 for (const [sheet, regs] of pairs) { if (used.has(regs)) fail(`${regs} has the points of ${used.get(regs)} and ${sheet}`); used.set(regs, sheet); }
 let sheets = 0;

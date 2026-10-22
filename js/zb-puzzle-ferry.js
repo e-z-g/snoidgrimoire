@@ -76,7 +76,7 @@
    and kResBitmapShape1500_Seats): seat shape k is drawn by SCRB 1499 + k
    from tBMP 1500's frame k - 1. The most seats a raft registers, and the
    most neighbors a seat has. */
-const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbours: 8 };
+const ZB_FERRY_SEAT = { scripts: 1500, sheet: 1500, shapes: [1, 3], most: 20, neighbors: 8 };
 /* The quick search's steps for each size of seating, before zbFerryMatch
    settles it. */
 const ZB_FERRY_QUICK = 2000;
@@ -92,18 +92,18 @@ function zbFerryRaft(arc, script) {
   if (!zbFerryRaftsRead.has(arc)) zbFerryRaftsRead.set(arc, new Map());
   const cache = zbFerryRaftsRead.get(arc);
   if (cache.has(script)) return cache.get(script);
-  const need = (tag, id, what) => {
+  const requireResource = (tag, id, what) => {
     if (!arc.has(tag, id)) throw new Error(`Captain Cajun’s Ferryboat: this FERRY has no ${tag} ${id}, ${what}`);
     return arc.get(tag, id);
   };
-  const raft = parseScript(need('SCRB', script, 'the raft’s seats'), 'SCRB');
+  const raft = parseScript(requireResource('SCRB', script, 'the raft’s seats'), 'SCRB');
   if (raft.frames.length < 2) throw new Error(`Captain Cajun’s Ferryboat: FERRY SCRB ${script} has ${raft.frames.length} frames, not the seats and the cargo`);
-  const sheet = tbmpFrameOffsets(need('tBMP', ZB_FERRY_SEAT.sheet, 'the seats’ picture'));
+  const sheet = tbmpFrameOffsets(requireResource('tBMP', ZB_FERRY_SEAT.sheet, 'the seats’ picture'));
   if (!sheet) throw new Error(`Captain Cajun’s Ferryboat: FERRY tBMP ${ZB_FERRY_SEAT.sheet} is not a sprite sheet`);
   const [lo, hi] = ZB_FERRY_SEAT.shapes, seats = [];
   for (const r of raft.frames[0].records) {
     if (r.shape < lo || r.shape > hi || seats.length >= ZB_FERRY_SEAT.most) continue;
-    const own = parseScript(need('SCRB', ZB_FERRY_SEAT.scripts + r.shape - 1, 'a seat’s script'), 'SCRB').frames[0].records[0];
+    const own = parseScript(requireResource('SCRB', ZB_FERRY_SEAT.scripts + r.shape - 1, 'a seat’s script'), 'SCRB').frames[0].records[0];
     const at = sheet.offsets[own.shape - 1] - 8;
     seats.push({ x: r.x, y: r.y, w: u16be(sheet.payload, at) & 0x3fff, h: u16be(sheet.payload, at + 2) & 0x3fff });
   }
@@ -117,12 +117,12 @@ function zbFerryRaftScript(level, n) {
 }
 
 /* Each seat's neighbors, by seat index, as the program finds them. */
-function zbFerryNeighbours(seats, level) {
+function zbFerryNeighbors(seats, level) {
   const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
   return seats.map(({ x, y, w, h: ht }, k) => {
     const h = Math.max(0, Math.trunc(ht / 2) - 2), out = [];
     seats.forEach((m, j) => {
-      if (j === k || out.length >= ZB_FERRY_SEAT.neighbours) return;
+      if (j === k || out.length >= ZB_FERRY_SEAT.neighbors) return;
       const M = [m.x, m.y, m.x + m.w, m.y + m.h];
       if (overlap([x + h, y - h, x + w - h, y + ht + h], M) || overlap([x - h, y + h, x + w + h, y + ht - h], M)
         || (level >= 4 && overlap([x, y - h, x + w, y + ht + h], M))) out.push(j);
@@ -134,8 +134,8 @@ function zbFerryNeighbours(seats, level) {
 /* Whether two Zoombinis share a trait. */
 function zbFerryShare(a, b) { return ZB_TRAIT_KINDS.some(k => a[k] === b[k]); }
 
-/* The search for seatings of a band on a raft: run(want, limit, deadline,
-   found, strong) calls found(seating) for each seating of want of the
+/* The search for seatings of a band on a raft: run(seatCount, limit, deadline,
+   found, strong) calls found(seating) for each seating of seatCount Zoombinis of the
    band (the band index by seat, -1 empty), each once, two alike
    Zoombinis counting as one, until found returns true; it gives up after
    limit steps or at the deadline, and its result has gaveUp set. Seats are taken in the
@@ -144,14 +144,14 @@ function zbFerryShare(a, b) { return ZB_TRAIT_KINDS.some(k => a[k] === b[k]); }
    Zoombinis fit is filled first. The Zoombinis are tried the least
    sociable first, or, strong, those sharing the most traits with their
    seated neighbors first. */
-function zbFerryEngine(band, neighbours) {
-  const n = band.length, S = neighbours.length;
+function zbFerryEngine(band, neighbors) {
+  const n = band.length, S = neighbors.length;
   const alike = band.map(a => band.map(b => ZB_TRAIT_KINDS.filter(k => a[k] === b[k]).length));
   const share = alike.map(r => r.map(c => c > 0));
   const partners = band.map((_, i) => share[i].filter((x, j) => x && j !== i).length);
-  const byNeed = [...band.keys()].sort((a, b) => partners[a] - partners[b] || a - b);
+  const byPartners = [...band.keys()].sort((a, b) => partners[a] - partners[b] || a - b);
   const order = [], seen = new Set();
-  const start = [...neighbours.keys()].sort((a, b) => neighbours[a].length - neighbours[b].length || a - b);
+  const start = [...neighbors.keys()].sort((a, b) => neighbors[a].length - neighbors[b].length || a - b);
   for (const s0 of start) {
     if (seen.has(s0)) continue;
     const queue = [s0];
@@ -159,18 +159,18 @@ function zbFerryEngine(band, neighbours) {
     while (queue.length) {
       const s = queue.shift();
       order.push(s);
-      for (const t of neighbours[s]) if (!seen.has(t)) { seen.add(t); queue.push(t); }
+      for (const t of neighbors[s]) if (!seen.has(t)) { seen.add(t); queue.push(t); }
     }
   }
   const seating = Array(S).fill(-1), used = Array(n).fill(false), empty = Array(S).fill(false);
-  const fits = (z, s) => neighbours[s].every(t => seating[t] < 0 || share[z][seating[t]]);
-  const run = (want, limit, deadline, found, strong = false) => {
+  const fits = (z, s) => neighbors[s].every(t => seating[t] < 0 || share[z][seating[t]]);
+  const run = (seatCount, limit, deadline, found, strong = false) => {
     let steps = 0, gaveUp = false, stopped = false;
     seating.fill(-1); used.fill(false); empty.fill(false);
     const rank = s => {
-      const zs = byNeed.filter(z => !used[z] && fits(z, s));
+      const zs = byPartners.filter(z => !used[z] && fits(z, s));
       if (strong) {
-        const w = z => neighbours[s].reduce((t, u) => t + (seating[u] < 0 ? 0 : alike[z][seating[u]]), 0);
+        const w = z => neighbors[s].reduce((t, u) => t + (seating[u] < 0 ? 0 : alike[z][seating[u]]), 0);
         zs.sort((a, b) => w(b) - w(a));
       }
       return zs;
@@ -187,7 +187,7 @@ function zbFerryEngine(band, neighbours) {
     };
     /* Every seat still open must be filled. */
     const fillAll = placed => {
-      if (placed === want) { stopped = found(seating.slice()); return stopped; }
+      if (placed === seatCount) { stopped = found(seating.slice()); return stopped; }
       if (step()) return true;
       let best = -1, bestFit = null;
       for (let s = 0; s < S; s++) {
@@ -206,8 +206,8 @@ function zbFerryEngine(band, neighbours) {
       return false;
     };
     const fill = (i, placed) => {
-      if (placed === want) { stopped = found(seating.slice()); return stopped; }
-      if (S - i === want - placed) return fillAll(placed);
+      if (placed === seatCount) { stopped = found(seating.slice()); return stopped; }
+      if (S - i === seatCount - placed) return fillAll(placed);
       if (step()) return true;
       const s = order[i], tried = new Set();
       for (const z of rank(s)) {
@@ -221,7 +221,7 @@ function zbFerryEngine(band, neighbours) {
       empty[s] = false;
       return r;
     };
-    if (want <= S) fill(0, 0);
+    if (seatCount <= S) fill(0, 0);
     return { gaveUp, stopped };
   };
   return { run, alike, share };
@@ -246,9 +246,9 @@ function zbFerryEngine(band, neighbours) {
    riders interchangeable there tried once, failures remembered.
    { answer: 'yes', 'no' or 'unknown', seating } with the seating as
    zbFerrySeatBand's, seating at least that many. N over 32: unknown. */
-function zbFerryMatch(band, neighbours, want, deadline = Infinity) {
-  const S = neighbours.length, n = band.length, N = S + n - want;
-  if (want > n || want > S) return { answer: 'no', seating: null };
+function zbFerryMatch(band, neighbors, seatCount, deadline = Infinity) {
+  const S = neighbors.length, n = band.length, N = S + n - seatCount;
+  if (seatCount > n || seatCount > S) return { answer: 'no', seating: null };
   if (N > 32) return { answer: 'unknown', seating: null };
   const bit = v => 1 << v, all = N === 32 ? -1 : (1 << N) - 1;
   /* Kept here: a global looked up in a hot loop is slow inside node's vm, where the checks run. */
@@ -256,7 +256,7 @@ function zbFerryMatch(band, neighbours, want, deadline = Infinity) {
   const count = x => { x -= (x >>> 1) & 0x55555555; x = (x & 0x33333333) + ((x >>> 2) & 0x33333333); return imul((x + (x >>> 4)) & 0x0f0f0f0f, 0x01010101) >>> 24; };
   const first = x => 31 - clz32(x & -x);
   const seatAdj = new Int32Array(N), riderAdj = new Int32Array(N);
-  neighbours.forEach((out, s) => out.forEach(t => { seatAdj[s] |= bit(t); seatAdj[t] |= bit(s); }));
+  neighbors.forEach((out, s) => out.forEach(t => { seatAdj[s] |= bit(t); seatAdj[t] |= bit(s); }));
   for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++) {
     if (a >= n || b >= n || zbFerryShare(band[a], band[b])) { riderAdj[a] |= bit(b); riderAdj[b] |= bit(a); }
   }
@@ -437,26 +437,26 @@ function zbFerryMatch(band, neighbours, want, deadline = Infinity) {
 /* The most of the band that can sit together: { seating (band index or
    -1 by seat), seated, proven }, proven false when a larger seating was
    given up on rather than ruled out. */
-function zbFerrySeatBand(band, neighbours, deadline = Infinity) {
-  const engine = zbFerryEngine(band, neighbours);
+function zbFerrySeatBand(band, neighbors, deadline = Infinity) {
+  const engine = zbFerryEngine(band, neighbors);
   let proven = true;
-  for (let want = Math.min(band.length, neighbours.length); want > 0; want--) {
+  for (let seatCount = Math.min(band.length, neighbors.length); seatCount > 0; seatCount--) {
     let seating = null;
-    const r = engine.run(want, ZB_FERRY_QUICK, deadline, s => { seating = s; return true; });
-    if (seating) return { seating, seated: want, proven };
+    const r = engine.run(seatCount, ZB_FERRY_QUICK, deadline, s => { seating = s; return true; });
+    if (seating) return { seating, seated: seatCount, proven };
     if (!r.gaveUp) continue;
-    const m = zbFerryMatch(band, neighbours, want, deadline);
-    if (m.seating) return { seating: m.seating, seated: neighbours.length - m.seating.filter(x => x < 0).length, proven };
+    const m = zbFerryMatch(band, neighbors, seatCount, deadline);
+    if (m.seating) return { seating: m.seating, seated: neighbors.length - m.seating.filter(x => x < 0).length, proven };
     if (m.answer === 'unknown') proven = false;
   }
-  return { seating: Array(neighbours.length).fill(-1), seated: 0, proven };
+  return { seating: Array(neighbors.length).fill(-1), seated: 0, proven };
 }
 
 /* The most seats with no two next to each other, and one such set. */
 const zbFerryApartRead = new WeakMap();
-function zbFerryApart(neighbours) {
-  if (zbFerryApartRead.has(neighbours)) return zbFerryApartRead.get(neighbours);
-  const S = neighbours.length, mask = neighbours.map(ns => ns.reduce((a, m) => a | 1 << m, 0));
+function zbFerryApart(neighbors) {
+  if (zbFerryApartRead.has(neighbors)) return zbFerryApartRead.get(neighbors);
+  const S = neighbors.length, mask = neighbors.map(ns => ns.reduce((a, m) => a | 1 << m, 0));
   let best = 0, bestSet = 0;
   /* Seats in order, each taken or not, taking none next to one taken. */
   const go = (k, set, count, banned) => {
@@ -467,7 +467,7 @@ function zbFerryApart(neighbours) {
   };
   go(0, 0, 0, 0);
   const out = { most: best, seats: [...Array(S).keys()].filter(k => bestSet >> k & 1) };
-  zbFerryApartRead.set(neighbours, out);
+  zbFerryApartRead.set(neighbors, out);
   return out;
 }
 
@@ -476,10 +476,10 @@ function zbFerryApart(neighbours) {
    the line in which each two in a row share a trait, two alike Zoombinis
    counted as one. null if the raft is not one line, or the band does not
    fill it. */
-function zbFerryLineWays(band, neighbours) {
-  const S = neighbours.length, n = band.length;
-  if (n !== S || n > 20 || neighbours.some(ns => ns.length > 2) || neighbours.flat().length !== 2 * (S - 1)) return null;
-  const end = neighbours.findIndex(ns => ns.length === 1);
+function zbFerryLineWays(band, neighbors) {
+  const S = neighbors.length, n = band.length;
+  if (n !== S || n > 20 || neighbors.some(ns => ns.length > 2) || neighbors.flat().length !== 2 * (S - 1)) return null;
+  const end = neighbors.findIndex(ns => ns.length === 1);
   if (end < 0) return null;
   const share = band.map(a => band.map(b => zbFerryShare(a, b)));
   /* Paths through every Zoombini: ways[mask][last]. */
@@ -515,9 +515,9 @@ function zbFerrySeatPlaces(seats) {
 function zbFerryShared(a, b) { return ZB_TRAIT_KINDS.filter(k => a[k] === b[k]).map(kind => ({ kind, value: a[kind] })); }
 /* A seating's neighbor pairs, both seated: [{ a, b, shared }], seat
    indices a < b. */
-function zbFerryLinks(band, neighbours, seating) {
+function zbFerryLinks(band, neighbors, seating) {
   const out = [];
-  neighbours.forEach((ns, a) => ns.forEach(b => {
+  neighbors.forEach((ns, a) => ns.forEach(b => {
     if (a < b && seating[a] >= 0 && seating[b] >= 0) out.push({ a, b, shared: zbFerryShared(band[seating[a]], band[seating[b]]) });
   }));
   return out;
@@ -689,9 +689,9 @@ ZB_PUZZLES.set('FERRY', {
     const n = band.length;
     const script = zbFerryRaftScript(level, n);
     const seats = zbFerryRaft(arc, script);
-    const neighbours = zbFerryNeighbours(seats, level);
+    const neighbors = zbFerryNeighbors(seats, level);
     const places = zbFerrySeatPlaces(seats);
-    const found = zbFerrySeatBand(band, neighbours);
+    const found = zbFerrySeatBand(band, neighbors);
     const seatOf = Array(n).fill(-1);
     found.seating.forEach((z, s) => { if (z >= 0) seatOf[z] = s; });
     const where = s => `row ${places[s].row}, seat ${places[s].seat}`;
@@ -711,7 +711,7 @@ ZB_PUZZLES.set('FERRY', {
       state: {
         seatLayoutScrbId: script,
         seats: seats.map((seat, s) => ({ ...seat, ...places[s] })),
-        seatNeighborIndices: neighbours,
+        seatNeighborIndices: neighbors,
         seating: found.seating,
         seated: found.seated,
         proven: found.proven,

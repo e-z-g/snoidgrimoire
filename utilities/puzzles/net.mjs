@@ -21,41 +21,41 @@
 //     at levels 2 and 4, the sections within a column in the column's order
 //     at levels 3 and 4, all six ways drawn at level 4.
 
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_net.h'), cpp = scumm('zoombini_pages/puzzle_net.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('NET');
 
   // ---- names, ways and the tank, as ScummVM has them -----------------------
-  const names = [...need(/kMudballSelectorValueNames\[3\]\[5\]\{([\s\S]*?)\};\n/, h, 'kMudballSelectorValueNames')[1].matchAll(/\{([^}]*)\}/g)]
+  const names = [...scummMatch(/kMudballSelectorValueNames\[3\]\[5\]\{([\s\S]*?)\};\n/, h, 'kMudballSelectorValueNames')[1].matchAll(/\{([^}]*)\}/g)]
     .map(m => [...m[1].matchAll(/"(\w+)"/g)].map(x => x[1].toLowerCase()));
-  if (!same(names, [S.ZB_NET_COLOURS, S.ZB_NET_SHAPES, S.ZB_NET_COLOURS])) fail(`the mudball's names are not ScummVM's (${JSON.stringify(names)})`);
-  const button = Object.fromEntries([...need(/enum MudballSelectButtonIndex \{([\s\S]*?)\};/, cpp, 'MudballSelectButtonIndex')[1].matchAll(/(kMudballSelectButton\w+) = (\d)/g)].map(m => [m[1], Number(m[2])]));
+  if (!same(names, [S.ZB_NET_COLORS, S.ZB_NET_SHAPES, S.ZB_NET_COLORS])) fail(`the mudball's names are not ScummVM's (${JSON.stringify(names)})`);
+  const button = Object.fromEntries([...scummMatch(/enum MudballSelectButtonIndex \{([\s\S]*?)\};/, cpp, 'MudballSelectButtonIndex')[1].matchAll(/(kMudballSelectButton\w+) = (\d)/g)].map(m => [m[1], Number(m[2])]));
   if (button.kMudballSelectButtonSubColor !== 0 || button.kMudballSelectButtonShape !== 1 || button.kMudballSelectButtonColor !== 2) fail('the mudball\'s choices are not numbered shape\'s color 0, shape 1, color 2');
-  const ways = [...need(/kHighAxisSelectorIndices\[6\]\[3\] = \{([\s\S]*?)\};/, cpp, 'kHighAxisSelectorIndices')[1].matchAll(/\{([^}]*)\}/g)]
+  const ways = [...scummMatch(/kHighAxisSelectorIndices\[6\]\[3\] = \{([\s\S]*?)\};/, cpp, 'kHighAxisSelectorIndices')[1].matchAll(/\{([^}]*)\}/g)]
     .map(m => m[1].split(',').map(t => button[t.trim()]));
   if (!same(ways, S.ZB_NET_WAYS)) fail(`the six ways are not kHighAxisSelectorIndices (${JSON.stringify(ways)})`);
-  const lookup = need(/switch \(_axisSelectorPermutationIdx\) \{([\s\S]*?)default:/, cpp, 'findTargetSlotForSelection\'s cases')[1];
+  const lookup = scummMatch(/switch \(_axisSelectorPermutationIdx\) \{([\s\S]*?)default:/, cpp, 'findTargetSlotForSelection\'s cases')[1];
   const cases = [...lookup.matchAll(/case (\d):\s*match = \(_rowAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_columnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\] &&\s*_subcolumnAxisRuleValues\[gridRowIdx\] == _selectedSelectorValues\[(\d)\]\);/g)];
   if (cases.length !== 6 || cases.some(m => !same([m[2], m[3], m[4]].map(Number), S.ZB_NET_WAYS[Number(m[1])]))) fail('findTargetSlotForSelection\'s six cases are not the six ways');
-  need(/if \(_rowAxisSelectorIdx == 2\) \{\s*if \(_rowAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_columnAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)\s*return i;\s*\} else \{\s*if \(_columnAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_rowAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)/, cpp, 'the lookup at levels 1 and 2');
-  const spare = Number(need(/_remainingShotAllowance = _targetCount \+ \(_puzzleLevel == kPuzzleLevel4 \? 1 : 0\) \+ (\d+);/, cpp, 'the tank')[1]);
+  scummMatch(/if \(_rowAxisSelectorIdx == 2\) \{\s*if \(_rowAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_columnAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)\s*return i;\s*\} else \{\s*if \(_columnAxisRuleValues\[i\] == _selectedSelectorValues\[2\] &&\s*_rowAxisRuleValues\[i\] == _selectedSelectorValues\[1\]\)/, cpp, 'the lookup at levels 1 and 2');
+  const spare = Number(scummMatch(/_remainingShotAllowance = _targetCount \+ \(_puzzleLevel == kPuzzleLevel4 \? 1 : 0\) \+ (\d+);/, cpp, 'the tank')[1]);
   if (spare !== S.ZB_NET_SPARE_SHOTS) fail(`ScummVM's tank has ${spare} spare mudballs, the port ${S.ZB_NET_SPARE_SHOTS}`);
   if (!/debugGetChances\(\) const \{[\s\S]*?kSubmit, _initialShotAllowance/.test(cpp)) fail('debugGetChances is not the tank');
-  need(/_sortAnimRunning = false;\s*_remainingShotAllowance -= 1;/, cpp, 'a shot used on each launch');
+  scummMatch(/_sortAnimRunning = false;\s*_remainingShotAllowance -= 1;/, cpp, 'a shot used on each launch');
 
   // ---- what the port copies, and where it follows the program instead -----
-  need(/int16 size = 4;[\s\S]*?do \{\s*size -= 1;\s*if \(size < 1\)\s*size = 3;/, cpp, 'the groups of 3, 2 and 1');
-  need(/if \(2 <= _targetLaunchBatchSizes\[i\]\) \{\s*_targetLaunchBatchSizes\[i\] -= 1;/, cpp, 'the groups taken off from the first');
-  need(/valA = _vm->_rnd->getRandomNumber\(0, 4\);\s*valB = _vm->_rnd->getRandomNumber\(0, 4\);\s*valC = _vm->_rnd->getRandomNumber\(0, 4\);/, cpp, 'three values drawn for each row');
-  need(/if \(!usedA\[valA\] && !usedB\[valB\] && !usedC\[valC\]\)[\s\S]*?if \(!usedA\[valA\] && !usedB\[valB\]\)/, cpp, 'the repeats checked');
-  need(/_subcolumnAxisRuleValues\[25 \* planeIdx \+ 5 \* rowIdx \+ gridRowIdx\] = valB;/, cpp, 'the sections within a column taking the column\'s value');
+  scummMatch(/int16 size = 4;[\s\S]*?do \{\s*size -= 1;\s*if \(size < 1\)\s*size = 3;/, cpp, 'the groups of 3, 2 and 1');
+  scummMatch(/if \(2 <= _targetLaunchBatchSizes\[i\]\) \{\s*_targetLaunchBatchSizes\[i\] -= 1;/, cpp, 'the groups taken off from the first');
+  scummMatch(/valA = _vm->_rnd->getRandomNumber\(0, 4\);\s*valB = _vm->_rnd->getRandomNumber\(0, 4\);\s*valC = _vm->_rnd->getRandomNumber\(0, 4\);/, cpp, 'three values drawn for each row');
+  scummMatch(/if \(!usedA\[valA\] && !usedB\[valB\] && !usedC\[valC\]\)[\s\S]*?if \(!usedA\[valA\] && !usedB\[valB\]\)/, cpp, 'the repeats checked');
+  scummMatch(/_subcolumnAxisRuleValues\[25 \* planeIdx \+ 5 \* rowIdx \+ gridRowIdx\] = valB;/, cpp, 'the sections within a column taking the column\'s value');
   if ((cpp.match(/_axisRuleRotationStep = _vm->_rnd->getRandomNumber\(0, 1\) \+ 2;/g) || []).length !== 2) fail('the rotation is no longer 2 or 3 at levels 2 and 4');
-  need(/_axisRuleRotationStep = _vm->_rnd->getRandomNumber\(0, 1\) \+ 2;\s*\/\/[^\n]*\n\s*_vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'the coin set aside at level 4');
-  need(/pos = _vm->_rnd->getRandomNumber\(0, \(kPuzzleLevel3 <= _puzzleLevel\) \? 124 : 24\);\s*\} while \(_targetLaunchCounts\[pos\] != 0\);/, cpp, 'the marks drawn');
-  need(/if \(_vm->_rnd->getRandomBool\(\)\) \{\s*_rowAxisSelectorIdx = 2;\s*_columnAxisSelectorIdx = 1;/, cpp, 'the coin for the labels');
+  scummMatch(/_axisRuleRotationStep = _vm->_rnd->getRandomNumber\(0, 1\) \+ 2;\s*\/\/[^\n]*\n\s*_vm->_rnd->getRandomNumber\(0, 1\);/, cpp, 'the coin set aside at level 4');
+  scummMatch(/pos = _vm->_rnd->getRandomNumber\(0, \(kPuzzleLevel3 <= _puzzleLevel\) \? 124 : 24\);\s*\} while \(_targetLaunchCounts\[pos\] != 0\);/, cpp, 'the marks drawn');
+  scummMatch(/if \(_vm->_rnd->getRandomBool\(\)\) \{\s*_rowAxisSelectorIdx = 2;\s*_columnAxisSelectorIdx = 1;/, cpp, 'the coin for the labels');
   // The program never resets the way at level 3; ScummVM does, and the port follows the program when it can.
-  need(/_axisSelectorPermutationIdx = _vm->_rnd->getRandomNumber\(0, 5\);\s*else\s*_axisSelectorPermutationIdx = 0;/, cpp, 'the way, drawn at level 4 and reset otherwise');
+  scummMatch(/_axisSelectorPermutationIdx = _vm->_rnd->getRandomNumber\(0, 5\);\s*else\s*_axisSelectorPermutationIdx = 0;/, cpp, 'the way, drawn at level 4 and reset otherwise');
 
   // ---- deals -----------------------------------------------------------------
   const sizes = [16, 14, 12, 10, 9, 7, 6, 5, 4, 3, 2, 1];
@@ -102,8 +102,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const col0 = [0, 1, 2, 3, 4].map(c => at(rule.cols, 0, c)), row0 = [0, 1, 2, 3, 4].map(r => at(rule.rows, r, 0));
       if (!isOrder(col0) || !isOrder(row0)) why.push('a row or column order repeats a value');
       for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
-        const want = level === 2 ? rot(col0, rule.step * r)[c] : col0[c];
-        if (at(rule.cols, r, c) !== want) { why.push('the columns'); r = 5; break; }
+        const expected = level === 2 ? rot(col0, rule.step * r)[c] : col0[c];
+        if (at(rule.cols, r, c) !== expected) { why.push('the columns'); r = 5; break; }
       }
       if (level === 2 || level === 4) { seenSteps.add(rule.step); if (rule.step !== 2 && rule.step !== 3) why.push(`a rotation of ${rule.step}`); }
       if (level >= 3) {
@@ -111,8 +111,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
         if (!same(sub0, col0)) why.push('the sections within a column are not in the column\'s order');
         for (let i = 0; i < 125; i++) if (rule.subs[i] !== sub0[i % 5] || rule.cols[i] !== col0[Math.floor(i % 25 / 5)]) { why.push('a section\'s values'); break; }
         for (let c = 0; c < 5; c++) for (let q = 0; q < 5; q++) {
-          const want = level === 4 ? rot(row0, rule.step * q) : row0;
-          if ([0, 1, 2, 3, 4].some(r => at(rule.rows, r, c, q) !== want[r])) { why.push('the rows'); c = 5; break; }
+          const expectedRow = level === 4 ? rot(row0, rule.step * q) : row0;
+          if ([0, 1, 2, 3, 4].some(r => at(rule.rows, r, c, q) !== expectedRow[r])) { why.push('the rows'); c = 5; break; }
         }
       }
       if (level === 4) {
@@ -255,7 +255,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   }
   if (bench.slowest > 500) fail(`a strategy step took ${bench.slowest} ms`);
 
-  say(`names, ways and tank as ScummVM's (the program has no table of this rule). ${dealt} deals over bands of 16 to 1, groups, tank and orders of each level as the program's, `
+  print(`names, ways and tank as ScummVM's (the program has no table of this rule). ${dealt} deals over bands of 16 to 1, groups, tank and orders of each level as the program's, `
     + `workbench: ${bench.trips} forms given back, ${bench.solved} solved, the strategy's proof held for ${bench.lemma} whole rules (every one the program can deal at levels 1 to 3), ${bench.walks} random branches and ${bench.followed} rules' branches (the dealt one among them) all taking the whole band, the puzzle's answer the check's at every move and ${bench.played} played to the end, slowest step ${bench.slowest} ms; `
     + `every mudball on a different section, the answer's mudball on each of ${landed} marks`);
 }

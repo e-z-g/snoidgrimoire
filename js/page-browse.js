@@ -12,7 +12,7 @@
 const PALETTE_PICK = new Map();        // archive name -> 'SHPL 5000', or absent for the default
 const ZOOM_PICK = new Map();           // 'tBMP picture' / 'tBMP sheet' -> zoom
 let RENDER_SEQ = 0;
-let SHARED_COLOURS = null;             // indices 10-45, the same in every scene's palette
+let SHARED_COLORS = null;             // indices 10-45, the same in every scene's palette
 let SIDE_ARCHIVE = null;               // the archive the list was last scrolled to
 
 const $ = id => document.getElementById(id);
@@ -36,8 +36,8 @@ function browseStart(first) {
   $('start').hidden = true;
   $('views').hidden = false;
   $('find').hidden = false;
-  const want = first || (journeyAvailable() ? 'journey' : null);
-  if (want && !location.hash) location.hash = '#' + want;
+  const startView = first || (journeyAvailable() ? 'journey' : null);
+  if (startView && !location.hash) location.hash = '#' + startView;
   else route();
 }
 
@@ -91,7 +91,7 @@ async function render() {
   renderSide(entry, h);
   // Pictures need the colors every scene shares; in archive.org's copy
   // they come from the map, the smallest archive that has them.
-  if (!sharedColours() && entry.remote && ARCHIVES.has('RODMAP') && !ARCHIVES.get('RODMAP').bytes && !ARCHIVES.get('RODMAP').error
+  if (!sharedColors() && entry.remote && ARCHIVES.has('RODMAP') && !ARCHIVES.get('RODMAP').bytes && !ARCHIVES.get('RODMAP').error
       && (h.tag === 'tBMP' || h.tag === 'NODE' || h.tag === 'PATH' || !h.tag)) {
     await ensureBytes(ARCHIVES.get('RODMAP'));
     if (seq !== RENDER_SEQ) return;
@@ -123,7 +123,7 @@ function renderSide(entry, h) {
   const side = $('side');
   const keep = side.scrollTop;
   let html = `<h2>${esc(SOURCE)}</h2>`;
-  if (REMEMBERED) html += `<p class="remembered">Remembered in this browser. <a data-forget>Forget</a></p>`;
+  if (STORED_IN_BROWSER) html += `<p class="remembered">Remembered in this browser. <a data-clear-stored>Forget</a></p>`;
   const edits = [...EDITS.values()].reduce((n, e) => n + e.changes.size, 0);
   html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits || EXE_EDIT ? plural(edits + (EXE_EDIT ? 1 : 0), 'edit') : 'nothing edited'}</span></div>`;
   html += `<div class="arc${isSavesHash() ? ' on' : ''}" data-arc="saves"><span class="name">Saves</span><span class="place">${SAVES.length ? plural(SAVES.length, 'game') + ' open' : 'saved games'}</span></div>`;
@@ -151,8 +151,8 @@ function renderSide(entry, h) {
     if (on) side.scrollTop = Math.max(0, on.offsetTop - side.offsetTop - 8);
   }
   for (const el of side.querySelectorAll('.arc')) el.addEventListener('click', () => { location.hash = '#' + el.dataset.arc; });
-  const forget = side.querySelector('[data-forget]');
-  if (forget) forget.addEventListener('click', () => memoryForget().then(() => { setStatus('Forgotten: the next visit starts with nothing open.'); renderSide(entry, h); }));
+  const clearLink = side.querySelector('[data-clear-stored]');
+  if (clearLink) clearLink.addEventListener('click', () => memoryClear().then(() => { setStatus('Forgotten: the next visit starts with nothing open.'); renderSide(entry, h); }));
 }
 
 /* ---- palettes -------------------------------------------------------------- */
@@ -160,16 +160,16 @@ function renderSide(entry, h) {
 /* Indices 10-45: the Zoombinis' own colors, the same in every palette on
    the disc (tools/README.md), and the only colors ZOOMBINI's art uses.
    They come from whichever open archive has a palette covering them. */
-function sharedColours() {
-  if (SHARED_COLOURS) return SHARED_COLOURS;
+function sharedColors() {
+  if (SHARED_COLORS) return SHARED_COLORS;
   for (const e of sortedArchives()) {
     const arc = e.bytes ? openedArchive(e) : null;
     if (!arc) continue;
     for (const tag of ['SHPL', 'tPAL']) for (const r of arc.list(tag)) {
       const p = parsePaletteResource(arc.get(tag, r.id), tag);
-      if (p.start <= 10 && p.start + p.colours.length >= 46) {
-        SHARED_COLOURS = { from: `${e.name} ${tag} ${r.id}`, colours: p.colours.slice(10 - p.start, 46 - p.start) };
-        return SHARED_COLOURS;
+      if (p.start <= 10 && p.start + p.colors.length >= 46) {
+        SHARED_COLORS = { from: `${e.name} ${tag} ${r.id}`, colors: p.colors.slice(10 - p.start, 46 - p.start) };
+        return SHARED_COLORS;
       }
     }
   }
@@ -180,7 +180,7 @@ function paletteChoices(arc) {
   const out = [];
   for (const tag of ['SHPL', 'tPAL']) for (const r of arc.list(tag)) {
     const parsed = parsePaletteResource(arc.get(tag, r.id), tag);
-    out.push({ key: `${tag} ${r.id}`, tag, id: r.id, parsed, full: parsed.colours.length > 1 });
+    out.push({ key: `${tag} ${r.id}`, tag, id: r.id, parsed, full: parsed.colors.length > 1 });
   }
   return out;
 }
@@ -198,9 +198,9 @@ function paletteFor(entry, arc, bitmapId) {
     chosen = below[0] || full.slice().sort((a, b) => a.id - b.id)[0];
   }
   const pal = zbPalette(null);
-  const shared = sharedColours();
-  if (shared) shared.colours.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
-  if (chosen) chosen.parsed.colours.forEach((c, i) => { if (chosen.parsed.start + i < 256) pal[chosen.parsed.start + i] = [c[0], c[1], c[2]]; });
+  const shared = sharedColors();
+  if (shared) shared.colors.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
+  if (chosen) chosen.parsed.colors.forEach((c, i) => { if (chosen.parsed.start + i < 256) pal[chosen.parsed.start + i] = [c[0], c[1], c[2]]; });
   return { pal, chosen, choices, shared };
 }
 
@@ -467,10 +467,10 @@ function showPalette(tag, bytes, body) {
   const p = parsePaletteResource(bytes, tag);
   let cells = '';
   for (let i = 0; i < 256; i++) {
-    const c = i >= p.start && i < p.start + p.colours.length ? p.colours[i - p.start] : null;
+    const c = i >= p.start && i < p.start + p.colors.length ? p.colors[i - p.start] : null;
     cells += c ? `<div style="background:rgb(${c[0]},${c[1]},${c[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colours.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
+  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
 }
 
 function showStrings(entry, id, bytes, body) {
@@ -505,7 +505,7 @@ function showCursor(entry, id, bytes, body) {
   $('cur').appendChild(cv);
 }
 
-const WALK_COLOURS = ['#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#c77dff', '#f78c6b', '#90be6d', '#f15bb5'];
+const WALK_COLORS = ['#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#c77dff', '#f78c6b', '#90be6d', '#f15bb5'];
 
 function showWalks(entry, arc, id, body) {
   const nodes = arc.has('NODE', id) ? parseWalkNodes(arc.get('NODE', id)) : [];
@@ -515,7 +515,7 @@ function showWalks(entry, arc, id, body) {
     + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a> has ${plural(paths.length, 'path')}, each with up to 24 waypoints. They are drawn over the room${room != null ? ` (<a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>)` : ''}.</p>`
     + '<div id="walker"></div><div id="walk" class="picture"></div>'
     + '<table class="plain" style="margin-top:14px"><tr><th>path</th><th>waypoints, in order</th></tr>'
-    + paths.map((p, i) => `<tr><td style="color:${WALK_COLOURS[i % WALK_COLOURS.length]}">${i}</td><td class="mono">${p.filter(w => w).join(' → ') || '(empty)'}</td></tr>`).join('')
+    + paths.map((p, i) => `<tr><td style="color:${WALK_COLORS[i % WALK_COLORS.length]}">${i}</td><td class="mono">${p.filter(w => w).join(' → ') || '(empty)'}</td></tr>`).join('')
     + '</table><table class="plain"><tr><th>waypoint</th><th>x</th><th>y</th></tr>'
     + nodes.map((n, i) => `<tr><td>${i + 1}</td><td class="num">${n.x}</td><td class="num">${n.y}</td></tr>`).join('') + '</table>';
   const c = document.createElement('canvas');
@@ -531,7 +531,7 @@ function showWalks(entry, arc, id, body) {
   g.lineWidth = 3; g.lineJoin = 'round';
   paths.forEach((p, i) => {
     const pts = p.filter(w => w).map(w => nodes[w - 1]);
-    g.strokeStyle = WALK_COLOURS[i % WALK_COLOURS.length];
+    g.strokeStyle = WALK_COLORS[i % WALK_COLORS.length];
     g.beginPath();
     pts.forEach((n, k) => (k ? g.lineTo(n.x, n.y) : g.moveTo(n.x, n.y)));
     g.stroke();
@@ -693,7 +693,7 @@ function snoidPlayer(entry, arc, id, script, box) {
   const inRoom = room != null && movie.width && -movie.ox >= -40 && -movie.oy >= -40 && movie.width - movie.ox <= 680 && movie.height - movie.oy <= 520;
   const onRoom = inRoom && SNOID_PICK.room;
   const pal = paletteFor(entry, arc, onRoom ? room : 1 << 30).pal;
-  if (kind !== 'fleen' && !onRoom) { const sc = sharedColours(); if (sc) sc.colours.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; }); }
+  if (kind !== 'fleen' && !onRoom) { const sc = sharedColors(); if (sc) sc.colors.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; }); }
   const cap = s => s[0].toUpperCase() + s.slice(1);
   const pick = k => `<label>${cap(k)} <select data-trait="${k}">${names[k].map((n, i) => {
     const off = k === 'feet' && !feetFor.includes(i + 1);
@@ -740,11 +740,11 @@ function snoidPlayer(entry, arc, id, script, box) {
   };
   const sound = () => {
     if (!SNOID_PICK.sound) return;
-    const t = ticks[at], want = [];
-    if (t.sound > 0) want.push(arc.has('\0SND', t.sound) ? { archive: entry.name, id: t.sound } : { archive: 'ZOOMBINI', id: t.sound });
+    const t = ticks[at], sounds = [];
+    if (t.sound > 0) sounds.push(arc.has('\0SND', t.sound) ? { archive: entry.name, id: t.sound } : { archive: 'ZOOMBINI', id: t.sound });
     const v = zbSnoidSound(t.event, traits);
-    if (v) want.push({ archive: v.archive || entry.name, id: v.id });
-    for (const w of want) snoidPlaySound(w.archive, w.id);
+    if (v) sounds.push({ archive: v.archive || entry.name, id: v.id });
+    for (const w of sounds) snoidPlaySound(w.archive, w.id);
   };
   const step = () => { at = (at + 1) % ticks.length; draw(); sound(); };
   draw(); sound();

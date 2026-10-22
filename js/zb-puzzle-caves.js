@@ -566,9 +566,9 @@ function zbCavesStrategy(level, band, opts = {}) {
     /* Enough mistakes for everyone left; or for every hypothesis but one,
        each move that might go either way ruling out at least one. */
     if (m >= r || H.length <= m) return base + r;
-    const want = Math.min(r, beta - base);
+    const target = Math.min(r, beta - base);
     const key = `${hkey(H)}|${occ}|${rem}|${m}`, e = memo.get(key);
-    if (e && (e.exact || e.v >= want)) return base + e.v;
+    if (e && (e.exact || e.v >= target)) return base + e.v;
     if (Date.now() > until) { cuts++; return base + (e ? e.v : m); }
     const before = cuts;
     let ms = moves(H, occ, rem, true);
@@ -577,12 +577,12 @@ function zbCavesStrategy(level, band, opts = {}) {
     if (ms.length > cap) { ms = ms.slice(0, cap); cuts++; }
     let best = e ? e.v : m, bestMove = e ? e.move : ms[0];
     for (const mv of ms) {
-      if (best >= want) break;
+      if (best >= target) break;
       if (mv !== ms[0] && Date.now() > until) { cuts++; break; }
       const v = tryMove(H, occ, rem, m, mv, best, r);
       if (v > best) { best = v; bestMove = mv; }
     }
-    memo.set(key, { v: best, move: bestMove, exact: cuts === before && (best >= r || best < want) });
+    memo.set(key, { v: best, move: bestMove, exact: cuts === before && (best >= r || best < target) });
     return base + best;
   };
   /* A move's worst outcome, given up as soon as it is no better than

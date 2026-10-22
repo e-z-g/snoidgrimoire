@@ -371,9 +371,9 @@ function zbFleenModShrink([[w, h, px], [rx, ry]], scale) {
 
 /* [raw, reg] enlarged by `scale` about `center`: EPX, then the vote.
    Returns the image and its top-left relative to `center`. */
-function zbFleenModEnlarged(raw, reg, centre, scale) {
+function zbFleenModEnlarged(raw, reg, center, scale) {
   const [w, h, px] = zbFleenModEpx(raw);
-  const rx = 2 * reg[0] + 2 * centre[0], ry = 2 * reg[1] + 2 * centre[1];
+  const rx = 2 * reg[0] + 2 * center[0], ry = 2 * reg[1] + 2 * center[1];
   const k = scale / 2;
   const x0 = Math.floor(-rx * k), y0 = Math.floor(-ry * k);
   const x1 = -Math.floor(-(w - rx) * k), y1 = -Math.floor(-(h - ry) * k);
@@ -506,7 +506,7 @@ function zbFleenModSheet(z, bmp) {
       for (let v = 0; v < 5; v++) share += a.area(part, v, pose) / Math.max(1, a.area(part, v, rest));
       return share / 5 < ZB_FLEEN_MOD.HIDDEN;
     },
-    centre(i) {
+    center(i) {
       const [w, , px] = frames[i], [rx, ry] = regs[i];
       let sx = 0, sy = 0, n = 0;
       for (let k = 0; k < px.length; k++) if (px[k]) { sx += k % w - rx; sy += Math.floor(k / w) - ry; n++; }
@@ -944,13 +944,13 @@ function zbFleenModFitter(archives, green) {
   const makeFrame = (part, v, pose) => {
     if (part === 'feet') return feet(v, pose);
     if (part !== 'hair' && full.hidden(part, pose)) return ZB_FLEEN_MOD_EMPTY();
-    let got;
+    let placedFrame;
     if (part === 'eyes') {
       const [fleenPose, at] = roles.get(pose) || [undefined, pose];
-      got = placed('eyes', v, at, fleenPose);
-    } else if (part === 'hair') got = hair(v, pose, lift[v]);
-    else got = placed(part, v, pose);
-    const [[w, h, px], [x, y]] = got;
+      placedFrame = placed('eyes', v, at, fleenPose);
+    } else if (part === 'hair') placedFrame = hair(v, pose, lift[v]);
+    else placedFrame = placed(part, v, pose);
+    const [[w, h, px], [x, y]] = placedFrame;
     return [[w, h, near(px)], [-x, -y]];
   };
   for (let v = 0; v < 5; v++) lift[v] = liftOf(v, REST);
@@ -1025,18 +1025,18 @@ function zbFleenModTumbleMoves(fit, full, tum) {
     let sx = 0, sy = 0, n = 0;
     for (let v = 0; v < 5; v++) {
       if (!atlas.area(part, v, pose)) continue;
-      const c = atlas.centre(atlas.index(part, v, pose));
+      const c = atlas.center(atlas.index(part, v, pose));
       sx += c[0]; sy += c[1]; n++;
     }
     return [sx / n, sy / n];
   };
-  const b0 = full.centre(full.index('body', 0, rest)), d0 = {};
+  const b0 = full.center(full.index('body', 0, rest)), d0 = {};
   for (const part of C.PARTS) { const m = mean(full, part, rest); d0[part] = [m[0] - b0[0], m[1] - b0[1]]; }
   const out = new Map();
   for (let pose = 1; pose <= zbFleenModPoseCount(tum.parts.hair, 0); pose++) {
     const counter = bodies.get(pose);
     const body = counter && counter.size ? zbFleenModCommonest(counter) : pose;
-    const b = tum.centre(tum.index('body', 0, body));
+    const b = tum.center(tum.index('body', 0, body));
     const m = mean(tum, 'hair', pose), d = [m[0] - b[0], m[1] - b[1]];
     let turn = zbFleenModMod360(zbFleenModDegrees(Math.atan2(d[1], d[0]) - Math.atan2(d0.hair[1], d0.hair[0])));
     const right = zbFleenModMod(zbFleenModRound(turn / 90) * 90, 360);
@@ -1201,8 +1201,8 @@ function zbFleenModBigParts(fit, p, exeBytes) {
     const x = i % bw, y = Math.floor(i / bw);
     xa = Math.min(xa, x); xb = Math.max(xb, x); ya = Math.min(ya, y); yb = Math.max(yb, y);
   }
-  const centre = [(xa + xb + 1) / 2 - brx, (ya + yb + 1) / 2 - bry], pivot = centre;
-  const sx = zbFleenModRound((pivot[0] - centre[0]) * C.BIG_SCALE), sy = zbFleenModRound((pivot[1] - centre[1]) * C.BIG_SCALE);
+  const center = [(xa + xb + 1) / 2 - brx, (ya + yb + 1) / 2 - bry], pivot = center;
+  const sx = zbFleenModRound((pivot[0] - center[0]) * C.BIG_SCALE), sy = zbFleenModRound((pivot[1] - center[1]) * C.BIG_SCALE);
   for (const part of C.PARTS) {
     for (let v = 0; v < 5; v++) {
       const [raw, reg] = fit.frame(part, v, REST);

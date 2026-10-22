@@ -209,7 +209,7 @@ function zbPizzaDeal(level, rnd) {
 /* The toppings' colors for a diagram, by slot: chosen by eye to look like
    the toppings, not read from the art; and short names for the machine's
    buttons. */
-const ZB_PIZZA_COLOURS = ['#3a352e', '#4f9e3a', '#c43d2c', '#cfae7c', '#f1c93b', '#d8233c', '#f3ede0', '#6b3a1c'];
+const ZB_PIZZA_COLORS = ['#3a352e', '#4f9e3a', '#c43d2c', '#cfae7c', '#f1c93b', '#d8233c', '#f3ede0', '#6b3a1c'];
 const ZB_PIZZA_SHORT = ['Olives', 'Green peppers', 'Pepperoni', 'Mushrooms', 'Cheese', 'Cherry', 'Whipped cream', 'Chocolate sauce'];
 
 /* A meal in words: "a pizza with olives and cheese and a plain sundae". */
@@ -255,7 +255,7 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
   items.push({ t: 'text', x: 114, y: 62, text: meal ? 'the machine, with the meal pressed' : 'the machine', anchor: 'middle', size: 12, fill: 'dim' });
   buttons.forEach((s, k) => {
     const y = 92 + k * 32, on = !meal || meal.includes(s);
-    items.push({ t: 'circle', x: 38, y, r: 10, fill: ZB_PIZZA_COLOURS[s], stroke: meal && on ? 'accent' : 'line', width: meal && on ? 3 : 1.5, faded: !on });
+    items.push({ t: 'circle', x: 38, y, r: 10, fill: ZB_PIZZA_COLORS[s], stroke: meal && on ? 'accent' : 'line', width: meal && on ? 3 : 1.5, faded: !on });
     items.push({ t: 'text', x: 56, y: y + 4, text: ZB_PIZZA_SHORT[s], size: 12, fill: on ? 'ink' : 'dim' });
   });
   if (forgiven) {
@@ -265,7 +265,7 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
   if (pit) {
     const y = forgiven ? 412 : 376;
     items.push({ t: 'text', x: 16, y, text: 'in the pit, tried already', size: 12, fill: 'dim' });
-    pit.forEach((m, k) => m.forEach((s, j) => items.push({ t: 'circle', x: 26 + k * 48 + j * 15, y: y + 16, r: 6, fill: ZB_PIZZA_COLOURS[s], stroke: 'line' })));
+    pit.forEach((m, k) => m.forEach((s, j) => items.push({ t: 'circle', x: 26 + k * 48 + j * 15, y: y + 16, r: 6, fill: ZB_PIZZA_COLORS[s], stroke: 'line' })));
   }
   // The trolls.
   const cw = 180, gap = 8, x0 = 228 + (556 - p.trolls * cw - (p.trolls - 1) * gap) / 2;
@@ -277,7 +277,7 @@ function zbPizzaDiagram(level, band, { know, fed = [], meal = null, carrier = nu
     items.push({ t: 'circle', x: cx, y: 150, r: 50, fill: '#c68a45', stroke: 'line' }, { t: 'circle', x: cx, y: 150, r: 41, fill: '#a8432a' });
     const dot = (s, x1, y1, r) => {
       if (k[s] === 'no') return;
-      items.push({ t: 'circle', x: x1, y: y1, r, fill: ZB_PIZZA_COLOURS[s], stroke: k[s] === 'maybe' ? 'warn' : 'line', width: k[s] === 'maybe' ? 2 : 1.5, dash: k[s] === 'maybe', faded: k[s] === 'maybe' });
+      items.push({ t: 'circle', x: x1, y: y1, r, fill: ZB_PIZZA_COLORS[s], stroke: k[s] === 'maybe' ? 'warn' : 'line', width: k[s] === 'maybe' ? 2 : 1.5, dash: k[s] === 'maybe', faded: k[s] === 'maybe' });
     };
     for (const s of buttons.filter(s => s < ZB_PIZZA_SUNDAE_FROM)) {
       const a = (-90 + s * 72) * Math.PI / 180;
@@ -520,9 +520,9 @@ function zbPizzaSearch(e, idx, hungry, tried, d, deadline) {
   // Remembered: the fewest wasted meals known to do from here, with the
   // meal that does it, and the most that are known not to do it.
   const key = zbPizzaKey(idx, hungry, tried);
-  let got = e.memo.get(key);
-  if (got && d >= got.ok) return true;
-  if (got && d <= got.fail) return false;
+  let cached = e.memo.get(key);
+  if (cached && d >= cached.ok) return true;
+  if (cached && d <= cached.fail) return false;
   if (Date.now() > deadline) throw ZB_PIZZA_TIMEOUT;
   let found = -1;
   for (const mv of zbPizzaMoves(e, idx, hungry, tried)) {
@@ -530,10 +530,10 @@ function zbPizzaSearch(e, idx, hungry, tried, d, deadline) {
     const next = tried.concat(mv.M).sort((a, b) => a - b);
     if (zbPizzaSplit(e, idx, hungry, mv.M).every(part => zbPizzaSearch(e, part.idx, part.eaten < 0 ? hungry : hungry & ~(1 << part.eaten), next, d - (part.eaten < 0 ? 1 : 0), deadline))) { found = mv.M; break; }
   }
-  got = e.memo.get(key) || { ok: Infinity, M: -1, fail: -1 };
-  if (found >= 0 && d < got.ok) { got.ok = d; got.M = found; }
-  if (found < 0 && d > got.fail) got.fail = d;
-  e.memo.set(key, got);
+  cached = e.memo.get(key) || { ok: Infinity, M: -1, fail: -1 };
+  if (found >= 0 && d < cached.ok) { cached.ok = d; cached.M = found; }
+  if (found < 0 && d > cached.fail) cached.fail = d;
+  e.memo.set(key, cached);
   return found >= 0;
 }
 /* The rule of thumb, when the search runs out of time: the first meal of
@@ -541,8 +541,8 @@ function zbPizzaSearch(e, idx, hungry, tried, d, deadline) {
 function zbPizzaGreedy(e, idx, hungry, tried) {
   ({ hungry, tried } = zbPizzaFeedKnown(e, idx, hungry, tried));
   if (!hungry) return 0;
-  const key = zbPizzaKey(idx, hungry, tried), got = e.greedy.get(key);
-  if (got) return got.w;
+  const key = zbPizzaKey(idx, hungry, tried), cached = e.greedy.get(key);
+  if (cached) return cached.w;
   const M = zbPizzaMoves(e, idx, hungry, tried)[0].M, next = tried.concat(M).sort((a, b) => a - b);
   let w = 0;
   for (const part of zbPizzaSplit(e, idx, hungry, M)) w = Math.max(w, (part.eaten < 0 ? 1 : 0) + zbPizzaGreedy(e, part.idx, part.eaten < 0 ? hungry : hungry & ~(1 << part.eaten), next));

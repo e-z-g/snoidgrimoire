@@ -42,13 +42,13 @@ const sheet = S.zbSnoidSheet(arc);
 
 const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'snoids'], { encoding: 'utf8', maxBuffer: 1 << 26 });
 if (r.status !== 0) { console.log('SKIP: the oracle did not run, ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
-const want = JSON.parse(r.stdout);
+const expected = JSON.parse(r.stdout);
 let bad = 0;
 for (let n = 0; n < 625; n++) {
   const z = { hair: Math.floor(n / 125) + 1, eyes: Math.floor(n / 25) % 5 + 1, nose: Math.floor(n / 5) % 5 + 1, feet: n % 5 + 1 };
   if (S.zbZoombiniId(z) !== n) { fail(`zbZoombiniId is not the oracle's numbering at ${n}`); break; }
-  const got = S.zbZoombiniPlacements(sheet, z).map(p => [p.part, p.frame, p.x, p.y]);
-  if (JSON.stringify(got) !== JSON.stringify(want[n])) { if (bad++ < 3) fail(`Zoombini ${n}: ${JSON.stringify(got)}, animate.py ${JSON.stringify(want[n])}`); }
+  const actual = S.zbZoombiniPlacements(sheet, z).map(p => [p.part, p.frame, p.x, p.y]);
+  if (JSON.stringify(actual) !== JSON.stringify(expected[n])) { if (bad++ < 3) fail(`Zoombini ${n}: ${JSON.stringify(actual)}, animate.py ${JSON.stringify(expected[n])}`); }
   const img = S.zbZoombiniImage(sheet, z);
   if (!(img.ox >= 0 && img.oy >= 0 && img.ox < img.width && img.oy < img.height)) { if (bad++ < 3) fail(`Zoombini ${n}'s origin is outside it`); }
 }
@@ -88,8 +88,8 @@ const W = JSON.parse(t.stdout);
 for (const [kind, parts] of Object.entries(W.blocks)) {
   const K = S.ZB_SNOID_KINDS[kind];
   for (const [part, [bases, poses]] of Object.entries(parts)) {
-    const mine = part === 'effects' ? [[2 * (K.effects.first - 1)], [K.effects.poses]] : [K.blocks[part].base, K.blocks[part].poses];
-    if (JSON.stringify(mine) !== JSON.stringify([bases, poses])) fail(`${kind} ${part}'s blocks ${JSON.stringify(mine)}, animate.py ${JSON.stringify([bases, poses])}`);
+    const siteBlocks = part === 'effects' ? [[2 * (K.effects.first - 1)], [K.effects.poses]] : [K.blocks[part].base, K.blocks[part].poses];
+    if (JSON.stringify(siteBlocks) !== JSON.stringify([bases, poses])) fail(`${kind} ${part}'s blocks ${JSON.stringify(siteBlocks)}, animate.py ${JSON.stringify([bases, poses])}`);
   }
 }
 const key = ps => ps.map(p => p.join(',')).sort().join(' ');
@@ -98,21 +98,21 @@ const counts = { held: 0, scripts: 0, ticks: 0, drawn: 0, ambiguous: 0, untraced
 for (const n of archiveNames()) {
   const a = S.openMohawk(archiveBytes(n));
   for (const { id } of a.list('SCRS')) {
-    const want = W.scripts[`${n}/${id}`], s = S.parseScript(a.get('SCRS', id), 'SCRS'), kind = S.ZB_SNOID_KIND_OF_LAYOUT[s.layout];
-    if (!kind !== !want) { fail(`${n} SCRS ${id}: layout ${s.layout}, and animate.py ${want ? 'reads' : 'does not read'} it as a snoid`); continue; }
+    const pythonTicks = W.scripts[`${n}/${id}`], s = S.parseScript(a.get('SCRS', id), 'SCRS'), kind = S.ZB_SNOID_KIND_OF_LAYOUT[s.layout];
+    if (!kind !== !pythonTicks) { fail(`${n} SCRS ${id}: layout ${s.layout}, and animate.py ${pythonTicks ? 'reads' : 'does not read'} it as a snoid`); continue; }
     if (!kind) continue;
     counts.scripts++;
     const K = S.ZB_SNOID_KINDS[kind], ticks = S.zbSnoidTicks(s, 0, n), untraced = ZB_UNTRACED[`${n}/${id}`] || [];
     ticks.forEach((tk, i) => {
       counts.ticks++;
-      const parts = S.zbSnoidParts(tk, K.effects), got = parts.map(p => [p.part, p.shape, p.x, p.y]);
+      const parts = S.zbSnoidParts(tk, K.effects), actual = parts.map(p => [p.part, p.shape, p.x, p.y]);
       if (parts.length && parts[0].fitted) { if (untraced.includes(i)) counts.untraced++; else if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}, fitted, not one of the untraced`); }
-      let exp = want[i] || [];
-      if (got.length) counts.drawn++;
-      if (key(got) === key(exp)) return;
+      let exp = pythonTicks[i] || [];
+      if (actual.length) counts.drawn++;
+      if (key(actual) === key(exp)) return;
       const four = exp.filter(q => q[0] === 'body' || q[0] === 'nose').every(q => q[1] <= 4);
-      if (kind === 'zoombini' && four && key(got) === key(swap(exp, { body: 'nose', nose: 'body' }))) { counts.ambiguous++; return; }
-      if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}, ${JSON.stringify(got)}, animate.py ${JSON.stringify(exp)}`);
+      if (kind === 'zoombini' && four && key(actual) === key(swap(exp, { body: 'nose', nose: 'body' }))) { counts.ambiguous++; return; }
+      if (bad++ < 12) fail(`${n} SCRS ${id} tick ${i}, ${JSON.stringify(actual)}, animate.py ${JSON.stringify(exp)}`);
     });
     const shown = S.zbSnoidShown(ticks, K.effects);
     if (shown.some(k => k < 0 || !S.zbSnoidParts(ticks[k], K.effects).length)) { if (bad++ < 12) fail(`${n} SCRS ${id}: a tick shows nothing`); }

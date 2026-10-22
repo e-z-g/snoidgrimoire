@@ -33,18 +33,18 @@
 //     places fewer than it guarantees;
 //     with fewer chances its guarantee is compared with a plain minimax over
 //     every room on small bands; and the times are kept.
-export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
+export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
   const h = scumm('zoombini_pages/puzzle_hotel.h'), cpp = scumm('zoombini_pages/puzzle_hotel.cpp');
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const P = S.ZB_PUZZLES.get('HOTEL');
 
   // ---- the counter ------------------------------------------------------------
-  const init = need(/case kPuzzleLevel1:\s*_initialCounterStep = (\d+);\s*break;\s*case kPuzzleLevel3:\s*_initialCounterStep = (\d+);\s*break;\s*default: \/\/ Levels 2 and 4\s*_initialCounterStep = (\d+);/, cpp, 'initStates\' counter steps').slice(1).map(Number);
+  const init = scummMatch(/case kPuzzleLevel1:\s*_initialCounterStep = (\d+);\s*break;\s*case kPuzzleLevel3:\s*_initialCounterStep = (\d+);\s*break;\s*default: \/\/ Levels 2 and 4\s*_initialCounterStep = (\d+);/, cpp, 'initStates\' counter steps').slice(1).map(Number);
   const first = [init[0], init[2], init[1], init[2]];
   if (!same(first, S.ZB_HOTEL_FIRST_STEP)) fail(`the counter's first steps are ${S.ZB_HOTEL_FIRST_STEP}, ScummVM ${first}`);
-  const last = Number(need(/opportunities = static_cast<int16>\((\d+) - _initialCounterStep\);/, cpp, 'debugGetChances')[1]);
-  need(new RegExp(`if \\(${last} <= _mistakeCounterStep\\) \\{\\s*_terminalFailureCount \\+= 1;`), cpp, 'the terminal failure');
-  need(/_firstPlacementPending = false;\s*_mistakeCounterStep = _initialCounterStep;/, cpp, 'the first placement setting the counter');
+  const last = Number(scummMatch(/opportunities = static_cast<int16>\((\d+) - _initialCounterStep\);/, cpp, 'debugGetChances')[1]);
+  scummMatch(new RegExp(`if \\(${last} <= _mistakeCounterStep\\) \\{\\s*_terminalFailureCount \\+= 1;`), cpp, 'the terminal failure');
+  scummMatch(/_firstPlacementPending = false;\s*_mistakeCounterStep = _initialCounterStep;/, cpp, 'the first placement setting the counter');
   if (last !== S.ZB_HOTEL_LAST_STEP) fail(`the hotel closes at step ${S.ZB_HOTEL_LAST_STEP}, ScummVM ${last}`);
   const chances = first.map(f => last - f);
   const words = ['Seven', 'Ten', 'Eight', 'Ten'];
@@ -52,18 +52,18 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
     if (words[i] !== ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'][chances[i]] || !l.chances.startsWith(words[i] + ' ')) fail(`level ${i + 1}'s chances do not say ${chances[i]}`);
     if (!l.notes || !l.notes.some(n => /music stops/.test(n))) fail(`level ${i + 1} has no note on the music halt`);
   });
-  need(/_\("Hotel Dimensia: Fix MIDI background music halt bug"\)/, scumm('zoombini_dialogs.cpp'), 'the MIDI halt option\'s name');
-  need(/const bool stopMidiAfterDrop = !_vm->getRelInfo\(\)\.isFamily\(ZmbReleaseInfo::kTlcV2\) && !ConfMan\.getBool\(MohawkMetaEngine_Zoombini::kOptionFixHotelMidiHaltBug\);/, scumm('zoombini_pages/puzzle_hotel.cpp'), 'the halt, not for the 2001 release');
+  scummMatch(/_\("Hotel Dimensia: Fix MIDI background music halt bug"\)/, scumm('zoombini_dialogs.cpp'), 'the MIDI halt option\'s name');
+  scummMatch(/const bool stopMidiAfterDrop = !_vm->getRelInfo\(\)\.isFamily\(ZmbReleaseInfo::kTlcV2\) && !ConfMan\.getBool\(MohawkMetaEngine_Zoombini::kOptionFixHotelMidiHaltBug\);/, scumm('zoombini_pages/puzzle_hotel.cpp'), 'the halt, not for the 2001 release');
   if (!/Hotel Dimensia: Fix MIDI background music halt bug/.test(S.ZB_HOTEL_MIDI)) fail('the note on the music halt lacks ScummVM\'s option\'s name as it is now');
 
   // ---- the traits' order --------------------------------------------------------
-  const axisEnum = [...need(/enum class TraitAxis : int16 \{([\s\S]*?)\};/, h, 'TraitAxis')[1].matchAll(/k(Feet|Nose|Eyes|Hair)0(\d) = (\d)/g)]
+  const axisEnum = [...scummMatch(/enum class TraitAxis : int16 \{([\s\S]*?)\};/, h, 'TraitAxis')[1].matchAll(/k(Feet|Nose|Eyes|Hair)0(\d) = (\d)/g)]
     .map(m => [Number(m[3]), m[1].toLowerCase()]).sort((a, b) => a[0] - b[0]).map(m => m[1]);
   if (!same(axisEnum, ['feet', 'nose', 'eyes', 'hair'])) fail(`ScummVM's TraitAxis is now ${axisEnum}. See whether it follows the program`);
   if (!same(S.ZB_HOTEL_AXES, ['hair', 'eyes', 'nose', 'feet'])) fail(`the port's trait order is ${S.ZB_HOTEL_AXES}, not the program's hair, eyes, nose, feet`);
 
   // ---- the traits' test, as ScummVM writes it ---------------------------------------
-  const gen = need(/void ZoombiniPuzzleHotel::generateRoomRules\(\) \{([\s\S]*?)\n\}/, cpp, 'generateRoomRules')[1];
+  const gen = scummMatch(/void ZoombiniPuzzleHotel::generateRoomRules\(\) \{([\s\S]*?)\n\}/, cpp, 'generateRoomRules')[1];
   for (const frag of ['countLimitedAxes(5)', 'countLimitedAxes(4)', '== 5 &&', 'limitedCount < 3 &&', '3 <= limitedCount', 'if (3 <= limitedCount) {']) {
     if (!gen.includes(frag)) fail(`generateRoomRules no longer has "${frag}"`);
   }
@@ -94,12 +94,12 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       }
     }
   }
-  need(/forbiddenCount = MIN<int16>\(forbiddenCount, MIN<int16>\((\d+), emptyCount\)\);/, gen, 'the most rooms boarded');
+  scummMatch(/forbiddenCount = MIN<int16>\(forbiddenCount, MIN<int16>\((\d+), emptyCount\)\);/, gen, 'the most rooms boarded');
   if (Number(/MIN<int16>\((\d+), emptyCount\)/.exec(gen)[1]) !== S.ZB_HOTEL_MOST_BOARDED) fail('the most rooms boarded is not ScummVM\'s');
-  need(/_forbiddenMarkerVariants\[fi\] = _vm->_rnd->getRandomNumber\(0, 3\);/, gen, 'the boards\' look drawn after each room');
+  scummMatch(/_forbiddenMarkerVariants\[fi\] = _vm->_rnd->getRandomNumber\(0, 3\);/, gen, 'the boards\' look drawn after each room');
 
   // ---- the rooms' positions ----------------------------------------------------------
-  const points = name => [...need(new RegExp(`${name}\\[\\d+\\]\\{([\\s\\S]*?)\\n\\t\\};`), h, name)[1].matchAll(/Common::Point\((0x[0-9a-f]+|\d+), (0x[0-9a-f]+|\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
+  const points = name => [...scummMatch(new RegExp(`${name}\\[\\d+\\]\\{([\\s\\S]*?)\\n\\t\\};`), h, name)[1].matchAll(/Common::Point\((0x[0-9a-f]+|\d+), (0x[0-9a-f]+|\d+)\)/g)].map(m => [Number(m[1]), Number(m[2])]);
   const p25 = points('kRoomPositions25'), p125 = points('kRoomPositions125');
   const bytes = ps => ps.flatMap(([x, y]) => [x & 255, x >> 8 & 255, y & 255, y >> 8 & 255]);
   const at25 = find(exe, bytes(p25)), at125 = find(exe, bytes(p125));
@@ -353,8 +353,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
           }
           /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
-            const got = playH(level, band, st, state, boards);
-            if (got < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt traits, ${got} placed, fewer than the ${st.guaranteed} guaranteed`); break; }
+            const placedCount = playH(level, band, st, state, boards);
+            if (placedCount < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt traits, ${placedCount} placed, fewer than the ${st.guaranteed} guaranteed`); break; }
             playedH++;
           }
         } catch (e) { fail(`level ${level}, knowing the ${knows} (${e.message})`); break; }
@@ -421,8 +421,8 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
       const d = P.deal(level, band, S.zbRandom(seed), {}), boards = level === 3 ? d.state.boarded : [];
       const tuples = tuplesOf(level);
       for (let c = 1; c <= 2; c++) {
-        const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), want = plainH(level, band, tuples, boards, c);
-        if (!st.exact || st.guaranteed !== want) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${want}`); break; }
+        const st = P.strategy(level, band, null, { knows: 'form', state: d.state, chances: c, budget: 5000 }), minimax = plainH(level, band, tuples, boards, c);
+        if (!st.exact || st.guaranteed !== minimax) { fail(`level ${level}, ${c} chances, band ${S.zbBandCode(band)}, the strategy guarantees ${st.guaranteed}${st.exact ? '' : ' (not exact)'}, a plain minimax ${minimax}`); break; }
         plain++;
       }
     }
@@ -430,7 +430,7 @@ export default function check({ S, fail, say, scumm, exe, need, bands, find }) {
   if (slowRoot > 2500) fail(`a strategy's root took ${slowRoot} ms`);
   if (slowNext > 500) fail(`a strategy's next() took ${slowNext} ms`);
   const bench = `workbench: ${trips} forms given back; ${solved} solves judged room by room (${notAll} where the band does not all fit), ${brute} compared with placing every way; ${walked} strategies walked down every branch (${ends} ends) and ${playedH} played against dealt traits (the puzzle's answer ScummVM's judging at all ${answered} moves), none short of what they guarantee; ${plain} held to a plain minimax with fewer chances; slowest root ${slowRoot} ms, next() ${slowNext} ms`;
-  say(`counter ${first} of ${last} (chances ${chances}). The traits' test as ScummVM's in ${tests} cases. Rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
+  print(`counter ${first} of ${last} (chances ${chances}). The traits' test as ScummVM's in ${tests} cases. Rooms in ZOOMBINI.EXE at 0x${(at25[0] || 0).toString(16)} and 0x${(at125[0] || 0).toString(16)}; `
     + `${dealt} deals as ScummVM deals them (traits in the program's order), ${placed} Zoombinis given rooms by their marks as ScummVM judges`);
-  say(bench);
+  print(bench);
 }

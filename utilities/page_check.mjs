@@ -165,7 +165,7 @@ const VIEWS = [
     return f.width === 64 && f.height === 48 && new Set(f.pixels).size === 1 && f.pixels[0] >= 10 && f.pixels[0] <= 245 && /now 64 × 48 instead of 640 × 480/.test(document.getElementById('view').textContent + e.changes.get('tBMP/4000').what);
   })()`],
   ['changes', "/frame 0 replaced/.test(document.getElementById('view').textContent) && /tone.wav/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
-  // The recolour maker: Shaggy hair, purples into reds, put in with the maker's buttons and read back, then undone.
+  // The recolor maker: Shaggy hair, purples into reds, put in with the maker's buttons and read back, then undone.
   ['mods', `(() => {
     if (!window.__rc) {
       const to = document.querySelector('[data-rto=reds]'); if (!to) return false;
@@ -251,17 +251,17 @@ const VIEWS = [
     if (!window.memoryChecked) {
       window.memoryChecked = 'pending';
       (async () => {
-        let got = null;
+        let remembered = null;
         for (let i = 0; i < 150; i++) {
-          got = await memoryRead();
-          if (got && got.archives.length === ARCHIVES.size) break;
+          remembered = await memoryRead();
+          if (remembered && remembered.archives.length === ARCHIVES.size) break;
           await new Promise(r => setTimeout(r, 200));
         }
         const sizes = new Map([...ARCHIVES.values()].map(e => [e.name, e.size]));
-        if (!got || got.archives.length !== sizes.size || got.archives.some(r => r.bytes.byteLength !== sizes.get(r.name))) { window.memoryChecked = 'bad'; return; }
+        if (!remembered || remembered.archives.length !== sizes.size || remembered.archives.some(r => r.bytes.byteLength !== sizes.get(r.name))) { window.memoryChecked = 'bad'; return; }
         ARCHIVES.clear();
-        await openRemembered();
-        window.memoryChecked = REMEMBERED && ARCHIVES.size === sizes.size && [...ARCHIVES.values()].every(e => e.bytes && e.size === sizes.get(e.name)) ? 'ok' : 'bad';
+        await openStoredArchives();
+        window.memoryChecked = STORED_IN_BROWSER && ARCHIVES.size === sizes.size && [...ARCHIVES.values()].every(e => e.bytes && e.size === sizes.get(e.name)) ? 'ok' : 'bad';
       })();
     }
     return window.memoryChecked === 'ok';
@@ -326,8 +326,8 @@ try {
           if (await p.evaluate("!!document.getElementById('saveall')")) {
             await p.evaluate("window.SAVED = null; window.dlBlob = (blob, name) => { window.SAVED = { name, size: blob.size }; }; window.ZIPPED = null; (() => { const z = buildZip; window.buildZip = files => { window.ZIPPED = files.map(f => f.name); return z(files); }; })(); document.getElementById('saveall').click()");
             while (Date.now() - t0 < 120000 && !(await p.evaluate('!!window.SAVED'))) await new Promise(res => setTimeout(res, 200));
-            note = await p.evaluate(`(() => { const expected = openArchives().reduce((n, o) => n + o.arc.list('${tag}').length, 0), got = (window.ZIPPED || []).filter(n => n.startsWith('${key}/') && n.endsWith('.${ext}')).length;
-              return window.SAVED && got === expected && got === window.ZIPPED.length && window.SAVED.name === 'zoombinis-${key}.zip' && window.SAVED.size > got * 30 ? '' : got + ' of ' + expected + ' in ' + JSON.stringify(window.SAVED); })()`);
+            note = await p.evaluate(`(() => { const expected = openArchives().reduce((n, o) => n + o.arc.list('${tag}').length, 0), actual = (window.ZIPPED || []).filter(n => n.startsWith('${key}/') && n.endsWith('.${ext}')).length;
+              return window.SAVED && actual === expected && actual === window.ZIPPED.length && window.SAVED.name === 'zoombinis-${key}.zip' && window.SAVED.size > actual * 30 ? '' : actual + ' of ' + expected + ' in ' + JSON.stringify(window.SAVED); })()`);
           }
           results.push({ hash: `components/${key} saved whole`, met: !note, ms: Date.now() - t0, wide: false, note });
         }
@@ -342,11 +342,11 @@ try {
             note = await p.evaluate(`(() => {
               const sel = document.querySelector('[data-save-level][data-route="0"]'); sel.value = '2'; sel.dispatchEvent(new Event('change'));
               const b = document.querySelector('[data-save-out]'); if (!b) return 'no Save button after the change';
-              let got = null; const d = downloadBlob; window.downloadBlob = (bytes, name) => { got = { bytes, name }; }; b.click(); window.downloadBlob = d;
-              const s = SAVES[0], diff = []; for (let i = 0; i < s.bytes.length; i++) if (got.bytes[i] !== s.bytes[i]) diff.push(i);
+              let saveFile = null; const d = downloadBlob; window.downloadBlob = (bytes, name) => { saveFile = { bytes, name }; }; b.click(); window.downloadBlob = d;
+              const s = SAVES[0], diff = []; for (let i = 0; i < s.bytes.length; i++) if (saveFile.bytes[i] !== s.bytes[i]) diff.push(i);
               const at = zbSaveOffsets(s.state.layout.name).offsets.routeLevels;
-              const ok = got.name === 'ZOOM0000.TXT' && got.bytes.length === s.bytes.length && diff.join() === String(at) && got.bytes[at] === 2 && /it was 1, 1, 1, 1/.test(document.getElementById('view').textContent) && document.querySelector('[data-save-level][data-route="0"]').value === '2';
-              return ok ? '' : 'bytes changed at ' + diff.join(',') + ', the levels at ' + at + ', saved as ' + got.name;
+              const ok = saveFile.name === 'ZOOM0000.TXT' && saveFile.bytes.length === s.bytes.length && diff.join() === String(at) && saveFile.bytes[at] === 2 && /it was 1, 1, 1, 1/.test(document.getElementById('view').textContent) && document.querySelector('[data-save-level][data-route="0"]').value === '2';
+              return ok ? '' : 'bytes changed at ' + diff.join(',') + ', the levels at ' + at + ', saved as ' + saveFile.name;
             })()`);
           }
           results.push({ hash: 'saves, a route at level 3 and saved', met: !note, ms: Date.now() - t0, wide: false, note });
@@ -382,17 +382,17 @@ try {
       chrome, device: dev, webgl: true,
       then: async p => {
         const sleep = ms => new Promise(res => setTimeout(res, ms));
-        const got = {};
+        const results = {};
         await sleep(300);
-        got.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›Full view$/.test(document.getElementById('crumbs').textContent)");
+        results.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›Full view$/.test(document.getElementById('crumbs').textContent)");
         if (shots) await p.shot(path.join(shots, `${dev.name}-town.png`));
         // (the caption is set as a frame is drawn, and SwiftShader's frames
         // can be slower than any one wait: looked at until it is named)
         for (const t0 = Date.now(); Date.now() - t0 < 8000;) {
           await p.evaluate("TV.yaw = (946 - 320) / 1920 * 2 * Math.PI; TV.pitch = Math.atan((300 - 230) * (2 * Math.PI / 1920))");
           await sleep(300);
-          got.caption = await p.evaluate("document.getElementById('tcaption').textContent");
-          if (/Clock Tower/.test(got.caption)) break;
+          results.caption = await p.evaluate("document.getElementById('tcaption').textContent");
+          if (/Clock Tower/.test(results.caption)) break;
         }
         if (shots) await p.shot(path.join(shots, `${dev.name}-town-clock.png`));
         // Each way of showing the depth draws, and Cardboard is left by its button.
@@ -403,16 +403,16 @@ try {
         }
         await p.evaluate("document.getElementById('tcardexit').click()");
         await sleep(200);
-        got.depth = await p.evaluate("TV.depth === 'none' && !document.getElementById('town').classList.contains('cardboard') && TGL.meshes.things.count > 0");
+        results.depth = await p.evaluate("TV.depth === 'none' && !document.getElementById('town').classList.contains('cardboard') && TGL.meshes.things.count > 0");
         await p.evaluate("(() => { for (const [id, v] of [['tpeople', 0], ['trewards', 0]]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input')); } })()");
         await sleep(300);
-        got.empty = await p.evaluate("location.hash === '#town&people=0&rewards=0' && TSCENE.things.length === 9 && TANIM.length === 0 && !TCLOCK");
-        got.wide = dev.mobile ? await p.evaluate('document.documentElement.scrollWidth > innerWidth + 1') : false;
+        results.empty = await p.evaluate("location.hash === '#town&people=0&rewards=0' && TSCENE.things.length === 9 && TANIM.length === 0 && !TCLOCK");
+        results.wide = dev.mobile ? await p.evaluate('document.documentElement.scrollWidth > innerWidth + 1') : false;
         await p.evaluate("location.hash = '#place=TOWN'");
         const t0 = Date.now();
         while (Date.now() - t0 < 10000 && !(await p.evaluate("!!document.querySelector('#jpanel a[href=\"#town\"]') && !document.getElementById('journey').hidden"))) await sleep(200);
-        got.link = await p.evaluate("!!document.querySelector('#jpanel a[href=\"#town\"]')");
-        return got;
+        results.link = await p.evaluate("!!document.querySelector('#jpanel a[href=\"#town\"]')");
+        return results;
       },
     });
     for (const e of pageErrors(r.console)) fail(`${dev.name} #town (${describe(e)})`);

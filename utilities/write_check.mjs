@@ -53,10 +53,10 @@ fs.writeFileSync(specPath, JSON.stringify({ archive: name,
 const o = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'write', specPath], { encoding: 'utf8' });
 if (o.status !== 0) { console.log('SKIP the comparison: the oracle did not run, ' + (o.stderr || '').split('\n').slice(-2).join(' ')); }
 else {
-  const want = JSON.parse(o.stdout);
-  if (sha1(newSheet) !== want['tBMP/4000']) fail('the rebuilt sheet is not mohawk_write.py\'s');
-  if (sha1(regs) !== want['REGS/4000']) fail('the changed REGS is not mohawk_write.py\'s');
-  if (sha1(written) !== want.archive) fail('the written archive is not mohawk_write.py\'s');
+  const pythonHashes = JSON.parse(o.stdout);
+  if (sha1(newSheet) !== pythonHashes['tBMP/4000']) fail('the rebuilt sheet is not mohawk_write.py\'s');
+  if (sha1(regs) !== pythonHashes['REGS/4000']) fail('the changed REGS is not mohawk_write.py\'s');
+  if (sha1(written) !== pythonHashes.archive) fail('the written archive is not mohawk_write.py\'s');
 }
 
 // Read back.
@@ -67,8 +67,8 @@ for (const tag of arc.tags()) for (const { id } of arc.list(tag)) {
 }
 const reread = S.decodeBitmapResource(back.get('tBMP', 4000));
 reread.frames.forEach((f, k) => {
-  const want = raw[k] ? raw[k].px : sheet.frames[k].pixels;
-  if (!same(f.pixels, want)) fail(`frame ${k} reads back wrong`);
+  const expected = raw[k] ? raw[k].px : sheet.frames[k].pixels;
+  if (!same(f.pixels, expected)) fail(`frame ${k} reads back wrong`);
 });
 if (!same(back.get('REGS', 4000), regs)) fail('REGS 4000 reads back wrong');
 
@@ -105,7 +105,7 @@ const room = S.decodeTbmp(arc.get('tBMP', 300)), rgba = new Uint8ClampedArray(ro
 room.pixels.forEach((v, i) => { const c = pal[v]; rgba.set([c[0], c[1], c[2], v ? 255 : 0], 4 * i); });
 const allowed = Array.from({ length: 256 }, (_, i) => i).filter(i => i);
 const q = S.zbQuantize(rgba, pal, allowed);
-q.forEach((v, i) => { const want = room.pixels[i]; if (want === 0 ? v !== 0 : pal[v].join() !== pal[want].join()) { if (bad++ < 3) fail(`pixel ${i}: matched to ${v}, whose color is not ${want}'s`); } else matched++; });
+q.forEach((v, i) => { const original = room.pixels[i]; if (original === 0 ? v !== 0 : pal[v].join() !== pal[original].join()) { if (bad++ < 3) fail(`pixel ${i}: matched to ${v}, whose color is not ${original}'s`); } else matched++; });
 
 let regsBack = 0;
 for (const an of archiveNames()) {

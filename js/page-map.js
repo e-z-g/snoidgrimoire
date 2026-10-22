@@ -34,7 +34,7 @@
    pick it, and its icon stays until it has come.
 
    The page's script: DOM here. LOAD ORDER: last, after page-browse.js,
-   whose $, esc, link, sharedColours and indexedCanvas it uses, and whose
+   whose $, esc, link, sharedColors and indexedCanvas it uses, and whose
    route() calls journeyRoute. */
 
 let JMAP = null, JMAP_FROM = null, JMAP_ERROR = null;
@@ -81,9 +81,9 @@ async function journeyLoad() {
   try { JMAP = zbJourneyMap(arc); } catch (e) { JMAP_ERROR = `${entry.name}: ${e.message}`; return false; }
   JMAP_ERROR = null;
   JPAL = zbPalette(null);
-  const shared = sharedColours();
-  if (shared) shared.colours.forEach((c, i) => { JPAL[10 + i] = [c[0], c[1], c[2]]; });
-  JMAP.palette.colours.forEach((c, i) => { if (JMAP.palette.start + i < 256) JPAL[JMAP.palette.start + i] = [c[0], c[1], c[2]]; });
+  const shared = sharedColors();
+  if (shared) shared.colors.forEach((c, i) => { JPAL[10 + i] = [c[0], c[1], c[2]]; });
+  JMAP.palette.colors.forEach((c, i) => { if (JMAP.palette.start + i < 256) JPAL[JMAP.palette.start + i] = [c[0], c[1], c[2]]; });
   JGROUND = indexedCanvas(JMAP.background, JPAL, false);
   // Each level's color: the commonest in its line in the map's legend.
   JLEVEL_RGB = JMAP.levels.map(i => {
@@ -139,10 +139,10 @@ function jPicture(key) {
   try {
     const arc = openedArchive(entry);
     const pic = zbPlacePicture(arc, key, JVIEW.level);
-    const pal = zbPalette(null), shared = sharedColours();
-    if (shared) shared.colours.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
+    const pal = zbPalette(null), shared = sharedColors();
+    if (shared) shared.colors.forEach((c, i) => { pal[10 + i] = [c[0], c[1], c[2]]; });
     const pp = parsePaletteResource(arc.get('SHPL', pic.palette), 'SHPL');
-    pp.colours.forEach((c, i) => { if (pp.start + i < 256) pal[pp.start + i] = [c[0], c[1], c[2]]; });
+    pp.colors.forEach((c, i) => { if (pp.start + i < 256) pal[pp.start + i] = [c[0], c[1], c[2]]; });
     const c = document.createElement('canvas');
     c.width = 640; c.height = 480;
     const g = c.getContext('2d'), decoded = new Map();
@@ -157,7 +157,7 @@ function jPicture(key) {
 }
 
 /* From archive.org: fetch a place's archive, then draw it. */
-function jWant(key) {
+function jFetchPlace(key) {
   const entry = ARCHIVES.get(key);
   if (!entry || entry.bytes || entry.error || FETCHING.has(key)) return;
   ensureBytes(entry).then(() => { mapRedraw(); if (JVIEW.sel === key || JVIEW.place === key) mapPanel(); });
@@ -218,7 +218,7 @@ function mapDraw() {
     if (c) { const [x, y] = mapToScreen(r.x, r.y); ctx.drawImage(c, x, y, c.width * s, c.height * s); }
   }
   JDRAWN = [];
-  let centred = null;
+  let centered = null;
   for (const p of JMAP.places) {
     const w = JWIN.get(p.key), [x, y] = mapToScreen(w.x, w.y), W = w.w * s, H = w.h * s;
     const d = { key: p.key, p, x, y, W, H, t: jOpenness(W), pic: null };
@@ -227,30 +227,30 @@ function mapDraw() {
       d.pic = jPicture(p.key);
       if (typeof d.pic === 'string') d.t = 0;
     }
-    if (JCW / 2 >= x && JCW / 2 <= x + W && JCH / 2 >= y && JCH / 2 <= y + H) centred = d;
+    if (JCW / 2 >= x && JCW / 2 <= x + W && JCH / 2 >= y && JCH / 2 <= y + H) centered = d;
     JDRAWN.push(d);
   }
   // The place in the middle of the screen, fetched if its archive is still to come.
-  if (centred && jOpenness(centred.W) > 0.5) jWant(centred.key);
+  if (centered && jOpenness(centered.W) > 0.5) jFetchPlace(centered.key);
   for (const d of JDRAWN) {
     if (d.t < 1) drawIcon(ctx, d, 1 - d.t);
     if (d.t > 0) drawWindow(ctx, d);
   }
   // Darken the land round a place as it fills the screen.
-  if (centred && centred.t > 0) {
-    const f = Math.max(centred.W / JCW, centred.H / JCH), a = 0.7 * jClamp((f - 0.35) / 0.35, 0, 1) * centred.t;
+  if (centered && centered.t > 0) {
+    const f = Math.max(centered.W / JCW, centered.H / JCH), a = 0.7 * jClamp((f - 0.35) / 0.35, 0, 1) * centered.t;
     if (a > 0) {
       ctx.fillStyle = `rgba(3,4,7,${a.toFixed(3)})`;
       ctx.beginPath();
       ctx.rect(0, 0, JCW, JCH);
-      ctx.rect(centred.x, centred.y, centred.W, centred.H);
+      ctx.rect(centered.x, centered.y, centered.W, centered.H);
       ctx.fill('evenodd');
     }
   }
-  drawLabels(ctx, centred);
+  drawLabels(ctx, centered);
   ctx.restore();
-  $('jscale').textContent = centred && centred.t > 0.5 && centred.W > 0.35 * JCW
-    ? `${jPlace(centred.key).name} at ${Math.round(centred.W / 640 * 100)}%` : `map at ${Math.round(s * 100)}%`;
+  $('jscale').textContent = centered && centered.t > 0.5 && centered.W > 0.35 * JCW
+    ? `${jPlace(centered.key).name} at ${Math.round(centered.W / 640 * 100)}%` : `map at ${Math.round(s * 100)}%`;
   if (!JMOVING) mapSettle();
 }
 
@@ -278,7 +278,7 @@ function drawWindow(ctx, d) {
   ctx.globalAlpha = 1;
 }
 
-function drawLabels(ctx, centred) {
+function drawLabels(ctx, centered) {
   const all = jClamp((JCAM.s - JTUNE.labelsFrom) / (JTUNE.labelsTo - JTUNE.labelsFrom), 0, 1);
   ctx.font = `600 12px ${JFONT || (JFONT = getComputedStyle(document.body).fontFamily)}`;
   ctx.textAlign = 'center';
@@ -407,7 +407,7 @@ async function mapGo(to, instant, arrive) {
    the address already has that place. */
 function mapEnter(key, instant, replace) {
   JVIEW.sel = key;
-  jWant(key);
+  jFetchPlace(key);
   return mapGo(mapPlaceView(key), instant, () => { JVIEW.place = key; JVIEW.hover = null; mapWriteHash(replace); mapCrumbs(); mapPanel(); });
 }
 function mapLeave(instant, replace) {
@@ -560,7 +560,7 @@ function puzzlePanel(key) {
 function dealtPanel(key) {
   const { seed, size } = JVIEW.deal;
   // A puzzle whose layout is in its archive is dealt once that has come.
-  for (const name of zbDealNeeds(key)) {
+  for (const name of zbDealArchives(key)) {
     const entry = ARCHIVES.get(name);
     if (!entry) return `<p class="warn">Its layout is in ${esc(name)}.MHK, which is not open.</p>`;
     if (!entry.bytes && entry.remote && !entry.error) {

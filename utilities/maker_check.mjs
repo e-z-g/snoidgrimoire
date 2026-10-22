@@ -52,13 +52,13 @@ function played(archive, id) {
 // The idles and feet shows: [eyes, dx, dy, facing, feet].
 const eyeCodes = new Map();
 let clips = 0, clipTicks = 0;
-function compareClip(kind, archive, id, want, feetList) {
-  const got = played(archive, id), lead = kind === 'zoombini' ? 'feet' : 'body', head = 'body';
-  if (got.length !== want.length) return fail(`${archive} SCRS ${id}: ${got.length} ticks from the first drawn, the maker's clip ${want.length}`);
-  const x0 = got[0][lead].x, y0 = got[0][lead].y;
-  got.forEach((t, i) => {
+function compareClip(kind, archive, id, makerClip, feetList) {
+  const playedTicks = played(archive, id), lead = kind === 'zoombini' ? 'feet' : 'body', head = 'body';
+  if (playedTicks.length !== makerClip.length) return fail(`${archive} SCRS ${id}: ${playedTicks.length} ticks from the first drawn, the maker's clip ${makerClip.length}`);
+  const x0 = playedTicks[0][lead].x, y0 = playedTicks[0][lead].y;
+  playedTicks.forEach((t, i) => {
     if (!t[lead]) return fail(`${archive} SCRS ${id} tick ${i}, draws nothing, where the maker repeats the tick before`);
-    const [eyes, dx, dy, facing, feet] = want[i];
+    const [eyes, dx, dy, facing, feet] = makerClip[i];
     const h = t[head].shape, f = t.feet.shape;
     if (t[lead].x - x0 !== dx || t[lead].y - y0 !== dy) fail(`${archive} SCRS ${id} tick ${i}, moved ${t[lead].x - x0}, ${t[lead].y - y0}, the maker ${dx}, ${dy}`);
     if ((h === REST[kind] ? 0 : h) !== facing) fail(`${archive} SCRS ${id} tick ${i}, head at ${h}, the maker's facing ${facing}`);
@@ -73,9 +73,9 @@ function compareClip(kind, archive, id, want, feetList) {
 }
 const IDLES = { zoombini: ['ZOOMBINI', 130], fleen: ['FLEENS', 4000] };
 for (const [kind, [archive, base]] of Object.entries(IDLES)) {
-  M.characters[kind].idles.forEach((want, k) => compareClip(kind, archive, base + k, want, null));
+  M.characters[kind].idles.forEach((clip, k) => compareClip(kind, archive, base + k, clip, null));
 }
-M.characters.zoombini.specials.forEach((want, v) => compareClip('zoombini', 'ZOOMBINI', 146 + v, want, []));
+M.characters.zoombini.specials.forEach((clip, v) => compareClip('zoombini', 'ZOOMBINI', 146 + v, clip, []));
 // Each code one pose, and each pose one code, at a facing.
 const byPose = new Map();
 for (const [key, pose] of eyeCodes) {
@@ -87,11 +87,11 @@ for (const [key, pose] of eyeCodes) {
 // The walks: [dx, dy, feet, body, nose, eyes, hair, liftNear, liftFar, device, away, feetDx, feetDy].
 let walks = 0, walkTicks = 0, ties = 0;
 for (let v = 0; v < 5; v++) for (let d = 0; d < 5; d++) {
-  const id = 105 + 5 * v + d, got = played('ZOOMBINI', id), want = M.characters.zoombini.walks.own[v][d];
-  if (want.length % got.length) { fail(`SCRS ${id}: the maker's walk of ${want.length} ticks is not whole loops of ${got.length}`); continue; }
-  const b0 = got[0].body;
-  got.forEach((t, i) => {
-    const w = want[i], poses = ['feet', 'body', 'nose', 'eyes', 'hair'].map(n => (t[n].shape === REST.zoombini ? -1 : t[n].shape));
+  const id = 105 + 5 * v + d, playedTicks = played('ZOOMBINI', id), makerWalk = M.characters.zoombini.walks.own[v][d];
+  if (makerWalk.length % playedTicks.length) { fail(`SCRS ${id}: the maker's walk of ${makerWalk.length} ticks is not whole loops of ${playedTicks.length}`); continue; }
+  const b0 = playedTicks[0].body;
+  playedTicks.forEach((t, i) => {
+    const w = makerWalk[i], poses = ['feet', 'body', 'nose', 'eyes', 'hair'].map(n => (t[n].shape === REST.zoombini ? -1 : t[n].shape));
     if (!same(poses, w.slice(2, 7))) fail(`SCRS ${id} tick ${i}, poses ${poses}, the maker's ${w.slice(2, 7)}`);
     const noseFirst = Object.keys(t).indexOf('nose') < Object.keys(t).indexOf('body');
     if (noseFirst !== (w[10] === 1)) fail(`SCRS ${id} tick ${i}, nose ${noseFirst ? 'before' : 'after'} the body, the maker's away ${w[10]}`);

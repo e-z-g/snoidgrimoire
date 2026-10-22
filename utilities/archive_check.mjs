@@ -14,17 +14,17 @@ const S = site();
 let bad = 0, n = 0;
 for (const name of archiveNames()) {
   const arc = S.openMohawk(archiveBytes(name));
-  const ours = [];
-  for (const tag of arc.tags()) for (const r of arc.list(tag)) ours.push(r);
-  const theirs = oracle[name];
+  const siteResources = [];
+  for (const tag of arc.tags()) for (const r of arc.list(tag)) siteResources.push(r);
+  const pythonResources = oracle[name];
   const key = r => `${r.tag} ${r.id & 0xffff} ${r.index} ${JSON.stringify(r.name)} ${r.offset} ${r.size}`;
-  const a = ours.map(key), b = theirs.map(key);
-  const onlyOurs = a.filter(k => !b.includes(k)), onlyTheirs = b.filter(k => !a.includes(k));
-  if (onlyOurs.length || onlyTheirs.length || a.length !== b.length) {
+  const a = siteResources.map(key), b = pythonResources.map(key);
+  const onlySite = a.filter(k => !b.includes(k)), onlyPython = b.filter(k => !a.includes(k));
+  if (onlySite.length || onlyPython.length || a.length !== b.length) {
     bad++;
-    console.log(`FAIL ${name}: ${onlyOurs.length} only here, ${onlyTheirs.length} only in the Python`);
-    for (const k of onlyOurs.slice(0, 3)) console.log(`    here:   ${k}`);
-    for (const k of onlyTheirs.slice(0, 3)) console.log(`    Python (${k})`);
+    console.log(`FAIL ${name}: ${onlySite.length} only here, ${onlyPython.length} only in the Python`);
+    for (const k of onlySite.slice(0, 3)) console.log(`    here:   ${k}`);
+    for (const k of onlyPython.slice(0, 3)) console.log(`    Python (${k})`);
   }
   n += a.length;
 }

@@ -38,7 +38,7 @@ const REMOTE = {
 /* ---- remembered between visits ------------------------------------------- */
 
 const MEMORY_DB = 'snoidgrimoire', MEMORY_STORE = 'archives', MEMORY_SOURCE = '#source';
-let REMEMBERED = false;
+let STORED_IN_BROWSER = false;
 function memoryTx(mode, fn) {
   return new Promise((resolve, reject) => {
     let req;
@@ -55,14 +55,14 @@ function memoryTx(mode, fn) {
 }
 /* A new set: what was remembered goes, and where it came from is kept. */
 function memoryBegin(label, remote) {
-  REMEMBERED = false;
+  STORED_IN_BROWSER = false;
   return memoryTx('readwrite', s => { s.clear(); s.put({ label, remote, savedAt: Date.now() }, MEMORY_SOURCE); }).catch(() => {});
 }
 /* One archive as it was read: the archive's bytes alone, not the CD image they sit in. */
 function memoryPut(entry) {
   const bytes = entry.bytes.slice();
   return memoryTx('readwrite', s => s.put({ name: entry.name, bytes }, entry.name))
-    .then(() => { REMEMBERED = true; })
+    .then(() => { STORED_IN_BROWSER = true; })
     .catch(e => setStatus(`Not remembered in this browser (${e.message})`, true));
 }
 async function memoryRead() {
@@ -70,8 +70,8 @@ async function memoryRead() {
   const source = all.find(r => r.label), archives = all.filter(r => r.bytes);
   return source && archives.length ? { source, archives } : null;
 }
-function memoryForget() {
-  REMEMBERED = false;
+function memoryClear() {
+  STORED_IN_BROWSER = false;
   return memoryTx('readwrite', s => s.clear()).catch(() => {});
 }
 /* Run after the first store: a request that the browser keep the store
@@ -79,21 +79,21 @@ function memoryForget() {
 function memoryKeep() { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }
 
 /* What was remembered, opened as it was taken in. */
-async function openRemembered() {
-  let got;
-  try { got = await memoryRead(); } catch (e) { return false; }
-  if (!got) return false;
+async function openStoredArchives() {
+  let saved;
+  try { saved = await memoryRead(); } catch (e) { return false; }
+  if (!saved) return false;
   ARCHIVES.clear();
-  if (got.source.remote) for (const n of REMOTE.names) ARCHIVES.set(n, { name: n, size: null, bytes: null, arc: null, error: null, remote: true });
-  for (const r of got.archives) {
+  if (saved.source.remote) for (const n of REMOTE.names) ARCHIVES.set(n, { name: n, size: null, bytes: null, arc: null, error: null, remote: true });
+  for (const r of saved.archives) {
     const bytes = new Uint8Array(r.bytes);
-    ARCHIVES.set(r.name, { name: r.name, size: bytes.length, bytes, arc: null, error: null, remote: !!got.source.remote });
+    ARCHIVES.set(r.name, { name: r.name, size: bytes.length, bytes, arc: null, error: null, remote: !!saved.source.remote });
   }
-  REMEMBERED = true;
-  SOURCE = got.source.label;
-  setStatus(`Opened what this browser remembered, ${fmtBytes(got.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
+  STORED_IN_BROWSER = true;
+  SOURCE = saved.source.label;
+  setStatus(`Opened what this browser remembered, ${fmtBytes(saved.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
   browseStart();
-  if (got.source.remote) fetchTheRest();
+  if (saved.source.remote) fetchTheRest();
   return true;
 }
 
@@ -200,18 +200,18 @@ function ensureBytes(entry) {
       const total = +res.headers.get('Content-Length') || 0;
       const reader = res.body.getReader();
       const parts = [];
-      let got = 0, last = 0;
+      let received = 0, last = 0;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         parts.push(value);
-        got += value.length;
+        received += value.length;
         if (Date.now() - last > 250) {
           last = Date.now();
-          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org, ${fmtBytes(got)}${total ? ' of ' + fmtBytes(total) : ''}`);
+          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org, ${fmtBytes(received)}${total ? ' of ' + fmtBytes(total) : ''}`);
         }
       }
-      const bytes = new Uint8Array(got);
+      const bytes = new Uint8Array(received);
       let o = 0;
       for (const part of parts) { bytes.set(part, o); o += part.length; }
       if (!looksLikeMohawk(bytes)) throw new Error('the file fetched is not a Mohawk archive');
@@ -287,7 +287,7 @@ function wireOpening() {
     const src = new URLSearchParams(location.search).get('src');
     if (src === 'archive.org') useRemote();
     else if (src) openFromUrls(src.split(','));
-    else await openRemembered();
+    else await openStoredArchives();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

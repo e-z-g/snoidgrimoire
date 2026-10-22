@@ -275,15 +275,15 @@ function zbHotelStrategy(level, band, opts = {}) {
     if (fitMemo.has(key)) return fitMemo.get(key);
     const g = grid(h, P), u = unplaced(P);
     const fixed = places.map((_, j) => { const m = new Map(); g[j].forEach((c, p) => { if (c >= 0) m.set(c, p); }); return m; });
-    const need = places.map((_, j) => [...new Set(u.map(i => h.lab[j][i]))]);
+    const unplacedLabels = places.map((_, j) => [...new Set(u.map(i => h.lab[j][i]))]);
     let best = { count: 0, maps: null };
-    if (level !== 3) best = { count: u.length, maps: places.map((_, j) => zbHotelAxisMaps(need[j], fixed[j])[0]) };
+    if (level !== 3) best = { count: u.length, maps: places.map((_, j) => zbHotelAxisMaps(unplacedLabels[j], fixed[j])[0]) };
     else {
       /* Each way of giving the floors, then the best way of giving the
          trunks to it: an assignment, found over the trunks still free by
          dynamic programming. */
-      const freeT = [0, 1, 2, 3, 4].filter(t => ![...fixed[1].values()].includes(t)), B = need[1].filter(b => !fixed[1].has(b));
-      for (const m0 of zbHotelAxisMaps(need[0], fixed[0])) {
+      const freeT = [0, 1, 2, 3, 4].filter(t => ![...fixed[1].values()].includes(t)), B = unplacedLabels[1].filter(b => !fixed[1].has(b));
+      for (const m0 of zbHotelAxisMaps(unplacedLabels[0], fixed[0])) {
         let base = 0;
         const gain = B.map(() => [0, 0, 0, 0, 0]);
         for (const i of u) {
@@ -366,19 +366,19 @@ function zbHotelStrategy(level, band, opts = {}) {
     }
     return best;
   };
-  const guessMemo = new Map();
-  const guess = (P, H, c) => {
+  const heuristicMemo = new Map();
+  const heuristicPlan = (P, H, c) => {
     const u = unplaced(P);
     if (!u.length || !c) return END;
     if (H.length === 1) return { v: fit(H[0], P).count, complete: true };
     const key = H.map(h => h.id).join(',') + '|' + P.join() + '|' + c;
-    if (guessMemo.has(key)) return guessMemo.get(key);
+    if (heuristicMemo.has(key)) return heuristicMemo.get(key);
     const ms = moves(P, H);
-    if (!ms.length) { guessMemo.set(key, END); return END; }
+    if (!ms.length) { heuristicMemo.set(key, END); return END; }
     const m = pick(P, H, ms, c), rej = H.filter(h => !m.acc.includes(h));
-    const kids = [guess(place(P, m.i, m.code), m.acc, c), rej.length ? (c > 1 ? guess(P, rej, c - 1) : END) : null];
+    const kids = [heuristicPlan(place(P, m.i, m.code), m.acc, c), rej.length ? (c > 1 ? heuristicPlan(P, rej, c - 1) : END) : null];
     const plan = { v: Math.min(1 + kids[0].v, kids[1] ? kids[1].v : Infinity), i: m.i, code: m.code, acc: m.acc, kids };
-    guessMemo.set(key, plan);
+    heuristicMemo.set(key, plan);
     return plan;
   };
   const memo = new Map();
@@ -388,7 +388,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     if (H.length === 1) return { v: fit(H[0], P).count, complete: true };
     const key = H.map(h => h.id).join(',') + '|' + P.join() + '|' + c;
     if (memo.has(key)) return memo.get(key);
-    let b = guess(P, H, c);
+    let b = heuristicPlan(P, H, c);
     /* No play does better than the worst hypothesis's best, known. */
     const ub = Math.min(...H.map(h => fit(h, P).count));
     if (b.v < ub) {
@@ -419,7 +419,7 @@ function zbHotelStrategy(level, band, opts = {}) {
   const planFor = (P, H, c) => {
     if (!unplaced(P).length || !c) return END;
     if (H.length === 1) return { v: fit(H[0], P).count, complete: true };
-    return memo.get(H.map(h => h.id).join(',') + '|' + P.join() + '|' + c) || guess(P, H, c);
+    return memo.get(H.map(h => h.id).join(',') + '|' + P.join() + '|' + c) || heuristicPlan(P, H, c);
   };
   const weight = H => H.reduce((t, h) => t + h.weight, 0);
   const posList = P => P.map(c => c < 0 ? null : posOf(c));
