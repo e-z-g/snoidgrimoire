@@ -2,16 +2,16 @@
    and one thing in them changed: a route's level (routeLevels, the four
    words the map's colours and a puzzle's level are taken from), written
    back with zbSaveWrite, which is held to write an unchanged save byte for
-   byte, and saved under the file's own name to put where it came from. The
-   page says the game has not been run on one.
+   byte, and saved under the file's name, to put back where it came from.
+   The page warns that nobody has run the game on an edited save.
    Read:
    under Data, open a game's ZOOM####.TXT, with its roster ZOOMBINI.WHO
-   for its name, and see what it holds: where the band is, every Zoombini
+   for its name, to see where the band is, every Zoombini
    and where it waits, each route's places and the levels they were crossed
    at, the town; then the map with its roads coloured as the save has them,
    and the town as it stands in the save.
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-edit.js. */
+   The page's script: DOM here. LOAD ORDER: after page-edit.js. */
 
 const SAVES = [];            // [{ file, bytes, state }]
 let ROSTER = null;           // [{ name, file }] from a ZOOMBINI.WHO

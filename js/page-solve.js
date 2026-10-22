@@ -5,13 +5,13 @@
    play that is sure of the most, to be walked through move by move.
    =========================================================================
 
-   Everything is the puzzle's own (zb-puzzle-<archive>.js: deal, form,
-   edit, solve, strategy and their diagrams); this file is the controls and
+   The puzzle's file (zb-puzzle-<archive>.js) has the rest: deal, form,
+   edit, solve, strategy and their diagrams; this file is the controls and
    the drawing. The band is drawn from ZOOMBINI.MHK (zb-snoid.js), fetched
    from archive.org when it is not open (24 MB); until then a diagram shows
    numbered placeholders.
 
-   The address keeps it all, so a puzzle can be linked:
+   The address has every setting, so a link opens the same puzzle:
      #solve=BRIDGE&level=3&deal=4242        the band and puzzle from a seed
      &size=11                               a band of fewer than 16, dealt
      &band=2552...                          a band given, four digits each
@@ -19,11 +19,11 @@
      &view=unknown&knows=form&path=0.1      the strategy, walked
      &pick=2                                a solution other than the first
      #solve=BRIDGE&level=max&band=...&deal=N  VVH Max: level 4
-                                            dealt from N, the puzzle's own
-                                            seed (zbDealOne); with no deal,
+                                            dealt from N, the seed of the
+                                            puzzle's deal (zbDealOne); with no deal,
                                             the hardest is searched for
 
-   The page's own script: DOM here. LOAD ORDER: after page-browse.js, whose
+   The page's script: DOM here. LOAD ORDER: after page-browse.js, whose
    $, esc, ARCHIVES, ensureBytes, openedArchive and sharedColours it uses;
    page-browse.js's route() calls solveRoute. */
 
@@ -83,7 +83,8 @@ function solveApplyHash() {
 /* ---- the puzzle, worked out ------------------------------------------------ */
 
 /* The archives a view needs that are not in yet: the puzzle's layouts,
-   and ZOOMBINI's sprites (wanted, not needed). */
+   and ZOOMBINI's sprites, which a diagram uses when they are open and
+   otherwise replaces with numbered placeholders. */
 function solveNeeds() {
   const out = [];
   for (const name of zbDealNeeds(SVIEW.key)) {
@@ -283,15 +284,15 @@ function solveStage() {
 }
 
 /* The scene: the place's picture at the level, and the band where the
-   program puts it on coming there (zbBandWaiting), standing, facing right
-   as it arrives. Needs the place's archive and ZOOMBINI's, fetched when
-   asked. */
+   program puts it on coming there (zbBandWaiting), standing and facing
+   right, as the band comes in. It needs the place's archive and
+   ZOOMBINI's, which it fetches when the visitor opens the scene. */
 function solveScene() {
   const key = SVIEW.key, place = ZB_PLACE_BY_KEY.get(key), band = SDEALT ? SDEALT.band : [];
   const home = ARCHIVES.get(key), z = ARCHIVES.get('ZOOMBINI');
   const waiting = zbBandWaiting(key, band);
   $('scaption').textContent = waiting ? `The band waiting at ${place.name}, where the program puts it on coming there (ZOOMBINI.EXE's places).`
-    : `At ${place.name} the band stands off the screen, and the toads' own runners draw it; not drawn yet.`;
+    : `At ${place.name} the band stands off the screen, and the game's code for the toads draws it; the page does not draw it.`;
   const missing = [home, z].filter(e => !e || !e.bytes);
   if (missing.some(e => !e)) { $('sdiagram').innerHTML = `<p class="note">The scene needs ${esc(key.toLowerCase())}.mhk and zoombini.mhk, which are not both among the files opened.</p>`; return; }
   if (missing.length) {
@@ -331,7 +332,7 @@ function solveHardWords(score, n) {
 }
 function solveHardHtml(band) {
   const last = SHARDLAST && SHARDLAST.key === SVIEW.key && SHARDLAST.seed === SVIEW.seed ? SHARDLAST : null;
-  let html = `<p class="note">Level 4’s rules, dealt for this band by the program’s own deal from seed ${SVIEW.seed}, the generator’s state as the puzzle starts to deal`
+  let html = `<p class="note">Level 4’s rules, dealt for this band by the program’s deal from seed ${SVIEW.seed}, the generator’s state as the puzzle starts to deal`
     + `${last ? `: the hardest of ${last.distinct.toLocaleString()} different deal${last.distinct === 1 ? '' : 's'} (${last.tried.toLocaleString()} seeds tried${last.stopped ? ', stopped early' : ''})` : ''}.</p>`;
   if (last && last.distinct === 1) html += '<p class="note">Every seed deals this puzzle the same: nothing in it is drawn at random.</p>';
   if (SHARDSCORE) html += `<p class="note">${esc(solveHardWords(SHARDSCORE, band.length))}</p>`;
@@ -400,7 +401,7 @@ function solveDraw() {
   solveStage();
   $('spanel').scrollTop = top;
 }
-/* A change that keeps the band and puzzle: only the panel and stage again. */
+/* A change that leaves the band and puzzle as they are: only the panel and stage drawn again. */
 function solveRedraw() { solveWriteHash(); solveDraw(); }
 /* A change to the band or the puzzle: worked out again. */
 function solveRedo() { SVIEW.path = []; SVIEW.pick = 0; solveWriteHash(); solveRoute(); }

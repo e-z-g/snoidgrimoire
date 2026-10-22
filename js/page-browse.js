@@ -3,10 +3,10 @@
    save, tunes to save, palettes, cursors, strings, walk nodes and paths
    drawn over their room, registration points, and scripts frame by frame.
    =========================================================================
-   The address bar holds the view: #FLEENS, #FLEENS/tBMP/4000, #ZOOMBINI/SND/99
+   The view's address is in the address bar: #FLEENS, #FLEENS/tBMP/4000, #ZOOMBINI/SND/99
    (the sound type, "\0SND" in the archive, is written SND).
 
-   The page's own script: DOM here. LOAD ORDER: last, after page-open.js,
+   The page's script: DOM here. LOAD ORDER: last, after page-open.js,
    whose ARCHIVES, ensureBytes and openedArchive it uses. */
 
 const PALETTE_PICK = new Map();        // archive name -> 'SHPL 5000', or absent for the default
@@ -41,7 +41,7 @@ function browseStart(first) {
   else route();
 }
 
-/* The address decides the view: the map's (page-map.js) or an archive's. */
+/* The view for the address: the map's (page-map.js) or an archive's. */
 function route() {
   const tab = tabOfHash(), search = tab ? null : searchOfHash(), changes = !tab && search == null && isChangesHash(), mods = !tab && search == null && isModsHash(), saves = !tab && search == null && isSavesHash();
   const town = !tab && search == null && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
@@ -158,8 +158,8 @@ function renderSide(entry, h) {
 /* ---- palettes -------------------------------------------------------------- */
 
 /* Indices 10-45: the Zoombinis' own colours, the same in every palette on
-   the disc (tools/README.md), and what ZOOMBINI's own art keeps to. Taken
-   from whichever open archive has a palette covering them. */
+   the disc (tools/README.md), and the only colours ZOOMBINI's art uses.
+   They come from whichever open archive has a palette covering them. */
 function sharedColours() {
   if (SHARED_COLOURS) return SHARED_COLOURS;
   for (const e of sortedArchives()) {
@@ -684,7 +684,7 @@ function snoidPlayer(entry, arc, id, script, box) {
   const traits = SNOID_PICK[kind === 'fleen' ? 'fleen' : 'zoombini'];
   const names = kind === 'fleen' ? ZB_FLEENS_TRAIT_WITH : ZB_TRAIT_SHORT;
   const own = zbSnoidFeetOf(entry.name, id), feetFor = own ? [own] : zbSnoidFeetFor(sheet, zbSnoidTicks(script));
-  // A walk is written for its own feet: pick them, unless the pick fits.
+  // A walk's script draws only certain feet: where the feet picked are not among them, use the first.
   if (!feetFor.includes(traits.feet) && feetFor.length) traits.feet = feetFor[0];
   const ticks = zbSnoidTicks(script, SNOID_PICK.turned ? 1 : 0, entry.name);
   const movie = zbSnoidMovie(sheet, traits, ticks);

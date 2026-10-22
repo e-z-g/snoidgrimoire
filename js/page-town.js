@@ -15,17 +15,18 @@
    -- a house, a reward building, a lamp post, an inhabitant, the clock's
    hands -- is a card standing up where the floor meets its foot (its
    lowest painted row), or just before the wall when its foot is above the
-   horizon. Every point keeps the direction it had from the middle, so from
-   there the picture is the game's, unchanged; an eye moved aside, or a
-   second eye, is what shows the depth. HORIZON, EYE and FAR are this
-   file's guesses: nothing in the game says where its camera stood.
+   horizon. The depth moves no point off the line it had from the middle,
+   so from there the picture is the game's, unchanged; an eye moved aside,
+   or a second eye, is what shows the depth. The game has no record of
+   where its camera stood, so HORIZON, EYE and FAR are this file's
+   estimates.
 
    Depth on a screen (TV.depth): none; Sway, the eye swinging SWAY metres
    either side every SWAY_S seconds, turning to hold still what is FOCUS
    metres ahead; Red-cyan, two eyes STEREO apart drawn in red and in green
    and blue, for the glasses, meeting at FOCUS; Cardboard, the two eyes
    side by side, IPD apart, for a phone in a viewer, full screen and moved
-   by the phone. A headset (WebXR) draws its own two eyes and follows the
+   by the phone. A headset (WebXR) draws the two eyes itself and follows the
    head, so it shows the depth by itself; its select (a trigger, a pinch)
    steps the town through five stages from empty to full.
 
@@ -34,13 +35,13 @@
    clock follow the game's rules (zbTownScene), and which inhabitants is
    the first so many of the eight, where the game draws lots. Looking
    about: drag, the arrow keys, the wheel or a pinch for the field of view,
-   and on a phone its own motion.
+   and on a phone the phone's motion.
 
    Drawn with WebGL, no library: the land as one texture, every sprite in
    an atlas, the land as a mesh, each thing as a card, and the moving
    things' cards made again when a frame changes.
 
-   The page's own script: DOM here. LOAD ORDER: after page-map.js; page-
+   The page's script: DOM here. LOAD ORDER: after page-map.js; page-
    browse.js's route() calls townRoute. */
 
 const TOWN_TUNE = { HORIZON: 290, EYE: 1.6, FAR: 45, fov: 70, fovMin: 25, fovMax: 100, segments: 240,
@@ -50,7 +51,7 @@ const TV = { yaw: 0, pitch: 0, fov: TOWN_TUNE.fov, people: 625, rewards: 16, smo
 let TWORLD = null, TFROM = null, TPAL = null, TSCENE = null, TGL = null, TLAND = null, TATLAS = null;
 let TANIM = [];                   // the inhabitants shown: { inh, frame, next, interval, rho }
 let TCLOCK = null;                // { shapes, rho } while the clock has hands
-let TAUDIO = null, TDYN = true;   // TDYN: the moving things' cards want making again
+let TAUDIO = null, TDYN = true;   // TDYN: the moving things' cards are out of date
 const TFEET = new Map();          // 'id/shape' -> its foot row
 const T_A = 2 * Math.PI / ZB_TOWN_WIDTH;
 
@@ -345,7 +346,7 @@ function tShift(proj, d, focus) { const p = proj.slice(); if (focus) p[8] = -d *
 /* A phone's orientation as a quaternion, as three.js's
    DeviceOrientationControls works it out: the angles as a YXZ rotation,
    then a quarter turn about x (the camera looks out of the back of the
-   phone, not down through it), then the screen's own rotation. */
+   phone, not down through it), then the screen's rotation, portrait or landscape. */
 function tDeviceQuat(alpha, beta, gamma, screenAngle) {
   const d = Math.PI / 180, [x, y, z] = [beta * d / 2, alpha * d / 2, -gamma * d / 2];
   const c1 = Math.cos(x), s1 = Math.sin(x), c2 = Math.cos(y), s2 = Math.sin(y), c3 = Math.cos(z), s3 = Math.sin(z);
@@ -432,8 +433,8 @@ function townCaption() {
 }
 function townNth(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 
-/* Depth on a screen. Cardboard wants the whole screen, lying on its side,
-   and the phone's motion; the others only change how it is drawn. */
+/* Depth on a screen. Cardboard needs the whole screen, lying on its side,
+   and the phone's motion; the others change only the drawing. */
 function townDepth(mode) {
   const was = TV.depth;
   TV.depth = mode;

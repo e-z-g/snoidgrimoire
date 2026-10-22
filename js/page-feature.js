@@ -1,8 +1,9 @@
 /* page-feature.js -- a feature script played: its sheet's sprites put where
-   each tick has them, over the room (js/zb-feature.js says how the sheet is
-   told, and that the rule is the numbering's, not the program's).
+   each tick has them, over the room (js/zb-feature.js has how the page
+   picks the sheet, and why that rule follows the numbering, not the
+   program).
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-browse.js. */
+   The page's script: DOM here. LOAD ORDER: after page-browse.js. */
 
 const FEATURE_PICK = { room: true, sound: false, zoom: 1 };
 

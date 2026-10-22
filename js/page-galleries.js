@@ -2,7 +2,7 @@
    every archive open. Each item links to its resource in Data, where it is
    shown whole, played or saved.
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-tabs.js. */
+   The page's script: DOM here. LOAD ORDER: after page-tabs.js. */
 
 const ZB_GALLERY_TAGS = {
   pictures: ['tBMP'], sheets: ['tBMP'], sounds: ['\0SND'], music: ['tMID'], text: ['STRL'],
@@ -10,7 +10,7 @@ const ZB_GALLERY_TAGS = {
 };
 const GALLERY_SHEET = new Map();   // 'FLEENS 4000' -> true for a sheet of sprites
 
-/* Whether a tBMP is a sheet, worked out once. */
+/* Whether a tBMP is a sheet, worked out the first time and then looked up. */
 function gallerySheet(name, arc, id) {
   const k = `${name} ${id}`;
   if (!GALLERY_SHEET.has(k)) GALLERY_SHEET.set(k, !!tbmpFrameOffsets(arc.get('tBMP', id)));
@@ -58,7 +58,7 @@ function galleryHead(view, title, sub, what) {
 }
 
 /* A whole gallery saved, as grimoire saves one: every item of the archives
-   open as the file its own view saves (PNG, WAV, .mid, text), in one zip, a
+   open as the file that its view saves (PNG, WAV, .mid, text), in one zip, a
    folder an archive. Each gallery's files, made one at a time. */
 const GALLERY_FILES = {
   async *pictures() {
@@ -112,7 +112,7 @@ async function gallerySaveAll(key, button) {
   button.disabled = false;
 }
 
-/* A ZOOMBINI sound a Zoombini says: which kind of thing, for which hair and
+/* A ZOOMBINI sound in a Zoombini's voice: which kind of thing, for which hair and
    nose (zbSnoidSound, run backwards), or null. */
 function galleryVoice(id) {
   if (id < 100 || id > 499) return null;
@@ -243,7 +243,7 @@ const ZB_GALLERIES = {
   },
 };
 
-/* The scripts in an archive that cue each of its sounds, worked out once. */
+/* The scripts in an archive that cue each of its sounds, worked out the first time and then looked up. */
 const GALLERY_CUES = new WeakMap();
 function galleryCues(arc) {
   if (!GALLERY_CUES.has(arc)) {

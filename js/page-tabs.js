@@ -4,14 +4,14 @@
    the archives store, by kind and across every archive (page-galleries.js);
    Data, the files themselves, archive by archive (page-browse.js).
    =========================================================================
-   The address decides the tab: #journey and #place= are World's; #scenario
+   The tab follows the address: #journey and #place= are World's; #scenario
    and #scenario/<pane>, with #solve= and #town, Scenario's; #components and
    #components/<gallery> Components'; an archive's address (#FLEENS,
    #FLEENS/tBMP/4000) Data's. Every view links to the others: a gallery's
    item to its resource in Data, a puzzle to its place on the map.
 
-   The page's own script: DOM here. LOAD ORDER: after page-browse.js, whose
-   route() asks tabOfHash() and renderTab(). */
+   The page's script: DOM here. LOAD ORDER: after page-browse.js, whose
+   route() calls tabOfHash() and renderTab(). */
 
 const ZB_TABS = {
   scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles'], ['snoids', 'Snoids'], ['town', 'The town']] },
@@ -61,11 +61,11 @@ function renderTab(t) {
     view.innerHTML += `<p class="bad">Could not show it: ${esc(e.message)}</p>`;
     console.error(e);
   }
-  // The side after the pane, whose gallery may have just told pictures from sheets.
+  // The side after the pane, since drawing a gallery may have just sorted its pictures from its sheets.
   $('side').innerHTML = `<h2>${T.name}</h2>` + T.subs.map(([k, n]) => `<div class="arc${k === t.sub ? ' on' : ''}" data-href="#${t.tab}/${k}"><span class="name">${esc(n)}</span><span class="place">${esc(tabCount(t.tab, k))}</span></div>`).join('');
   for (const el of $('side').querySelectorAll('[data-href]')) el.addEventListener('click', () => { location.hash = el.dataset.href; });
 }
-/* The side list's figure beside a pane: how many things it holds. */
+/* The side list's figure beside a pane: the number of things in it. */
 function tabCount(tab, sub) {
   if (tab === 'scenario') return { places: ZB_PLACES.length, puzzles: ZB_PUZZLES.size, snoids: Object.keys(ZB_SNOID_KINDS).length, town: '' }[sub];
   const g = ZB_GALLERY_TAGS[sub];
@@ -73,7 +73,7 @@ function tabCount(tab, sub) {
   let n = 0;
   for (const { entry, arc } of openArchives()) for (const tag of g) {
     if (sub !== 'pictures' && sub !== 'sheets') { n += arc.list(tag).length; continue; }
-    // A picture or a sheet only once its gallery has told them apart.
+    // A count of pictures or of sheets only once drawing the gallery has sorted one from the other.
     for (const { id } of arc.list(tag)) {
       const k = GALLERY_SHEET.get(`${entry.name} ${id}`);
       if (k === undefined) return '';
@@ -83,8 +83,8 @@ function tabCount(tab, sub) {
   return n ? String(n) : '';
 }
 
-/* The archives open now, in the help's order, and the ones archive.org has
-   not sent yet. */
+/* The archives open now, in the help's order, and the ones still to come
+   from archive.org. */
 function openArchives() {
   return sortedArchives().filter(e => e.bytes).map(entry => ({ entry, arc: openedArchive(entry) })).filter(o => o.arc);
 }
@@ -145,7 +145,7 @@ const SCENARIO_PANES = {
       const by = scripts[kind] || {}, n = Object.values(by).reduce((a, l) => a + l.length, 0);
       html += `<h2 class="h">${esc(K.name[0].toUpperCase() + K.name.slice(1))}</h2>`
         + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}, registration points <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
-        + (n ? `${plural(n, 'script')} draw it:` : kind === 'small' ? 'No script draws it; Hotel Dimensia’s band waits as it.' : 'Its scripts are in archives not open yet.') + '</p>';
+        + (n ? `${plural(n, 'script')} draw it:` : kind === 'small' ? 'No script draws it; Hotel Dimensia’s band waits as it.' : 'Its scripts are in archives that are not open.') + '</p>';
       if (kind === 'zoombini' || kind === 'fleen') html += `<div class="traits" data-kind="${kind}"></div>`;
       for (const [arch, ids] of Object.entries(by)) html += `<div class="ids"><span class="note">${arch}</span>${ids.map(id => `<a href="#${arch}/SCRS/${id}">${id}</a>`).join('')}</div>`;
     }

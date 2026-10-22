@@ -6,15 +6,15 @@
    An edit here is an edit like any other (page-edit.js): the archive is
    rebuilt and read back, so the deal, the solver and the scene read the
    layout as edited, and Changes saves the archive as a new .MHK, for the
-   game to read in place of its own. The words are the puzzle's to change
+   game to read in place of the original. The words are the puzzle's to change
    (zbMaze2EditSquare, zbMaze2EditSeats, zbLillyEditMap); this file is the
    tools and the clicking. After an edit the puzzle is worked out again
    once the clicking stops.
 
-   The page's own script: DOM here. LOAD ORDER: after page-edit.js and
+   The page's script: DOM here. LOAD ORDER: after page-edit.js and
    page-solve.js, whose SVIEW, SDEALT, solveOpen and solveRoute it uses. */
 
-/* The tool each editor holds, kept while the page is open. */
+/* The tool picked in each editor, kept while the page is open. */
 const LAYOUT_TOOL = {
   maze: { type: 3, dir: 1, group: 1, turns: false, ways: [true, true, true, true] },
   pond: { map: 0, route: 1 },

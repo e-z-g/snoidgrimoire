@@ -5,23 +5,25 @@
    The map is one picture, as StarGrimoire's universe and grimoire's World
    tab are: RODMAP's painting, 640 x 480, with the icons and roads its
    scripts draw over it (zbJourneyMap), and each place a window at its icon
-   in which the place's own picture, the scene its page opens on, is drawn
-   scaled down to fit. A place is not somewhere you go but something that
-   gets bigger as you zoom in: its picture begins to replace its icon when
+   in which the page draws the place's picture, the scene its page opens
+   on, scaled down to fit. A place is not somewhere you go but something
+   that grows as you zoom in: its picture begins to replace its icon when
    its window is TUNE.fadeFrom pixels across and has replaced it at fadeTo.
-   Which place you are in is read off the view (mapSettle) -- the one whose
-   window holds the middle of the screen and fills a good part of it -- and
-   the bar, the panel and the address follow. Going in is StarGrimoire's
-   zoom onto a point (mapZoomVia); a long way across is van Wijk and Nuij's
-   path (mapZoomPath). The address bar keeps where you are (#journey,
-   #journey&place=PIZZA, #place=PIZZA, and &level=3 at a level other than
-   the first), so Back works and a place can be linked. A puzzle's panel
-   gives its rules at the level (zb-puzzle.js) and can deal one, a band
-   and the puzzle set for it, from a seed the address keeps (&deal=, and
-   &band= for a band of fewer than 16), so a dealt puzzle can be linked.
+   The page reads which place you are in off the view (mapSettle): the one
+   whose window covers the middle of the screen and fills a good part of
+   it. The bar, the panel and the address follow. Going in is
+   StarGrimoire's zoom onto a point (mapZoomVia); a long way across is van
+   Wijk and Nuij's path (mapZoomPath). The address has where you are
+   (#journey, #journey&place=PIZZA, #place=PIZZA, and &level=3 at a level
+   other than the first), so Back works and a place can be linked. A
+   puzzle's panel gives its rules at the level (zb-puzzle.js) and can deal
+   one, a band and the puzzle set for it, from a seed in the address
+   (&deal=, and &band= for a band of fewer than 16), so a dealt puzzle can
+   be linked.
 
-   Everything drawn comes from zb-journey.js and the archives; this file
-   decides only how it looks. Choices of its own, said once here: a place's
+   Everything drawn comes from zb-journey.js and the archives, and this
+   file chooses only how it looks. These choices are the file's, not the
+   game's, and appear only here: a place's
    window is 4:3, like its picture, centred on its icon, and 0.8 of the way
    to its nearest neighbour across, at most 60 map pixels, so no two meet;
    the land round the place you are in darkens as it fills the screen; the
@@ -31,7 +33,7 @@
    archive.org, a place's archive is fetched only when you are in it or
    pick it, and its icon stays until it has come.
 
-   The page's own script: DOM here. LOAD ORDER: last, after page-browse.js,
+   The page's script: DOM here. LOAD ORDER: last, after page-browse.js,
    whose $, esc, link, sharedColours and indexedCanvas it uses, and whose
    route() calls journeyRoute. */
 
@@ -46,8 +48,8 @@ let JHOME = null, JPLACED = false, JMOVING = false, JMOVE = 0, JDRAWN = [], JFON
 /* How the zoom feels, as StarGrimoire's TUNE does there: a place's picture
    begins to replace its icon when its window is fadeFrom pixels across and
    has replaced it at fadeTo; the names are in between labelsFrom and
-   labelsTo map scales. animMs is grimoire's settled value. None of the
-   sizes is settled on a real screen yet. */
+   labelsTo map scales. animMs is grimoire's settled value. Nobody has
+   judged the sizes on a real screen. */
 const JTUNE = { fadeFrom: 90, fadeTo: 240, labelsFrom: 1.6, labelsTo: 2.2, animMs: 1000, room: 0.8, roomCap: 60 };
 
 function jClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -59,8 +61,9 @@ function jOnMap(key) { return JMAP && JMAP.places.find(p => p.key === key); }
 function journeyAvailable() { return ARCHIVES.has('RODMAP') || ARCHIVES.has('MAP'); }
 function isJourneyHash() { return /^#(journey|place=)/.test(location.hash); }
 
-/* The map, read the first time it is wanted: RODMAP, or MAP where only the
-   European layout's archive is there. From archive.org it is fetched. */
+/* The map, read the first time a view needs it: RODMAP, or MAP where only
+   the European layout's archive is there. From archive.org, the page
+   fetches it before reading it. */
 async function journeyLoad() {
   const entry = ARCHIVES.get('RODMAP') || ARCHIVES.get('MAP');
   if (!entry) { JMAP_ERROR = 'There is no RODMAP or MAP archive among the files opened.'; return false; }
@@ -123,8 +126,8 @@ function jSprite(i) {
   return JSPRITES.get(i);
 }
 
-/* A place's picture at the level picked: a canvas, or a word saying why
-   there is none yet -- 'absent' (its archive is not among the files),
+/* A place's picture at the level picked: a canvas, or, where there is no
+   picture to draw, one word for the reason -- 'absent' (its archive is not among the files),
    'unfetched', 'fetching' or 'failed'. */
 function jPicture(key) {
   const p = jPlace(key), entry = ARCHIVES.get(key);
@@ -227,7 +230,7 @@ function mapDraw() {
     if (JCW / 2 >= x && JCW / 2 <= x + W && JCH / 2 >= y && JCH / 2 <= y + H) centred = d;
     JDRAWN.push(d);
   }
-  // The place in the middle of the screen, fetched if it is not here yet.
+  // The place in the middle of the screen, fetched if its archive is still to come.
   if (centred && jOpenness(centred.W) > 0.5) jWant(centred.key);
   for (const d of JDRAWN) {
     if (d.t < 1) drawIcon(ctx, d, 1 - d.t);
@@ -301,8 +304,9 @@ function drawLabels(ctx, centred) {
   ctx.globalAlpha = 1;
 }
 
-/* Which place you are in, read off the view: the one whose window holds
-   the middle of the screen and fills 0.45 of it one way or the other. */
+/* Which place you are in, read off the view: the middle of the screen
+   falls in its window, and the window fills 0.45 of the screen one way or
+   the other. */
 function mapSettle() {
   let key = null;
   for (const d of JDRAWN) {
@@ -349,8 +353,9 @@ function mapZoomVia(hx, hy, to, ms) {
     JCAM.s = s; JCAM.x = hx - (cx - JCW / 2) / s; JCAM.y = hy - (cy - JCH / 2) / s;
   });
 }
-/* van Wijk and Nuij's smooth zoom (2003), the path d3's interpolateZoom
-   takes: out as far as the distance needs, across, and in again. A view is
+/* van Wijk and Nuij's smooth zoom (2003), the path that d3's
+   interpolateZoom follows: out as far as the distance needs, across, and
+   in again. A view is
    its middle and w, the shorter side in map pixels. As StarGrimoire's. */
 function mapZoomPath(a, b) {
   const m = Math.min(JCW, JCH), w0 = m / a.s, w1 = m / b.s, R = Math.SQRT2;
@@ -385,10 +390,10 @@ async function mapFlyTo(to, quick) {
   Object.assign(JCAM, to);
   return true;
 }
-// A move, and what is so when it has arrived, before the view is read off
-// again (mapSettle) and the address written. A move asked for while
-// another is under way (Back pressed twice, a link followed mid-flight)
-// takes over from where the first has got to.
+// A move, and what is so at its end, before mapSettle reads the view
+// again and writes the address. A second move during the first (Back
+// pressed twice, a link followed mid-flight) starts from wherever the
+// first has reached.
 async function mapGo(to, instant, arrive) {
   const move = ++JMOVE;
   JMOVING = true;
@@ -399,7 +404,7 @@ async function mapGo(to, instant, arrive) {
   mapDraw();
 }
 /* Into a place, or out to the whole map, as a step in the history unless
-   the address already says so. */
+   the address already has that place. */
 function mapEnter(key, instant, replace) {
   JVIEW.sel = key;
   jWant(key);
@@ -536,7 +541,7 @@ function placePanel(key) {
   return html;
 }
 
-/* A puzzle's rules at the level picked, and one dealt, if asked for. */
+/* A puzzle's rules at the level picked, and one dealt, once the visitor deals it. */
 function puzzlePanel(key) {
   const z = ZB_PUZZLES.get(key), lv = z.levels[JVIEW.level - 1];
   let html = `<h3>The puzzle, level ${JVIEW.level}: ${esc(ZB_LEVELS[JVIEW.level - 1])}</h3><p>${esc(z.about)}</p>`
@@ -594,8 +599,8 @@ function helpPanel(p) {
 
 /* ---- pointing ------------------------------------------------------------ */
 
-/* The place under a point: its window once it has mostly opened, its icon
-   (and a little round it) before. */
+/* The place under a point: its window once it has mostly opened, and
+   before that its icon and a little round it. */
 function mapPlaceAt(sx, sy) {
   for (let i = JDRAWN.length - 1; i >= 0; i--) {
     const d = JDRAWN[i];

@@ -1,11 +1,12 @@
-/* page-music.js -- a tune played in the page (js/zb-music.js says through
-   what, and why that). The instruments are fetched once, from QuickTime 3's
-   Windows installer on archive.org (7 MB), and the 2 MB taken out of it is
-   remembered in a database of its own, as grimoire remembers it; where the
-   fetch fails a file does as well: the installer, the .qtx, or a Mac
-   QuickTime Musical Instruments file's resource fork.
+/* page-music.js -- a tune played in the page (js/zb-music.js has which
+   synthesis and why). The page fetches the instruments once, from
+   QuickTime 3's Windows installer on archive.org (7 MB), and stores the
+   2 MB taken out of it in an IndexedDB database apart from the archives',
+   as grimoire does; where the fetch fails, the visitor can give a file
+   instead: the installer, the .qtx, or a Mac QuickTime Musical
+   Instruments file's resource fork.
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-browse.js. */
+   The page's script: DOM here. LOAD ORDER: after page-browse.js. */
 
 const QT_INSTALLER_URL = 'https://archive.org/cors/apple-quicktime-3/apple-quicktime-3.iso/QUICKTIM.EXE';
 const QT_DB = 'snoidgrimoire-qt-instruments', QT_STORE = 'instruments', QT_KEY = 'quicktime3';
@@ -50,7 +51,7 @@ async function tuneRendered(entry, arc, id) {
   setStatus('Fetching QuickTime 3’s instruments…');
   const lib = await qtLoadInstruments();
   setStatus(`Making ${entry.name} ${id} into sound…`);
-  await new Promise(res => setTimeout(res, 30));   // the status painted before the render holds the page
+  await new Promise(res => setTimeout(res, 30));   // paint the status before the render blocks the page
   const r = zbTuneWav(parseMohawkMidi(arc.get('tMID', id)).file, lib);
   const t = { url: URL.createObjectURL(new Blob([r.wav], { type: 'audio/wav' })), wav: r.wav, seconds: r.seconds, missing: r.missing, tune: r.tune };
   TUNES.set(key, t);

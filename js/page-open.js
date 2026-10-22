@@ -2,23 +2,23 @@
    =========================================================================
    The picker, the folder picker, dropping files on the page, `?src=` for a
    page served over HTTP (comma-separated, archives or a CD image), and
-   archive.org's copy, every archive fetched in turn from the start, the
-   one a view asks for first.
+   archive.org's copy, from which the page fetches every archive in turn,
+   starting with the one the open view needs.
 
-   Remembered between visits, as Cythera's grimoire remembers its archive:
-   every archive taken in, from files or from archive.org, is kept in this
-   browser's IndexedDB as it was read (edits are not: they stay in the page
-   until saved from Changes), and a visit with no ?src opens what is
-   remembered at once, offline too. A new set taken in replaces it; Forget,
-   at the top of Data's list, clears it. Where IndexedDB is refused (some
-   file:// pages, a private window) nothing is remembered and nothing else
-   changes.
+   The page stores each archive it opens, from files or from archive.org,
+   in this browser's IndexedDB as it was read, as Cythera's grimoire stores
+   its archive. Edits stay out of the store, in the page, until the
+   visitor saves them from Changes. A visit with no ?src opens the stored
+   set immediately, offline too. A new set replaces it, and the Forget
+   link at the top of Data's list clears it. Where the browser blocks
+   IndexedDB (some file:// pages, a private window), the page stores
+   nothing and works the same otherwise.
 
-   Every archive the page knows is an entry in ARCHIVES, by upper-case name:
+   ARCHIVES has an entry for every archive the page has, by upper-case name:
    { name, size, bytes, arc, error, remote }. `arc` is openMohawk's result,
    made the first time the archive is looked at.
 
-   The page's own script: DOM here. LOAD ORDER: after js/zb-*.js, before
+   The page's script: DOM here. LOAD ORDER: after js/zb-*.js, before
    js/page-browse.js, whose browseStart it calls. */
 
 const ARCHIVES = new Map();
@@ -26,7 +26,7 @@ let SOURCE = '';
 
 /* archive.org's copy: the Learning Company's release, whose CD image the
    Internet Archive serves a file at a time through /cors/, with a CORS
-   header for the asking page. The file names on that disc are lower case. */
+   header that lets any page read it. The file names on that disc are lower case. */
 const REMOTE = {
   label: "archive.org's copy of the 2001 release",
   item: 'https://archive.org/details/Zoombini_201806',
@@ -58,7 +58,7 @@ function memoryBegin(label, remote) {
   REMEMBERED = false;
   return memoryTx('readwrite', s => { s.clear(); s.put({ label, remote, savedAt: Date.now() }, MEMORY_SOURCE); }).catch(() => {});
 }
-/* One archive as it was read; its own bytes, not the CD image they sit in. */
+/* One archive as it was read: the archive's bytes alone, not the CD image they sit in. */
 function memoryPut(entry) {
   const bytes = entry.bytes.slice();
   return memoryTx('readwrite', s => s.put({ name: entry.name, bytes }, entry.name))
@@ -74,8 +74,8 @@ function memoryForget() {
   REMEMBERED = false;
   return memoryTx('readwrite', s => s.clear()).catch(() => {});
 }
-/* Asked once something is remembered, so the browser keeps it under
-   pressure for space; a browser may say no. */
+/* Run after the first store: a request that the browser keep the store
+   when space runs short, which a browser may turn down. */
 function memoryKeep() { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }
 
 /* What was remembered, opened as it was taken in. */
@@ -113,7 +113,7 @@ function baseName(path) {
 }
 
 /* Take in [{ name, bytes }]: archives as they are, a CD image's DATA
-   archives. Says what it could not use. */
+   archives. The status line shows the files it could not use. */
 async function takeFiles(picked, source) {
   const refused = [];
   let took = 0;
@@ -167,7 +167,7 @@ function useRemote() {
   memoryBegin(REMOTE.label, true).then(() => { memoryKeep(); fetchTheRest(); });
 }
 /* Every archive archive.org has not sent yet, one after another, behind
-   whatever a view asks for (ensureBytes shares a fetch already under way).
+   whatever a view needs (ensureBytes shares a fetch already under way).
    The view showing is drawn again once the last is in. */
 let FETCHING_REST = null;
 function fetchTheRest() {
@@ -232,7 +232,7 @@ function ensureBytes(entry) {
   return p;
 }
 
-/* The archive opened, or null with entry.error saying why. */
+/* The archive opened, or null, with the reason in entry.error. */
 function openedArchive(entry) {
   if (entry.arc || entry.error || !entry.bytes) return entry.arc;
   try { entry.arc = openMohawk(entry.bytes); } catch (e) { entry.error = e.message; }

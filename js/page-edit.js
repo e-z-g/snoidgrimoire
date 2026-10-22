@@ -2,10 +2,10 @@
    so reloading the page restores the files; each one rebuilds its archive
    (zb-write.js, as tools/mohawk_write.py writes it) and everything is read
    back out of the rebuilt archive, so what the page shows after an edit is
-   what the file now says; and Changes, under Data, is the one place an edit
+   what the rebuilt file contains; and Changes, under Data, is the one place an edit
    leaves the page, an archive saved as a new .MHK.
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-tabs.js. */
+   The page's script: DOM here. LOAD ORDER: after page-tabs.js. */
 
 /* Archive name -> { original bytes, changes: Map 'TAG/id' -> { tag, id,
    bytes, what } }. */
@@ -39,7 +39,7 @@ function editRebuild(entry) {
   for (const k of [...GALLERY_SHEET.keys()]) if (k.startsWith(entry.name + ' ')) GALLERY_SHEET.delete(k);
 }
 
-/* A resource view's line saying it is edited, with its undo. */
+/* The mark on an edited resource's view, with links to undo and save it. */
 function editedNote(entry, tag, id) {
   if (!isEdited(entry.name, tag, id)) return '';
   return ` · <span class="warn">edited</span> (<a data-undo="${esc(entry.name)}|${esc(tag)}|${id}">undo</a>, <a href="#changes">save</a>)`;
@@ -97,7 +97,7 @@ function editStrings(entry, id, lines, body) {
 
 /* The colours a replacement may use: ZOOMBINI's art only the shared range,
    10-45, which is the same in every scene's palette; anything else, those
-   and whatever its palette gives, bar Windows's own at 0-9 and 246-255. */
+   and whatever its palette gives, bar the Windows colours at 0-9 and 246-255. */
 function editAllowed(entry, pf) {
   const set = new Set(Array.from({ length: 36 }, (_, i) => 10 + i));
   if (entry.name !== 'ZOOMBINI' && pf.chosen) {
@@ -126,7 +126,7 @@ async function editReadSound(file) {
   for (let i = 0; i < f.length; i++) out[i] = Math.max(0, Math.min(255, Math.round(f[i] * 127) + 128));
   return out;
 }
-/* A button that asks for a file and hands it on, its failures said beside it. */
+/* A button that opens a file picker and hands the file on, with any failure shown beside it. */
 function editFileButton(box, label, accept, use) {
   const l = document.createElement('label');
   l.className = 'btn';
@@ -267,7 +267,7 @@ function recolourMaker(box) {
   }
   const zarc = openedArchive(z), R = RECOLOUR, v = R.part === 'skin' ? 1 : R.z[R.part];
   const counts = zbRecolourColours(zarc, R.part === 'skin' ? 'body' : R.part, v);
-  // The families the part draws in, most drawn first; skin's own and black left out of a part's.
+  // The families the part draws in, most drawn first; a part's list leaves out skin and black.
   const fams = new Map();
   for (const [c, n] of counts) { const f = zbRecolourFamilyOf(c); if (f && (R.part === 'skin' ? f.key === 'skin' : f.key !== 'skin')) fams.set(f.key, (fams.get(f.key) || 0) + n); }
   const own = [...fams].sort((a, b) => b[1] - a[1]).map(([k]) => k);

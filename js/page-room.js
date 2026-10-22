@@ -4,7 +4,7 @@
    A view of what the files hold, each thing a link to its resource in Data;
    nothing here is the game played.
    =========================================================================
-   The page's own script: DOM here. LOAD ORDER: after page-feature.js and
+   The page's script: DOM here. LOAD ORDER: after page-feature.js and
    page-tabs.js. */
 
 const ROOM_PICK = { walks: true };
@@ -24,7 +24,7 @@ function roomPage(view, key) {
   const arc = openedArchive(entry);
   if (!arc) { view.innerHTML = html + `<p class="bad">${esc(entry.error || key + ' could not be read.')}</p>`; return; }
 
-  // What the archive holds for the room.
+  // The room's resources in the archive.
   const room = roomPicture(arc, key);
   const walks = arc.list('NODE').map(({ id }) => {
     const nodes = parseWalkNodes(arc.get('NODE', id));
@@ -68,7 +68,7 @@ function roomPage(view, key) {
   for (const b of view.querySelectorAll('button.play')) b.addEventListener('click', () => snoidPlaySound(key, +b.dataset.id));
   if (room == null) return;
 
-  // The picture, with what is asked for drawn over it.
+  // The picture, with whatever the visitor picks drawn over it.
   const pal = paletteFor(entry, arc, room).pal;
   const back = indexedCanvas(decodeTbmp(arc.get('tBMP', room)), pal, false);
   const c = document.createElement('canvas');
