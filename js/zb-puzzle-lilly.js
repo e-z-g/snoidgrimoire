@@ -831,7 +831,7 @@ ZB_PUZZLES.set('LILLY', {
       most: cross, exact, ways: null, solutions,
       notes: [
         'To cross, a Zoombini must be carried to the far bank. A toad carries two Zoombinis at most, so toads with a way across, as many as half the band (rounded up), are enough for everyone.',
-        'A toad counts as crossing when pads of its tattoo join its row to the far bank. In the game a toad finds its path with a simple step-by-step search, and the crabs at levels 3 and 4 only slow it down.',
+        'A toad counts as crossing when pads of its tattoo join its row to the far bank. In the game a toad finds its path with a greedy search, and the crabs at levels 3 and 4 only slow it down.',
         'The Zoombinis’ own traits play no part, so which of them rides which toad, and in what order, makes no difference. Ways that differ only in that count as one, so the ways are not counted.',
         level === 1 ? 'At level 1 there is no wand, so the most is exactly two for each toad with a way across.'
           : `The simplest solution uses the fewest wand swaps, of the ${state.swapWandUses} the wand allows. The toads that cross as dealt go first. Then, one toad at a time, it uses the fewest swaps that let another toad across without blocking one that is already across. That is the fewest the search found, and it may not be the fewest possible.`,

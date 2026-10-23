@@ -91,7 +91,7 @@ async function openStoredArchives() {
   }
   STORED_IN_BROWSER = true;
   SOURCE = saved.source.label;
-  setStatus(`Opened what this browser remembered, ${fmtBytes(saved.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
+  setStatus(`Opened the archives saved in this browser, ${fmtBytes(saved.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
   browseStart();
   if (saved.source.remote) fetchTheRest();
   return true;

@@ -7,7 +7,7 @@ Zoombinis* (1996), the logic game by Brøderbund. It is a sibling of
 
 `index.html` starts on the game's map of the journey. As you zoom in, each
 of the sixteen places opens into its scene, with its route and its help at
-each level. Zoombiniville can be viewed in its entirety, on a screen or in a
+each level. Zoombiniville can be viewed all the way around, on a screen or in a
 VR headset, with its houses, reward buildings, inhabitants, clock and music.
 There is also an archive browser for every picture, sprite sheet, sound,
 tune, palette, cursor, string, walk and animation script in the game's

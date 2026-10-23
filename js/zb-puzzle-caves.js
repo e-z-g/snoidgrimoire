@@ -664,10 +664,10 @@ function zbCavesStrategy(level, band, opts = {}) {
     hypotheses: hyp, guaranteed, exact, knows,
     root: node(H0, 0, full, limit, []),
     notes: [
-      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so this treats it as blank.'} ${hyp} of the rules the program could deal fit the wall, and ${H0.length} of them are different for this band.`,
+      `${state ? zbCavesWallWords(level, state) : 'The wall is not given, so this treats it as unknown.'} ${hyp} of the rules the program could deal fit the wall, and ${H0.length} of them are different for this band.`,
       'A player who knows only the level’s form has the same hypotheses, because the program picks every trait and order equally. (The first Lion’s Lair after the program starts sorts by nose, which a player could know. This page does not assume it.)',
       'Each placement goes on even when it is a mistake, so the band is guaranteed as many placements as there are mistakes allowed. The question is how many more can be made without a mistake.',
-      'A Zoombini that goes on a free stone under every hypothesis left is placed first, since that costs nothing. Otherwise the move is the one that still places the most when things go badly. The game picks a mistake’s stone at random, so this assumes the worst stone.',
+      'A Zoombini that goes on a free stone under every hypothesis left is placed first, since that costs nothing. Otherwise the move is the one that still places the most in the worst case. The game picks a mistake’s stone at random, so this assumes the worst stone.',
       exact ? 'The search is complete, so no way of playing guarantees more.' : 'The search stopped early (it ran out of time, or followed only the rule of thumb because there were many hypotheses). So at least this many are guaranteed, and maybe more could be.',
     ],
   };

@@ -364,7 +364,7 @@ function zbBridgeStrategy(level, band, opts = {}) {
       knows === 'form'
         ? `The player knows only the rule’s form at this level. Any of its ${rules.length} rules is possible, each with either bridge, for ${weight(H0)} hypotheses in all. ${H0.length} of them are different for this band.`
         : `The program could have dealt this band ${candidates.length} rule${candidates.length === 1 ? '' : 's'} at this level, each with either bridge, for ${weight(H0)} hypotheses in all. ${H0.length} of them are different for this band. The player knows this.`,
-      'Any Zoombini whose bridge is the same under every hypothesis left goes first, since that costs nothing. Otherwise it sends the Zoombini that brings the most across even when things go badly.',
+      'Any Zoombini whose bridge is the same under every hypothesis left goes first, since that costs nothing. Otherwise it sends the Zoombini that brings the most across in the worst case.',
       exact ? (guaranteed === n ? 'So the whole band is guaranteed to cross.' : 'The search is complete, so no way of playing guarantees more.')
         : 'The search ran out of time, so it played the rest by a rule of thumb. It sent next the Zoombini whose bridge is the same under the most hypotheses, over that bridge. So at least this many are guaranteed, and maybe more could be.',
     ],

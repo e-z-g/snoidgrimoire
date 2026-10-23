@@ -58,7 +58,7 @@ function roomPage(view, key) {
     for (const id of sounds) {
       const by = cues.get(id) || [];
       html += `<tr><td><button class="play" data-id="${id}" title="Play">▶</button></td><td><a href="${link(key, '\0SND', id)}">${id}</a></td>`
-        + `<td class="note">${by.length ? 'played by ' + by.slice(0, 6).map(c => `<a href="${link(key, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 6 ? ` and ${by.length - 6} more` : '') : ''}</td></tr>`;
+        + `<td class="note">${by.length ? 'cued by ' + by.slice(0, 6).map(c => `<a href="${link(key, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 6 ? ` and ${by.length - 6} more` : '') : ''}</td></tr>`;
     }
     html += '</table>';
   }

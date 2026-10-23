@@ -466,7 +466,7 @@ function zbHotelStrategy(level, band, opts = {}) {
     notes: [
       `${knows === 'form' ? 'The player knows only the level’s form. That allows' : 'For this band, the program could pick'} ${hyp} choice${hyp === 1 ? '' : 's'} of ${A === 1 ? 'trait' : `${A} traits in order`}. ${H0.length} of them are different for this band.${knows === 'program' && level === 3 ? (boards.length ? ' This counts only those that fit the band around the boards. The program only boards up rooms that an arrangement leaves empty, so a puzzle set up any other way is not one it could deal.' : ' The boards were not given, so they are left out.') : level === 3 && !boards.length ? ' The boards were not given, so they are left out.' : ''} The value of each floor, trunk or door is not hidden. The first Zoombini into each one sets it.`,
       'A move gives a Zoombini a room. It is let in or turned away, and each time it is turned away the counter moves on.',
-      'If every hypothesis would let a Zoombini into a room, that room is used first. Otherwise the move is the room where the fewest hypotheses would turn it away. When that does not guarantee everyone a room, the move is the one that still fits the most Zoombinis when things go badly.',
+      'If every hypothesis would let a Zoombini into a room, that room is used first. Otherwise the move is the room where the fewest hypotheses would turn it away. When that does not guarantee everyone a room, the move is the one that still fits the most Zoombinis in the worst case.',
       exact ? 'The search is complete, so no way of playing guarantees more.' : 'The search ran out of time and played the rest by its rule of thumb. So at least this many are guaranteed, and maybe more could be.',
     ],
   };

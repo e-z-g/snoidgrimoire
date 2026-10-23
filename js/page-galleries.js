@@ -148,7 +148,7 @@ const ZB_GALLERIES = {
   },
 
   sounds(view) {
-    galleryHead(view, 'Sounds', 'Every sound, grouped by archive. Each one shows its length and the scripts that play it. For ZOOMBINI’s voices, it also shows which Zoombini is speaking.', 'Sounds');
+    galleryHead(view, 'Sounds', 'Every sound, grouped by archive. Each one shows its length and the scripts that cue it. For ZOOMBINI’s voices, it also shows which Zoombini is speaking.', 'Sounds');
     let html = '';
     for (const { entry, arc } of openArchives()) {
       const list = arc.list('\0SND');
@@ -160,7 +160,7 @@ const ZB_GALLERIES = {
         try { const w = parseMohawkWave(arc.get('\0SND', id)); secs = (w.sampleCount / w.rate).toFixed(2) + ' s'; } catch (e) { secs = '?'; }
         const by = cues.get(id) || [], voice = entry.name === 'ZOOMBINI' ? galleryVoice(id) : null;
         html += `<tr><td><button class="play" data-arc="${entry.name}" data-id="${id}" title="Play">▶</button></td><td><a href="${link(entry.name, '\0SND', id)}">${id}</a></td><td class="num">${secs}</td>`
-          + `<td class="note">${voice ? esc(voice) : by.length ? 'played by ' + by.slice(0, 4).map(c => `<a href="${link(entry.name, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 4 ? ` and ${by.length - 4} more` : '') : ''}</td></tr>`;
+          + `<td class="note">${voice ? esc(voice) : by.length ? 'cued by ' + by.slice(0, 4).map(c => `<a href="${link(entry.name, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ') + (by.length > 4 ? ` and ${by.length - 4} more` : '') : ''}</td></tr>`;
       }
       html += '</table></details>';
     }

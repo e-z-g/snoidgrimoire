@@ -553,7 +553,7 @@ function walker(entry, arc, id, nodes, paths, c, box) {
   const home = ARCHIVES.get('ZOOMBINI'), zarc = home && home.bytes ? openedArchive(home) : null;
   if (!zarc) {
     box.innerHTML = '<p class="note">A Zoombini from zoombini.mhk can walk these paths. '
-      + (!home ? 'That file is not open.</p>' : FETCHING.has('ZOOMBINI') ? 'It is being fetched…</p>' : '<a id="walkFetch">Fetch it</a> (24 MB).</p>');
+      + (!home ? 'That file is not open.</p>' : FETCHING.has('ZOOMBINI') ? 'Fetching it…</p>' : '<a id="walkFetch">Fetch it</a> (24 MB).</p>');
     if ($('walkFetch')) $('walkFetch').addEventListener('click', () => { ensureBytes(home).then(() => { if (box.isConnected) render(); }); walker(entry, arc, id, nodes, paths, c, box); });
     return;
   }
@@ -672,7 +672,7 @@ function snoidPlayer(entry, arc, id, script, box) {
   if (!sheetArc) {
     box.innerHTML = `<p class="note">Drawn with ${esc(K.name)} from ${K.archive.toLowerCase()}.mhk. `
       + (!home ? 'That file is not open.</p>'
-        : FETCHING.has(K.archive) ? 'It is being fetched…</p>'
+        : FETCHING.has(K.archive) ? 'Fetching it…</p>'
         : `<a id="snoidFetch">Fetch it</a>${K.archive === 'ZOOMBINI' ? ' (24 MB)' : ''}.</p>`);
     if ($('snoidFetch')) $('snoidFetch').addEventListener('click', () => {
       ensureBytes(home).then(() => { if (box.isConnected) snoidPlayer(entry, arc, id, script, box); });

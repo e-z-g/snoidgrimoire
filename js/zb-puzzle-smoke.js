@@ -383,7 +383,7 @@ ZB_PUZZLES.set('SMOKE', {
   about: 'One at a time, each Zoombini rides a cart toward the center crystal, and a reflection of a Zoombini is placed in the mirror at the far end. Seen through the filters on each side, the Zoombini and the reflection must look the same in the center crystal. If they do not, the Zoombini is knocked back to the Shade Tree camp.',
   levels: [
     { rule: 'One Zoombini still waiting to cross is picked at random. One of the eight reflections on the wall, also picked at random, shows it exactly, and the other seven show random Zoombinis. The player puts a Zoombini in the cart and a reflection in the mirror. After each ride there is a new pick and a new set of reflections.',
-      chances: 'None are counted. Each Zoombini rides the cart one time, and one that does not match is knocked back to the Shade Tree camp.',
+      chances: 'None are counted. Each Zoombini rides the cart once, and one that does not match is knocked back to the Shade Tree camp.',
       notes: [
         'From the second ride on, the seven other reflections only use the first four values of each trait. So a reflection with a cap, sunglasses, a blue nose or a propeller is the match.',
         'From the second ride on, when fewer than eight Zoombinis are left, the program puts the matching reflection in one of the first few places, as many places as there are Zoombinis left, counted along the rows from the top left. ScummVM can put it in any of the eight.',

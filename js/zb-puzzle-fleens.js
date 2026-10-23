@@ -379,7 +379,7 @@ function zbFleensStrategy(level, band, opts = {}) {
     notes: [notesHead,
       `The Fleens you can see leave ${weight(all)} hypotheses (${list.length} that the player can tell apart). The Fleen that follows each Zoombini sent shows that Zoombini’s Fleen.`,
       `Played this way, at most ${W} are sent${W > ZB_FLEENS_WAITING ? `. Six wait, so ${cost(W)} may be sent back to Shelter Rock and ${guaranteed} are guaranteed to cross` : ', and six may wait, so everyone crosses'}. ${exact ? 'The search is complete, so no play guarantees more.' : 'The search ran out of time and played the likeliest first, so a better play may exist.'}`,
-      'Each move sends the Zoombini most likely to own a beehive Fleen, unless sending another finishes sooner in the worst case.'],
+      'Each move sends the Zoombini whose Fleen is the beehive’s under the most hypotheses left, unless sending another finishes sooner in the worst case.'],
   };
 }
 

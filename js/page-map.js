@@ -1,5 +1,5 @@
 /* page-map.js -- the journey's map: the land the Zoombinis cross, their
-   sixteen places on it and the roads between them, as one picture you can zoom.
+   sixteen places on it and the roads between them, as one zoomable picture.
    =========================================================================
 
    The map is one picture, as StarGrimoire's universe and grimoire's World
