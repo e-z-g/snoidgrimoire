@@ -849,7 +849,7 @@ function midiRead(bytes) {
       if (b === 0xFF) {
         const type = bytes[p + 1]; p += 2;
         const n = vlq();
-        if (type === 0x51 && n >= 3) tempos.push({ tick, us: (bytes[p] << 16) | (bytes[p + 1] << 8) | bytes[p + 2], order: order++ });
+        if (type === 0x51 && n >= 3) tempos.push({ tick, microsPerBeat: (bytes[p] << 16) | (bytes[p + 1] << 8) | bytes[p + 2], order: order++ });
         p += n;
         if (type === 0x2F) break;
         continue;
@@ -865,13 +865,13 @@ function midiRead(bytes) {
   }
   tempos.sort((a, b) => a.tick - b.tick || a.order - b.order);
   // Seconds at a tick: the tempo changes before it, each for its stretch.
-  const marks = [{ tick: 0, sec: 0, us: 500000 }];
+  const marks = [{ tick: 0, sec: 0, microsPerBeat: 500000 }];
   for (const t of tempos) {
     const m = marks[marks.length - 1];
-    const sec = m.sec + (t.tick - m.tick) * m.us / 1e6 / division;
-    if (t.tick === m.tick) m.us = t.us; else marks.push({ tick: t.tick, sec, us: t.us });
+    const sec = m.sec + (t.tick - m.tick) * m.microsPerBeat / 1e6 / division;
+    if (t.tick === m.tick) m.microsPerBeat = t.microsPerBeat; else marks.push({ tick: t.tick, sec, microsPerBeat: t.microsPerBeat });
   }
-  const secAt = tick => { let m = marks[0]; for (const k of marks) { if (k.tick <= tick) m = k; else break; } return m.sec + (tick - m.tick) * m.us / 1e6 / division; };
+  const secAt = tick => { let m = marks[0]; for (const k of marks) { if (k.tick <= tick) m = k; else break; } return m.sec + (tick - m.tick) * m.microsPerBeat / 1e6 / division; };
   raw.sort((a, b) => a.tick - b.tick || a.order - b.order);
   for (const e of raw) e.sec = secAt(e.tick);
   return { format, division, events: raw, tempos: marks };
@@ -887,7 +887,7 @@ function midiToQtma(midiBytes, opts) {
   const ups = opts.unitsPerSecond || QTMA_UNITS_PER_SECOND;
   const like = opts.like ? qtmaHeaderParts(opts.like) : null;
   const model = like && like.parts.find(p => p.info) || null;
-  if (!model) throw new Error('a tune to take the synthesizer’s name from is needed, and none was given');
+  if (!model) throw new Error('the import needs a tune to take the synthesizer’s name from, and has none');
   const midi = midiRead(midiBytes);
   const dropped = {};
   const drop = why => { dropped[why] = (dropped[why] || 0) + 1; };
@@ -946,7 +946,7 @@ function midiToQtma(midiBytes, opts) {
   }
   // A note the file never ends is ended with the file.
   const last = midi.events.length ? unit(midi.events[midi.events.length - 1].sec) : 0;
-  for (const list of held.values()) for (const note of list) { note.dur = Math.max(1, last - note.t); drop('notes never ended, ended with the file'); }
+  for (const list of held.values()) for (const note of list) { note.dur = Math.max(1, last - note.t); drop('notes that never end, ended with the file'); }
   if (!parts.length) throw new Error('the MIDI file sounds no note');
   const data = qtmaWrite(parts, events, { flags: like.flags });
   const total = events.reduce((m, e) => Math.max(m, e.t + (e.dur || 0)), 0);
