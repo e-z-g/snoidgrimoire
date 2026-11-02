@@ -561,7 +561,7 @@ function zbFleenModFeetPartners(z, v) {
 }
 
 /* export_web.fleen_ride: the (feet pose, body pose) pairs of one loop of a
-   Fleen feet variant's `phase` in its run, less the `skip` feet poses. */
+   Fleen feet variant's `phase` in its run, without the `skip` feet poses. */
 function zbFleenModRide(f, v, phase, skip) {
   let pairs = [];
   for (const recs of zbFleenModScript(f.get('SCRS', ZB_FLEEN_MOD_WEB.WALK_SCRIPTS.fleen + v)).ticks) {

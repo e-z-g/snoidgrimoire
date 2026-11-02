@@ -137,7 +137,7 @@ function zbTunnelsEntrance(z, guards, toggle) {
 }
 
 /* The program's search for level 1's rule (0x45c1f6): how many of the band
-   each of the 20 values sends to one side, less a count the Allergic
+   each of the 20 values sends to one side, minus a count the Allergic
    Cliffs left (split, 0 for none) where another count is to be had, and
    the count the search stops at (from half the band, +1, -2, +1, ...),
    with the rules giving it; count is null when none gives one from 1 to

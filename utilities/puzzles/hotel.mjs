@@ -2,7 +2,7 @@
 // and .h and the 1996 program:
 //
 //   - the counter's first step per level and the step at which the hotel
-//     closes are ScummVM's, and so the chances, 12 less the first step;
+//     closes are ScummVM's, and so the chances, 12 minus the first step;
 //   - the test the drawn traits must pass is generateRoomRules' as ScummVM
 //     writes it, evaluated here for every draw and every count of values a
 //     band can show, which must match the port's shorter statement;

@@ -224,7 +224,7 @@ function zbSaveSnoidId(t) {
 }
 function zbSaveComplete(t) { return zbSaveSnoidId(t) >= 0; }
 
-/* A pack's live entries: the first wPackZmbCount, less those its skip flags
+/* A pack's live entries: the first wPackZmbCount, except those its skip flags
    leave out (ZmbStateActivePack: 1/0 only the unoccupied, 0/1 only the
    occupied). */
 function zbSaveLive(pack) {

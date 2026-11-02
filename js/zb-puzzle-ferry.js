@@ -21,7 +21,7 @@
    same 44 x 36 seat), its second the cargo round them; the deal reads
    them from the archive it is given. Which seats are
    next to which is worked out from the seats' rectangles: seat K's
-   rectangle is stretched by h, half its height less 2 (16 pixels), top
+   rectangle is stretched by h, half its height minus 2 (16 pixels), top
    and bottom while narrowed as much at the sides, and then the other way
    round, and at level 4 also stretched top and bottom alone; seat M is
    next to K when one of those overlaps M's rectangle (strictly), up to

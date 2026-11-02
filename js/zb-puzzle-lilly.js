@@ -287,7 +287,7 @@ function zbLillyPond(level, n, rnd, routeMaps, over = {}) {
   }
 
   /* The routes that may be cut, drawn without replacement: at level 1,
-     12 less the routes needed; at the others, all twelve. */
+     12 minus the routes needed; at the others, all twelve. */
   for (let i = 0, max = 12; i < toCut; i++, max--) {
     const pick = rnd.range(1, max);
     markers[shuffle[pick]] = 0;
