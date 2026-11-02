@@ -1,0 +1,104 @@
+# Every check in utilities/check_all.mjs, on GitHub's machines. The game comes
+# from archive.org, as the page reads it. Zomb's Lair's bundle has the disc and
+# the installed ZOOMBINI.EXE, and apple-quicktime-3 has QuickTime's
+# instruments. The workbench's tools and the reference repository's saved game
+# are private, read with the secret ZB_READ_TOKEN. Nothing read here is kept
+# past the run except in the cache.
+name: checks
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  check_all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The game from archive.org, cached
+        id: game
+        uses: actions/cache@v4
+        with:
+          path: game
+          key: game-zombs-lair-a8d13bd5-quicktime-3
+
+      - name: The game downloaded
+        if: steps.game.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p game
+          curl -fL --retry 3 -o bundle.exe 'https://archive.org/download/LogicalJourneyOfTheZoombinis-ZombsLair/Logical%20Journey%20of%20the%20Zoombinis.exe'
+          echo 'a8d13bd5253601453977db28308901dd  bundle.exe' | md5sum -c
+          # The bundle writes each folder name as UTF-16 in Base64, joined by
+          # backslashes: Game\Disc\Zoombini.iso and Game\HDD\ZOOMBINI\ZOOMBINI.EXE.
+          7z e -so -spd bundle.exe 'RwBhAG0AZQA=\RABpAHMAYwA=\WgBvAG8AbQBiAGkAbgBpAC4AaQBzAG8A' > game/ZOOMBINI.ISO
+          7z e -so -spd bundle.exe 'RwBhAG0AZQA=\SABEAEQA\WgBPAE8ATQBCAEkATgBJAA==\WgBPAE8ATQBCAEkATgBJAC4ARQBYAEUA' > game/ZOOMBINI.EXE
+          rm bundle.exe
+          # 7-Zip reads the ISO 9660 side and warns about the Mac side's headers.
+          7z x -y -ogame/iso game/ZOOMBINI.ISO DATA || test -d game/iso/DATA
+          curl -fL --retry 3 -o game/QUICKTIM.EXE 'https://archive.org/download/apple-quicktime-3/apple-quicktime-3.iso/QUICKTIM.EXE'
+          ls -l game game/iso/DATA
+
+      - name: The workbench's tools
+        uses: actions/checkout@v4
+        with:
+          repository: e-z-g/zoombini-workbench
+          token: ${{ secrets.ZB_READ_TOKEN }}
+          path: ci/zoombini-workbench
+          sparse-checkout: tools
+
+      - name: The reference repository's saved game
+        uses: actions/checkout@v4
+        with:
+          repository: e-z-g/zoombini-reference
+          token: ${{ secrets.ZB_READ_TOKEN }}
+          path: ci/zoombini-reference
+          sparse-checkout: saves
+
+      - name: The Zoombini maker
+        uses: actions/checkout@v4
+        with:
+          repository: e-z-g/e-z-g.github.io
+          path: ci/e-z-g.github.io
+          sparse-checkout: zoombinis
+
+      - name: The shared Mac readers
+        uses: actions/checkout@v4
+        with:
+          repository: ratlizard/mac-files
+          path: ci/mac-files
+
+      - name: ScummVM's Zoombinis engine
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse --branch mohawk-zoombini-2026-3-0 \
+            https://github.com/ied206/scummvm-zoombini.git ci/scummvm-zoombini
+          git -C ci/scummvm-zoombini sparse-checkout set engines/mohawk
+
+      - name: reference/ laid out as on the maintainer's disk
+        run: |
+          mkdir -p reference/disc reference/quicktime reference/zombs-lair/HDD/ZOOMBINI
+          ln -s "$PWD/game/iso/DATA" reference/disc/DATA
+          ln -s "$PWD/game/ZOOMBINI.ISO" reference/disc/ZOOMBINI.ISO
+          ln -s "$PWD/game/ZOOMBINI.EXE" reference/zombs-lair/HDD/ZOOMBINI/ZOOMBINI.EXE
+          ln -s "$PWD/game/QUICKTIM.EXE" reference/quicktime/QUICKTIM.EXE
+          ln -s "$PWD/ci/zoombini-workbench/tools" reference/tools
+          ln -s "$PWD/ci/zoombini-reference/saves" reference/saves
+          ln -s "$PWD/ci/e-z-g.github.io/zoombinis" reference/site
+          ln -s "$PWD/ci/scummvm-zoombini" reference/scummvm-zoombini
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: The tools' Python packages
+        run: pip install pillow fonttools
+
+      - name: check_all
+        env:
+          MAC_FILES: ${{ github.workspace }}/ci/mac-files
+        run: CHROME="$(command -v google-chrome || command -v chromium)" node utilities/check_all.mjs
