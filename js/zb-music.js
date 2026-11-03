@@ -40,9 +40,11 @@ function zbTuneFromMidi(midiFile, lib) {
   const t = qtmaTune(made.data);
   return { events: t.seq.events, tones: t.tones, parts: made.parts, notes: made.notes, seconds: made.seconds, dropped: made.dropped };
 }
-/* The tune as a WAV: { wav, seconds, missing, tune }. */
+/* The tune as a WAV: { wav, seconds, missing, tune }. It plays at QuickTime's
+   output level (quicktimeLevel), so each tune is as loud against the others
+   as in the game, which starts every tune at one music volume. */
 function zbTuneWav(midiFile, lib) {
   const tune = zbTuneFromMidi(midiFile, lib);
-  const r = qtmaRender(tune.events, tune.tones, lib, { unitsPerSecond: QTMA_UNITS_PER_SECOND });
+  const r = qtmaRender(tune.events, tune.tones, lib, { unitsPerSecond: QTMA_UNITS_PER_SECOND, quicktimeLevel: true });
   return { wav: qtmaWav(r), seconds: r.left.length / r.rate, missing: r.missing, tune };
 }

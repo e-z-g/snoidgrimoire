@@ -43,7 +43,10 @@ for (const name of ['MIDIMAC', 'MIDIMPC']) {
       const a = sha(), b = sha(), pcm = new Int16Array(a.r.wav.buffer, a.r.wav.byteOffset + 44, (a.r.wav.length - 44) >> 1);
       let peak = 0; for (const v of pcm) peak = Math.max(peak, Math.abs(v));
       if (a.h !== b.h) fail(`${what}: rendered twice, two sounds`);
-      if (peak < 8000) fail(`${what}: renders to near silence (peak ${peak})`);
+      // The tunes play at QuickTime's level, not scaled to a peak, and tune
+      // 30000 is quiet (a peak near 2,400 on the Mac, 840 on Windows). So the
+      // floor catches only a render with next to nothing in it.
+      if (peak < 256) fail(`${what}: renders to near silence (peak ${peak})`);
       if (a.r.missing.length) fail(`${what}: no instrument for part ${a.r.missing.join(', ')}`);
       rendered++;
     }

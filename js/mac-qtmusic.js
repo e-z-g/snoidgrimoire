@@ -476,10 +476,29 @@ function qtToneInstrument(lib, tone) {
   return null;
 }
 
+/* HOW LOUD THE WHOLE TUNE IS. QuickTime 3.0.2's synthesizer (the
+   PowerPlug's 'musk', read 3 November 2026) mixes at a fixed level, so
+   one tune is louder than another by its notes alone. Serve_This_One
+   stores each side's volume as 16.16 (0x10000 is 1): the level, the
+   envelope, one plus the volume LFO and the pan's 0 to 2, at most
+   0x3FFFF. A voice routine at full quality
+   (Sample16ToMixdown32_Stereo_Linear_Full, 0x10280) adds the 16-bit
+   sample shifted right by the settings' +56 times that volume to a 32-bit
+   bus, with saturation, and an 8-bit sample shifted left by 8 minus it
+   (0x100B8), the same scale. Mixdown32ToOutput16 (0xB9E8) shifts the bus
+   right by 16 minus the settings' +60 and clips it to a 16-bit sample.
+   SetSynthFeaturesByHardware (0xF08C) and SetSynthFeaturesForOffline
+   (0xE2D8) both set +56 to 6 and +60 to 5, and only the debug knobs
+   change them. So the output is the sum of sample times volume over
+   2^(6 + 11 - 16), half of what qtmaRender adds up, clipped at full. */
+const QT_OUTPUT_GAIN = 1 / 2;
+
 /* Play a tune's events (qParseTune's: times and lengths in 1/unitsPerSecond)
    through the instruments. Returns { left, right, rate, missing }: two
-   Float32Arrays scaled so the loudest sample is just under full, and the
-   parts whose instrument the set does not have. */
+   Float32Arrays, and the parts whose instrument the set does not have.
+   By default the tune is scaled so its loudest sample is just under full.
+   With opts.quicktimeLevel it plays at QuickTime's own level instead
+   (QT_OUTPUT_GAIN), so each tune keeps its loudness against the others. */
 function qtmaRender(events, tones, lib, opts) {
   opts = opts || {};
   const rate = opts.rate || 44100, ups = opts.unitsPerSecond || 600;
@@ -729,7 +748,10 @@ function qtmaRender(events, tones, lib, opts) {
 
   let peak = 0;
   for (let i = 0; i < frames; i++) peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
-  if (peak > 0 && !opts.raw) { const g = 0.95 / peak; for (let i = 0; i < frames; i++) { left[i] *= g; right[i] *= g; } }
+  if (opts.quicktimeLevel && !opts.raw) {
+    const clip = x => Math.max(-1, Math.min(1, x * QT_OUTPUT_GAIN));
+    for (let i = 0; i < frames; i++) { left[i] = clip(left[i]); right[i] = clip(right[i]); }
+  } else if (peak > 0 && !opts.raw) { const g = 0.95 / peak; for (let i = 0; i < frames; i++) { left[i] *= g; right[i] *= g; } }
   return { left, right, rate, missing, stolen };
 }
 
