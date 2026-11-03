@@ -33,12 +33,17 @@ function zbTuneModel() {
                       instName: qtmaStr31(''), instrument: 1, gm: 1 }], [], {});
 }
 /* A tMID's MIDI file as what qtmaRender plays: { events, tones, parts,
-   notes, seconds, dropped }. */
+   notes, seconds, dropped }. Expression is left out, as the Mac program
+   leaves it out: QTM_ChangeControler (CODE 2 0x4400) skips controllers
+   100, 101, 6 and 11 and passes the rest to QuickTime. Only Hotel
+   Dimensia's tunes (30020-30023) set it, to 90 on every part, which would
+   play them 6 dB quieter than the game does. */
 function zbTuneFromMidi(midiFile, lib) {
   const made = midiToQtma(midiFile, { like: zbTuneModel(), unitsPerSecond: QTMA_UNITS_PER_SECOND,
     name: lib ? (n => lib.has(n) ? lib.get(n).name : '') : null });
   const t = qtmaTune(made.data);
-  return { events: t.seq.events, tones: t.tones, parts: made.parts, notes: made.notes, seconds: made.seconds, dropped: made.dropped };
+  const events = t.seq.events.filter(e => !(e.k === 'ctl' && e.ctl === QTC.Expression));
+  return { events, tones: t.tones, parts: made.parts, notes: made.notes, seconds: made.seconds, dropped: made.dropped };
 }
 /* The tune as a WAV: { wav, seconds, missing, tune }. It plays at QuickTime's
    output level (quicktimeLevel), so each tune is as loud against the others
