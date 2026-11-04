@@ -69,11 +69,16 @@ jobs:
           repository: ratlizard/mac-files
           path: ci/mac-files
 
+      # The commit of pull request #7895 that the checks read, the one on the
+      # maintainer's disk. The branch was rewritten after it, and the save and
+      # puzzle checks do not read the new tip.
       - name: ScummVM's Zoombinis engine
         run: |
-          git clone --depth 1 --filter=blob:none --sparse --branch mohawk-zoombini-2026-3-0 \
-            https://github.com/ied206/scummvm-zoombini.git ci/scummvm-zoombini
+          git init -q ci/scummvm-zoombini
           git -C ci/scummvm-zoombini sparse-checkout set engines/mohawk
+          git -C ci/scummvm-zoombini fetch -q --depth 1 --filter=blob:none \
+            https://github.com/ied206/scummvm-zoombini.git fdaa2fb9fcec6ff10975b8854e5ce5004f869ae7
+          git -C ci/scummvm-zoombini checkout -q FETCH_HEAD
 
       - name: reference/ laid out as on the maintainer's disk
         run: |
