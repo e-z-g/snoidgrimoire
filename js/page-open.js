@@ -26,12 +26,18 @@ let SOURCE = '';
 
 /* archive.org's copy: the Learning Company's release, whose CD image the
    Internet Archive serves a file at a time through /cors/, with a CORS
-   header that lets any page read it. The file names on that disc are lower case. */
+   header that lets any page read it. The file names on that disc are lower case.
+   That release has no tunes as MIDI. Its MUSIC has one recording, of Zoombini
+   Isle's tune. So MIDIMPC comes from the 1996 Windows disc's item, whose copy
+   has the same bytes as the 1.1 disc's (compared on 4 November 2026). No item
+   serves MIDIMAC a file at a time. */
 const REMOTE = {
   label: "archive.org's copy of the 2001 release",
   item: 'https://archive.org/details/Zoombini_201806',
-  url: name => 'https://archive.org/cors/Zoombini_201806/Zoombini.iso/DATA%2F' + name.toLowerCase() + '.mhk',
-  names: ['BASECAMP', 'BCTWO', 'BRIDGE', 'CAVES', 'FERRY', 'FLEENS', 'HELP', 'HOTEL', 'LILLY', 'MAZE2', 'MUSIC',
+  url: name => name === 'MIDIMPC'
+    ? 'https://archive.org/cors/logical-journey-of-the-zoombinis/Logical%20Journey%20of%20the%20Zoombinis.iso/DATA%2FMIDIMPC.MHK'
+    : 'https://archive.org/cors/Zoombini_201806/Zoombini.iso/DATA%2F' + name.toLowerCase() + '.mhk',
+  names: ['BASECAMP', 'BCTWO', 'BRIDGE', 'CAVES', 'FERRY', 'FLEENS', 'HELP', 'HOTEL', 'LILLY', 'MAZE2', 'MIDIMPC', 'MUSIC',
     'NET', 'NETDEMO', 'PICKER', 'PIZZA', 'RODMAP', 'SLIDES', 'SMOKE', 'TOWN', 'TUNNELS', 'XFER', 'ZOOMBINI'],
 };
 
