@@ -177,9 +177,11 @@ const ZB_GALLERIES = {
     for (const { entry, arc } of openArchives()) for (const r of arc.list('tMID'))
       html += `<tr><td>${entry.name}</td><td><a href="${link(entry.name, 'tMID', r.id)}">${r.id}</a></td><td class="num">${fmtBytes(r.size)}</td><td class="tune" data-arc="${entry.name}" data-id="${r.id}"></td></tr>`;
     // The 2001 release has no MIDI. Its MUSIC has one recording, of Zoombini
-    // Isle's tune, which the Sounds gallery lists with the other sounds.
+    // Isle's tune, which the Sounds gallery lists with the other sounds. Its
+    // program requests every tune and plays only that one (its queue function
+    // at 0x4588d0 drops every music id but 30001).
     const notes = [];
-    if (ARCHIVES.has('MUSIC')) notes.push(`The 2001 release plays a recording of Zoombini Isle’s tune in place of MIDI. It is <a href="${link('MUSIC', '\0SND', 30001)}">MUSIC 30001</a>.`);
+    if (ARCHIVES.has('MUSIC')) notes.push(`The 2001 release has no tunes as MIDI. It plays one tune, a recording of Zoombini Isle’s, <a href="${link('MUSIC', '\0SND', 30001)}">MUSIC 30001</a>, and no music in the four puzzles that have tunes here.`);
     if (!ARCHIVES.has('MIDIMAC')) notes.push('There are no Mac tunes, since no MIDIMAC.MHK is open. The game’s CD has it.');
     view.insertAdjacentHTML('beforeend', notes.map(n => `<p class="note">${n}</p>`).join('') + html + '</table>');
     for (const td of view.querySelectorAll('td.tune')) { const entry = ARCHIVES.get(td.dataset.arc); tunePlayer(entry, openedArchive(entry), +td.dataset.id, td); }
