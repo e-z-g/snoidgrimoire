@@ -89,7 +89,7 @@ jobs:
           ln -s "$PWD/game/QUICKTIM.EXE" reference/quicktime/QUICKTIM.EXE
           ln -s "$PWD/ci/zoombini-workbench/tools" reference/tools
           ln -s "$PWD/ci/zoombini-reference/saves" reference/saves
-          ln -s "$PWD/ci/e-z-g.github.io/zoombinis" reference/site
+          ln -s "$PWD/ci/e-z-g.github.io/zoomfleeni" reference/site
           ln -s "$PWD/ci/scummvm-zoombini" reference/scummvm-zoombini
 
       - uses: actions/setup-node@v4

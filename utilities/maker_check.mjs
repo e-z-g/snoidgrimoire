@@ -1,5 +1,5 @@
 // The snoids as js/zb-snoid.js plays them, against the Zoombini maker
-// (e-z-g.github.io/zoombinis, reference/site/sprites.js), whose clips Sam
+// (e-z-g.github.io/zoomfleeni, reference/site/sprites.js), whose clips Sam
 // has watched and judged: the maker is where the scripts' playback was
 // settled by eye, so what the site plays should match it. The maker's
 // clips are the scripts boiled down by tools/export_web.py (clip(),

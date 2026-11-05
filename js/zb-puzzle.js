@@ -114,7 +114,7 @@
    (zoombini_state.h ZmbTrait, zoombini_random.cpp in its original mode),
    and the random numbers are the program's too (ZOOMBI32.EXE of the 1996
    disc's ZBARC32.Z, at 0x46df56). The trait names are the Zoombini
-   maker's (e-z-g.github.io/zoombinis); ScummVM calls the second nose
+   maker's (e-z-g.github.io/zoomfleeni); ScummVM calls the second nose
    yellow and the fourth hair balding. The band is ScummVM's
    shelter_picker.cpp randomizePreviewTraits.
 */

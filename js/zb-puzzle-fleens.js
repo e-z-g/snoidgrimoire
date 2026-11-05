@@ -58,7 +58,7 @@
    names are the Zoombini maker's, in the order of ScummVM's FleenTrait.
 */
 
-/* Fleen traits, 1-5 at 0-4, in the maker's words (e-z-g.github.io/zoombinis),
+/* Fleen traits, 1-5 at 0-4, in the maker's words (e-z-g.github.io/zoomfleeni),
    short and as they read after "with"; ScummVM's FleenTrait order. */
 const ZB_FLEENS_TRAIT_SHORT = {
   hair: ['Blue quiff', 'Grass tuft', 'Red bandana', 'Mohawk', 'Horned helmet'],
