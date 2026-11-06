@@ -60,8 +60,8 @@ function renderChanges() {
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Changes</span>';
   renderSide({ name: '#changes' }, { archive: null, tag: null, id: null });
   const view = $('view');
-  let html = '<h1>Changes</h1><p class="sub">Everything you have edited. The edits live only in this page, and reloading it throws them away. Saving a changed archive writes a new .MHK file. The edited resources are added at the end, the index points to them, and every other byte stays the same.</p>';
-  if (!EDITS.size && !EXE_EDIT) html += '<p class="note">Nothing has been edited. You can edit a string list, a picture, a frame or a sound from its view in “Data”, or add a mod from “Mods”.</p>';
+  let html = '<h1>Changes</h1><p class="sub">Everything you have edited. The edits live only in this page. Reloading it throws them away. Saving a changed archive writes a new .MHK file. The edited resources are added at the end, the index points to them, and every other byte stays the same.</p>';
+  if (!EDITS.size && !EXE_EDIT) html += '<p class="note">Nothing has been edited. You can edit a string list, a picture, a frame, or a sound from its view in “Data”. “Mods” adds a mod.</p>';
   for (const [name, e] of EDITS) {
     html += `<h2 class="h">${esc(name)}</h2><ul>` + [...e.changes.values()].map(c => `<li><a href="#${name}/${mohawkTagLabel(c.tag)}/${c.id}">${mohawkTagLabel(c.tag)} ${c.id}</a> <span class="note">${esc(c.what)}</span> <a data-undo="${esc(name)}|${esc(c.tag)}|${c.id}">undo</a></li>`).join('') + '</ul>'
       + `<div class="tools"><button data-save="${esc(name)}">Save ${esc(name)}.MHK</button> <a data-undo="${esc(name)}||">undo all</a></div>`;
@@ -78,7 +78,7 @@ function renderChanges() {
 /* ---- editing a string list --------------------------------------------------- */
 
 function editStrings(entry, id, lines, body) {
-  body.innerHTML = '<p class="sub">Each string as the game shows it. You cannot add or remove strings, and the characters are Windows-1252.</p>'
+  body.innerHTML = '<p class="sub">Each string as the game shows it. You cannot add or remove strings. The characters are Windows-1252.</p>'
     + lines.map((t, i) => `<div class="field"><span class="label">${i}</span><textarea data-line="${i}" rows="${Math.min(12, 1 + Math.ceil(t.length / 70) + (t.match(/\n/g) || []).length)}">${esc(t)}</textarea></div>`).join('')
     + '<div class="tools"><button id="strApply">Apply</button> <button id="strCancel">Cancel</button> <span id="strErr" class="bad"></span></div>';
   $('strCancel').addEventListener('click', () => route());
@@ -147,7 +147,7 @@ function pictureTools(entry, arc, id, pf, box) {
     const im = await editReadImage(file), old = decodeTbmp(arc.get('tBMP', id));
     const px = zbQuantize(im.data, zbImportPalette(im.data, pf.pal, [...editAllowed(entry, pf)], false), editAllowed(entry, pf), false);
     editApply(entry, 'tBMP', id, zbPictureBytes(im.width, im.height, px),
-      `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? `, now ${im.width} × ${im.height} instead of ${old.width} × ${old.height}` : ''}`);
+      `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? ` (now ${im.width} × ${im.height} instead of ${old.width} × ${old.height})` : ''}`);
   });
 }
 
@@ -201,7 +201,7 @@ function renderMods() {
     + `<label><input type="checkbox" id="modGreen"${MOD_FLEEN.green || MOD_FLEEN.whole ? ' checked' : ''}${MOD_FLEEN.whole ? ' disabled' : ''}> Lime green</label>`
     + `<label class="btn">${MOD_EXE ? esc(MOD_EXE.name) : 'ZOOMBINI.EXE…'}<input type="file" id="modExe" accept=".exe,.EXE" hidden></label>`
     + `<button id="modApply"${missing.length ? ' disabled' : ''}>Apply</button> <span id="modErr" class="bad"></span></div>`
-    + `<p class="note">${MOD_EXE ? 'The big Zoombini on Zoombini Isle is modded too.' : 'Without the EXE, every Zoombini except the big one on Zoombini Isle is modded. ZOOMBINI.EXE is in the game’s folder after installing, or on the CD.'}</p>`
+    + `<p class="note">${MOD_EXE ? 'The big Zoombini on Zoombini Isle is modded too.' : 'Every Zoombini except the big one on Zoombini Isle is modded. That one needs ZOOMBINI.EXE. It is in the game’s folder after installing or on the CD.'}</p>`
     + '<div id="modShow"></div>';
   view.innerHTML = html;
   wireFetchAll(view);
@@ -241,7 +241,7 @@ function modShow() {
   const z = ARCHIVES.get('ZOOMBINI'), arc = z && z.bytes ? openedArchive(z) : null, box = $('modShow');
   if (!arc || !box) return;
   const sheet = zbSnoidSheet(arc), pal = paletteFor(z, arc, 1 << 30).pal;
-  box.innerHTML = `<p class="note">${isEdited('ZOOMBINI', 'tBMP', 3000) ? 'This is how they look in the archive now.' : 'This is how they look in the archive now, without the mod.'}</p>`;
+  box.innerHTML = `<p class="note">${isEdited('ZOOMBINI', 'tBMP', 3000) ? 'This is how they look in the archive now.' : 'This is how they look in the archive now with no mod.'}</p>`;
   const row = document.createElement('div');
   row.className = 'trow';
   for (let v = 1; v <= 5; v++) {
@@ -262,7 +262,7 @@ const RECOLOR_PARTS = [['hair', 'Hair'], ['eyes', 'Eyes'], ['nose', 'Nose'], ['f
 function recolorMaker(box) {
   const z = ARCHIVES.get('ZOOMBINI'), p = ARCHIVES.get('PICKER');
   const missing = [z, p].filter(e => e && !e.bytes);
-  box.innerHTML = '<h2 class="h">Recolor a part</h2><p>Change one part’s colors everywhere the game draws it, including walking, tumbling, far away and in the builder. For example, Shaggy hair could be red. Only colors that every scene shares can be used, so one family of shades replaces another, with each shade matched by brightness.</p>';
+  box.innerHTML = '<h2 class="h">Recolor a part</h2><p>Change one part’s colors everywhere the game draws it. That includes walking, tumbling, far away, and in the builder. One example is red Shaggy hair. Only colors that every scene shares can be used. One family of shades replaces another. Each shade is matched by brightness.</p>';
   if (!z || !p) { box.innerHTML += '<p class="note">This needs zoombini.mhk and picker.mhk, and they are not both open.</p>'; return; }
   if (missing.length) {
     box.innerHTML += `<p class="note">${missing.map(e => e.name.toLowerCase() + '.mhk').join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not open. <a id="rcFetch">Fetch ${missing.length > 1 ? 'them' : 'it'}</a>${missing.includes(z) ? ' (24 MB)' : ''}.</p>`;

@@ -336,7 +336,7 @@ function helpHtml(name) {
   if (!a || !a.help) return '';
   const z = ARCHIVES.get('ZOOMBINI');
   const arc = z && z.bytes ? openedArchive(z) : null;
-  if (!arc) return `<p class="note">Its help text is in ZOOMBINI, STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? '. Open <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
+  if (!arc) return `<p class="note">Its help text is in ZOOMBINI as STRL ${a.help}${a.help >= 1700 ? '–' + (a.help + 60) : ''}${z ? '. Open <a href="#ZOOMBINI">ZOOMBINI</a> to read it here' : ''}.</p>`;
   let html = '<h2 style="font-size:15px;margin:22px 0 6px">The help</h2><div class="strings">';
   for (let k = 0; k < 4; k++) {
     const id = a.help + k * 20;
@@ -460,7 +460,7 @@ function showFrame(f, k, pal, regs) {
     g.strokeStyle = '#ff5c7a'; g.lineWidth = 2;
     g.beginPath(); g.moveTo(x - 8, y); g.lineTo(x + 8, y); g.moveTo(x, y - 8); g.lineTo(x, y + 8); g.stroke();
   }
-  focus.innerHTML = `<p class="note">Frame ${k}: ${f.width} × ${f.height}${reg ? `, with its registration point (${reg.x}, ${reg.y}) marked` : ''}.</p>`;
+  focus.innerHTML = `<p class="note">Frame ${k}: ${f.width} × ${f.height}${reg ? `. Its registration point (${reg.x}, ${reg.y}) is marked` : ''}.</p>`;
   const wrap = document.createElement('div');
   wrap.className = 'picture';
   wrap.appendChild(c);
@@ -482,9 +482,9 @@ function showSound(entry, arc, id, bytes, body) {
   const wav = wavFromPcmBytes(w.samples, w.rate, w.bits, w.channels);
   const url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
   const secs = w.sampleCount / w.rate;
-  const loop = w.loopCount ? `It loops${w.loopCount === 0xffff ? '' : ' ' + w.loopCount + ' times'}, from ${(w.loopStart / w.rate).toFixed(2)} s to ${(w.loopEnd / w.rate).toFixed(2)} s.` : '';
+  const loop = w.loopCount ? `It loops${w.loopCount === 0xffff ? '' : ' ' + w.loopCount + ' times'} from ${(w.loopStart / w.rate).toFixed(2)} s to ${(w.loopEnd / w.rate).toFixed(2)} s.` : '';
   const cues = scriptsCueing(arc, id);
-  body.innerHTML = `<p class="sub">${secs.toFixed(2)} s, ${w.rate.toLocaleString()} Hz, ${w.bits}-bit, ${w.channels === 1 ? 'mono' : w.channels + ' channels'}${w.encoding ? ', encoding ' + w.encoding : ''}. ${loop}</p>`
+  body.innerHTML = `<p class="sub">${secs.toFixed(2)} s long. ${w.rate.toLocaleString()} Hz, ${w.bits}-bit, and ${w.channels === 1 ? 'mono' : w.channels + ' channels'}.${w.encoding ? ' Its encoding is ' + w.encoding + '.' : ''} ${loop}</p>`
     + `<div class="tools"><audio controls src="${url}"${w.loopCount ? ' loop' : ''}></audio><button id="save">Save as WAV</button></div>`
     + (cues.length ? `<p class="note">Cued by ${cues.map(c => `<a href="${link(entry.name, c.tag, c.id)}">${c.tag} ${c.id}</a>`).join(', ')}.</p>` : '');
   $('save').addEventListener('click', () => downloadBlob(wav, `${entry.name.toLowerCase()}-snd-${id}.wav`));
@@ -495,9 +495,9 @@ function showMidi(entry, id, bytes, body) {
   const m = parseMohawkMidi(bytes);
   body.innerHTML = `<p class="sub">A standard MIDI file (format ${m.header.format}) with ${plural(m.header.tracks, 'track')} and ${m.header.division} ticks per beat. Its chunks are ${zbWordsOr(m.chunks.map(esc), 'and')}.</p>`
     + `<div class="tools"><button id="save">Save as .mid</button></div><div id="tune" class="tools"></div>`
-    + `<p class="note">On a Mac the game played its music through QuickTime’s instruments. On Windows it used the computer’s MIDI device. “Play” here uses the instruments from QuickTime 3, which has more of them than a Mac had in 1996.</p>`
-    + (m.programs ? `<p class="note">Its Prg# chunk, which is not part of the MIDI standard, is <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code>.</p>` : '')
-    + `<p class="note">${entry.name === 'MIDIMAC' ? 'Written for the Mac and QuickTime' : 'Written for Windows'}, according to ScummVM’s branch.</p>`;
+    + `<p class="note">On a Mac the game played its music through QuickTime’s instruments. On Windows it used the computer’s MIDI device. “Play” here uses QuickTime 3’s instruments. QuickTime 3 has more of them than a Mac had in 1996.</p>`
+    + (m.programs ? `<p class="note">Its Prg# chunk is <code>${[...m.programs].map(b => b.toString(16).padStart(2, '0')).join(' ')}</code>. The MIDI standard has no such chunk.</p>` : '')
+    + `<p class="note">ScummVM’s branch reads it as written for ${entry.name === 'MIDIMAC' ? 'the Mac and QuickTime' : 'Windows'}.</p>`;
   $('save').addEventListener('click', () => downloadBlob(m.file, `${entry.name.toLowerCase()}-tmid-${id}.mid`));
   tunePlayer(entry, openedArchive(entry), id, $('tune'));
 }
@@ -522,7 +522,7 @@ function showStrings(entry, id, bytes, body) {
   let what = '';
   if (entry.name === 'ZOOMBINI') {
     const base = id - (id % 100), place = Object.keys(ZB_ARCHIVES).find(k => ZB_ARCHIVES[k].help === base);
-    if (place && id % 20 === 0) what = `The help for <a href="#${place}">${esc(ZB_ARCHIVES[place].place)}</a>${base >= 1700 ? ', level ' + (id % 100 / 20 + 1) : ''}.`;
+    if (place && id % 20 === 0) what = `The help for <a href="#${place}">${esc(ZB_ARCHIVES[place].place)}</a>${base >= 1700 ? ' at level ' + (id % 100 / 20 + 1) : ''}.`;
     else if (id === 2900) what = 'The credits.';
   }
   body.innerHTML = `<p class="sub">${plural(s.length, 'string')}. ${what}</p><div class="tools"><button id="strEdit">Edit</button></div><div class="strings">${s.map((t, i) => `<p><b>${i}</b>${esc(t)}</p>`).join('')}</div>`;
@@ -545,7 +545,7 @@ function showCursor(entry, id, bytes, body) {
   }
   g.strokeStyle = '#ff5c7a'; g.lineWidth = 2;
   g.strokeRect(c.hotX * z + 1, c.hotY * z + 1, z - 2, z - 2);
-  body.innerHTML = `<p class="sub">16 × 16 pixels, with the hot spot at (${c.hotX}, ${c.hotY}) outlined. Black is the image, and white is the mask around it.</p><div id="cur" class="picture"></div>`;
+  body.innerHTML = `<p class="sub">16 × 16 pixels. The hot spot at (${c.hotX}, ${c.hotY}) is outlined. Black is the image and white is the mask around it.</p><div id="cur" class="picture"></div>`;
   $('cur').appendChild(cv);
 }
 
@@ -556,9 +556,9 @@ function showWalks(entry, arc, id, body) {
   const paths = arc.has('PATH', id) ? parseWalkPaths(arc.get('PATH', id), nodes.length) : [];
   const room = roomPicture(arc, entry.name);
   body.innerHTML = `<p class="sub"><a href="${link(entry.name, 'NODE', id)}">NODE ${id}</a> has ${plural(nodes.length, 'waypoint')}. `
-    + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a> has ${plural(paths.length, 'path')}, each with up to 24 waypoints. They are drawn over the room${room != null ? ` (<a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>)` : ''}.</p>`
+    + `<a href="${link(entry.name, 'PATH', id)}">PATH ${id}</a> has ${plural(paths.length, 'path')} of up to 24 waypoints each. They are drawn over the room${room != null ? ` (<a href="${link(entry.name, 'tBMP', room)}">tBMP ${room}</a>)` : ''}.</p>`
     + '<div id="walker"></div><div id="walk" class="picture"></div>'
-    + '<table class="plain" style="margin-top:14px"><tr><th>path</th><th>waypoints, in order</th></tr>'
+    + '<table class="plain" style="margin-top:14px"><tr><th>path</th><th>waypoints in order</th></tr>'
     + paths.map((p, i) => `<tr><td style="color:${WALK_COLORS[i % WALK_COLORS.length]}">${i}</td><td class="mono">${p.filter(w => w).join(' → ') || '(empty)'}</td></tr>`).join('')
     + '</table><table class="plain"><tr><th>waypoint</th><th>x</th><th>y</th></tr>'
     + nodes.map((n, i) => `<tr><td>${i + 1}</td><td class="num">${n.x}</td><td class="num">${n.y}</td></tr>`).join('') + '</table>';
@@ -663,7 +663,7 @@ function showRegs(entry, arc, id, bytes, body) {
   let html = `<p class="sub">${plural(v.length, 'number')}.`;
   if (xs) {
     const x = Math.min(id, partner);
-    html += ` Together with <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a>, these are the registration points for a sheet of ${xs.length - 1} frames. REGS ${x} has the x values and REGS ${x + 1} the y values, starting from entry 1 (entry 0 is ${xs[0]}, ${ys[0]}).</p>`;
+    html += ` These and <a href="${link(entry.name, 'REGS', partner)}">REGS ${partner}</a> are the registration points for a sheet of ${xs.length - 1} frames. REGS ${x} has the x values and REGS ${x + 1} the y values. They start from entry 1 (entry 0 is ${xs[0]}, ${ys[0]}).</p>`;
     html += '<div class="regs">' + [...xs].slice(1).map((vx, i) => `${i}: ${vx}, ${ys[i + 1]}`).join('<br>') + '</div>';
   } else {
     html += '</p><div class="regs">' + [...v].map((n, i) => `${i}: ${n}`).join('<br>') + '</div>';
@@ -681,8 +681,8 @@ function showScript(entry, arc, tag, id, bytes, body) {
     if (z && z.arc && z.arc.has('\0SND', snd)) return `<a href="${link('ZOOMBINI', '\0SND', snd)}">ZOOMBINI SND ${snd}</a>`;
     return `SND ${snd}`;
   };
-  let sub = `${plural(s.frameCount, 'frame')}, one per tick.`;
-  if (tag === 'SCRS') sub += s.layout === -1 ? ' A table of positions, not an animation (header 0xffff).'
+  let sub = `${plural(s.frameCount, 'frame')} (one per tick).`;
+  if (tag === 'SCRS') sub += s.layout === -1 ? ' A table of positions rather than an animation (header 0xffff).'
     : ` The five layers in the order they are drawn (header ${s.layout}) are ${zbWordsOr(order, 'and')}.`;
   let html = `<p class="sub">${sub}</p>${tag === 'SCRS' && ZB_SNOID_KIND_OF_LAYOUT[s.layout] ? '<div id="snoid"></div>' : tag === 'SCRB' ? '<div id="feature"></div>' : ''}`
     + '<table class="plain frames"><tr><th>frame</th><th>records: shape (x, y)</th><th>event</th><th>sound</th></tr>';
@@ -783,7 +783,7 @@ function snoidPlayer(entry, arc, id, script, box) {
     g.drawImage(frames[at], (-movie.ox - x0) * zoom, (-movie.oy - y0) * zoom, movie.width * zoom, movie.height * zoom);
     $('snoidAt').value = at;
     const t = ticks[at];
-    $('snoidTick').textContent = `tick ${at}${t.facing ? ', turned' : ''}${t.layout !== script.layout ? `, order ${t.layout}` : ''}`;
+    $('snoidTick').textContent = `tick ${at}${t.facing ? ' (turned)' : ''}${t.layout !== script.layout ? ` in order ${t.layout}` : ''}`;
   };
   const sound = () => {
     if (!SNOID_PICK.sound) return;

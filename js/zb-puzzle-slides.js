@@ -74,7 +74,7 @@
    0x44814b, 0x448619, 0x44923e and 0x449338; the chains of levels 1 and 2
    are judged at 0x443f25, and the links of levels 3 and 4 at 0x445697,
    starting from 19, 55 and 91 (0x4453f8 on) or from the stones in
-   0x4a3d3c; the walks round the rings and the network between those calls
+   0x4a3d3c; the walks around the rings and the network between those calls
    were not compared instruction by instruction. The Mac program's
    SOLVETHEPUZZLE is the typed cheat's playback of the placement the level
    4 deal records, not part of the deal. Every step, loop order and draw is as ScummVM has
@@ -823,7 +823,7 @@ function zbSlidesJudge(f, placement) {
       }
     };
     if (f.level === 3) {
-      // propagateMatchChain: round a ring each way from its first stone.
+      // propagateMatchChain: around a ring each way from its first stone.
       const ring = (c, a, b, e) => {
         const link = L(c, a);
         if (link < 0) return;

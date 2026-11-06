@@ -312,7 +312,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
       const s0 = sol.solutions[0], through = [];
       for (let k = 0; k < 4; k++) {
         const m = s0.steps.map(x => x.match(/^Zoombinis? (.+?) go(?:es)? into the (.+?) tunnel /)).find(x => x && x[2] === S.ZB_TUNNELS_ENTRANCES[k]);
-        if (m) for (const i of m[1].split(/, | and /).map(x => Number(x) - 1)) {
+        if (m) for (const i of m[1].split(/, and |, | and /).map(x => Number(x) - 1)) {
           if (judgeOf(level, d.state.guardRules, d.state.level1BlockedPairToggle, band[i], k) != null) { fail(`level ${level}: the solution sends Zoombini ${i + 1} into a tunnel that turns it back`); break; }
           through.push(i);
         }

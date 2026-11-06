@@ -239,7 +239,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
       const again = P.edit(level, band, st, v, arc);
       if (!same(valuesOf(P.form(level, band, again, arc)), v)) { wbad(`level ${level}: the form does not give back its values`); break; }
       if (!same([again.padPattern, again.padShape, again.padColor, again.toads.map(t => t.tattooIdx)], [st.padPattern, st.padShape, st.padColor, st.toads.map(t => t.tattooIdx)])) { wbad(`level ${level}: dealing again with the choices as dealt deals another pond`); break; }
-      // A changed choice: two patterns' tattoos swapped, the maps left as laid.
+      // A changed choice: two patterns' tattoos swapped, the maps left as placed.
       const v2 = Object.assign({}, v, { transform: 'none', tattoos: [v.tattoos[1], v.tattoos[0], ...v.tattoos.slice(2)] });
       if (level === 1) v2.spared = [...Array(12).keys()].map(k => k + 1).slice(0, S.ZB_LILLY_ROUTES_REQUIRED[n]);
       const e2 = P.edit(level, band, st, v2, arc);
@@ -269,7 +269,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
           }
           m = /^Toad (\d+), with .* tattoo, from row (\d+), carries Zoombinis? ([\d, and]+)\.$/.exec(line);
           if (m) {
-            const t = st.toads[m[1] - 1], who = m[3].split(/, | and /).map(x => x - 1);
+            const t = st.toads[m[1] - 1], who = m[3].split(/, and |, | and /).map(x => x - 1);
             if (!t || !S.zbLillyCrosses(pads, t.attrType, t.attrValue, m[2] - 1)) wbad(`level ${level}: "${line}", and it has no way from that row`);
             riders.set(m[1], (riders.get(m[1]) || 0) + who.length);
             crossed.push(...who);

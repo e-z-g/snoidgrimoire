@@ -67,13 +67,13 @@ const VIEWS = [
   ['place=TOWN&level=3', `/Zoombiniville/.test(${panel}) && JPICS.get('TOWN/1200') instanceof HTMLCanvasElement && !JMOVING`],
   ['journey&place=NET&level=4', `JVIEW.place === null && /tBMP 5001 in SHPL 5001/.test(${panel}) && document.getElementById('jlevel').value === '4'`],
   ['journey', `/Mountains of Despair/.test(${panel}) && JDRAWN.length === 16`],
-  ['place=BRIDGE&level=2&deal=12345&band=11', `/The puzzle, level 2/.test(${panel}) && document.querySelectorAll('#jpanel .dealt table.band tr').length === 12 && !document.querySelector('#jpanel .bad') && !JMOVING`],
+  ['place=BRIDGE&level=2&deal=12345&band=11', `/The puzzle at level 2/.test(${panel}) && document.querySelectorAll('#jpanel .dealt table.band tr').length === 12 && !document.querySelector('#jpanel .bad') && !JMOVING`],
   // A puzzle taken apart: the answer known, and the strategy walked two steps in.
   ['solve=BRIDGE&level=2&deal=12345', `/of 16 can cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('#sdiagram svg image').length >= 16 && document.querySelectorAll('.szb').length === 16 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=3&deal=77&size=9&view=unknown&path=0.1', `/are guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.walk .crumbs a').length === 3 && document.querySelector('#sdiagram svg') && !document.querySelector('#spanel .bad')`],
   // The scene: the place's picture with the band waiting, near and far off.
   // VVH Max: a search for the hardest deal, which the ferry
-  // ends at once (it deals nothing at random), and a dealt one linked.
+  // ends immediately (it deals nothing at random), and a dealt one linked.
   ['solve=FERRY&level=max&size=12', `/&deal=\\d+/.test(location.hash) && /nothing in it is drawn at random/.test(document.getElementById('spanel').textContent) && document.querySelectorAll('.szb').length === 12 && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=5&deal=4242&size=9', `/level=max/.test(location.hash) && /level 4’s rules/.test(document.getElementById('spanel').textContent) && /guaranteed to cross/.test(document.getElementById('spanel').textContent) && document.getElementById('slevel').value === '5' && !document.querySelector('#spanel .bad')`],
   ['solve=BRIDGE&level=1&deal=5&stage=scene', "document.querySelector('#sdiagram canvas.scene') && /waits at Allergic Cliffs/.test(document.getElementById('scaption').textContent) && /^Scenario›Puzzles›Allergic Cliffs$/.test(document.getElementById('crumbs').textContent)"],
@@ -100,14 +100,14 @@ const VIEWS = [
   ['scenario/places', "document.querySelectorAll('#view table tr').length === 17 && document.querySelector('#views a.on').dataset.view === 'scenario'"],
   ['scenario/places/PIZZA', "document.querySelector('#roomPic canvas') && document.querySelectorAll('#view a[data-script]').length === 224 && document.querySelectorAll('#view button.play').length > 10 && /^Scenario›Places›Pizza Pass$/.test(document.getElementById('crumbs').textContent) && (document.querySelector('#view a[data-script]').dispatchEvent(new Event('pointerenter')), /SCRB 7000 has 33 ticks/.test(document.getElementById('roomNote').textContent))"],
   ['CAVES/SCRB/9025', "document.querySelector('#feature .feature canvas') && /tBMP 9025/.test(document.getElementById('feature').textContent)"],
-  ['ZOOMBINI/SCRB/1', "document.querySelector('#feature .feature canvas') && /tBMP 1,/.test(document.getElementById('feature').textContent)"],
+  ['ZOOMBINI/SCRB/1', "document.querySelector('#feature .feature canvas') && /tBMP 1\\./.test(document.getElementById('feature').textContent)"],
   ['scenario/puzzles', "document.querySelectorAll('#view details.sec').length === 12"],
   ['scenario/snoids', "document.querySelectorAll('#view .trow canvas').length === 20 && document.querySelectorAll('#view .ids a').length >= 717"],
   ['scenario/town', "/Zoombiniville/.test(document.getElementById('view').textContent)"],
   ['scenario/screenshot', "!!document.getElementById('shotDrop') && !!document.getElementById('shotFile')"],
   ['components/pictures', "document.querySelectorAll('#view .card').length === 65 && document.querySelector('#view .card .pic canvas')"],
   ['components/sheets', "document.querySelectorAll('#view .card').length === 112 && document.querySelector('#views a.on').dataset.view === 'components'"],
-  ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice, kind/.test(document.getElementById('view').innerHTML)"],
+  ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice of kind/.test(document.getElementById('view').innerHTML)"],
   ['components/music', "document.querySelectorAll('#view table tr').length === 37"],
   // The intro from the CD image, its first frame, then frame 701 picked with the slider.
   ['components/movies', "document.getElementById('movieCanvas') && /frame 1 of 1392/.test(document.getElementById('movieFrame').textContent) && document.querySelectorAll('#movieList [data-movie]').length === 4 && (() => { const r = document.getElementById('movieAt'); r.value = 700; r.dispatchEvent(new Event('input')); const d = document.getElementById('movieCanvas').getContext('2d').getImageData(0, 0, 640, 480).data; let lit = 0; for (let i = 0; i < d.length; i += 4) if (d[i] | d[i + 1] | d[i + 2]) lit++; return /frame 701 of 1392/.test(document.getElementById('movieFrame').textContent) && lit > 10000; })()"],
@@ -238,11 +238,11 @@ const VIEWS = [
   ['ZOOMBINI/CURS/1', "document.querySelector('#cur canvas')"],
   ['HOTEL/NODE/1000', "document.querySelector('#walk canvas') && /21 waypoints/.test(document.getElementById('view').textContent) && document.querySelector('#walker select') && (document.getElementById('walkGo').click(), true)"],
   ['FLEENS/REGS/4000', "/registration points for a sheet of 740 frames/.test(document.getElementById('view').textContent)"],
-  ['FLEENS/SCRS/4000', "document.querySelectorAll('.frames tr').length > 1 && /body, feet, nose, eyes and hair/.test(document.getElementById('view').textContent)"],
+  ['FLEENS/SCRS/4000', "document.querySelectorAll('.frames tr').length > 1 && /body, feet, nose, eyes, and hair/.test(document.getElementById('view').textContent)"],
   ['PICKER/SCRB/1000', "document.querySelectorAll('.frames tr').length > 1"],
   // Snoid scripts played: a Zoombini walking, a Fleen running, a tumble, a walk over its room.
   ['ZOOMBINI/SCRS/112', "document.querySelector('#snoid canvas') && /tick [1-9]/.test(document.getElementById('snoidTick').textContent) && /made for Zoombinis with roller skates/.test(document.getElementById('snoid').textContent)"],
-  ['FLEENS/SCRS/4028', "document.querySelector('#snoid canvas') && /A Fleen,/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
+  ['FLEENS/SCRS/4028', "document.querySelector('#snoid canvas') && /A Fleen:/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
   ['FLEENS/SCRS/6000', "document.querySelector('#snoid canvas') && /tumbling/.test(document.getElementById('snoid').textContent) && !document.querySelector('#snoid .warn')"],
   ['BRIDGE/SCRS/2002', "document.querySelector('#snoid canvas') && document.getElementById('snoidRoom') && !document.querySelector('#snoid .warn')"],
   ['BRIDGE', "/Allergic Cliffs/.test(document.getElementById('view').textContent) && /level 4/.test(document.getElementById('view').textContent)"],
@@ -257,7 +257,7 @@ const VIEWS = [
     return isEdited('MAZE2', 'REGS', id) && zbMaze2ParseLayout(id, parseRegs(solveOpen('MAZE2').get('REGS', id))).cells.some(c => c.row === 6 && c.col === 6 && c.type === 3) && /edited/.test(document.getElementById('scaption').textContent);
   })()`],
   ['changes', `(() => { if (EDITS.has('MAZE2')) { editUndo(ARCHIVES.get('MAZE2')); route(); } return !EDITS.has('MAZE2') && /Changes/.test(document.getElementById('view').textContent); })()`],
-  ['solve=LILLY&level=2&deal=5&stage=layout', `document.querySelectorAll('#sdiagram [data-pad]').length === 144 && document.querySelectorAll('#sdiagram [data-lmap]').length === 3 && /route 1: \\d+ pads, across/.test(document.getElementById('sdiagram').textContent)`],
+  ['solve=LILLY&level=2&deal=5&stage=layout', `document.querySelectorAll('#sdiagram [data-pad]').length === 144 && document.querySelectorAll('#sdiagram [data-lmap]').length === 3 && /route 1: \\d+ pads \\(across/.test(document.getElementById('sdiagram').textContent)`],
   // Remembered in this browser: every archive the CD image gave, at its size
   // on the disc; then opened again from there alone, as a visit with no ?src is.
   ['journey', `(() => {

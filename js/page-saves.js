@@ -44,7 +44,7 @@ function renderSaves() {
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><span>Saves</span>';
   renderSide({ name: '#saves' }, { archive: null, tag: null, id: null });
   const view = $('view');
-  let html = '<h1>Saves</h1><p class="sub">Saved games are the files ZOOM0000.TXT, ZOOM0001.TXT and so on, in the game’s folder after installing. Their names are in ZOOMBINI.WHO, in the same folder. The files are read here, and nothing leaves the page.</p>'
+  let html = '<h1>Saves</h1><p class="sub">Saved games are the files ZOOM0000.TXT, ZOOM0001.TXT, and so on. They are in the game’s folder after installing. Their names are in ZOOMBINI.WHO in the same folder. The files are read here. Nothing leaves the page.</p>'
     + '<div class="tools"><label class="btn">Open…<input type="file" id="saveFiles" multiple hidden></label>'
     + (ROSTER ? ` <span class="note">roster: ${ROSTER.map(e => `${esc(e.name)} (${esc(e.file)})`).join(', ') || 'empty'}</span>` : '') + '</div>';
   if (!SAVES.length) html += '<p class="note">No saved games are open.</p>';
@@ -53,7 +53,7 @@ function renderSaves() {
   const zb = e => sprites ? solveZoombiniImg(e.traits) : '';
   for (const s of SAVES) {
     const f = s.state;
-    html += `<h2 class="h">${esc(saveName(s))}</h2><p class="note">${esc(f.layout.name)} · at ${esc(f.page.name)}${f.lastPage.key ? `, last at ${esc(f.lastPage.name)}` : ''} · ${plural(f.zmbGeneratedCount, 'Zoombini')} made</p>`;
+    html += `<h2 class="h">${esc(saveName(s))}</h2><p class="note">${esc(f.layout.name)} · at ${esc(f.page.name)}${f.lastPage.key ? ` (last at ${esc(f.lastPage.name)})` : ''} · ${plural(f.zmbGeneratedCount, 'Zoombini')} made</p>`;
     // Where every Zoombini is.
     const groups = [['band', 'The band'], ['PICKER', 'Waiting on Zoombini Isle'], ['BASECAMP', 'At Shelter Rock'], ['BCTWO', 'At Shade Tree'], ['TOWN', 'In Zoombiniville']];
     for (const [k, title] of groups) {
@@ -66,7 +66,7 @@ function renderSaves() {
       + f.routes.map((r, k) => `<tr><td>${esc(r.name)}</td><td><select data-save-level="${esc(s.file)}" data-route="${k}" title="The route’s level">${ZB_LEVELS.map((n, i) => `<option value="${i}"${i + 1 === r.level ? ' selected' : ''}>${i + 1}: ${esc(n)}</option>`).join('')}</select></td><td>${r.places.map(p => `${esc(p.name)} <span class="note">${p.left.length ? p.left.join(', ') : '–'}</span>`).join(' · ')}</td></tr>`).join('') + '</table></div>';
     html += `<p><b>The town</b> <span class="note">${plural(f.population, 'Zoombini')}, ${plural(f.rewards.length, 'reward building')}</span></p>`;
     const changed = s.state.routeLevels.some((v, k) => v !== s.was[k]);
-    if (changed) html += `<p class="note">A route’s level has been changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> saves a copy with only those values changed. Before putting it in the game’s folder, keep a copy of the old file. The game has not been tested with a save edited here.</p>`;
+    if (changed) html += `<p class="note">A route’s level has been changed (it was ${s.was.map(v => v + 1).join(', ')}). <button data-save-out="${esc(s.file)}">Save as ${esc(s.file)}</button> saves a copy with only those values changed. Keep a copy of the old file before putting it in the game’s folder. The game has not been tested with a save edited here.</p>`;
     html += `<div class="tools"><button data-save-map="${esc(s.file)}">The map’s roads</button>`
       + (ARCHIVES.has('TOWN') ? ` <a class="btn" href="#town&people=${f.population}&rewards=${f.rewards.length}">The town</a>` : '') + '</div>';
   }

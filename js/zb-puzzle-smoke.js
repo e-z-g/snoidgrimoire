@@ -644,7 +644,7 @@ function zbSmokeSolve(level, band, state) {
           ...sources.map((q, s) => `${pair ? (s ? 'The second, ' : 'The first, ') : ''}${zbZoombiniWords(band[s])}, and ${pair ? 'its' : 'the'} reflection both look ${zbZoombiniWords(zbSmokeObj(zbSmokeThrough(q, p.left.map(i => filters[i]))))} in the center crystal.`),
         ],
         crosses: all,
-        diagram: zbSmokeDiagram(level, band, state, { ride: pair ? [0, 1] : [0], placement: p, caption: `The first ride${pair ? ', two at once' : ''}, with ${k} filter${k === 1 ? '' : 's'}` }),
+        diagram: zbSmokeDiagram(level, band, state, { ride: pair ? [0, 1] : [0], placement: p, caption: `The first ride${pair ? ', two together' : ''}, with ${k} filter${k === 1 ? '' : 's'}` }),
       };
     }),
     notes,

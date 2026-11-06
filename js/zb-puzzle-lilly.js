@@ -27,8 +27,8 @@
    each pad with the value of whichever route of each family covers it,
    or a value at random where none does. So each toad has one route laid
    for it, and more by chance. Then it cuts routes, by painting a route's
-   pad with the next route's value of the same family: at level 1 all but
-   half the band (rounded up) of the twelve routes may be cut, so that
+   pad with the next route's value of the same family: at level 1 the twelve routes may be
+   cut until half the band (rounded up) of them are left, so that
    every Zoombini can cross by the routes left whole, two to a toad; at
    levels 2 to 4 every route may be cut, and a wand that swaps two pads
    mends them. A pad in the third to twelfth row and column is cut with
@@ -474,7 +474,7 @@ function zbLillyRouteName(k) {
 }
 function zbLillyTattooName(t) { return ZB_LILLY_VALUE_WORDS[ZB_LILLY_FAMILY[ZB_LILLY_TATTOO_TYPE[t]]][ZB_LILLY_TATTOO_VALUE[t]]; }
 
-/* The pads as a copy, and a swap of two of them, all three things at once
+/* The pads as a copy, and a swap of two of them, all three things together
    as the wand swaps them (swapCellsAndUpdateRunners). */
 function zbLillyCopyPads(pads) {
   return { pattern: pads.pattern.map(r => r.slice()), shape: pads.shape.map(r => r.slice()), color: pads.color.map(r => r.slice()) };

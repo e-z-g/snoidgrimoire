@@ -3,7 +3,7 @@
 //   - every SCRB that draws a shape has a sheet at or below its number, and
 //     draws no shape that sheet lacks;
 //   - where a sheet is numbered at the script's hundred (animate.py's
-//     render_scrb rule), it is that sheet, but for the seven with a sheet
+//     render_scrb rule), it is that sheet, except for the seven with a sheet
 //     numbered between, which are numbered from it and use only its shapes;
 //   - the counts are the ones zb-feature.js states: 1,796 scripts, 1,789
 //     drawing something, 192 of them with no sheet at their hundred, seven

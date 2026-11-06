@@ -18,7 +18,7 @@
    level and band: 1510 + 5 x (level - 1) + (band - 16), where a band of
    fewer than 16 (or more than 20) is given the sixteen-seat raft. The
    script's first frame places the seats (shapes 1-3, three looks of the
-   same 44 x 36 seat), its second the cargo round them; the deal reads
+   same 44 x 36 seat), its second the cargo around them; the deal reads
    them from the archive it is given. Which seats are
    next to which is worked out from the seats' rectangles: seat K's
    rectangle is stretched by h, half its height minus 2 (16 pixels), top

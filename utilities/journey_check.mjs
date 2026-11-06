@@ -78,7 +78,7 @@ for (const name of ['RODMAP', 'MAP']) {
   // The roads: the route and the order from ScummVM's names for the shapes,
   // and the ends from the map itself -- the two icons that come nearest the
   // road's painted pixels (not its box: the road into the Mirror Machine
-  // bends round the Bubblewonder Abyss's icon), each within a few pixels.
+  // bends around the Bubblewonder Abyss's icon), each within a few pixels.
   let roads = 0;
   for (const r of m.roads) {
     const word = [...shapeOf.entries()].find(([, v]) => v === r.shape);

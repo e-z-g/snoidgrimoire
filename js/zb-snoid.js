@@ -314,7 +314,7 @@ function zbSnoidSound(event, z, random = Math.random) {
    slope, s = 1024 x (how far up the screen) / |dx|, ±1410 straight up or
    down: 0 at s <= -1409, 1 to -332, 2 below 332, 3 below 1409, else 4. So 0
    and 1 come down the screen toward the viewer, 2 goes across, and 3 and 4
-   go up it, away (which is why their scripts, 108-109 and the like, draw the
+   go up it, away (which is why their scripts, 108-109 and others like them, draw the
    nose behind the body: layout 1). The script is ZOOMBINI SCRS 100 + 5 x
    feet + direction, turned round when going left, as it was when going
    straight up or down; its records are offsets from where the Zoombini is.

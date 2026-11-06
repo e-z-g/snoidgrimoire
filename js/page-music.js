@@ -86,7 +86,7 @@ function tunePlayer(entry, arc, id, into) {
     }
     const parts = t.tune.parts.map(p => QT_LIB.has(p.instrument) ? QT_LIB.get(p.instrument).name : 'instrument ' + p.instrument);
     into.innerHTML = `<audio controls autoplay src="${t.url}"></audio> <button class="twav">Save as WAV</button>`
-      + `<p class="note">${t.seconds.toFixed(1)} s through QuickTime 3’s instruments, using ${esc(zbWordsOr([...new Set(parts)], 'and'))}.`
+      + `<p class="note">${t.seconds.toFixed(1)} s through QuickTime 3’s instruments. It uses ${esc(zbWordsOr([...new Set(parts)], 'and'))}.`
       + (t.missing.length ? ` No instrument for part ${t.missing.join(', ')}.` : '') + '</p>';
     into.querySelector('.twav').addEventListener('click', () => downloadBlob(t.wav, `${entry.name.toLowerCase()}-tmid-${id}.wav`));
   };

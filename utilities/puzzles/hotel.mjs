@@ -17,7 +17,7 @@
 //     in order), which must match; then the band is given rooms by the marks,
 //     one at a time, and ScummVM's judging (endDrag, validate2 and
 //     validate3TraitPlacement, fillCellRow, setCellTraitsIn3Grids, written
-//     out here) must let every one in, round the boarded rooms at level 3,
+//     out here) must let every one in, around the boarded rooms at level 3,
 //     with Zoombinis sharing a mark sharing a room;
 //   - the workbench: the form gives back what is put in and throws on what
 //     the program could not set; every solution is placed room by room
@@ -306,7 +306,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
         const line = s0.steps.find(x => x.startsWith('Rooms: '));
         const placed = [], who = [];
         for (const part of line.slice(7, -1).split('; ')) {
-          const m = roomRe(level).exec(part), members = part.split(' in ')[0].split(/, | and /).map(x => Number(x) - 1);
+          const m = roomRe(level).exec(part), members = part.split(' in ')[0].split(/, and |, | and /).map(x => Number(x) - 1);
           const slot = slotOf(level, posFromWords(level, m));
           if (boards.includes(slot)) throw new Error(`level ${level}: a solution uses a boarded room`);
           for (const i of members) {
@@ -351,7 +351,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
             if (worst < st.guaranteed || (st.exact && worst !== st.guaranteed)) { fail(`level ${level}, knowing the ${knows}, the strategy guarantees ${st.guaranteed}, and a branch places ${worst}`); break; }
             walked++;
           }
-          /* Knowing the program, traits the band does not fit round the boards are ruled out, so only a puzzle the program could set is played. */
+          /* Knowing the program, traits the band does not fit around the boards are ruled out, so only a puzzle the program could set is played. */
           if (knows === 'form' || level !== 3 || P.solve(3, band, state).most === band.length) {
             const placedCount = playH(level, band, st, state, boards);
             if (placedCount < st.guaranteed) { fail(`level ${level}, knowing the ${knows}, played against the dealt traits, ${placedCount} placed, fewer than the ${st.guaranteed} guaranteed`); break; }

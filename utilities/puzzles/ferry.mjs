@@ -214,7 +214,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
     for (const line of so.steps) {
       const m = /^Row (\d+), from the left, has (.*)\.$/.exec(line);
       if (!m) continue;
-      const items = m[2].split(/, | and /);
+      const items = m[2].split(/, and |, | and /);
       const inRow = st.seats.map((p, k) => [p, k]).filter(([p]) => p.row === +m[1]).sort((a, b) => a[0].seat - b[0].seat);
       if (items.length !== inRow.length) wbad(`"${line}" names ${items.length} seats of ${inRow.length}`);
       items.forEach((it, j) => { if (it !== 'an empty seat' && inRow[j]) seating[inRow[j][1]] = +it - 1; });

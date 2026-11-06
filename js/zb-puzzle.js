@@ -169,9 +169,9 @@ function zbBandWaiting(key, band) {
 
 /* "a ponytail", "sunglasses": trait kind and value 1-5. */
 function zbTraitWith(kind, value) { return ZB_TRAIT_WITH[kind][value - 1]; }
-/* A list of phrases joined as English: "a, b or c". */
+/* A list of phrases joined as English: "a or b", "a, b, or c". */
 function zbWordsOr(list, word = 'or') {
-  return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ` ${word} ` + list[list.length - 1];
+  return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + (list.length > 2 ? ',' : '') + ` ${word} ` + list[list.length - 1];
 }
 /* A Zoombini in a few words: "Ponytail, one eye, red nose, spring". */
 function zbZoombiniWords(z) {

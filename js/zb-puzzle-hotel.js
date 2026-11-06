@@ -30,7 +30,7 @@
    of the second in each trunk, and boards up between 1 and 8 of the rooms
    that arrangement leaves empty (how many at random, at most as many as
    are empty); then it discards the arrangement. So at least that one fits
-   round the boards, but the player may find another.
+   around the boards, but the player may find another.
 
    Taken apart (the page's workbench): the form is the traits (and at
    level 3 the boarded rooms, any 1 to 8). Known, an arrangement (which
@@ -220,10 +220,10 @@ function zbHotelDiagram(band, { level, traits = null, maps = null, place, boards
    room's values for the hypotheses that let it in, or turned away, a
    chance used, and the one that uses the last closes the hotel. Once one
    hypothesis is left the rest is known: every Zoombini that can have a
-   room given those settled (at level 3 round the boards) goes in free.
+   room given those settled (at level 3 around the boards) goes in free.
    The play is worked out first by a rule of thumb, a move every
    hypothesis lets in if there is one (at level 3 the one that leaves the
-   most room round the boards), else the one fewest hypotheses turn away;
+   most room around the boards), else the one fewest hypotheses turn away;
    and where that does not guarantee everyone, by minimax, memoized on the
    placings, the hypotheses left and the chances, within the budget. */
 function zbHotelStrategy(level, band, opts = {}) {
@@ -268,7 +268,7 @@ function zbHotelStrategy(level, band, opts = {}) {
   const unplaced = P => { const u = []; P.forEach((c, i) => { if (c < 0) u.push(i); }); return u; };
   /* With h known, the most still to be given rooms, and how: every
      arrangement of the values not yet settled into the free positions,
-     at level 3 round the boards (else all fit, the lowest free first). */
+     at level 3 around the boards (else all fit, the lowest free first). */
   const fitMemo = new Map();
   const fit = (h, P) => {
     const key = h.id + '|' + P.join();

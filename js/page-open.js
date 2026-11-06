@@ -97,7 +97,7 @@ async function openStoredArchives() {
   }
   STORED_IN_BROWSER = true;
   SOURCE = saved.source.label;
-  setStatus(`Opened the archives saved in this browser, ${fmtBytes(saved.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}.`);
+  setStatus(`Opened the archives saved in this browser (${fmtBytes(saved.archives.reduce((n, r) => n + r.bytes.byteLength, 0))}).`);
   browseStart();
   if (saved.source.remote) fetchTheRest();
   return true;
@@ -216,7 +216,7 @@ function ensureBytes(entry) {
         received += value.length;
         if (Date.now() - last > 250) {
           last = Date.now();
-          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org, ${fmtBytes(received)}${total ? ' of ' + fmtBytes(total) : ''}`);
+          setStatus(`Fetching ${entry.name.toLowerCase()}.mhk from archive.org (${fmtBytes(received)}${total ? ' of ' + fmtBytes(total) : ''})`);
         }
       }
       const bytes = new Uint8Array(received);

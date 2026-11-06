@@ -26,7 +26,7 @@
    game's, and appear only here: a place's
    window is 4:3, like its picture, centered on its icon, and 0.8 of the way
    to its nearest neighbor across, at most 60 map pixels, so no two meet;
-   the land round the place you are in darkens as it fills the screen; the
+   the land around the place you are in darkens as it fills the screen; the
    roads are drawn in one level's colors at a time, the level the tools
    pick, where the game draws each in the level it was crossed at; the map
    is drawn pixel for pixel when magnified and smoothed when shrunk. From
@@ -236,7 +236,7 @@ function mapDraw() {
     if (d.t < 1) drawIcon(ctx, d, 1 - d.t);
     if (d.t > 0) drawWindow(ctx, d);
   }
-  // Darken the land round a place as it fills the screen.
+  // Darken the land around a place as it fills the screen.
   if (centered && centered.t > 0) {
     const f = Math.max(centered.W / JCW, centered.H / JCH), a = 0.7 * jClamp((f - 0.35) / 0.35, 0, 1) * centered.t;
     if (a > 0) {
@@ -489,14 +489,14 @@ function levelLegend() {
 }
 
 function journeyPanel() {
-  let html = `<h2>The journey</h2><div class="sub">${esc(JMAP_FROM.name)}, tBMP 300, the map the game shows between places</div>`;
-  html += `<p>A band of sixteen Zoombinis travels from Zoombini Isle to Zoombiniville. The journey has four routes with three puzzles each, twelve in all. The way splits at Shelter Rock and joins again at Shade Tree. Zoom in on a place to see it.</p>`;
+  let html = `<h2>The journey</h2><div class="sub">The map the game shows between places is tBMP 300 in ${esc(JMAP_FROM.name)}</div>`;
+  html += `<p>A band of sixteen Zoombinis travels from Zoombini Isle to Zoombiniville. The journey has four routes with three puzzles each (twelve in all). The way splits at Shelter Rock and joins again at Shade Tree. Zoom in on a place to see it.</p>`;
   for (const r of ZB_ROUTES) {
     html += `<h3>${esc(r.name)}</h3><ol class="route">` + r.places.map(k => `<li>${jPlaceLink(k)}<small>${esc(jPlace(k).kind)}</small></li>`).join('') + '</ol>';
   }
   html += `<h3>Road colors by level</h3>${levelLegend()}`;
   html += JSAVE ? `<p class="note">The roads as they are in ${esc(JSAVE.name)}. Each road’s color shows the level the band was on when it crossed. <a data-nosave>Clear</a>.</p>`
-    : `<p class="note">In the game, each road’s color shows the level the band was on when it crossed. Here every road is drawn at the level you pick, and each place shows its help for that level.</p>`;
+    : `<p class="note">In the game each road’s color shows the level the band was on when it crossed. Here every road is drawn at the level you pick. Each place shows its help for that level.</p>`;
   return html;
 }
 
@@ -509,7 +509,7 @@ function placePanel(key) {
     where = `the ${nth[r.at - 1]} puzzle on ${esc(ZB_ROUTES[r.route].name)}`;
   } else if (key === 'PICKER') where = 'where a band is chosen and the journey begins';
   else if (key === 'TOWN') where = 'where the journey ends';
-  else where = `a camp, where ${on.filter(r => r.at === 4).map(r => esc(ZB_ROUTES[r.route].name)).join(' and ')} ${on.filter(r => r.at === 4).length > 1 ? 'meet' : 'ends'}`;
+  else where = `a camp where ${on.filter(r => r.at === 4).map(r => esc(ZB_ROUTES[r.route].name)).join(' and ')} ${on.filter(r => r.at === 4).length > 1 ? 'meet' : 'ends'}`;
   const inIt = JVIEW.place === key;
   const id = p.hard && JVIEW.level >= 3 ? p.hard : p.background;
   let html = `<h2>${esc(p.name)}</h2><div class="sub">${esc(key)} · ${where}</div>`;
@@ -528,12 +528,12 @@ function placePanel(key) {
   html += '<table class="kv">'
     + (from.length ? `<tr><td>from</td><td>${from.join(' or ')}</td></tr>` : '')
     + (to.length ? `<tr><td>leads to</td><td>${to.join(' or ')}</td></tr>` : '')
-    + `<tr><td>picture</td><td>${p.panorama ? `SCRB ${p.panorama.script}'s first view of tBMP ${p.panorama.sheet}, in SHPL ${p.background}` : `tBMP ${id} in SHPL ${id}`}${p.hard ? ` <small>(${id === p.hard ? `tBMP ${p.background} at levels 1 and 2` : `tBMP ${p.hard} at levels 3 and 4`})</small>` : ''}</td></tr>`
+    + `<tr><td>picture</td><td>${p.panorama ? `SCRB ${p.panorama.script}'s first view of tBMP ${p.panorama.sheet} in SHPL ${p.background}` : `tBMP ${id} in SHPL ${id}`}${p.hard ? ` <small>(${id === p.hard ? `tBMP ${p.background} at levels 1 and 2` : `tBMP ${p.hard} at levels 3 and 4`})</small>` : ''}</td></tr>`
     + '</table>';
   const pic = jPicture(key);
-  if (!entry) html += `<p class="warn">${esc(key)}.MHK is not open, so its picture cannot be drawn.</p>`;
+  if (!entry) html += `<p class="warn">${esc(key)}.MHK is not open. Its picture cannot be drawn without it.</p>`;
   else if (pic === 'fetching') html += `<p class="note">Fetching ${esc(key.toLowerCase())}.mhk from archive.org…</p>`;
-  else if (pic === 'unfetched') html += `<p class="note">Its picture is in ${esc(key.toLowerCase())}.mhk, which is fetched from archive.org when you go in.</p>`;
+  else if (pic === 'unfetched') html += `<p class="note">Its picture is in ${esc(key.toLowerCase())}.mhk. The page fetches it from archive.org when you go in.</p>`;
   else if (pic === 'failed') html += `<p class="bad">Its picture could not be drawn${entry.error ? ' (' + esc(entry.error) + ')' : ''}.</p>`;
   if (p.kind === 'puzzle' && ZB_PUZZLES.has(key)) html += puzzlePanel(key);
   html += helpPanel(p);
@@ -544,7 +544,7 @@ function placePanel(key) {
 /* A puzzle's rules at the level picked, and one dealt, once the visitor deals it. */
 function puzzlePanel(key) {
   const z = ZB_PUZZLES.get(key), lv = z.levels[JVIEW.level - 1];
-  let html = `<h3>The puzzle, level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})</h3><p>${esc(z.about)}</p>`
+  let html = `<h3>The puzzle at level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})</h3><p>${esc(z.about)}</p>`
     + `<table class="kv"><tr><td>hidden</td><td>${esc(lv.rule)}</td></tr><tr><td>chances</td><td>${esc(lv.chances)}</td></tr></table>`
     + (lv.notes || []).map(n => `<p class="note">${esc(n)}</p>`).join('');
   const sizes = Array.from({ length: 16 }, (_, i) => 16 - i);
@@ -562,12 +562,12 @@ function dealtPanel(key) {
   // A puzzle whose layout is in its archive is dealt once that has come.
   for (const name of zbDealArchives(key)) {
     const entry = ARCHIVES.get(name);
-    if (!entry) return `<p class="warn">Its layout is in ${esc(name)}.MHK, which is not open.</p>`;
+    if (!entry) return `<p class="warn">Its layout is in ${esc(name)}.MHK. That archive is not open.</p>`;
     if (!entry.bytes && entry.remote && !entry.error) {
       ensureBytes(entry).then(() => { if (JVIEW.deal && JVIEW.deal.key === key) mapPanel(); });
-      return `<p class="note">Its layout is in ${esc(name.toLowerCase())}.mhk, which is being fetched from archive.org…</p>`;
+      return `<p class="note">Its layout is in ${esc(name.toLowerCase())}.mhk. The page is fetching it from archive.org…</p>`;
     }
-    if (!openedArchive(entry)) return `<p class="bad">Its layout is in ${esc(name)}.MHK, which could not be read${entry.error ? ' (' + esc(entry.error) + ')' : ''}.</p>`;
+    if (!openedArchive(entry)) return `<p class="bad">Its layout is in ${esc(name)}.MHK. That archive could not be read${entry.error ? ' (' + esc(entry.error) + ')' : ''}.</p>`;
   }
   let d;
   try { d = zbDealAt(key, JVIEW.level, seed, size, name => openedArchive(ARCHIVES.get(name))); }
@@ -585,11 +585,11 @@ function dealtPanel(key) {
 function helpPanel(p) {
   const z = ARCHIVES.get('ZOOMBINI');
   const id = p.kind === 'puzzle' ? p.help + 20 * (JVIEW.level - 1) : p.help;
-  const head = p.kind === 'puzzle' ? `The help, level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})` : 'The help';
+  const head = p.kind === 'puzzle' ? `The help at level ${JVIEW.level} (${esc(ZB_LEVELS[JVIEW.level - 1])})` : 'The help';
   if (!z) return `<h3>${head}</h3><p class="note">The help is in ZOOMBINI.MHK, STRL ${id}, and that file is not open.</p>`;
   if (!z.bytes) {
     if (FETCHING.has('ZOOMBINI')) return `<h3>${head}</h3><p class="note">Fetching zoombini.mhk from archive.org…</p>`;
-    return `<h3>${head}</h3><p class="note">The help is in zoombini.mhk, STRL ${id}. <a data-fetch="ZOOMBINI">Fetch it</a> (24 MB).</p>`;
+    return `<h3>${head}</h3><p class="note">The help is STRL ${id} in zoombini.mhk. <a data-fetch="ZOOMBINI">Fetch it</a> (24 MB).</p>`;
   }
   const arc = openedArchive(z);
   if (!arc || !arc.has('STRL', id)) return `<h3>${head}</h3><p class="warn">ZOOMBINI has no STRL ${id}.</p>`;
@@ -600,7 +600,7 @@ function helpPanel(p) {
 /* ---- pointing ------------------------------------------------------------ */
 
 /* The place under a point: its window once it has mostly opened, and
-   before that its icon and a little round it. */
+   before that its icon and a little around it. */
 function mapPlaceAt(sx, sy) {
   for (let i = JDRAWN.length - 1; i >= 0; i--) {
     const d = JDRAWN[i];

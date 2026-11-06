@@ -105,7 +105,7 @@
    (0x431020), and a pair is a collision: both are lost (0x4342fa,
    PROCESSCOLLISION). A launch's first square is the launcher's square for
    a launcher sending right or left, the next one on for one sending up
-   (the drop at 0x4301d6). All of that is ScummVM's reading too, but for
+   (the drop at 0x4301d6). All of that is ScummVM's reading too, except for
    two things its answer finder does differently: it follows a knocked or
    freed captive only after the bubble that set it going has stopped, and
    treats a step off the grid as no launch. The port follows the program
@@ -115,7 +115,7 @@
    also allows and the search here does not play is launching while other
    bubbles still float: a launcher is free again 34 frames after a drop
    (SCRB 9000's last event; 35 for 9001 and 9003), and up to ten bubbles
-   may be out at once (0x430062). The tables are held to ScummVM's text
+   may be out together (0x430062). The tables are held to ScummVM's text
    and ZOOMBINI.EXE's bytes, the layouts as read here to a second reading
    of MAZE2's words, and the movement to a second, frame-by-frame reading
    and to MAZE2's movement scripts, by utilities/puzzles/maze2.mjs.
@@ -147,7 +147,7 @@ const ZB_MAZE2_SEATS = [
   [3, 0, 1], [3, 1, 1], [3, 2, 1],
   [12, 10, 0], [11, 10, 0], [10, 10, 0], [8, 11, 3], [8, 12, 3],
 ];
-/* The eighteen exit squares round the grid's corners, before a layout is
+/* The eighteen exit squares around the grid's corners, before a layout is
    laid over them (kBaseNodeTypes, kBaseNodeCoords): type 20 the lower
    left, 21 the upper left, 22 the lower right, 23 the upper right. */
 const ZB_MAZE2_EXITS = [
@@ -902,7 +902,7 @@ function zbMaze2Run(B, w, token, start) {
     }
     if (arriving.length > 1) arriving.sort((a, b) => b.n - a.n);
     /* The frame's work: the captives waiting to move, the last queued
-       first, and any they knock on at once; then arrivals, the latest
+       first, and any they knock on immediately; then arrivals, the latest
        first; then collisions. */
     for (;;) {
       let i = queue.length - 1;

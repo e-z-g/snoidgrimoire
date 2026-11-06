@@ -162,7 +162,7 @@ function zbImportPalette(rgba, pal, allowed, clear = true) {
 }
 
 /* A sound's bytes with new samples, raw unsigned 8-bit mono, its other
-   chunks (a Cue#) kept and its Data chunk's header as before but for the
+   chunks (a Cue#) kept and its Data chunk's header as before except for the
    count and the loop: `loop` [start, end] in samples, or by default the
    original's loop where it still fits and otherwise the whole sound. */
 function zbWaveBytes(original, samples, rate = 11025, loop = null) {

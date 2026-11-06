@@ -7,7 +7,7 @@
    archive: a `MHWK` header, a `RSRC` directory of four-letter types, each
    with its ids and optional names, and a file table with the position of
    each resource's bytes. `openMohawk(bytes)` returns the archive as an object,
-   so any number can be open at once; every structural offset is checked
+   so any number can be open together; every structural offset is checked
    before it is followed, so a file that is not an archive throws an error
    rather than listing invented resources.
 

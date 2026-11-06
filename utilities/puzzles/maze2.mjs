@@ -3,7 +3,7 @@
 //
 //   - the tables: the feature slots' trait offsets, kinds and values, the
 //     thresholds, level 4's counts, the color pool and names, the seats'
-//     squares and ways and the exits round the corners, are ScummVM's,
+//     squares and ways and the exits around the corners, are ScummVM's,
 //     read from its text; the program stores them as tables, packed as
 //     its words they are in ZOOMBINI.EXE (the pool, slot kinds and values,
 //     offsets and thresholds in one run; level 4's counts just before

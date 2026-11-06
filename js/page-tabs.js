@@ -157,7 +157,7 @@ const SCENARIO_PANES = {
   },
 
   puzzles(view) {
-    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles, with the rules the program deals for each level and the chances each one gives.</p>';
+    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles with the rules the program deals for each level and the chances each one gives.</p>';
     for (const [key, P] of ZB_PUZZLES) {
       const place = ZB_PLACE_BY_KEY.get(key);
       html += `<details class="sec"><summary><b>${esc(place.name)}</b> <span class="note">${esc(key)}</span></summary>`
@@ -170,7 +170,7 @@ const SCENARIO_PANES = {
 
   snoids(view) {
     const z = ARCHIVES.get('ZOOMBINI'), zarc = z && z.bytes ? openedArchive(z) : null;
-    let html = '<h1>Snoids</h1><p class="sub">Snoid is Brøderbund’s word for a character built from five parts. The parts come from a sprite sheet, and scripts move them.</p>';
+    let html = '<h1>Snoids</h1><p class="sub">Snoid is Brøderbund’s word for a character built from five parts. The parts come from a sprite sheet. Scripts move them.</p>';
     // Which scripts draw which snoid, from every archive open.
     const scripts = {};
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('SCRS')) {
@@ -182,7 +182,7 @@ const SCENARIO_PANES = {
     for (const [kind, K] of Object.entries(ZB_SNOID_KINDS)) {
       const by = scripts[kind] || {}, n = Object.values(by).reduce((a, l) => a + l.length, 0);
       html += `<h2 class="h">${esc(K.name[0].toUpperCase() + K.name.slice(1))}</h2>`
-        + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}, with registration points in <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
+        + `<p class="note"><a href="#${K.archive}/tBMP/${K.sheet}">tBMP ${K.sheet}</a> in ${K.archive}. Its registration points are in <a href="#${K.archive}/REGS/${K.regs}">REGS ${K.regs}</a>–${K.regs + 1}. `
         + (n ? `${plural(n, 'script')} draw it.` : kind === 'small' ? 'No script uses it. The band waiting at Hotel Dimensia is drawn as this kind of snoid.' : 'Its scripts are in archives that are not open.') + '</p>';
       if (kind === 'zoombini' || kind === 'fleen') html += `<div class="traits" data-kind="${kind}"></div>`;
       for (const [arch, ids] of Object.entries(by)) html += `<div class="ids"><span class="note">${arch}</span>${ids.map(id => `<a href="#${arch}/SCRS/${id}">${id}</a>`).join('')}</div>`;
@@ -207,7 +207,7 @@ const SCENARIO_PANES = {
   },
 
   town(view) {
-    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville, where the band ends up. It has houses for the Zoombinis who have arrived and a reward building for each route crossed at each level.</p>'
+    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville is where the band ends up. It has houses for the Zoombinis who have arrived and a reward building for each route crossed at each level.</p>'
       + `<p>${ARCHIVES.has('TOWN') ? '<a class="btn" href="#town">Full view</a> ' : ''}${journeyAvailable() ? '<a href="#place=TOWN">Map</a> · ' : ''}<a href="#TOWN">Archive</a></p>`;
   },
 };
@@ -272,7 +272,7 @@ function renderSearch(q) {
   $('side').innerHTML = '<h2>Search</h2>' + kinds.map(([k, n]) => `<div class="arc" data-kind="${k}"><span class="name">${n}</span><span class="place">${hits.filter(h => h.doc.kind === k).length || ''}</span></div>`).join('');
   const view = $('view');
   view.scrollTop = 0;
-  let html = `<h1>“${esc(q)}”</h1><p class="sub">${total ? plural(total, 'match', 'matches') + (total > hits.length ? `, the first ${hits.length} shown` : '') : 'No matches'}</p>` + unfetchedNote('Searched');
+  let html = `<h1>“${esc(q)}”</h1><p class="sub">${total ? plural(total, 'match', 'matches') + (total > hits.length ? ` (the first ${hits.length} shown)` : '') : 'No matches'}</p>` + unfetchedNote('Searched');
   for (const [k, n] of kinds) {
     const list = hits.filter(h => h.doc.kind === k);
     if (!list.length) continue;

@@ -2,7 +2,7 @@
    town, in a headset or on a screen.
    =========================================================================
 
-   The town page scrolls a 640-pixel window round a world 1920 pixels
+   The town page scrolls a 640-pixel window around a world 1920 pixels
    round (zb-town.js reads it). Seen from its middle as the scrolling shows
    it, that world is a cylinder: a pixel is 1/1920 of a turn across and as
    tall at eye height, and row HORIZON is level with the eye.
@@ -555,7 +555,7 @@ async function townRoute() {
   }
   if (!TGL) {
     try { TGL = townGL($('tcanvas')); } catch (e) { $('tstatus').textContent = 'WebGL could not start (' + e.message + ').'; return; }
-    if (!TGL) { $('tstatus').textContent = 'The town needs WebGL, and this browser does not have it.'; return; }
+    if (!TGL) { $('tstatus').textContent = 'The town needs WebGL. This browser does not have it.'; return; }
     townLandMeshes();
     townTextures();
   } else if (fresh) townTextures();

@@ -108,7 +108,7 @@ async function gallerySaveAll(key, button) {
   }
   if (failed.length) files.push({ name: `${key}/NOT-SAVED.txt`, bytes: new TextEncoder().encode('Not saved:\n' + failed.join('\n') + '\n') });
   if (files.length) dlBlob(buildZip(files), `zoombinis-${key}.zip`);
-  button.textContent = failed.length ? `Stopped after ${files.length - 1} files, at ${failed[0]}` : label;
+  button.textContent = failed.length ? `Stopped at ${failed[0]} after ${files.length - 1} files` : label;
   button.disabled = false;
 }
 
@@ -118,12 +118,12 @@ function galleryVoice(id) {
   if (id < 100 || id > 499) return null;
   const kind = id < 425 ? Math.floor((id - 100) / 25) : [15, 14, 13][Math.floor((id - 425) / 25)];
   const r = (id - 100) % 25, hair = ZB_SNOID_VOICE_HAIR.indexOf(r - r % 5) + 1, nose = r % 5 + 1;
-  return `a Zoombini’s voice, kind ${kind}, for ${ZB_TRAIT_SHORT.hair[hair - 1].toLowerCase()} hair and a ${ZB_TRAIT_SHORT.nose[nose - 1].toLowerCase()} nose`;
+  return `a Zoombini’s voice of kind ${kind} for ${ZB_TRAIT_SHORT.hair[hair - 1].toLowerCase()} hair and a ${ZB_TRAIT_SHORT.nose[nose - 1].toLowerCase()} nose`;
 }
 
 const ZB_GALLERIES = {
   pictures(view) {
-    galleryHead(view, 'Pictures', 'Every picture that is not a sprite sheet, such as rooms, backgrounds and the map.', 'Pictures');
+    galleryHead(view, 'Pictures', 'Every picture that is not a sprite sheet. These include rooms, backgrounds, and the map.', 'Pictures');
     const cards = [];
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP'))
       if (!gallerySheet(entry.name, arc, id)) cards.push({ entry, arc, id, href: link(entry.name, 'tBMP', id), cap: `${entry.name} <b>${id}</b>` });
@@ -135,7 +135,7 @@ const ZB_GALLERIES = {
   },
 
   sheets(view) {
-    galleryHead(view, 'Sprite sheets', 'Every sprite sheet, shown by its first sprite. These include the snoids’ parts, the puzzles’ pieces and the buttons.', 'Sheets');
+    galleryHead(view, 'Sprite sheets', 'Every sprite sheet. Each is shown by its first sprite. These include the snoids’ parts, the puzzles’ pieces, and the buttons.', 'Sheets');
     const cards = [];
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('tBMP'))
       if (gallerySheet(entry.name, arc, id)) cards.push({ entry, arc, id, href: link(entry.name, 'tBMP', id), cap: `${entry.name} <b>${id}</b>` });
@@ -148,7 +148,7 @@ const ZB_GALLERIES = {
   },
 
   sounds(view) {
-    galleryHead(view, 'Sounds', 'Every sound, grouped by archive. Each one shows its length and the scripts that cue it. For ZOOMBINI’s voices, it also shows which Zoombini is speaking.', 'Sounds');
+    galleryHead(view, 'Sounds', 'Every sound by archive. Each one shows its length and the scripts that cue it. For ZOOMBINI’s voices it also shows which Zoombini is speaking.', 'Sounds');
     let html = '';
     for (const { entry, arc } of openArchives()) {
       const list = arc.list('\0SND');
@@ -172,7 +172,7 @@ const ZB_GALLERIES = {
   },
 
   music(view) {
-    galleryHead(view, 'Music', 'Every tune, in the Windows version (MIDIMPC) and the Mac version (MIDIMAC). You can save each one as a MIDI file, or play it through QuickTime’s instruments, as a Mac did.', 'Tunes');
+    galleryHead(view, 'Music', 'Every tune in the Windows version (MIDIMPC) and the Mac version (MIDIMAC). You can save each one as a MIDI file or play it through QuickTime’s instruments as a Mac did.', 'Tunes');
     let html = '<table class="plain"><tr><th>archive</th><th>tune</th><th>bytes</th><th></th></tr>';
     for (const { entry, arc } of openArchives()) for (const r of arc.list('tMID'))
       html += `<tr><td>${entry.name}</td><td><a href="${link(entry.name, 'tMID', r.id)}">${r.id}</a></td><td class="num">${fmtBytes(r.size)}</td><td class="tune" data-arc="${entry.name}" data-id="${r.id}"></td></tr>`;
@@ -182,18 +182,18 @@ const ZB_GALLERIES = {
     // at 0x4588d0 drops every music id but 30001).
     const notes = [];
     if (ARCHIVES.has('MUSIC')) notes.push(`The 2001 release has no tunes as MIDI. It plays one tune, a recording of Zoombini Isle’s, <a href="${link('MUSIC', '\0SND', 30001)}">MUSIC 30001</a>, and no music in the four puzzles that have tunes here.`);
-    if (!ARCHIVES.has('MIDIMAC')) notes.push('There are no Mac tunes, since no MIDIMAC.MHK is open. The game’s CD has it.');
+    if (!ARCHIVES.has('MIDIMAC')) notes.push('There are no Mac tunes because no MIDIMAC.MHK is open. The game’s CD has it.');
     view.insertAdjacentHTML('beforeend', notes.map(n => `<p class="note">${n}</p>`).join('') + html + '</table>');
     for (const td of view.querySelectorAll('td.tune')) { const entry = ARCHIVES.get(td.dataset.arc); tunePlayer(entry, openedArchive(entry), +td.dataset.id, td); }
   },
 
   text(view) {
-    galleryHead(view, 'Text', 'Every string list, including the help for each place at each level and the credits.', 'Text');
+    galleryHead(view, 'Text', 'Every string list. These include the help for each place at each level and the credits.', 'Text');
     let html = '';
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('STRL')) {
       const lines = parseStringList(arc.get('STRL', id));
       const help = entry.name === 'ZOOMBINI' ? Object.entries(ZB_ARCHIVES).find(([, a]) => a.help && id >= a.help && id < a.help + 80 && (id - a.help) % 20 === 0) : null;
-      const what = help ? `help for ${ZB_ARCHIVES[help[0]].place}${id >= 1700 ? ', level ' + ((id - help[1].help) / 20 + 1) : ''}` : id === 2900 && entry.name === 'ZOOMBINI' ? 'the credits' : plural(lines.length, 'string');
+      const what = help ? `help for ${ZB_ARCHIVES[help[0]].place}${id >= 1700 ? ' at level ' + ((id - help[1].help) / 20 + 1) : ''}` : id === 2900 && entry.name === 'ZOOMBINI' ? 'the credits' : plural(lines.length, 'string');
       html += `<details class="sec"><summary><a href="${link(entry.name, 'STRL', id)}">${entry.name} ${id}</a> <span class="note">${esc(what)}</span></summary><div class="strings"><p>${esc(lines.join('\n'))}</p></div></details>`;
     }
     view.insertAdjacentHTML('beforeend', html);
@@ -218,7 +218,7 @@ const ZB_GALLERIES = {
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('CURS')) cards.push({ entry, arc, id, href: link(entry.name, 'CURS', id), cap: `${entry.name} <b>${id}</b>` });
     galleryCards(view, cards, (c, pic) => {
       const cur = parseCursor(c.arc.get('CURS', c.id)), px = new Uint8Array(256);
-      for (let i = 0; i < 256; i++) px[i] = cur.image[i] ? 1 : cur.mask[i] ? 2 : 0;   // black the image, white the mask round it
+      for (let i = 0; i < 256; i++) px[i] = cur.image[i] ? 1 : cur.mask[i] ? 2 : 0;   // black the image, white the mask around it
       const pal = zbPalette(null); pal[1] = [0, 0, 0]; pal[2] = [255, 255, 255];
       const cv = galleryThumb({ width: 16, height: 16, pixels: px }, pal, true, 64, 64);
       cv.style.width = cv.style.height = '64px';
@@ -227,7 +227,7 @@ const ZB_GALLERIES = {
   },
 
   scripts(view) {
-    galleryHead(view, 'Scripts', 'Every animation script. SCRS scripts move a snoid, and their layer order shows which kind of snoid. SCRB scripts move everything else.', 'Scripts');
+    galleryHead(view, 'Scripts', 'Every animation script. SCRS scripts move a snoid. Their layer order shows which kind of snoid. SCRB scripts move everything else.', 'Scripts');
     let html = '';
     for (const { entry, arc } of openArchives()) {
       const s = arc.list('SCRS'), b = arc.list('SCRB');
@@ -242,7 +242,7 @@ const ZB_GALLERIES = {
   },
 
   walks(view) {
-    galleryHead(view, 'Walks', 'The waypoints and paths that the Zoombinis walk along, in the nine archives that have them.', 'Walks');
+    galleryHead(view, 'Walks', 'The waypoints and paths that the Zoombinis walk along. Nine archives have them.', 'Walks');
     let html = '<table class="plain"><tr><th>archive</th><th>place</th><th>waypoints</th><th>paths</th></tr>';
     for (const { entry, arc } of openArchives()) for (const { id } of arc.list('NODE')) {
       const nodes = parseWalkNodes(arc.get('NODE', id)), paths = arc.has('PATH', id) ? parseWalkPaths(arc.get('PATH', id), nodes.length) : [];
