@@ -8,10 +8,13 @@
    or feet) or is plain. Two Zoombinis either side of a stone that shows a
    trait must have the same value of it; a plain stone sets no condition. Each
    group of stones is entered from a base on the right of the screen, and
-   a stone rises when every joining stone on some way to it from the base
-   is satisfied. Nothing is counted against the band: Zoombinis can be moved
-   as often as the player likes. Once one stone has risen the band may go,
-   and only the Zoombinis on risen stones go on.
+   a stone lights when every joining stone on some way to it from the base
+   is satisfied (lightPath, 0x448f02, after each drop). Nothing is counted
+   against the band: Zoombinis can be moved as often as the player likes.
+   Once one stone has lit the arrow wakes (slidesGoReady); pressing it,
+   once, raises the lit stones, and only the Zoombinis on them go on
+   (stoneRiseClicked, 0x447528). "Risen" below means lit, the stones that
+   rise when the arrow is pressed.
 
    The field is 117 cells, 13 rows of 9, and the stones are dealt from the
    band, so that the band can always fill them all:
