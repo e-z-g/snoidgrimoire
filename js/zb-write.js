@@ -142,6 +142,25 @@ function zbQuantize(rgba, pal, allowed, clear = true) {
   return out;
 }
 
+/* The palette an image to bring in was drawn in: the Windows colors
+   (zbWindowsPalette), which the page shows, if every pixel it reads is
+   exactly one of those and not every one is a stored color; else the stored
+   palette. So a picture taken off the page's screen comes back to the same
+   indices. */
+function zbImportPalette(rgba, pal, allowed, clear = true) {
+  const windows = zbWindowsPalette(pal);
+  const set = p => new Set(allowed.map(k => (p[k][0] << 16) | (p[k][1] << 8) | p[k][2]));
+  const stored = set(pal), shown = set(windows);
+  let allShown = true, allStored = true;
+  for (let i = 0; i < rgba.length / 4 && (allShown || allStored); i++) {
+    if (clear && rgba[4 * i + 3] < 128) continue;
+    const key = (rgba[4 * i] << 16) | (rgba[4 * i + 1] << 8) | rgba[4 * i + 2];
+    if (!shown.has(key)) allShown = false;
+    if (!stored.has(key)) allStored = false;
+  }
+  return allShown && !allStored ? windows : pal;
+}
+
 /* A sound's bytes with new samples, raw unsigned 8-bit mono, its other
    chunks (a Cue#) kept and its Data chunk's header as before but for the
    count and the loop: `loop` [start, end] in samples, or by default the

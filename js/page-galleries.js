@@ -201,13 +201,15 @@ const ZB_GALLERIES = {
 
   palettes(view) {
     galleryHead(view, 'Palettes', 'Every palette, with its colors in order.', 'Palettes');
-    let html = '';
+    let html = `<div class="tools">${colorsControl()}</div>${colorsNote()}`;
     for (const { entry, arc } of openArchives()) for (const tag of ['SHPL', 'tPAL']) for (const { id } of arc.list(tag)) {
       const p = parsePaletteResource(arc.get(tag, id), tag);
+      const shown = shownPalette(Array.from({ length: 256 }, (_, i) => i >= p.start && i < p.start + p.colors.length ? p.colors[i - p.start] : null));
       html += `<div class="palrow"><a href="${link(entry.name, tag, id)}">${entry.name} ${tagLabel(tag)} ${id}</a><span class="strip">`
-        + p.colors.map(c => `<i style="background:rgb(${c[0]},${c[1]},${c[2]})"></i>`).join('') + '</span></div>';
+        + p.colors.map((c, i) => { const s = shown[p.start + i] || c; return `<i style="background:rgb(${s[0]},${s[1]},${s[2]})"></i>`; }).join('') + '</span></div>';
     }
     view.insertAdjacentHTML('beforeend', html);
+    wireColorsControl();
   },
 
   cursors(view) {

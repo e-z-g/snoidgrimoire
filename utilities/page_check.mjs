@@ -106,7 +106,14 @@ const VIEWS = [
   ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice, kind/.test(document.getElementById('view').innerHTML)"],
   ['components/music', "document.querySelectorAll('#view table tr').length === 37"],
   ['components/text', "document.querySelectorAll('#view details.sec').length === 53 && /the credits/.test(document.getElementById('view').textContent)"],
-  ['components/palettes', "document.querySelectorAll('#view .palrow').length === 48"],
+  ['components/palettes', "document.querySelectorAll('#view .palrow').length === 48 && !!document.getElementById('colorsPick')"],
+  // A picture in the Windows colors: BRIDGE's room, its first pixel brightened from its palette.
+  ['BRIDGE/tBMP/1000', `(() => {
+    const c = document.querySelector('#pic canvas'); if (!c || !document.getElementById('colorsPick')) return false;
+    const arc = openedArchive(ARCHIVES.get('BRIDGE')), f = decodeBitmapResource(arc.get('tBMP', 1000)).frames[0];
+    const raw = paletteFor(ARCHIVES.get('BRIDGE'), arc, 1000).pal[f.pixels[0]], px = c.getContext('2d').getImageData(0, 0, 1, 1).data;
+    return [0, 1, 2].every(k => px[k] === zbBrighten(raw[k]) || (f.pixels[0] < 10 || f.pixels[0] > 245)) && /brightened/.test(document.getElementById('view').textContent);
+  })()`],
   ['components/cursors', "document.querySelectorAll('#view .card').length === 5"],
   ['components/scripts', "/snoid script/.test(document.getElementById('view').textContent)"],
   ['components/walks', "document.querySelectorAll('#view table tr').length === 10"],

@@ -145,7 +145,7 @@ function editFileButton(box, label, accept, use) {
 function pictureTools(entry, arc, id, pf, box) {
   editFileButton(box, 'Replace…', 'image/*', async file => {
     const im = await editReadImage(file), old = decodeTbmp(arc.get('tBMP', id));
-    const px = zbQuantize(im.data, pf.pal, editAllowed(entry, pf), false);
+    const px = zbQuantize(im.data, zbImportPalette(im.data, pf.pal, [...editAllowed(entry, pf)], false), editAllowed(entry, pf), false);
     editApply(entry, 'tBMP', id, zbPictureBytes(im.width, im.height, px),
       `the picture replaced from ${file.name}${im.width !== old.width || im.height !== old.height ? `, now ${im.width} × ${im.height} instead of ${old.width} × ${old.height}` : ''}`);
   });
@@ -159,7 +159,7 @@ function frameTools(entry, arc, id, k, pf, frame, box) {
   editFileButton(box, 'Replace…', 'image/*', async file => {
     const im = await editReadImage(file);
     const frames = zbSheetFrames(arc.get('tBMP', id)).slice();
-    frames[k] = zbRawFrame(im.width, im.height, zbQuantize(im.data, pf.pal, editAllowed(entry, pf), true));
+    frames[k] = zbRawFrame(im.width, im.height, zbQuantize(im.data, zbImportPalette(im.data, pf.pal, [...editAllowed(entry, pf)], true), editAllowed(entry, pf), true));
     const was = (EDITS.get(entry.name) || { changes: new Map() }).changes.get(editKey('tBMP', id));
     const done = new Set([...(was && was.frames || []), k]);
     editApply(entry, 'tBMP', id, zbSheetBytes(arc.get('tBMP', id), frames),

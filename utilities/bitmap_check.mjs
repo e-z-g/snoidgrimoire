@@ -38,5 +38,15 @@ for (const name of archiveNames()) {
     });
   }
 }
-console.log(`${bitmaps} bitmaps (${sheets} sheets), ${frames} frames (${bad ? bad + ' differ' : 'every one pixel for pixel as mohawk_bmp.py'})`);
+// The Windows colors: each component c of indices 10-245 becomes c + 31 - c/8
+// (brightenPalette in zbtools' matching decompilation), 0 stays 0, and
+// the system's colors at 0-9 and 246-255 are as they were.
+{
+  const pal = Array.from({ length: 256 }, (_, i) => [i, (i * 7) % 256, 255 - i]), shown = S.zbWindowsPalette(pal);
+  const brighten = c => (c ? c + 31 - Math.floor(c / 8) : 0);
+  const wrong = shown.findIndex((rgb, i) => rgb.some((v, k) => v !== (i >= 10 && i <= 245 ? brighten(pal[i][k]) : pal[i][k])) || rgb.some(v => v < 0 || v > 255));
+  if (wrong >= 0) { bad++; console.log(`FAIL the Windows colors at index ${wrong}`); }
+  if (pal[100][1] !== 188) { bad++; console.log('FAIL zbWindowsPalette changed the palette it was given'); }
+}
+console.log(`${bitmaps} bitmaps (${sheets} sheets), ${frames} frames (${bad ? bad + ' differ' : 'every one pixel for pixel as mohawk_bmp.py'}), and the Windows colors brightened as the program does`);
 process.exit(bad ? 1 : 0);

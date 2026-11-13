@@ -210,6 +210,20 @@ const ZB_WINDOWS_COLORS = {
 
 /* 256 [r, g, b]: Windows's colors, then the palette's over them, and
    magenta in any slot neither fills, so that it shows. */
+/* The Windows programs brighten every color a palette loads, each
+   component c to c + 31 - c/8, 0 staying 0 (brightenPalette, zbtools
+   platform.cpp:543-557; the 16-bit 1.1 program does it too). The Mac
+   program shows the colors as stored: its hook for this, PDLIGHTENUP
+   (CODE 4 0xba0), is empty. The art was made on Macs, and the rule is close
+   to moving a Mac screen's gamma of 1.8 to a PC's 2.2, so on a screen of
+   today the brightened colors look about as the stored ones did on a Mac.
+   Windows reserves indices 0-9 and 246-255 for the system's colors, so
+   only 10-245 show brightened. Returns a new palette. */
+const zbBrighten = c => (c ? c + 31 - Math.floor(c / 8) : 0);
+function zbWindowsPalette(pal) {
+  return pal.map((rgb, i) => (i >= 10 && i <= 245 && rgb ? [zbBrighten(rgb[0]), zbBrighten(rgb[1]), zbBrighten(rgb[2])] : rgb));
+}
+
 function zbPalette(parsed) {
   const pal = [];
   for (let i = 0; i < 256; i++) pal.push(ZB_WINDOWS_COLORS[i] ? ZB_WINDOWS_COLORS[i].slice() : [255, 0, 255]);

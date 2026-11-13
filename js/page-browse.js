@@ -206,20 +206,49 @@ function paletteFor(entry, arc, bitmapId) {
 
 function paletteControl(entry, pf) {
   if (!pf.choices.length) {
-    return `<span class="note">This archive has no palette. ${pf.shared ? `The shared colors are from ${esc(pf.shared.from)}` : '<span class="warn">Open another archive for its colors</span>'}.</span>`;
+    return `<span class="note">This archive has no palette. ${pf.shared ? `The shared colors are from ${esc(pf.shared.from)}` : '<span class="warn">Open another archive for its colors</span>'}.</span> ${colorsControl()}`;
   }
   const opts = pf.choices.map(c => `<option value="${esc(c.key)}"${pf.chosen && c.key === pf.chosen.key ? ' selected' : ''}>${esc(c.key)}${c.full ? '' : ' (one color)'}</option>`);
-  return `<label>Palette <select id="palPick">${opts.join('')}</select></label>`;
+  return `<label>Palette <select id="palPick">${opts.join('')}</select></label> ${colorsControl()}`;
 }
 
 function wirePaletteControl(entry) {
   const sel = $('palPick');
   if (sel) sel.addEventListener('change', () => { PALETTE_PICK.set(entry.name, sel.value); render(); });
+  wireColorsControl();
 }
 
 /* ---- drawing ---------------------------------------------------------------- */
 
+/* Which colors the page draws in: the Windows game's, brightened
+   (zbWindowsPalette), or the stored ones, which the Mac game shows. The
+   visitor's choice is kept in the browser. Files saved from the page keep
+   the stored colors. */
+const COLORS_KEY = 'snoidgrimoire-colors';
+const COLORS_STORED = (() => { try { return localStorage.getItem(COLORS_KEY) === 'stored'; } catch (e) { return false; } })();
+const COLORS_SHOWN = new WeakMap();
+function shownPalette(pal) {
+  if (COLORS_STORED) return pal;
+  if (!COLORS_SHOWN.has(pal)) COLORS_SHOWN.set(pal, zbWindowsPalette(pal));
+  return COLORS_SHOWN.get(pal);
+}
+function colorsControl() {
+  return `<label>Colors <select id="colorsPick"><option value="windows"${COLORS_STORED ? '' : ' selected'}>Windows</option>`
+    + `<option value="stored"${COLORS_STORED ? ' selected' : ''}>As stored (the Mac)</option></select></label>`;
+}
+function colorsNote() {
+  return COLORS_STORED
+    ? '<p class="note">The colors are as the archive stores them, which is how the Mac game shows them. The Windows game brightens them.</p>'
+    : '<p class="note">The colors are brightened as the Windows game shows them, each part c of a color becoming c + 31 − c/8. That brings the art, made on Macs, to a PC’s darker screen, and the Mac game shows the colors as stored. “Colors” switches between the two. Saved PNGs have the stored colors.</p>';
+}
+// The page draws again from the start, as the map, the town and the diagrams keep what they drew.
+function wireColorsControl() {
+  const sel = $('colorsPick');
+  if (sel) sel.addEventListener('change', () => { try { localStorage.setItem(COLORS_KEY, sel.value); } catch (e) { /* kept for this visit only */ } location.reload(); });
+}
+
 function indexedCanvas(frame, pal, transparent0) {
+  pal = shownPalette(pal);
   const c = document.createElement('canvas');
   c.width = Math.max(1, frame.width);
   c.height = Math.max(1, frame.height);
@@ -339,7 +368,7 @@ function showBitmap(entry, arc, id, bytes, body) {
     const f = d.frames[0];
     const zc = zoomControl('picture', f.width <= 200 ? 2 : 1);
     body.innerHTML = `<p class="sub">A picture, ${f.width} × ${f.height}.</p>`
-      + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as PNG</button></div><div id="pic" class="picture"></div>`;
+      + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as PNG</button></div>${colorsNote()}<div id="pic" class="picture"></div>`;
     const c = indexedCanvas(f, pf.pal, false);
     c.style.width = f.width * zc.z + 'px';
     $('pic').appendChild(c);
@@ -352,7 +381,7 @@ function showBitmap(entry, arc, id, bytes, body) {
   const biggest = Math.max(...d.frames.map(f => Math.max(f.width, f.height)));
   const zc = zoomControl('sheet', biggest <= 64 ? 2 : 1);
   body.innerHTML = `<p class="sub">A sprite sheet of ${plural(d.frames.length, 'frame')}.${regs ? ` Its registration points are in <a href="${link(entry.name, 'REGS', regs.id)}">REGS ${regs.id}</a> and ${regs.id + 1}.` : ''} Color 0 is transparent.</p>`
-    + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as .zip</button></div>`
+    + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as .zip</button></div>${colorsNote()}`
     + '<div id="focus"></div><div id="sheet" class="sheet"></div>';
   wirePaletteControl(entry); wireZoom('sheet');
   $('save').addEventListener('click', async () => {
@@ -465,12 +494,17 @@ function showMidi(entry, id, bytes, body) {
 
 function showPalette(tag, bytes, body) {
   const p = parsePaletteResource(bytes, tag);
+  const stored = Array.from({ length: 256 }, (_, i) => i >= p.start && i < p.start + p.colors.length ? p.colors[i - p.start] : null);
+  const shown = shownPalette(stored);
   let cells = '';
   for (let i = 0; i < 256; i++) {
-    const c = i >= p.start && i < p.start + p.colors.length ? p.colors[i - p.start] : null;
-    cells += c ? `<div style="background:rgb(${c[0]},${c[1]},${c[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
+    const c = stored[i], s = shown[i];
+    const also = c && (s[0] !== c[0] || s[1] !== c[1] || s[2] !== c[2]) ? `, shown as ${s[0]}, ${s[1]}, ${s[2]}` : '';
+    cells += c ? `<div style="background:rgb(${s[0]},${s[1]},${s[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${also}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p><div class="swatches">${cells}</div>`;
+  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p>`
+    + `<div class="tools">${colorsControl()}</div>${colorsNote()}<div class="swatches">${cells}</div>`;
+  wireColorsControl();
 }
 
 function showStrings(entry, id, bytes, body) {
