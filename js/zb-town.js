@@ -25,7 +25,15 @@
    REGS 6000 their pivots) then show the time, at world (946, 218). The
    inhabitants are SCRB 4000-4007 on tBMP 4000, looping, one more for each
    37 Zoombinis past the first 20 (up to 16, from 16 places, so each script
-   twice); which of them the game shows is chosen at random.
+   twice); which of them the game shows is chosen at random. Each stands at
+   its place: the program sets the view's place and reference point there
+   with flags 0x808002, and the script's first update moves the reference
+   to its first record, so the whole script is drawn moved by the place
+   minus that record (zbtools town.cpp:1036-1070, features.cpp:376-379 and
+   465-467, view.cpp:839-841; retrovibe screens.md:289 reads the same in
+   the French 16-bit program). ScummVM sets the reference to the place as
+   well, which draws every script where it was authored, in the first 640
+   pixels.
 
    WHERE IT CAME FROM
    All of it is ScummVM's Zoombinis branch's reading of the town page
@@ -36,10 +44,15 @@
    buildings' names are the plaques' words in the 1996 program.
    utilities/town_check.mjs compares the reading with those files and with
    the scripts themselves, and the clock's hands with the program (below). Not
-   checked against the program: the order the layers are drawn in, and
-   where the inhabitants stand, though zbtools' decompilation of another
-   build of it (town.cpp) puts them at their scripts' own places too.
+   checked against the program: the order the layers are drawn in.
 */
+
+/* The inhabitants' places in the world, by slot, and the script of each
+   slot (openTown's places and walkers). */
+const ZB_TOWN_INHABITANT_PLACES = [[467, 265], [349, 225], [777, 291], [828, 284], [44, 330], [283, 152],
+  [195, 211], [607, 201], [1182, 287], [1299, 228], [1422, 269], [1807, 316],
+  [1048, 309], [709, 228], [1740, 284], [1532, 172]];
+const zbTownInhabitantScript = slot => 4000 + slot % 8;
 
 const ZB_TOWN_WIDTH = 1920, ZB_TOWN_HEIGHT = 480, ZB_TOWN_COLUMN = 320;
 const ZB_TOWN_PEOPLE = 625;
@@ -74,7 +87,9 @@ function zbTownClockShapes(hour, minute) {
    land: [{ shape, x }], the strips, 320 wide and 480 high at y 0.
    things: [{ layer, shape, x, y, w, h, gate }] in drawing order; gate is
    { density: n } for a house, { reward: slot } for a reward building, or
-   null. inhabitants: [{ script, frames: [{ shape, x, y }], interval }].
+   null. inhabitants: [{ script, frames: [{ shape, x, y }], interval }], the
+   scripts as authored; slots: the sixteen as the town places them,
+   [{ slot, script, place, frames }].
    clock: { x, y, regs: { x: [], y: [] } }. sheets: the decoded tBMPs by
    id, 1000, 4000 and 6000. Positions are world pixels. */
 function zbTownWorld(arc) {
@@ -141,7 +156,13 @@ function zbTownWorld(arc) {
   for (let s = 1; s <= 24; s++) frameOf(6000, s);
   const clock = { x: 946, y: 218, regs };
 
-  return { land, things, inhabitants, clock, sheets };
+  // The sixteen slots, each a script moved so its first record is at the slot's place.
+  const slots = ZB_TOWN_INHABITANT_PLACES.map(([px, py], slot) => {
+    const inh = inhabitants[zbTownInhabitantScript(slot) - 4000], first = inh.frames[0], dx = px - first.x, dy = py - first.y;
+    return { slot, script: inh.script, place: { x: px, y: py }, frames: inh.frames.map(f => f && { shape: f.shape, x: f.x + dx, y: f.y + dy }) };
+  });
+
+  return { land, things, inhabitants, slots, clock, sheets };
 }
 
 /* The row a sprite stands on: its lowest with a painted pixel (index 0 is

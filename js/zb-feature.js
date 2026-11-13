@@ -53,9 +53,39 @@ function zbFeatureSheet(arc, scriptId, script) {
    and y the top left in the room, and the box round all of them
    ({ x0, y0, x1, y1 }, null when nothing is drawn). `frames` are the
    sheet's, `regs` its registration points ({ xs, ys }, one-based) or null. */
+/* The ticks as the program plays a feature script (zbtools' matching
+   decompilation of ZOOMBI32.EXE, runViewScript, features.cpp:463-510).
+   Each tick it reads at most 24 records. A tick that begins on the
+   frame's closing word draws nothing new and leaves the last picture up
+   (held), though the word's event and sound still come. A frame of
+   exactly 24 records leaves its closing word for the next tick, which is
+   then such a tick; the tick count still wraps at the header's frame
+   count, so the script falls a tick behind and its last frame never plays
+   (FERRY SCRB 1517, 1518, 1519, 1523, 1524, 1527 and 1529 and LILLY
+   10169 on the disc). Returns [{ records, event, end, sound, held }],
+   frameCount long. */
+function zbFeatureTicks(script) {
+  const out = [];
+  for (const f of script.frames) {
+    if (f.records.length > 24) throw new Error(`a frame of ${f.records.length} records, more than the 24 the program reads`);
+    if (f.records.length === 24) {
+      out.push({ records: f.records, event: 0, end: null, sound: null, held: false });
+      out.push({ records: [], event: f.event, end: f.end, sound: f.sound, held: true });
+    } else out.push({ ...f, held: !f.records.length });
+  }
+  return out.slice(0, script.frameCount);
+}
+
+/* Each tick's sprites as drawn ({ ticks, box, played }, played being
+   zbFeatureTicks'): a held tick shows the last picture again. The program
+   draws a tick's records only up to the first of shape 0 or past its
+   sheet (drawCels, features.cpp:196). The page skips those and draws the
+   rest, so that the ferry's rafts show: FERRY SCRB 1510-1529 begin with
+   shape 0, and the ferry reads them as data. */
 function zbFeaturePlaced(script, frames, regs) {
-  let box = null;
-  const ticks = script.frames.map(f => f.records.filter(r => r.shape > 0 && r.shape <= frames.length).map(r => {
+  let box = null, last = [];
+  const played = zbFeatureTicks(script);
+  const ticks = played.map(t => t.held ? last : (last = t.records.filter(r => r.shape > 0 && r.shape <= frames.length).map(r => {
     const fr = frames[r.shape - 1], x = r.x - (regs ? regs.xs[r.shape] : 0), y = r.y - (regs ? regs.ys[r.shape] : 0);
     if (fr.width && fr.height) {
       box = box || { x0: x, y0: y, x1: x + fr.width, y1: y + fr.height };
@@ -63,6 +93,6 @@ function zbFeaturePlaced(script, frames, regs) {
       box.x1 = Math.max(box.x1, x + fr.width); box.y1 = Math.max(box.y1, y + fr.height);
     }
     return { shape: r.shape, x, y, width: fr.width, height: fr.height };
-  }));
-  return { ticks, box };
+  })));
+  return { ticks, box, played };
 }

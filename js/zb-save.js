@@ -187,6 +187,10 @@ function zbSaveSync(s, f, layout) {
     s.numbers(f, 'v1FleensTraitDestSlots', 4, s.u8);
   }
   s.numbers(f, 'bcOneMushroomColors', 5, s.u16le);
+  // ScummVM's names, which the check reads from its header. The two high
+  // scores are the hidden mini-games' (zbtools picker.cpp:474,584), the
+  // catching game of scene 19, which a typed code opens from the Fleens' spot
+  // on the map, and the targets of scene 20, opened from Stone Rise's.
   for (const k of ['townScrollCol', 'lessActionFlag', 'fleensHighScore', 'mudballHighScore', 'pickerWaveBoatAnimationState']) s.u16le(f, k);
   for (const [k] of ZB_SAVE_PAGE_FLAGS) s.u16le(f, k);
   for (const k of ['zmbGeneratedCount', 'zmbStoredBC1Count', 'zmbStoredBC2Count', 'zmbStoredTownCount']) s.s16le(f, k);

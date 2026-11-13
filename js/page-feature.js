@@ -57,11 +57,11 @@ function featurePlayer(entry, arc, id, script, box) {
     if (back) g.drawImage(back, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height);
     for (const s of placed.ticks[at]) if (s.width && s.height) g.drawImage(sprite(s.shape), (s.x - x0) * zoom, (s.y - y0) * zoom, s.width * zoom, s.height * zoom);
     $('featAt').value = at;
-    const f = script.frames[at];
-    $('featTick').textContent = `tick ${at}` + (placed.ticks[at].length ? '' : ', nothing drawn') + (f.event ? `, event 0x${f.end.toString(16)}` : '');
+    const f = placed.played[at];
+    $('featTick').textContent = `tick ${at}` + (f.held ? ', no records, so the last picture stays' : placed.ticks[at].length ? '' : ', nothing drawn') + (f.event ? `, event 0x${f.end.toString(16)}` : '');
   };
   const sound = () => {
-    const snd = script.frames[at].sound;
+    const snd = placed.played[at].sound;
     if (FEATURE_PICK.sound && snd > 0) snoidPlaySound(arc.has('\0SND', snd) ? entry.name : 'ZOOMBINI', snd);
   };
   const step = () => { at = (at + 1) % placed.ticks.length; draw(); sound(); };

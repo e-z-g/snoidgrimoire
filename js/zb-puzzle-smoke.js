@@ -81,7 +81,11 @@
    again for a later Zoombini, the program puts the matching one among
    the first min(n, 8), n the Zoombinis still to go, where ScummVM puts
    it among all eight. Only the deal on arrival is made here, which
-   both do the same way.
+   both do the same way, except for one thing. For a Zoombini riding alone
+   the program writes a step of rows 1 and 2 into the wrong row
+   (zbSmokeGrid), and ScummVM writes the right one. The port follows the
+   program, so a lone Zoombini is turned away about one time in 40 at
+   level 3 and one in 30 at level 4.
 */
 
 /* The eight reflections on the wall at levels 1 and 2, in the program's
@@ -230,7 +234,14 @@ function zbSmokeGrid(level, q0, q1, rnd) {
       if (col === matchColumn && rnd.range(0, 100) > ZB_SMOKE_ROLL.step && !made) {
         made = true;
         P[row][col] = zbSmokeNext(lastP[col] || q0[col]);
-        S[row][col] = zbSmokeNext(lastS[col] || q1[col]);
+        /* The program's slip: with no value yet for the second Zoombini
+           (none at all when one rides alone, as the last of the band
+           does, and none in this column so far), it
+           writes the second's step into the first's row, and the second's
+           row stays 0 (makeSmokeRows, zbtools game.cpp:3903, marked sic).
+           ScummVM writes the second's row. */
+        if (!lastS[col]) P[row][col] = q1[col] + 1;
+        else S[row][col] = zbSmokeNext(lastS[col]);
         M[row][col] = P[row][col];
       } else if (rnd.range(0, 100) > ZB_SMOKE_ROLL.fill || (col === 3 && !filled)) {
         P[row][col] = S[row][col] = pool[vi];
@@ -398,11 +409,13 @@ ZB_PUZZLES.set('SMOKE', {
       notes: [
         'The first Zoombini’s filters are laid out in the order they were made. So the top left and top middle filters on the cart’s side, and the top right and bottom left on the mirror’s side (counting from the center crystal), always work. Later sets are shuffled.',
         'In the program’s debug mode, F4 stops the shuffle for the sets that follow and F5 starts it again.',
+        'The last Zoombini rides alone. About one time in 40 its filters come out so that no placement works, and it is turned away. The program writes a step meant for a second Zoombini into the first one’s row. ScummVM writes it in the right row, so there every ride can match.',
       ] },
     { rule: 'As at level 3, but the Zoombinis go two at a time, the first two in line first, each with a reflection. The four working filters are made to work for both together. Of the other two filters, one copies a working filter with its values moved on by one, and the other shows one random trait.',
       chances: 'None are counted. Each Zoombini has one ride, and one that does not match is knocked back.',
       notes: [
         'As at level 3, the first pair’s filters are laid out in the order they were made. These are top left and top middle on the cart’s side, and top right and bottom left on the mirror’s side.',
+        'In a band of an odd number, the last Zoombini rides alone. As at level 3, about one time in 30 its filters come out so that no placement works.',
       ] },
   ],
   form(level, band, state) { return zbSmokeForm(level, band, state); },
@@ -618,8 +631,9 @@ function zbSmokeSolve(level, band, state) {
   const fw = i => `${ZB_SMOKE_FILTER_HOMES[i].name} (${zbSmokeFilterWords(filters[i])})`;
   notes.push(`Every placement of the six filters that works for the first ${pair ? 'two' : 'Zoombini'} is counted, ${found.length} in all. The simplest has the fewest filters, then the fewest on the cart’s side.`);
   notes.push('The program makes the filters so that the top left and top middle on the cart’s side, and the top right and bottom left on the mirror’s side, always work. The first set is laid out in that order.');
+  if (!found.length) notes.push('Here they do not work. A Zoombini that rides alone can get filters that no placement matches, about one time in 40 at level 3 and one in 30 at level 4, because the program writes a step into the wrong row. It is turned away.');
   return {
-    most: n, exact: true, ways: found.length,
+    most: found.length ? n : n - sources.length, exact: true, ways: found.length,
     solutions: found.slice(0, 12).map(p => {
       const k = p.left.length + p.right.length;
       return {

@@ -131,7 +131,8 @@ function townBuild() {
   for (const t of TSCENE.things) tCard(data, TATLAS.rects.get('1000/' + t.shape), t.x, t.y, tStandDist(t.y + tFoot(1000, t.shape)));
   townMesh('things', data);
   const now = performance.now();
-  TANIM = TWORLD.inhabitants.slice(0, Math.min(TSCENE.inhabitants, TWORLD.inhabitants.length)).map((inh, i) => {
+  // The game picks the slots at random; the page shows the first so many.
+  TANIM = TWORLD.slots.slice(0, TSCENE.inhabitants).map((inh, i) => {
     // One distance for all its frames, from the lowest foot among them.
     let foot = -Infinity;
     for (const f of inh.frames) if (f) foot = Math.max(foot, f.y + tFoot(4000, f.shape));

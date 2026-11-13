@@ -15,7 +15,8 @@
 //   - the world: SCRB 1000 is six strips all round; every record of every
 //     frame of SCRB 1001-1003 is one of the things read, within 2 pixels;
 //     the houses are shapes 25-80 and the reward buildings 7-22, each once;
-//     the inhabitants are the page's SCRB table; the music is there.
+//     the inhabitants are the page's SCRB table, and their sixteen places
+//     are ZOOMBINI.EXE's; the music is there.
 import fs from 'node:fs';
 import path from 'node:path';
 import { site, archiveBytes, haveDisc, REF } from './load.mjs';
@@ -101,8 +102,22 @@ const scummMatch = (re, text, what) => { const m = re.exec(text); if (!m) throw 
   const table = [...scummMatch(/kInhabitantScrbTable\[16\]\{([\s\S]*?)\};/, hdr, 'kInhabitantScrbTable')[1].matchAll(/(\d+)/g)].map(m => +m[1]);
   const scripts = [...new Set(table)].sort((a, b) => a - b);
   if (scripts.join() !== w.inhabitants.map(i => i.script).join()) fail(`the inhabitants are SCRB ${w.inhabitants.map(i => i.script).join(',')}. ScummVM's table has ${scripts.join(',')}`);
+  // The sixteen slots: ScummVM's scripts in its order, the places as
+  // ZOOMBINI.EXE has them (32 words, once), and each script's first record
+  // moved onto its place.
+  if (w.slots.map(t => t.script).join() !== table.join()) fail(`the slots' scripts are ${w.slots.map(t => t.script).join(',')}, ScummVM's ${table.join(',')}`);
+  if (w.slots.some(t => !t.frames[0] || t.frames[0].x !== t.place.x || t.frames[0].y !== t.place.y)) fail('an inhabitant\'s first record is not at its place');
+  let placesFrom = 'SKIP the places: no ZOOMBINI.EXE';
+  if (fs.existsSync(EXE)) {
+    const words = Buffer.alloc(64);
+    S.ZB_TOWN_INHABITANT_PLACES.flat().forEach((v, i) => words.writeInt16LE(v, 2 * i));
+    const exe = fs.readFileSync(EXE), at = [];
+    for (let i = exe.indexOf(words); i >= 0; i = exe.indexOf(words, i + 1)) at.push(i);
+    if (at.length !== 1) fail(`ZOOMBINI.EXE has the inhabitants' places ${at.length} times, not once`);
+    else placesFrom = `places as ZOOMBINI.EXE's at file offset 0x${at[0].toString(16)}`;
+  }
   for (const id of [3000, 3001, 3002, 3003]) if (!arc.has('\0SND', id)) fail(`TOWN has no SND ${id}`);
-  console.log(`the world: 6 strips, ${houses.length} houses, ${rewards.length} reward buildings, ${w.things.length - houses.length - rewards.length} always there. All ${records} records of SCRB 1001-1003 placed. Inhabitants SCRB ${scripts[0]}-${scripts[scripts.length - 1]}`);
+  console.log(`the world: 6 strips, ${houses.length} houses, ${rewards.length} reward buildings, ${w.things.length - houses.length - rewards.length} always there. All ${records} records of SCRB 1001-1003 placed. Inhabitants SCRB ${scripts[0]}-${scripts[scripts.length - 1]}, in 16 slots, ${placesFrom}`);
 }
 
 // ---- the buildings' names, against the program ------------------------------

@@ -17,8 +17,8 @@
 //     resource type comes up with what it should show and no error -- on a
 //     desktop window and a phone's;
 //   - with WebGL (SwiftShader), #town stands you in Zoombiniville with all
-//     80 things, 8 inhabitants and the clock; looking at the clock tower
-//     names it; sway, red-cyan and Cardboard draw, and Cardboard's button
+//     80 things, 16 inhabitants (10 of them past the first 640 pixels)
+//     and the clock; looking at the clock tower names it; sway, red-cyan and Cardboard draw, and Cardboard's button
 //     leaves it; the sliders empty the town and write the address; the
 //     map's Zoombiniville links to it;
 //   - on the phone, nothing is wider than the screen.
@@ -384,7 +384,7 @@ try {
         const sleep = ms => new Promise(res => setTimeout(res, ms));
         const results = {};
         await sleep(300);
-        results.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 8 && !!TCLOCK && /^Scenario›The town›Full view$/.test(document.getElementById('crumbs').textContent)");
+        results.full = await p.evaluate("TSCENE.things.length === 80 && TANIM.length === 16 && TANIM.filter(a => a.inh.frames[0].x > 640).length === 10 && !!TCLOCK && /^Scenario›The town›Full view$/.test(document.getElementById('crumbs').textContent)");
         if (shots) await p.shot(path.join(shots, `${dev.name}-town.png`));
         // (the caption is set as a frame is drawn, and SwiftShader's frames
         // can be slower than any one wait: looked at until it is named)
@@ -418,7 +418,7 @@ try {
     for (const e of pageErrors(r.console)) fail(`${dev.name} #town (${describe(e)})`);
     if (!r.met) { fail(`${dev.name}: #town did not come up with WebGL`); continue; }
     const g = r.more;
-    if (!g.full) fail(`${dev.name} #town: not 80 things, 8 inhabitants and the clock`);
+    if (!g.full) fail(`${dev.name} #town: not 80 things, 16 inhabitants (10 past the first 640 pixels) and the clock`);
     if (!/Clock Tower/.test(g.caption)) fail(`${dev.name} #town: the caption facing the clock tower is "${g.caption}"`);
     if (!g.depth) fail(`${dev.name} #town: the depth modes did not draw, or Cardboard would not be left`);
     if (!g.empty) fail(`${dev.name} #town: the sliders did not empty the town`);

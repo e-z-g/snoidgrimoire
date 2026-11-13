@@ -12,7 +12,12 @@
 //     sprites of nearly every script fall on the 640 x 480 room (those that
 //     do not are counted and named), which a wrong sheet or a wrong reading
 //     of the points would not give;
-//   - a script drawn from an archive without its sheet has no sheet.
+//   - a script drawn from an archive without its sheet has no sheet;
+//   - played as the program plays them (zbFeatureTicks), every script has
+//     its header's count of ticks, no frame has more than 24 records, and
+//     the frames of exactly 24, which put a script a tick behind, are the
+//     eight zb-feature.js names; a tick with no records shows the picture
+//     before it again.
 import fs from 'node:fs';
 import { site, archiveNames, archiveBytes, DATA } from './load.mjs';
 
@@ -20,14 +25,18 @@ if (!fs.existsSync(DATA)) { console.log('SKIP: no reference/disc/DATA'); process
 const S = site();
 let fails = 0;
 const fail = m => { console.log('FAIL ' + m); fails++; };
-let total = 0, draws = 0, noHundred = 0, onRoom = 0;
-const off = [], nearer = [];
+let total = 0, draws = 0, noHundred = 0, onRoom = 0, held = 0;
+const off = [], nearer = [], full = [];
 for (const name of archiveNames()) {
   const arc = S.openMohawk(archiveBytes(name));
   const decoded = new Map();
   for (const { id } of arc.list('SCRB')) {
     total++;
     const script = S.parseScript(arc.get('SCRB', id), 'SCRB');
+    const played = S.zbFeatureTicks(script);
+    if (played.length !== script.frameCount) fail(`${name} SCRB ${id}: ${played.length} ticks played of ${script.frameCount}`);
+    if (script.frames.some(f => f.records.length === 24)) full.push(`${name} ${id}`);
+    held += played.filter(t => t.held).length;
     const max = Math.max(0, ...script.frames.flatMap(f => f.records.map(r => r.shape)));
     const sheet = S.zbFeatureSheet(arc, id, script);
     if (!max) { if (sheet) fail(`${name} SCRB ${id}: a sheet for a script that draws nothing`); continue; }
@@ -48,6 +57,13 @@ for (const name of archiveNames()) {
   }
 }
 if (nearer.join() !== 'CAVES 9025,CAVES 9026,CAVES 9027,CAVES 9028,FERRY 1450,FERRY 1451,FERRY 1452') fail(`a nearer sheet than the hundred's for ${nearer.join(', ')}`);
+if (full.join() !== 'FERRY 1517,FERRY 1518,FERRY 1519,FERRY 1523,FERRY 1524,FERRY 1527,FERRY 1529,LILLY 10169') fail(`frames of 24 records in ${full.join(', ')}`);
+{
+  // A held tick shows the picture before it.
+  const script = { frameCount: 3, frames: [{ records: [{ shape: 1, x: 0, y: 0 }], event: 0, end: 0xff00, sound: null }, { records: [], event: 2, end: 0xff02, sound: null }, { records: [{ shape: 2, x: 5, y: 5 }], event: 0, end: 0xff00, sound: null }] };
+  const p = S.zbFeaturePlaced(script, [{ width: 1, height: 1 }, { width: 1, height: 1 }], null);
+  if (p.ticks[1] !== p.ticks[0] || !p.played[1].held || p.played[1].event !== 2 || p.ticks[2][0].shape !== 2) fail('a tick with no records does not show the picture before it');
+}
 if (total !== 1796 || draws !== 1789 || noHundred !== 192) fail(`${total} scripts, ${draws} drawing, ${noHundred} with no sheet at their hundred, zb-feature.js has 1,796, 1,789 and 192`);
 if (onRoom < draws * 0.97) fail(`only ${onRoom} of ${draws} fall on the room`);
 {
@@ -56,5 +72,5 @@ if (onRoom < draws * 0.97) fail(`only ${onRoom} of ${draws} fall on the room`);
   const there = S.zbFeatureSheet(pizza, id, script), wrong = S.zbFeatureSheet(town, 1, script);
   if (!there || wrong) fail('a script with no sheet at or below it was given one');
 }
-console.log(`${total} feature scripts, ${draws} drawing, each has its sheet, the hundred's where there is one (${noHundred} where there is not, ${nearer.length} with a nearer one). ${onRoom} fall on the room` + (off.length ? `, not ${off.slice(0, 12).join(', ')}${off.length > 12 ? ' and ' + (off.length - 12) + ' more' : ''}` : ''));
+console.log(`${held} ticks with no records keep the picture before them, and ${full.length} scripts fall a tick behind. ${total} feature scripts, ${draws} drawing, each has its sheet, the hundred's where there is one (${noHundred} where there is not, ${nearer.length} with a nearer one). ${onRoom} fall on the room` + (off.length ? `, not ${off.slice(0, 12).join(', ')}${off.length > 12 ? ' and ' + (off.length - 12) + ' more' : ''}` : ''));
 process.exit(fails ? 1 : 0);

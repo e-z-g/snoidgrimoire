@@ -17,7 +17,9 @@
 //     advanceAnswerRunnerFrames (the display rows, not the port's
 //     arithmetic) passes the picked Zoombini and its reflection at levels 1
 //     and 2, and the placement the grid was made for and the placement
-//     the port finds at levels 3 and 4 (both Zoombinis of a pair); the
+//     the port finds at levels 3 and 4 (both Zoombinis of a pair; for a
+//     lone Zoombini the program's slip may leave the made one failing, and
+//     then the port must find a longer one that passes, or none); the
 //     filters have the forms the levels give them, and the marks follow
 //     the judge.
 export default function check({ S, fail, print, scumm, exe, scummMatch, bands, find }) {
@@ -133,7 +135,7 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
   const valid = t => t.every(v => v >= 1 && v <= 5);
   const setCount = f => f.traits.filter((v, c) => v && c !== f.cycle).length + (f.cycle >= 0 ? 1 : 0);
 
-  let dealt = 0, madeWorks = 0, shorter = 0, chance = 0;
+  let dealt = 0, madeWorks = 0, shorter = 0, chance = 0, slipped = 0;
   const sizes = [16, 13, 11, 8, 5, 3, 2, 1];
   for (let level = 1; level <= 4; level++) {
     for (const { band, seed } of bands(300, 900 + level, sizes)) {
@@ -168,10 +170,18 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
         if (!images.every(valid)) { bad('a reflection is not a Zoombini'); break; }
         const sources = pair ? [q0, q1] : [q0];
         const passes = (l, r) => sources.every((s, i) => judge(s, images[i], l.map(j => filters[j]), r.map(j => filters[j])));
+        // A lone Zoombini's grid may not work, as the program writes its slip
+        // (zbSmokeGrid); then no placement may pass, and the port must find none.
         if (passes([0, 1], [2, 3])) madeWorks++;
+        else if (band.length === 1) slipped++;
         else { bad('the placement the grid was made for does not pass the judge'); break; }
         const sol = st.solution;
-        if (!sol || !passes(sol.left, sol.right) || sol.left.length + sol.right.length > 4) { bad('the placement found does not pass the judge'); break; }
+        if (!sol && band.length === 1 && S.zbSmokePlacements(filters, sources.map((q, i) => [q, images[i]])).length) { bad('a placement passes, yet the port found none'); break; }
+        // The made placement has four filters, so the one found has no more, but
+        // past a slip a lone Zoombini may need five or six.
+        if (sol && (!passes(sol.left, sol.right) || (band.length !== 1 && sol.left.length + sol.right.length > 4))) { bad('the placement found does not pass the judge'); break; }
+        if (!sol && band.length !== 1) { bad('no placement found'); break; }
+        if (!sol) { dealt++; continue; }
         if (sol.left.length + sol.right.length < 4) shorter++;
         if (level === 4) {
           // One decoy copies a working row, its step kept and its values moved on one; the other gives one value.
@@ -255,5 +265,5 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
   print(`workbench: ${trips} forms given back, ${edits} picks edited and still matched, ${solved} known answers held to the judge (${ways} placements counted again), slowest ${slow} ms. No strategy, nothing being hidden`);
 
   print(`places as ScummVM's and in ZOOMBINI.EXE at 0x${(atCliff[0] || 0).toString(16)} and 0x${(atGrid[0] || 0).toString(16)}. Counts, ranges and rolls as ScummVM's; `
-    + `${dealt} deals judged (at levels 1 and 2, ${chance} with a second Zoombini matching by chance. At 3 and 4 the made placement passes in all ${madeWorks}, a shorter one found in ${shorter})`);
+    + `${dealt} deals judged (at levels 1 and 2, ${chance} with a second Zoombini matching by chance. At 3 and 4 the made placement passes in ${madeWorks}, and fails by the program's slip in ${slipped} of a lone Zoombini, a shorter one found in ${shorter})`);
 }
