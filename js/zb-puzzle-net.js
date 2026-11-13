@@ -9,7 +9,7 @@
    the player. A few sections of the wall are marked with dots, 1, 2 or 3,
    and a mudball that lands on one sends that many Zoombinis over, the
    band going in band order; a section counts only the first time. The
-   tank has one mudball for each marked section and seven more (eight at level 4), and
+   tank has one mudball for each marked section and eight more (nine at level 4), and
    whoever is still behind the wall when it is empty stays behind. The
    Zoombinis' own traits play no part.
 
@@ -41,7 +41,9 @@
    and debugGetChances. Checked against the program's code,
    ZOOMBI32.EXE of the 1996 disc's ZBARC32.Z: the groups at 0x439090, the
    tank at 0x436244 (one more at level 4, then the number of marks, then
-   7), each launch taking one at 0x436731, the rule at 0x437702 and the
+   7), each launch taking one at 0x436731 and the launcher stopping only
+   once the count is below zero (0x436741), so the player has one mudball
+   more than the count (ScummVM's onPostRenderFrame tests the same), the rule at 0x437702 and the
    lookup of where a mudball lands at 0x438920. Every draw is as ScummVM
    has it, in the same order, including the third value drawn for each
    row, checked for repeats at levels 3 and 4 and then never used (the
@@ -70,8 +72,12 @@ const ZB_NET_CHOICES = ['the shape’s color', 'the shape', 'the mudball’s col
 /* Levels 3 and 4: the six ways, as the choice (0-2) that picks the row,
    the column and the square within the column. Level 3 uses the first. */
 const ZB_NET_WAYS = [[2, 1, 0], [1, 2, 0], [0, 2, 1], [2, 0, 1], [1, 0, 2], [0, 1, 2]];
-/* The tank: one mudball per mark and this many more; one more at level 4. */
+/* The tank's count: one per mark and this many more; one more at level 4.
+   The launcher stops only once the count is below zero, so the player has
+   one mudball more than the count (zbNetShots). The game was played to
+   check it, under js-dos, at levels 1 and 4. */
 const ZB_NET_SPARE_SHOTS = 7;
+const zbNetShots = (level, marks) => marks + ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0) + 1;
 
 /* The band cut into groups, one a mark (computeTargetLaunchBatches,
    0x439090): 3, 2, 1, 3, 2, 1, ... until they reach the band, then the
@@ -389,7 +395,7 @@ const zbNetComplete = e => !e.R.includes(-1) && !e.C.includes(-1) && (!e.Q || !e
    under each of them (rows or columns or squares differ between ways, and
    the rotation moves the row, or at level 2 the column, by a different
    amount); then each mark's mudball. That is at most five shots that
-   need hit nothing, and the tank has seven spare (eight at level 4), so
+   need hit nothing, and the tank has eight spare (nine at level 4), so
    every mark is hit and the whole band crosses: no play can do better,
    and the worst rule cannot make this one do worse. The marks come from
    the deal (opts.state); without one they are dealt from seed 1. */
@@ -397,7 +403,7 @@ function zbNetStrategy(level, band, opts = {}) {
   const knows = opts.knows === 'form' ? 'form' : 'program', n = band.length, groups = zbNetGroups(n);
   const rule = opts.state && opts.state.rule ? opts.state.rule : zbNetRule(level, groups, zbRandom(1));
   const marks = { dots: rule.dots, at: rule.at || [] };
-  const shots0 = groups.length + ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0), cells = level >= 3 ? 125 : 25;
+  const shots0 = zbNetShots(level, groups.length), cells = level >= 3 ? 125 : 25;
   const markCells = [];
   for (let i = 0; i < cells; i++) if (marks.dots[i]) markCells.push(i);
   const H0 = zbNetStructures(level, knows).map(zbNetFresh);
@@ -470,7 +476,7 @@ function zbNetStrategy(level, band, opts = {}) {
           ? `The player knows only the level’s form, which allows ${level === 4 ? 'any of six ways for the three choices, a rotation of 2 or 3, and ' : 'the color for the rows, the shape for the columns and its color for the squares, and '}any order for each of the three. That makes ${hypotheses} rules.`
           : `The player knows the program, which deals ${level === 4 ? 'any of six ways for the three choices and a rotation of 2 or 3, with ' : 'the first way (the program’s at the start of a session), with '}the squares in the columns’ order. That makes ${hypotheses} rules.`,
       'First, for each value from 0 to 3, fire a mudball with that value in every choice. It shows where each value goes, whatever the rule. Then, if more than one wall is still possible, fire one mudball of different values, which lands somewhere different on each. Then fire the mudball for each mark.',
-      `That is at most five mudballs that may hit nothing, and the tank has ${ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0)} more than there are marks. So every mark is hit and all ${n} are guaranteed to cross.`,
+      `That is at most five mudballs that may hit nothing, and the tank has ${zbNetShots(level, 0)} more than there are marks. So every mark is hit and all ${n} are guaranteed to cross.`,
       ...(opts.state && opts.state.rule ? [] : ['No deal was given, so the marks here are dealt from seed 1.']),
     ],
   };
@@ -483,22 +489,22 @@ ZB_PUZZLES.set('NET', {
   about: 'The band has to get over a wall. The player fires mudballs of a chosen color and shape at it. Each marked section a mudball hits sends 1 to 3 Zoombinis over. Where a mudball lands follows a hidden rule.',
   levels: [
     { rule: 'A wall of 5 by 5 sections. The mudball’s color picks the row and its shape picks the column, or the other way around, on a coin toss. Each uses an order of the five values picked at random. There is one marked section for each group of the band (3, 2, 1, 3, ...), each placed at random.',
-      chances: 'The tank holds a mudball for each marked section and seven more. Each launch uses one, hit or miss, and a section counts only the first time it is hit.' },
+      chances: 'The tank has a mudball for each marked section and eight more. Each launch uses one, hit or miss, and a section counts only the first time it is hit.' },
     { rule: 'As at level 1, but each row down shifts the column values 2 or 3 places to the right (picked once), wrapping around, so the pattern runs diagonally.',
-      chances: 'A mudball for each marked section and seven more, as at level 1.' },
+      chances: 'A mudball for each marked section and eight more, as at level 1.' },
     { rule: 'A wall of 5 rows and 5 columns, with each column 5 squares wide. The mudball’s color picks the row, its shape picks the column, and the shape’s color picks the square within the column, each in an order picked at random. The shape and the shape’s color use the same order. There is one marked square for each group of the band.',
-      chances: 'A mudball for each marked square and seven more, as at level 1.',
+      chances: 'A mudball for each marked square and eight more, as at level 1.',
       notes: ['The program picks a third order and checks it for repeats, but never uses it. So the squares within a column go in the column’s order. ScummVM does the same.',
         'Which choice picks the row, the column and the square follows the way last picked at level 4 in the same session (or the first way if there was none), because the program never resets it. ScummVM always uses the first way, with color for the row, shape for the column and the shape’s color for the square.'] },
     { rule: 'As at level 3, but which of the three choices picks the row, the column and the square is one of six ways picked at random. Each square to the right within a column shifts the row values 2 or 3 places down (picked once), wrapping around.',
-      chances: 'The tank holds a mudball for each marked square and eight more.',
+      chances: 'The tank has a mudball for each marked square and nine more.',
       notes: ['The program also tosses a coin here but sets it to zero before checking it. So the other branch, which would shift the square’s values instead, never runs. ScummVM tosses the coin and ignores it.'] },
   ],
   deal(level, band, rnd, journey = {}) {
     const n = band.length, groups = zbNetGroups(n);
     const rule = zbNetRule(level, groups, rnd, journey.netWay || 0);
     if (level === 4) journey.netWay = rule.way;
-    const shots = groups.length + ZB_NET_SPARE_SHOTS + (level === 4 ? 1 : 0);
+    const shots = zbNetShots(level, groups.length);
     const cells = rule.rows.length, targets = [];
     for (let i = 0; i < cells; i++) if (rule.dots[i]) targets.push(i);
     const [ra, ca, sa] = zbNetAxes(rule);
@@ -531,7 +537,7 @@ ZB_PUZZLES.set('NET', {
         totalSlotCount: cells,
         targetCount: groups.length,
         targetLaunchBatchSizes: groups,
-        initialShotAllowance: shots,
+        initialShotAllowance: shots - 1,
         rowAxisRuleValues: rule.rows, columnAxisRuleValues: rule.cols, subcolumnAxisRuleValues: rule.subs,
         axisRuleRotationStep: rule.step,
         initialTargetLaunchCounts: rule.dots,
@@ -608,7 +614,7 @@ ZB_PUZZLES.set('NET', {
       done += going.length;
       return `Fire ${zbNetMudballWords(zbNetMudball(rule, m))}. It lands on the mark at ${zbNetCellWords(rule, m)}, and ${going.length === 1 ? 'Zoombini' : 'Zoombinis'} ${zbPlacesWords(going)} ${going.length === 1 ? 'goes' : 'go'} over.`;
     });
-    steps.push(`That is ${marks.length} of the ${state.initialShotAllowance} mudballs in the tank.`);
+    steps.push(`That is ${marks.length} of the ${state.initialShotAllowance + 1} mudballs in the tank.`);
     const mudballs = {};
     for (const m of marks) mudballs[m] = zbNetMudball(rule, m);
     return {

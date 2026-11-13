@@ -77,7 +77,8 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
       const trimmed = out.slice();
       for (let e = excess, i = 0; e > 0 && i < trimmed.length; i++) if (trimmed[i] >= 2) { trimmed[i]--; e--; }
       if (!same(st.targetLaunchBatchSizes, n === 1 ? [1] : trimmed) || st.targetLaunchBatchSizes.reduce((a, b) => a + b, 0) !== n) why.push(`groups ${st.targetLaunchBatchSizes}`);
-      if (st.initialShotAllowance !== st.targetCount + 7 + (level === 4 ? 1 : 0) || !d.setup.some(s => s.includes(`has ${st.initialShotAllowance} mudballs`))) why.push('the tank');
+      // The page shows one mudball more than the count, as the launcher stops only below zero.
+      if (st.initialShotAllowance !== st.targetCount + 7 + (level === 4 ? 1 : 0) || !d.setup.some(s => s.includes(`has ${st.initialShotAllowance + 1} mudballs`))) why.push('the tank');
       // The marks.
       const marks = [...Array(cells).keys()].filter(i => rule.dots[i]);
       if (rule.dots.length !== cells || !same(marks.map(i => rule.dots[i]).sort(), st.targetLaunchBatchSizes.slice().sort())) why.push('the marks are not the groups');
