@@ -16,8 +16,7 @@
    none blended. Then each line of the screenshot repeats one of the
    frame's, and the lines that differ from the one before mark where a
    frame line begins. zbShotUnscale fits the scale and the start of each
-   axis to those marks and reads the frame back. A smoothed or compressed
-   picture has no such marks, and the fit fails on it.
+   axis to those marks and reads the frame back.
 
    A Zoombini is five sprites of ZOOMBINI tBMP 3000, one a part (zb-snoid.js).
    zbShotFindParts tries every pose of every part where the screenshot
@@ -25,6 +24,16 @@
    explain the frame, and zbShotGroup groups them by where they put the
    Zoombini's origin. A sprite's registration point is where the origin
    falls when the Zoombini stands, and nearly so in its other poses.
+
+   A screenshot enlarged or shrunk with smoothing, as a browser or a forum
+   shows a picture, has colors between the palette's and no repeated lines
+   (zbShotSmoothed). zbShotSmoothRead compares it in color with each place's
+   picture at every scale and offset, coarse to fine (zbShotSmoothAlign),
+   samples the frame back at each frame pixel (zbShotSmoothFrame), and
+   fits the blur the smoothing left (zbShotBlurFit). A single part is too
+   blurred to read there, so zbShotSmoothZoombinis draws whole Zoombinis
+   in the poses the scripts draw (zbShotPoses), blurred the same way, and
+   chooses the traits whose drawing fits.
 */
 
 const ZB_SHOT_W = 640, ZB_SHOT_H = 480;
@@ -104,8 +113,8 @@ function zbShotUnscale(rgba, width, height) {
 }
 
 /* Where the part a screenshot shows lies on a place's picture: `picture`
-   640 x 480 indices, `palKeys` zbShotPaletteKeys's. Every offset that
-   keeps the part inside the frame is tried on a sparse sample of pixels,
+   640 x 480 indices, `palKeys` zbShotPaletteKeys's. Every offset with
+   the part inside the frame is tried on a sparse sample of pixels,
    the best few on a closer one, and the best of those in full. Returns { dx, dy, fit, keys }: `fit` the share of the
    part's pixels that are the picture's, `keys` the 640 x 480 frame with
    -1 where the screenshot does not show it. */
@@ -262,7 +271,7 @@ function zbShotBestParts(found, keys, sheet, palKeys) {
    { body, hair, eyes, nose, feet }, traits: { hair, eyes, nose, feet }
    (null where that part was not found) }], from the top of the screen
    down. A group of fewer than three parts is a chance fit of a small
-   sprite, and is dropped. */
+   sprite, which this drops. */
 function zbShotGroup(parts, radius = 6) {
   const order = ['body', 'hair', 'eyes', 'feet', 'nose'];
   const sorted = parts.slice().sort((a, b) => order.indexOf(a.part) - order.indexOf(b.part) || b.matched - a.matched);
@@ -359,6 +368,757 @@ function zbShotPictures(arc, key) {
     .filter(id => arc.has('tBMP', id) && arc.has('SHPL', id)).map(id => ({ id, palette: id }));
 }
 
+/* ---- a smoothed screenshot ------------------------------------------------ */
+
+/* A screenshot enlarged or shrunk with smoothing, or compressed, has colors
+   between the palette's, so it has many more colors than a palette has. */
+function zbShotSmoothed(rgba) {
+  const seen = new Set();
+  for (let i = 0; i < rgba.length; i += 4) {
+    seen.add(zbShotKey(rgba[i], rgba[i + 1], rgba[i + 2]));
+    if (seen.size > 512) return true;
+  }
+  return false;
+}
+
+/* A palette's colors as the screen shows them, [r, g, b] each: brightened
+   and through 6 bits a component, as the Windows programs show them, or as
+   stored. */
+function zbShotPaletteRgb(pal, windows) {
+  return windows ? zbWindowsPalette(pal).map(c => [0, 1, 2].map(k => ((c[k] >> 2) << 2) | (c[k] >> 6)))
+    : pal.map(c => [c[0], c[1], c[2]]);
+}
+
+/* A place's picture in color, each pixel the mean of the `f` x `f` frame
+   pixels it covers: { w, h, f, rgb }. */
+function zbShotLevel(pixels, rgb, f) {
+  const W = ZB_SHOT_W, H = ZB_SHOT_H, w = W / f, h = H / f, out = new Float32Array(w * h * 3);
+  const r = new Float32Array(256), g = new Float32Array(256), b = new Float32Array(256);
+  for (let i = 0; i < 256; i++) { r[i] = rgb[i][0]; g[i] = rgb[i][1]; b[i] = rgb[i][2]; }
+  for (let y = 0; y < H; y++) {
+    const row = ((y / f) | 0) * w;
+    for (let x = 0; x < W; x++) {
+      const v = pixels[y * W + x], o = 3 * (row + ((x / f) | 0));
+      out[o] += r[v]; out[o + 1] += g[v]; out[o + 2] += b[v];
+    }
+  }
+  const n = f * f;
+  for (let i = 0; i < out.length; i++) out[i] /= n;
+  return { w, h, f, rgb: out };
+}
+
+/* The screenshot's running sums, so that the mean over any box is four
+   lookups. */
+function zbShotSums(rgba, width, height) {
+  const W = width + 1, s = new Float64Array(W * (height + 1) * 3);
+  for (let y = 0; y < height; y++) {
+    let r = 0, g = 0, b = 0;
+    for (let x = 0; x < width; x++) {
+      const i = 4 * (y * width + x), o = 3 * ((y + 1) * W + x + 1), u = o - 3 * W;
+      r += rgba[i]; g += rgba[i + 1]; b += rgba[i + 2];
+      s[o] = s[u] + r; s[o + 1] = s[u + 1] + g; s[o + 2] = s[u + 2] + b;
+    }
+  }
+  return { s, W, width, height };
+}
+
+/* The screenshot's mean color in a box of side 2 x `r` around each point.
+   When `r` is under 1, it is the color of the pixel at the point. `pts`
+   are pixel centers. */
+function zbShotPointColors(rgba, sums, pts, r) {
+  const n = pts.length / 2, out = new Float32Array(3 * n), { s, W, width, height } = sums;
+  for (let i = 0; i < n; i++) {
+    if (r < 1) {
+      const p = 4 * ((pts[2 * i + 1] - 0.5) * width + pts[2 * i] - 0.5);
+      out[3 * i] = rgba[p]; out[3 * i + 1] = rgba[p + 1]; out[3 * i + 2] = rgba[p + 2];
+      continue;
+    }
+    const x0 = Math.max(0, Math.round(pts[2 * i] - r)), x1 = Math.min(width, Math.round(pts[2 * i] + r));
+    const y0 = Math.max(0, Math.round(pts[2 * i + 1] - r)), y1 = Math.min(height, Math.round(pts[2 * i + 1] + r));
+    const a = 3 * (y0 * W + x0), b = 3 * (y0 * W + x1), c = 3 * (y1 * W + x0), d = 3 * (y1 * W + x1), area = (x1 - x0) * (y1 - y0);
+    for (let k = 0; k < 3; k++) out[3 * i + k] = (s[d + k] - s[b + k] - s[c + k] + s[a + k]) / area;
+  }
+  return out;
+}
+
+/* How far the screenshot's colors at `pts` (`colors`) are from a level of
+   the picture, with screenshot pixel (x, y) at frame point (x / sx + dx,
+   y / sy + dy): the mean of each point's distance (the sum over red, green
+   and blue), each cut off at `clip` so that what stands over the picture
+   counts no more than a fixed amount. */
+function zbShotError(level, pts, colors, sx, sy, dx, dy, clip, bound = Infinity) {
+  const abs = Math.abs;
+  const { w, h, f, rgb } = level, n = pts.length / 2, stop = bound * n;
+  let e = 0;
+  for (let i = 0; i < n; i++) {
+    let u = (pts[2 * i] / sx + dx) / f - 0.5, v = (pts[2 * i + 1] / sy + dy) / f - 0.5;
+    if (u < 0) u = 0; else if (u > w - 1.001) u = w - 1.001;
+    if (v < 0) v = 0; else if (v > h - 1.001) v = h - 1.001;
+    const x0 = u | 0, y0 = v | 0, fx = u - x0, fy = v - y0, o = 3 * (y0 * w + x0), o2 = o + 3 * w;
+    let d = 0;
+    for (let k = 0; k < 3; k++) {
+      const a = rgb[o + k] + (rgb[o + 3 + k] - rgb[o + k]) * fx, b = rgb[o2 + k] + (rgb[o2 + 3 + k] - rgb[o2 + k]) * fx;
+      d += abs(a + (b - a) * fy - colors[3 * i + k]);
+    }
+    e += d < clip ? d : clip;
+    if (e > stop) return Infinity;
+  }
+  return e / n;
+}
+
+/* `n` points of the screenshot, pixel centers at least `margin` from its
+   edges, the same ones every time. */
+function zbShotSamplePoints(width, height, n, margin) {
+  let seed = 12345;
+  const next = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 4294967296;
+  const pts = new Float32Array(2 * n), m = Math.min(margin, width / 4, height / 4);
+  for (let i = 0; i < n; i++) {
+    pts[2 * i] = Math.floor(m + next() * (width - 2 * m)) + 0.5;
+    pts[2 * i + 1] = Math.floor(m + next() * (height - 2 * m)) + 0.5;
+  }
+  return pts;
+}
+
+/* Where a smoothed screenshot lies on one place's picture, and at what
+   scale: { sx, sy, dx, dy, error }, screenshot pixel (x, y) showing frame
+   point (x / sx + dx, y / sy + dy), and `error` zbShotError's at full size.
+   The search runs at three sizes. On the picture shrunk 16 times, every
+   scale from the one that fits the screenshot in the frame up to 4, 3%
+   apart, and every offset 8 frame pixels apart are tried, with the
+   screenshot averaged over boxes of the same size. The best 24 go on to
+   the picture shrunk 4 times, and the best of those to full size, where
+   each of the four numbers moves until no move brings the error down. */
+function zbShotSmoothAlign(rgba, sums, width, height, levels) {
+  const abs = Math.abs;
+  const sMin = Math.max(width / ZB_SHOT_W, height / ZB_SHOT_H), sMax = Math.min(4, width / 80, height / 60);
+  if (sMax < sMin) return null;
+  const pts = zbShotSamplePoints(width, height, 200, 8 * sMax);
+  const found = [];
+  for (let s = sMin; s <= sMax * 1.0001; s *= 1.03) {
+    const colors = zbShotPointColors(rgba, sums, pts, 8 * s);
+    const fw = width / s, fh = height / s, xs = [], ys = [];
+    for (let d = 0; d < ZB_SHOT_W - fw; d += 8) xs.push(d);
+    xs.push(Math.max(0, ZB_SHOT_W - fw));
+    for (let d = 0; d < ZB_SHOT_H - fh; d += 8) ys.push(d);
+    ys.push(Math.max(0, ZB_SHOT_H - fh));
+    let first = { error: Infinity }, second = { error: Infinity };
+    for (const dy of ys) {
+      for (const dx of xs) {
+        const error = zbShotError(levels[16], pts, colors, s, s, dx, dy, 60, second.error);
+        if (error < first.error) { second = first; first = { s, dx, dy, error }; }
+        else if (error < second.error) second = { s, dx, dy, error };
+      }
+    }
+    for (const c of [first, second]) if (c.error < Infinity) found.push(c);
+  }
+  found.sort((a, b) => a.error - b.error);
+  const distinct = (list, c, ds, dd) => !list.some(o => abs(o.s / c.s - 1) < ds && abs(o.dx - c.dx) < dd && abs(o.dy - c.dy) < dd);
+  const starts = [];
+  for (const c of found) if (starts.length < 24 && distinct(starts, c, 0.05, 16)) starts.push(c);
+  const mids = [];
+  for (const c of starts) {
+    for (let k = -4; k <= 4; k++) {
+      const s = c.s * (1 + k * 0.0075), colors = zbShotPointColors(rgba, sums, pts, 2 * s);
+      for (let dy = c.dy - 12; dy <= c.dy + 12; dy += 2) {
+        for (let dx = c.dx - 12; dx <= c.dx + 12; dx += 2) mids.push({ s, dx, dy, error: zbShotError(levels[4], pts, colors, s, s, dx, dy, 60) });
+      }
+    }
+  }
+  mids.sort((a, b) => a.error - b.error);
+  const fine = zbShotSamplePoints(width, height, 2000, 2);
+  const colors = zbShotPointColors(rgba, sums, fine, 0);
+  const at = p => zbShotError(levels[1], fine, colors, p.sx, p.sy, p.dx, p.dy, 90);
+  let best = null;
+  const tried = [];
+  for (const m of mids) {
+    if (tried.length >= 3) break;
+    if (!distinct(tried, m, 0.01, 4)) continue;
+    tried.push(m);
+    let p = { sx: m.s, sy: m.s, dx: m.dx, dy: m.dy };
+    p.error = at(p);
+    const steps = { sx: 0.004 * m.s, sy: 0.004 * m.s, dx: 2, dy: 2 };
+    for (let round = 0; round < 8; round++) {
+      let moved = true;
+      while (moved) {
+        moved = false;
+        for (const k of ['sx', 'sy', 'dx', 'dy']) {
+          for (const sign of [1, -1]) {
+            const q = { ...p, [k]: p[k] + sign * steps[k] };
+            q.error = at(q);
+            if (q.error < p.error) { p = q; moved = true; }
+          }
+        }
+      }
+      for (const k in steps) steps[k] /= 2;
+    }
+    if (!best || p.error < best.error) best = p;
+  }
+  return best;
+}
+
+/* A color histogram, 4 bits a component, of `n` colors that `get(i, out)`
+   puts in `out`, as shares that sum to 1. */
+function zbShotHistogram(n, get) {
+  const hist = new Float32Array(4096), c = [0, 0, 0];
+  for (let i = 0; i < n; i++) {
+    get(i, c);
+    hist[((c[0] >> 4) << 8) | ((c[1] >> 4) << 4) | (c[2] >> 4)] += 1 / n;
+  }
+  return hist;
+}
+
+/* The frame as a smoothed screenshot shows it, at the place `a`
+   (zbShotSmoothAlign's) found: each frame pixel's center sampled from the
+   screenshot, between its pixels, as red, green and blue, 640 x 480 of
+   them, NaN where the screenshot does not show the frame. */
+function zbShotSmoothFrame(rgba, width, height, a) {
+  const frame = new Float32Array(ZB_SHOT_W * ZB_SHOT_H * 3).fill(NaN);
+  for (let Y = 0; Y < ZB_SHOT_H; Y++) {
+    const v = (Y + 0.5 - a.dy) * a.sy - 0.5;
+    if (v < 0 || v > height - 1) continue;
+    const y0 = Math.min(Math.floor(v), height - 2), fy = v - y0;
+    for (let X = 0; X < ZB_SHOT_W; X++) {
+      const u = (X + 0.5 - a.dx) * a.sx - 0.5;
+      if (u < 0 || u > width - 1) continue;
+      const x0 = Math.min(Math.floor(u), width - 2), fx = u - x0, o = 4 * (y0 * width + x0), o2 = o + 4 * width;
+      for (let k = 0; k < 3; k++) {
+        const top = rgba[o + k] + (rgba[o + 4 + k] - rgba[o + k]) * fx, bottom = rgba[o2 + k] + (rgba[o2 + 4 + k] - rgba[o2 + k]) * fx;
+        frame[3 * (Y * ZB_SHOT_W + X) + k] = top + (bottom - top) * fy;
+      }
+    }
+  }
+  return frame;
+}
+
+/* The frame as keys (zbShotKey's): each pixel the nearest of the
+   palette's colors 10 to 245 within `tolerance` (the sum over red, green
+   and blue), or -1 where none is that near or the frame is not shown. */
+function zbShotSmoothKeys(frame, rgb, palKeys, tolerance) {
+  const abs = Math.abs;
+  const keys = new Int32Array(ZB_SHOT_W * ZB_SHOT_H).fill(-1), nearest = new Map();
+  for (let i = 0; i < keys.length; i++) {
+    if (frame[3 * i] !== frame[3 * i]) continue;
+    const c = [Math.round(frame[3 * i]), Math.round(frame[3 * i + 1]), Math.round(frame[3 * i + 2])];
+    const at = (c[0] << 16) | (c[1] << 8) | c[2];
+    if (!nearest.has(at)) {
+      let best = -1, bestD = tolerance + 1;
+      for (let j = 10; j < 246; j++) {
+        const d = abs(rgb[j][0] - c[0]) + abs(rgb[j][1] - c[1]) + abs(rgb[j][2] - c[2]);
+        if (d < bestD) { bestD = d; best = j; }
+      }
+      nearest.set(at, best);
+    }
+    const j = nearest.get(at);
+    if (j >= 0) keys[i] = palKeys[j];
+  }
+  return keys;
+}
+
+/* The blur the smoothing leaves on the frame, as the share `blur` of a
+   pixel's color that spreads to each neighbor across and down (a 3 x 3 kernel
+   of [b, 1 - 2b, b] across times the same down), fitted where the frame
+   shows the place's picture: the blur from 0 to 0.3 whose picture is
+   nearest the frame at the 40th of every 100 points sampled, nearest
+   first, since the points under what stands over the picture are the
+   farthest. Returns { blur, spread }, `spread` that 40th point's distance. */
+function zbShotBlurFit(frame, pixels, rgb) {
+  const abs = Math.abs;
+  const pts = [];
+  for (let Y = 1; Y < ZB_SHOT_H - 1; Y += 3) {
+    for (let X = 1; X < ZB_SHOT_W - 1; X += 3) if (!Number.isNaN(frame[3 * (Y * ZB_SHOT_W + X)])) pts.push(Y * ZB_SHOT_W + X);
+  }
+  let best = null;
+  for (let b = 0; b <= 0.3001; b += 0.025) {
+    const e = pts.map(i => {
+      let d = 0;
+      for (let k = 0; k < 3; k++) {
+        let v = 0;
+        for (let j = -1; j <= 1; j++) for (let x = -1; x <= 1; x++) v += (x ? b : 1 - 2 * b) * (j ? b : 1 - 2 * b) * rgb[pixels[i + j * ZB_SHOT_W + x]][k];
+        d += abs(v - frame[3 * i + k]);
+      }
+      return d;
+    }).sort((p, q) => p - q);
+    const spread = e.length ? e[Math.floor(0.4 * e.length)] : Infinity;
+    if (!best || spread < best.spread) best = { blur: b, spread };
+  }
+  return best;
+}
+
+/* The color each opaque pixel of an indexed image shows once blurred as
+   the frame is (zbShotBlurFit's `blur`), where at most `room` of its
+   weight would fall on clear pixels and the color those show is unknown:
+   [x, y, r, g, b, index, flat] each, `flat` 1 where its 3 x 3 is one
+   color. */
+function zbShotBlurred(img, rgb, blur, room = 0.13) {
+  const { width, height, pixels } = img, out = [];
+  const at = (x, y) => x < 0 || y < 0 || x >= width || y >= height ? 0 : pixels[y * width + x];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const v = at(x, y);
+      if (!v) continue;
+      let r = 0, g = 0, b = 0, clear = 0, flat = 1;
+      for (let j = -1; j <= 1; j++) {
+        for (let i = -1; i <= 1; i++) {
+          const w = (i ? blur : 1 - 2 * blur) * (j ? blur : 1 - 2 * blur), n = at(x + i, y + j);
+          if (n !== v) flat = 0;
+          if (!n) { clear += w; continue; }
+          r += w * rgb[n][0]; g += w * rgb[n][1]; b += w * rgb[n][2];
+        }
+      }
+      if (clear > room) continue;
+      out.push(x, y, r / (1 - clear), g / (1 - clear), b / (1 - clear), v, flat);
+    }
+  }
+  return out;
+}
+
+/* Where the frame shows the place's picture: 1 where the frame is within
+   `tolerance` of the picture blurred as zbShotBlurFit found. */
+function zbShotBare(frame, pixels, rgb, blur, tolerance) {
+  const abs = Math.abs;
+  const bare = new Uint8Array(ZB_SHOT_W * ZB_SHOT_H);
+  for (let Y = 1; Y < ZB_SHOT_H - 1; Y++) {
+    for (let X = 1; X < ZB_SHOT_W - 1; X++) {
+      const i = Y * ZB_SHOT_W + X;
+      if (frame[3 * i] !== frame[3 * i]) continue;
+      let d = 0;
+      for (let k = 0; k < 3; k++) {
+        let v = 0;
+        for (let j = -1; j <= 1; j++) for (let x = -1; x <= 1; x++) v += (x ? blur : 1 - 2 * blur) * (j ? blur : 1 - 2 * blur) * rgb[pixels[i + j * ZB_SHOT_W + x]][k];
+        d += abs(v - frame[3 * i + k]);
+      }
+      bare[i] = d <= tolerance ? 1 : 0;
+    }
+  }
+  return bare;
+}
+
+/* Every pose of a Zoombini in a place, from the ticks of the Zoombini
+   snoid scripts in ZOOMBINI and the place's archive. Ticks alike in the
+   body, hair and nose (where each is drawn from the body, the layer order
+   and the facing) are one `family`, and its poses are every eyes the
+   family's ticks draw with every feet they draw. Some scripts are written
+   for one kind of feet, and the same pose for other feet is another
+   script's. A blink closes the eyes, and wide eyes closed look much like
+   sleepy eyes open. Returns { poses, families, grids }: a pose is { tick,
+   body, facing, family, from, e, f }, `tick` made with the family's eyes
+   e and feet f, `body` the body's record, which a reading places, and
+   `from` the script of the family's first tick. A family's grid has its
+   poses by eyes, then feet. */
+const ZB_SHOT_POSES = new Map();
+function zbShotPoses(archives, place) {
+  if (ZB_SHOT_POSES.has(place)) return ZB_SHOT_POSES.get(place);
+  const groups = new Map();
+  for (const name of ['ZOOMBINI', place]) {
+    const arc = archives.get(name);
+    if (!arc) continue;
+    for (const { id } of arc.list('SCRS')) {
+      const script = parseScript(arc.get('SCRS', id), 'SCRS');
+      if (script.layout !== 0 && script.layout !== 1) continue;
+      for (const facing of [0, 1]) {
+        for (const tick of zbSnoidTicks(script, facing, name)) {
+          const parts = zbSnoidParts(tick);
+          if (parts.length !== 5) continue;
+          const body = parts.find(p => p.part === 'body');
+          const where = p => `${p.shape}:${p.x - body.x},${p.y - body.y}`;
+          const family = parts.filter(p => p.part !== 'feet' && p.part !== 'eyes').map(p => p.part + where(p)).join(' ')
+            + ` ${tick.layout} ${tick.facing}`;
+          if (!groups.has(family)) groups.set(family, { tick, parts, body, from: `${name} SCRS ${id}`, eyes: new Map(), feet: new Map() });
+          const g = groups.get(family);
+          for (const kind of ['eyes', 'feet']) {
+            const p = parts.find(q => q.part === kind);
+            g[kind].set(where(p), { shape: p.shape, dx: p.x - body.x, dy: p.y - body.y });
+          }
+        }
+      }
+    }
+  }
+  const poses = [], families = new Map(), grids = new Map();
+  for (const [family, g] of groups) {
+    const at = kind => g.parts.findIndex(p => p.part === kind);
+    const eyesAt = at('eyes'), feetAt = at('feet'), bodyRec = g.tick.records[at('body')];
+    const grid = [...g.eyes.values()].map((e, ei) => [...g.feet.values()].map((f, fi) => {
+      const records = g.tick.records.map((r, k) => k === eyesAt ? { ...r, shape: e.shape, x: bodyRec.x + e.dx, y: bodyRec.y + e.dy }
+        : k === feetAt ? { ...r, shape: f.shape, x: bodyRec.x + f.dx, y: bodyRec.y + f.dy } : r);
+      poses.push({ tick: { ...g.tick, records }, body: g.body, facing: g.tick.facing, family, from: g.from, e: ei, f: fi });
+      return poses.length - 1;
+    }));
+    grids.set(family, grid);
+    families.set(family, grid.flat());
+  }
+  const out = { poses, families, grids };
+  ZB_SHOT_POSES.set(place, out);
+  return out;
+}
+
+/* The poses to try when a trait changes, from pose `pi`: the eyes or the
+   feet each pose its family has for them, the other kept, and for hair
+   and nose the pose itself. */
+function zbShotPoseChoices(poses, grids, pi, kind) {
+  const p = poses[pi], grid = grids.get(p.family);
+  if (kind === 'eyes') return grid.map(row => row[p.f]);
+  if (kind === 'feet') return grid[p.e];
+  return [pi];
+}
+
+/* How well each body sprite (`bodies`, zbShotBlurred's points minus the
+   registration point) fits with its record at every second pixel off the
+   bare picture: a pixel within `tolerance` counts 1 and one over the bare
+   picture -2. A place where every fourth point counts under a quarter of
+   30 is passed over. Returns { bodyAt, bodyOf }, the best count at each pixel and
+   which body gave it. */
+function zbShotBodyScan(frame, bare, bodies, tolerance) {
+  const W = ZB_SHOT_W, H = ZB_SHOT_H;
+  const bodyAt = new Float32Array(W * H).fill(-1e9), bodyOf = new Int16Array(W * H).fill(-1);
+  for (let bi = 0; bi < bodies.length; bi++) {
+    const b = bodies[bi].pts, n = b.length / 7, bx = new Int16Array(n), by = new Int16Array(n), bc = new Float32Array(3 * n);
+    for (let p = 0; p < n; p++) {
+      bx[p] = b[7 * p]; by[p] = b[7 * p + 1];
+      bc[3 * p] = b[7 * p + 2]; bc[3 * p + 1] = b[7 * p + 3]; bc[3 * p + 2] = b[7 * p + 4];
+    }
+    for (let Y = 0; Y < H; Y += 2) {
+      for (let X = 0; X < W; X += 2) {
+        const i = Y * W + X;
+        if (bare[i] || frame[3 * i] !== frame[3 * i]) continue;
+        if (4 * zbShotBodyCount(frame, bare, bx, by, bc, n, X, Y, tolerance, 4) < 30) continue;
+        const v = zbShotBodyCount(frame, bare, bx, by, bc, n, X, Y, tolerance, 1);
+        if (v > bodyAt[i]) { bodyAt[i] = v; bodyOf[i] = bi; }
+      }
+    }
+  }
+  return { bodyAt, bodyOf };
+}
+function zbShotBodyCount(frame, bare, bx, by, bc, n, X, Y, tolerance, step) {
+  const W = ZB_SHOT_W, H = ZB_SHOT_H, abs = Math.abs;
+  let v = 0;
+  for (let p = 0; p < n; p += step) {
+    const x = X + bx[p], y = Y + by[p];
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const q = y * W + x, o = 3 * q, r = frame[o];
+    if (r !== r) continue;
+    if (abs(r - bc[3 * p]) + abs(frame[o + 1] - bc[3 * p + 1]) + abs(frame[o + 2] - bc[3 * p + 2]) <= tolerance) v++;
+    else if (bare[q]) v -= 2;
+  }
+  return v;
+}
+
+/* Zoombinis in a smoothed frame, drawn whole and compared. A candidate is
+   a pose (zbShotPoses's), a place for its body's record and four traits.
+   Its look is the Zoombini drawn in that pose and blurred as the frame is
+   (zbShotBlurred). A pixel of the look within `tolerance` of the frame
+   counts for it, unless the frame there shows the bare picture
+   (zbShotBare), as a dark outline on a dark floor would. One that is not
+   within it counts against it, twice where the frame shows the bare
+   picture, and one under a Zoombini already read counts neither way.
+
+   Candidates come from bodies, and from noses, eyes, hair and feet, each
+   sprite blurred and fitted where it matches 60% of what shows of it. A
+   part found gives its body's place through every family of poses that
+   draws it. The best candidates have their traits chosen one at a time:
+   a trait's five values are tried, the eyes and feet with each pose the
+   family has for them (zbShotPoseChoices). The best of all is read when
+   55% of what shows of it counts for it. It then covers what it shows,
+   and the rest are tried again, until none is good enough. A trait is
+   read where its best value beats the next by `margin` pixels and left
+   null otherwise. Returns [{ x, y, traits, scores, pose, tick, body,
+   facing, matched, missed }]: (x, y) the body's record, which for a
+   Zoombini standing is its origin, `scores` each trait's five values'
+   scores, `pose` the script, and `tick` and `body` the pose. */
+function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
+  const abs = Math.abs;
+  const { frame, bare, sheet, rgb, palKeys, blur, poses, families, grids } = env, W = ZB_SHOT_W, H = ZB_SHOT_H;
+  const looks = new Map();
+  const look = (z, pi) => {
+    const id = zbZoombiniId(z) * 8192 + pi;
+    if (!looks.has(id)) {
+      const missing = [], placed = zbSnoidPlacements(sheet, z, poses[pi].tick, missing);
+      if (missing.length) { looks.set(id, null); return null; }
+      const img = zbSnoidCompose(sheet, placed), ox = img.ox + poses[pi].body.x, oy = img.oy + poses[pi].body.y;
+      const blurred = zbShotBlurred(img, rgb, blur), all = [];
+      const pts = new Float32Array(blurred.length / 7 * 5);
+      for (let p = 0, q = 0; p < blurred.length; p += 7, q += 5) {
+        pts[q] = blurred[p] - ox; pts[q + 1] = blurred[p + 1] - oy;
+        pts[q + 2] = blurred[p + 2]; pts[q + 3] = blurred[p + 3]; pts[q + 4] = blurred[p + 4];
+      }
+      for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) if (img.pixels[y * img.width + x]) all.push(x - ox, y - oy);
+      if (looks.size > 4000) looks.clear();
+      looks.set(id, { pts, all: Int16Array.from(all) });
+    }
+    return looks.get(id);
+  };
+  const mask = new Uint8Array(W * H);
+  const score = (z, pi, x, y) => {
+    const l = look(z, pi);
+    if (!l) return { matched: 0, missed: 0, value: -1e9 };
+    let matched = 0, missed = 0;
+    for (let p = 0; p < l.pts.length; p += 5) {
+      const X = x + l.pts[p], Y = y + l.pts[p + 1];
+      if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+      const i = Y * W + X, o = 3 * i;
+      if (mask[i] || frame[o] !== frame[o]) continue;
+      if (abs(frame[o] - l.pts[p + 2]) + abs(frame[o + 1] - l.pts[p + 3]) + abs(frame[o + 2] - l.pts[p + 4]) <= tolerance) matched += bare[i] ? 0 : 1;
+      else missed += bare[i] ? 2 : 1;
+    }
+    return { matched, missed, value: matched - missed };
+  };
+  const descend = (c, passes) => {
+    let z = { ...c.z }, pi = c.pi, cur = score(z, pi, c.x, c.y);
+    for (let pass = 0; pass < passes; pass++) {
+      let moved = false;
+      for (const k of ZB_SHOT_TRAITS) {
+        for (let v = 1; v <= 5; v++) {
+          if (v === z[k]) continue;
+          const t = { ...z, [k]: v };
+          for (const pj of zbShotPoseChoices(poses, grids, pi, k)) {
+            const s = score(t, pj, c.x, c.y);
+            if (s.value > cur.value) { z = t; pi = pj; cur = s; moved = true; }
+          }
+        }
+      }
+      if (!moved) break;
+    }
+    return { ...c, z, pi, ...cur };
+  };
+
+  /* bodies: each body sprite blurred, at every pixel off the bare picture,
+     kept where no place within 3 does better */
+  const plain = { hair: 1, eyes: 1, nose: 1, feet: 1 };
+  const hyp = new Map();
+  const propose = (x, y, pi, z, votes) => {
+    const k = `${x},${y},${pi}`;
+    if (!hyp.has(k)) hyp.set(k, { x, y, pi, z: { ...plain }, votes: 0 });
+    const h = hyp.get(k);
+    Object.assign(h.z, z);
+    h.votes += votes;
+  };
+  const bodies = [];
+  for (let pose = 1; pose <= sheet.blocks.body.poses[0]; pose++) {
+    for (const facing of [0, 1]) {
+      const fr = zbSnoidFrame('body', 1, pose, facing, sheet.blocks), pts = zbShotBlurred(sheet.frames[fr], rgb, blur);
+      for (let p = 0; p < pts.length; p += 7) { pts[p] -= sheet.xs[fr + 1]; pts[p + 1] -= sheet.ys[fr + 1]; }
+      bodies.push({ pose, facing, pts });
+    }
+  }
+  const { bodyAt, bodyOf } = zbShotBodyScan(frame, bare, bodies, tolerance);
+  for (let Y = 0; Y < H; Y += 2) {
+    for (let X = 0; X < W; X += 2) {
+      const i = Y * W + X, v = bodyAt[i];
+      if (v < 40) continue;
+      let top = true;
+      for (let j = -4; j <= 4 && top; j += 2) {
+        for (let k = -4; k <= 4; k += 2) {
+          const x = X + k, y = Y + j;
+          if ((j || k) && x >= 0 && y >= 0 && x < W && y < H && (bodyAt[y * W + x] > v || (bodyAt[y * W + x] === v && (j < 0 || (j === 0 && k < 0))))) { top = false; break; }
+        }
+      }
+      if (!top) continue;
+      const b = bodies[bodyOf[i]];
+      for (const members of families.values()) {
+        const p = poses[members[0]];
+        if (p.body.shape === b.pose && p.facing === b.facing) propose(X, Y, members[0], {}, v);
+      }
+    }
+  }
+
+  /* the other parts: each sprite blurred, tried where a pixel of its
+     rarest flat color shows off the bare picture */
+  const keys = zbShotSmoothKeys(frame, rgb, palKeys, 30), byKey = new Map();
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i] < 0 || bare[i]) continue;
+    if (!byKey.has(keys[i])) byKey.set(keys[i], []);
+    byKey.get(keys[i]).push(i);
+  }
+  /* a part's sprite gives its body's place through each family that
+     draws it, once for each place it is drawn at from the body */
+  const posesWith = new Map();
+  for (const members of families.values()) {
+    const seen = new Set();
+    for (const pi of members) {
+      const p = poses[pi];
+      for (const q of zbSnoidParts(p.tick)) {
+        if (q.part === 'body') continue;
+        const k = `${q.part} ${q.shape} ${p.facing}`, dx = q.x - p.body.x, dy = q.y - p.body.y, once = `${k} ${dx} ${dy}`;
+        if (seen.has(once)) continue;
+        seen.add(once);
+        if (!posesWith.has(k)) posesWith.set(k, []);
+        posesWith.get(k).push({ pi: members[0], dx, dy });
+      }
+    }
+  }
+  for (const s of zbShotPartSprites(sheet.blocks)) {
+    if (s.part === 'body') continue;
+    const with_ = posesWith.get(`${s.part} ${s.pose} ${s.facing}`);
+    if (!with_) continue;
+    const pts = zbShotBlurred(sheet.frames[s.frame], rgb, blur), n = pts.length / 7;
+    if (n < 6) continue;
+    let anchor = -1, count = Infinity;
+    for (let k = 0; k < n; k++) {
+      if (!pts[7 * k + 6]) continue;
+      const c = (byKey.get(palKeys[pts[7 * k + 5]]) || []).length;
+      if (c && c < count) { count = c; anchor = k; }
+    }
+    if (anchor < 0) continue;
+    const tried = new Set();
+    for (const i of byKey.get(palKeys[pts[7 * anchor + 5]])) {
+      const x0 = (i % W) - pts[7 * anchor], y0 = Math.floor(i / W) - pts[7 * anchor + 1], at = (y0 + 1024) * 4096 + x0 + 1024;
+      if (tried.has(at)) continue;
+      tried.add(at);
+      let matched = 0, known = 0;
+      for (let q = 0; q < pts.length; q += 7) {
+        const X = x0 + pts[q], Y = y0 + pts[q + 1];
+        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+        const o = 3 * (Y * W + X);
+        if (frame[o] !== frame[o]) continue;
+        known++;
+        if (abs(frame[o] - pts[q + 2]) + abs(frame[o + 1] - pts[q + 3]) + abs(frame[o + 2] - pts[q + 4]) <= tolerance) matched++;
+      }
+      if (known * 2 < n || matched < 0.6 * known || matched < 10) continue;
+      const rx = x0 + sheet.xs[s.frame + 1], ry = y0 + sheet.ys[s.frame + 1];
+      for (const { pi, dx, dy } of with_) propose(rx - dx, ry - dy, pi, { [s.part]: s.value }, matched);
+    }
+  }
+
+  /* the best candidate at each place, the best 80 places at least 4
+     apart, and their traits */
+  const atPlace = new Map();
+  for (const h of hyp.values()) {
+    const s = score(h.z, h.pi, h.x, h.y), k = h.y * W + h.x;
+    if (!atPlace.has(k) || s.value > atPlace.get(k).value) atPlace.set(k, { ...h, ...s });
+  }
+  let cands = [];
+  for (const c of [...atPlace.values()].sort((a, b) => b.value - a.value)) {
+    if (cands.length >= 120) break;
+    if (cands.some(o => abs(o.x - c.x) <= 3 && abs(o.y - c.y) <= 3)) continue;
+    cands.push(descend(c, 2));
+  }
+
+  /* read the best, cover it, and try the rest again. A candidate that
+     fails is tried again only once another is read, since only what that
+     one covers changes its score. */
+  const read = [];
+  let version = 0;
+  for (;;) {
+    for (const o of cands) Object.assign(o, score(o.z, o.pi, o.x, o.y));
+    cands.sort((a, b) => b.value - a.value);
+    const at = cands.findIndex(o => o.failed !== version && o.matched >= 40);
+    if (at < 0) break;
+    let c = cands[at];
+    const body = poses[c.pi].body.shape, facing = poses[c.pi].facing;
+    for (const members of families.values()) {
+      const pi = members[0];
+      if (poses[pi].body.shape !== body || poses[pi].facing !== facing) continue;
+      const s = score(c.z, pi, c.x, c.y);
+      if (s.value > c.value) c = { ...c, pi, ...s };
+    }
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        if (!dx && !dy) continue;
+        const s = score(c.z, c.pi, c.x + dx, c.y + dy);
+        if (s.value > c.value) c = { ...c, x: c.x + dx, y: c.y + dy, ...s };
+      }
+    }
+    c = descend(c, 3);
+    if (c.matched < 60 || c.matched < 0.55 * (c.matched + c.missed)) {
+      cands[at] = { ...c, failed: version };
+      continue;
+    }
+    const traits = {}, scores = {};
+    for (const k of ZB_SHOT_TRAITS) {
+      scores[k] = [1, 2, 3, 4, 5].map(v => {
+        if (v === c.z[k]) return c.value;
+        const t = { ...c.z, [k]: v };
+        let best = -Infinity;
+        for (const pj of zbShotPoseChoices(poses, grids, c.pi, k)) best = Math.max(best, score(t, pj, c.x, c.y).value);
+        return best;
+      });
+      const second = Math.max(...scores[k].filter((v, i) => i + 1 !== c.z[k]));
+      traits[k] = c.value - second >= margin ? c.z[k] : null;
+    }
+    read.push({ x: c.x, y: c.y, traits, scores, pose: poses[c.pi].from, tick: poses[c.pi].tick, body: poses[c.pi].body,
+      facing: poses[c.pi].facing, matched: c.matched, missed: c.missed });
+    const { all } = look(c.z, c.pi);
+    for (let p = 0; p < all.length; p += 2) {
+      const X = c.x + all[p], Y = c.y + all[p + 1];
+      if (X >= 0 && Y >= 0 && X < W && Y < H) mask[Y * W + X] = 1;
+    }
+    version++;
+    cands = cands.filter((o, i) => i !== at && Math.hypot(o.x - c.x, o.y - c.y) > 6);
+  }
+  return read.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+/* A smoothed screenshot read: where it lies among the places' pictures
+   and the Zoombinis in it. The four pictures, in either coloring, whose
+   colors are most like the screenshot's (zbShotHistogram, the picture
+   shrunk 4 times to smooth it too) are each searched (zbShotSmoothAlign),
+   and the one with the least error is taken. Returns { shot, place,
+   picture, windows, dx, dy, fit, keys, frame, tolerance, zoombinis } as
+   zbShotRead does, or null when no picture fits. `shot` has the part of
+   the frame shown, the scales, `smoothed` and `blur`. `fit` is the share
+   of the frame shown that is the bare picture, and `place` is null when
+   it is under 30%. `frame` is zbShotSmoothFrame's colors, `keys` those
+   colors as the nearest of the palette's, and `tolerance` six times the
+   spread zbShotBlurFit found, from 30 to 60. */
+function zbShotSmoothRead(rgba, width, height, archives) {
+  /* a copy, so that every array the search reads is of one kind. Arrays
+     of two kinds slow the loops where the pixels came from elsewhere. */
+  rgba = new Uint8Array(rgba);
+  const step = Math.max(1, Math.floor(width * height / 200000));
+  const shotHist = zbShotHistogram(Math.floor(width * height / step), (i, c) => {
+    const p = 4 * i * step;
+    c[0] = rgba[p]; c[1] = rgba[p + 1]; c[2] = rgba[p + 2];
+  });
+  const tried = [];
+  for (const p of ZB_PLACES) {
+    const arc = archives.get(p.key);
+    if (!arc) continue;
+    for (const pic of zbShotPictures(arc, p.key)) {
+      const pixels = decodeBitmapResource(arc.get('tBMP', pic.id)).frames[0].pixels;
+      const pal = zbPalette(parsePaletteResource(arc.get('SHPL', pic.palette), 'SHPL'));
+      for (const windows of [true, false]) {
+        const rgb = zbShotPaletteRgb(pal, windows), quarter = zbShotLevel(pixels, rgb, 4);
+        const hist = zbShotHistogram(quarter.w * quarter.h, (i, c) => {
+          c[0] = Math.round(quarter.rgb[3 * i]); c[1] = Math.round(quarter.rgb[3 * i + 1]); c[2] = Math.round(quarter.rgb[3 * i + 2]);
+        });
+        let alike = 0;
+        for (let i = 0; i < 4096; i++) alike += Math.min(hist[i], shotHist[i]);
+        tried.push({ place: p.key, picture: pic.id, windows, pixels, pal, rgb, quarter, alike, arc });
+      }
+    }
+  }
+  tried.sort((a, b) => b.alike - a.alike);
+  const sums = zbShotSums(rgba, width, height);
+  let best = null;
+  for (const t of tried.slice(0, 4)) {
+    const levels = { 1: zbShotLevel(t.pixels, t.rgb, 1), 4: t.quarter, 16: zbShotLevel(t.pixels, t.rgb, 16) };
+    const a = zbShotSmoothAlign(rgba, sums, width, height, levels);
+    if (a && (!best || a.error < best.error)) best = { ...t, ...a };
+  }
+  if (!best) return null;
+  const frame = zbShotSmoothFrame(rgba, width, height, best);
+  const { blur, spread } = zbShotBlurFit(frame, best.pixels, best.rgb);
+  const tolerance = Math.min(60, Math.max(30, 6 * spread));
+  const bare = zbShotBare(frame, best.pixels, best.rgb, blur, tolerance);
+  let shown = 0, same = 0;
+  for (let i = 0; i < bare.length; i++) {
+    if (frame[3 * i] !== frame[3 * i]) continue;
+    shown++;
+    same += bare[i];
+  }
+  const palKeys = zbShotPaletteKeys(best.pal, best.windows);
+  const keys = zbShotSmoothKeys(frame, best.rgb, palKeys, 30);
+  const shot = {
+    width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur,
+  };
+  const out = { shot, place: best.place, picture: best.picture, windows: best.windows, dx: Math.round(best.dx), dy: Math.round(best.dy),
+    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, zoombinis: [] };
+  if (out.fit < 0.3) return { ...out, place: null };
+  const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
+  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids }, tolerance);
+  out.tolerance = tolerance;
+  return out;
+}
+
 /* A screenshot read whole: `rgba` its pixels, `width` x `height`, and
    `archives` a Map from archive name to the open archive, with ZOOMBINI
    and the places to try. Returns { shot, place, picture, windows, dx, dy,
@@ -366,10 +1126,19 @@ function zbShotPictures(arc, key) {
    fits half the pixels. `shot` is zbShotUnscale's without its keys,
    `keys` the 640 x 480 frame, and `windows` whether the colors are the
    Windows program's. `zoombinis` is zbShotGroup's, and `puzzle` what the
-   place's reader in ZB_SHOT_PUZZLES finds, or null. A reader's
+   place's reader in ZB_SHOT_PUZZLES finds, or null. A smoothed screenshot
+   is zbShotSmoothRead's, with `zoombinis` zbShotSmoothZoombinis's and
+   `puzzle` likewise. A reader's
    `zoombinis` sets their order, as the cliffs' gives them by bridge and
    the order they crossed in. */
 function zbShotRead(rgba, width, height, archives) {
+  if (zbShotSmoothed(rgba)) {
+    const r = zbShotSmoothRead(rgba, width, height, archives);
+    if (!r) return { shot: { width, height, scaleX: 1, scaleY: 1, smoothed: true }, place: null, fit: 0, zoombinis: [], puzzle: null };
+    const reader = r.place ? ZB_SHOT_PUZZLES[r.place] : null;
+    const puzzle = reader ? reader(r, r.zoombinis) : null;
+    return { ...r, zoombinis: puzzle && puzzle.zoombinis ? puzzle.zoombinis : r.zoombinis, puzzle };
+  }
   const shot = zbShotUnscale(rgba, width, height);
   let best = null;
   for (const p of ZB_PLACES) {
@@ -416,7 +1185,7 @@ function zbShotPlaceIn(at, x, y) {
    stand (zbBridgeRulesFitting) and, of those, the ones the program could
    deal if these Zoombinis are the whole band (zbBridgeCandidates), null
    where a trait is unread, and `zoombinis`, all of them in that order.
-   Each Zoombini gets `where`. */
+   It sets `where` on each Zoombini. */
 function zbShotBridge(frame, zoombinis) {
   const { arc, keys, palKeys } = frame;
   const upper = [], lower = [], waiting = [], crossing = [];

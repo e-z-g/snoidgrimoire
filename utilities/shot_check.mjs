@@ -78,7 +78,7 @@ function shoot({ pixels, pal }, { windows, scale, cut = 0, cutEnd = 0 }) {
   return { rgba, width: w, height: h };
 }
 
-{
+if (!process.argv.includes('--smoothed')) {
   const ways = [
     { windows: true, scale: 1 }, { windows: false, scale: 1 }, { windows: true, scale: 2 },
     { windows: true, scale: 1.5, cut: 3 }, { windows: false, scale: 1.439, cut: 2, cutEnd: 4 },
@@ -117,9 +117,87 @@ function shoot({ pixels, pal }, { windows, scale, cut = 0, cutEnd = 0 }) {
   console.log(`Made here, ${keys.length} places and ${all} Zoombinis. ${read} traits read, ${inferred} inferred and ${unread} unread, in ${Date.now() - t} ms.`);
 }
 
+// ---- smoothed screenshots made here -------------------------------------------
+
+/* The indices as a smoothed screenshot `w` x `h`: screen pixel (x, y)
+   shows the frame between its pixels at ((x + 0.5) / scale + cutX,
+   (y + 0.5) / scale + cutY), as a browser enlarges a picture with
+   smoothing. */
+function shootSmooth({ pixels, pal }, { windows, scale, cutX = 0, cutY = 0, w, h }) {
+  const colors = windows ? S.zbWindowsPalette(pal).map(c => c.map(v => ((v >> 2) << 2) | (v >> 6))) : pal;
+  w = w || Math.floor((640 - cutX) * scale);
+  h = h || Math.floor((480 - cutY) * scale);
+  const rgba = new Uint8Array(w * h * 4);
+  const at = (x, y) => colors[pixels[Math.min(479, Math.max(0, y)) * 640 + Math.min(639, Math.max(0, x))]];
+  for (let y = 0; y < h; y++) {
+    const v = (y + 0.5) / scale + cutY - 0.5, y0 = Math.floor(v), fy = v - y0;
+    for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / scale + cutX - 0.5, x0 = Math.floor(u), fx = u - x0, o = 4 * (y * w + x);
+      const a = at(x0, y0), b = at(x0 + 1, y0), c = at(x0, y0 + 1), d = at(x0 + 1, y0 + 1);
+      for (let k = 0; k < 3; k++) rgba[o + k] = Math.round((a[k] * (1 - fx) + b[k] * fx) * (1 - fy) + (c[k] * (1 - fx) + d[k] * fx) * fy);
+      rgba[o + 3] = 255;
+    }
+  }
+  return { rgba, width: w, height: h };
+}
+
+if (!process.argv.includes('--exact')) {
+  const ways = [
+    { windows: true, scale: 1.325, crop: [310, 320] }, { windows: true, scale: 2 },
+    { windows: false, scale: 1.6, crop: [500, 375] }, { windows: true, scale: 1.25 },
+  ];
+  const keys = Object.keys(S.ZB_WAITING).filter(k => !S.ZB_WAITING[k].small);
+  let read = 0, unread = 0, all = 0;
+  const t = Date.now();
+  const only = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7);
+  keys.forEach((key, i) => {
+    if (only && key !== only) return;
+    const band = S.zbDealBand(S.zbRandom(2000 + i), 16), sc = scene(key, band), way = { ...ways[i % ways.length] };
+    if (way.crop) {
+      /* a part of the frame around the band */
+      const xs = sc.placed.map(p => p.x), ys = sc.placed.map(p => p.y);
+      const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2 - 20;
+      way.cutX = Math.round(Math.min(640 - way.crop[0], Math.max(0, cx - way.crop[0] / 2)));
+      way.cutY = Math.round(Math.min(480 - way.crop[1], Math.max(0, cy - way.crop[1] / 2)));
+      way.w = Math.floor(way.crop[0] * way.scale);
+      way.h = Math.floor(way.crop[1] * way.scale);
+    }
+    const shot = shootSmooth(sc, way), t1 = Date.now();
+    const r = S.zbShotRead(shot.rgba, shot.width, shot.height, archives);
+    const about = `${key} smoothed (${way.windows ? 'Windows' : 'stored'} colors, x${way.scale}${way.crop ? `, from (${way.cutX}, ${way.cutY})` : ''})`;
+    if (r.place !== key) { fail(`${about} read as ${r.place}`); return; }
+    if (Math.abs(r.dx - (way.cutX || 0)) > 1 || Math.abs(r.dy - (way.cutY || 0)) > 1) fail(`${about} at (${r.dx}, ${r.dy})`);
+    if (Math.abs(r.shot.scaleX / way.scale - 1) > 0.005 || Math.abs(r.shot.scaleY / way.scale - 1) > 0.005) fail(`${about} enlarged ${r.shot.scaleX} x ${r.shot.scaleY}`);
+    if (r.windows !== way.windows) fail(`${about} read in the ${r.windows ? 'Windows' : 'stored'} colors`);
+    const near = (g, p) => Math.abs(g.x - p.x) <= 1 && Math.abs(g.y - p.y) <= 1;
+    let here = 0;
+    for (const p of sc.placed) {
+      const shown = p.x >= (way.cutX || 0) && p.x < (way.cutX || 0) + shot.width / way.scale && p.y >= (way.cutY || 0) && p.y < (way.cutY || 0) + shot.height / way.scale;
+      if (!shown) continue;
+      all++;
+      const z = r.zoombinis.find(g => near(g, p));
+      if (!z) {
+        unread += 4;
+        if (verbose) console.log(`  ${about}, none read at (${p.x}, ${p.y}), ${S.zbBandCode([p.z])}`);
+        continue;
+      }
+      here++;
+      for (const k of TRAITS) {
+        if (z.traits[k] == null) { unread++; continue; }
+        if (z.traits[k] !== p.z[k]) fail(`${about}, (${p.x}, ${p.y}) has ${k} ${z.traits[k]}, not ${p.z[k]}`);
+        else read++;
+      }
+    }
+    for (const g of r.zoombinis.filter(g => !sc.placed.some(p => near(g, p)))) fail(`${about}, a Zoombini read at (${g.x}, ${g.y}) where none stands`);
+    if (verbose) console.log(`  ${about}: ${here} Zoombinis read, blur ${r.shot.blur}, tolerance ${r.tolerance}, ${Date.now() - t1} ms`);
+  });
+  console.log(`Made here and smoothed, ${keys.length} places and ${all} Zoombinis. ${read} traits read and ${unread} unread, in ${Date.now() - t} ms.`);
+}
+
 // ---- screenshots taken in the game --------------------------------------------
 
-if (!fs.existsSync(DIR)) console.log(`No screenshots taken in the game, as ${DIR} is missing`);
+if (process.argv.includes('--smoothed')) { /* the screenshots made here, smoothed, alone */ }
+else if (!fs.existsSync(DIR)) console.log(`No screenshots taken in the game, as ${DIR} is missing`);
 else {
   for (const name of fs.readdirSync(DIR).filter(f => f.endsWith('.png'))) {
     const expectedPath = path.join(DIR, name.replace(/\.png$/, '.json'));
@@ -130,20 +208,22 @@ else {
     const r = S.zbShotRead(png.rgba, png.width, png.height, archives);
     if (r.place !== expected.place) { fail(`${name} read as ${r.place}, not ${expected.place}`); continue; }
     const actual = r.zoombinis.map(z => ({ x: z.x, y: z.y, code: code(z.traits), inferred: Object.keys(z.inferred || {}) }));
+    /* a smoothed screenshot places a Zoombini within a pixel */
+    const slack = r.shot.smoothed ? 1 : 0, at = (a, e) => Math.abs(a.x - e.x) <= slack && Math.abs(a.y - e.y) <= slack;
     for (const e of expected.zoombinis) {
-      const a = actual.find(z => z.x === e.x && z.y === e.y);
+      const a = actual.find(z => at(z, e));
       if (!a) fail(`${name}, no Zoombini read at (${e.x}, ${e.y})`);
       else if (a.code !== e.code) fail(`${name}, (${e.x}, ${e.y}) read ${a.code}, not ${e.code}`);
     }
-    for (const a of actual) if (!expected.zoombinis.some(e => e.x === a.x && e.y === a.y)) fail(`${name}, a Zoombini read at (${a.x}, ${a.y}) where none stands`);
-    if (expected.pegsGone != null && r.puzzle.pegsGone !== expected.pegsGone) fail(`${name}, ${r.puzzle.pegsGone} pegs gone, not ${expected.pegsGone}`);
-    if (expected.rules) {
+    for (const a of actual) if (!expected.zoombinis.some(e => at(a, e))) fail(`${name}, a Zoombini read at (${a.x}, ${a.y}) where none stands`);
+    if (expected.pegsGone != null && (!r.puzzle || r.puzzle.pegsGone !== expected.pegsGone)) fail(`${name}, ${r.puzzle.pegsGone} pegs gone, not ${expected.pegsGone}`);
+    if (expected.rules && r.puzzle) {
       const rules = r.puzzle.levels.flatMap(l => l.fitting.map(f => `${l.level}: ${S.zbBridgeRuleWords(f.rule)}, ${f.upperMatches ? 'upper' : 'lower'}`));
       if (JSON.stringify(rules) !== JSON.stringify(expected.rules)) fail(`${name}, the rules that fit are ${JSON.stringify(rules)}`);
     }
     if (verbose) for (const a of actual) console.log(`  (${a.x}, ${a.y}) ${a.code}${a.inferred.length ? `, ${a.inferred.join(' and ')} inferred` : ''}`);
     console.log(`Taken in the game, ${name}, ${png.width} x ${png.height}. It shows ${r.shot.width} x ${r.shot.height} of the frame at (${r.dx}, ${r.dy}),`
-      + ` enlarged ${r.shot.scaleX.toFixed(4)} x ${r.shot.scaleY.toFixed(4)}, ${r.place} tBMP ${r.picture}, with ${r.zoombinis.length} Zoombinis. ${Date.now() - t} ms.`);
+      + ` enlarged ${r.shot.scaleX.toFixed(4)} x ${r.shot.scaleY.toFixed(4)}${r.shot.smoothed ? ' with smoothing' : ''}, ${r.place} tBMP ${r.picture}, with ${r.zoombinis.length} Zoombinis. ${Date.now() - t} ms.`);
   }
 }
 

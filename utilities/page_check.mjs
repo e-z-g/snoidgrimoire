@@ -21,8 +21,9 @@
 //     and the clock; looking at the clock tower names it; sway, red-cyan and Cardboard draw, and Cardboard's button
 //     leaves it; the sliders empty the town and write the address; the
 //     map's Zoombiniville links to it;
-//   - with reference/screenshots/bridge-crossed.png, the Screenshot pane
-//     reads it to its place, its Zoombinis and a rule, and draws them;
+//   - the Screenshot pane reads each screenshot in reference/screenshots
+//     (or $ZB_SCREENSHOTS) that has a .json to its place, its Zoombinis and
+//     at the cliffs a rule, and draws them;
 //   - on the phone, nothing is wider than the screen.
 // SHOTS=<dir> saves a screenshot of each view there.
 import fs from 'node:fs';
@@ -327,26 +328,31 @@ try {
           if (shots) await p.shot(path.join(shots, `${dev.name}-${hash.replace(/\//g, '-')}.png`));
           results.push({ hash, met, ms: Date.now() - t0, wide });
         }
-        // A screenshot taken in the game read on the Screenshot pane: its
+        // Each screenshot taken in the game read on the Screenshot pane: its
         // place, its Zoombinis and, at the cliffs, its rule, as its .json has them.
-        const shotPng = path.join(REF, 'screenshots', 'bridge-crossed.png');
-        if (fs.existsSync(shotPng)) {
-          const expected = JSON.parse(fs.readFileSync(shotPng.replace(/\.png$/, '.json'), 'utf8'));
-          await p.evaluate("location.hash = '#scenario/screenshot'");
+        const shotDir = process.env.ZB_SCREENSHOTS || path.join(REF, 'screenshots');
+        const shotNames = fs.existsSync(shotDir) ? fs.readdirSync(shotDir).filter(f => f.endsWith('.png') && fs.existsSync(path.join(shotDir, f.replace(/\.png$/, '.json')))) : [];
+        for (const name of shotNames) {
+          const expected = JSON.parse(fs.readFileSync(path.join(shotDir, name.replace(/\.png$/, '.json')), 'utf8'));
+          const bytes = fs.readFileSync(path.join(shotDir, name)).toString('base64');
+          await p.evaluate("location.hash = '#scenario/screenshot'; SHOT_LAST = null");
           const t0 = Date.now();
-          await p.evaluate("fetch('reference/screenshots/bridge-crossed.png').then(r => r.blob()).then(b => shotTake(new File([b], 'bridge-crossed.png', { type: 'image/png' })))");
-          while (Date.now() - t0 < 60000 && !(await p.evaluate('!!SHOT_LAST && !SHOT_BUSY'))) await new Promise(res => setTimeout(res, 200));
+          await p.evaluate(`shotTake(new File([Uint8Array.from(atob('${bytes}'), c => c.charCodeAt(0))], ${JSON.stringify(name)}, { type: 'image/png' }))`);
+          while (Date.now() - t0 < 120000 && !(await p.evaluate('!!SHOT_LAST && !SHOT_BUSY'))) await new Promise(res => setTimeout(res, 200));
+          const complete = expected.zoombinis.filter(z => !z.code.includes('?')).length;
           const note = await p.evaluate(`(() => {
             const r = SHOT_LAST && SHOT_LAST.read, rows = document.querySelectorAll('#shotOut [data-shotz] canvas').length;
             if (!r) return SHOT_LAST ? SHOT_LAST.error : 'no reading';
             if (r.place !== ${JSON.stringify(expected.place)}) return 'read as ' + r.place;
-            if (r.zoombinis.length !== ${expected.zoombinis.length} || rows !== ${expected.zoombinis.length}) return r.zoombinis.length + ' Zoombinis read, ' + rows + ' drawn';
+            if (r.zoombinis.length !== ${expected.zoombinis.length} || rows < ${complete}) return r.zoombinis.length + ' Zoombinis read, ' + rows + ' drawn';
             const text = document.getElementById('shotOut').textContent;
-            return /accepts Zoombinis with/.test(text) && document.querySelector('#shotFrame canvas') ? '' : 'no rule or no frame shown';
+            if (${!!expected.rules} && !/accepts Zoombinis with/.test(text)) return 'no rule shown';
+            return document.querySelector('#shotFrame canvas') ? '' : 'no frame shown';
           })()`);
+          const seconds = await p.evaluate('SHOT_LAST && SHOT_LAST.seconds');
           const wide = dev.mobile ? await p.evaluate("document.documentElement.scrollWidth > innerWidth + 1 || document.getElementById('view').scrollWidth > document.getElementById('view').clientWidth + 1") : false;
-          if (shots) await p.shot(path.join(shots, `${dev.name}-screenshot-read.png`));
-          results.push({ hash: 'scenario/screenshot, bridge-crossed.png read', met: !note, ms: Date.now() - t0, wide, note });
+          if (shots) await p.shot(path.join(shots, `${dev.name}-screenshot-${name.replace(/\.png$/, '')}.png`));
+          results.push({ hash: `scenario/screenshot, ${name} read in ${seconds ? seconds.toFixed(1) : '?'} s`, met: !note, ms: Date.now() - t0, wide, note });
         }
         // A gallery saved whole: every sound, tune and string list in the zip.
         if (!dev.mobile) for (const [key, tag, ext] of [['sounds', '\\0SND', 'wav'], ['music', 'tMID', 'mid'], ['text', 'STRL', 'txt']]) {

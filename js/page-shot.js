@@ -24,7 +24,9 @@ SCENARIO_PANES.screenshot = function shotPane(view) {
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
     + ' <span class="note">or drop one here, or paste one.</span></div>'
     + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '
-    + 'It cannot read a photo of a screen or a JPEG, since their colors are no longer the game’s.</p>'
+    + 'It also reads one enlarged or shrunk with smoothing, as a browser or a forum shows a picture. '
+    + 'Such a reading needs several seconds, and a Zoombini mostly hidden behind others may go unread. '
+    + 'It cannot read a photo of a screen.</p>'
     + '<div id="shotOut"></div>';
   $('shotFile').addEventListener('change', e => {
     const f = e.target.files[0];
@@ -110,8 +112,10 @@ function shotShow() {
   const size = s.width === 640 && s.height === 480
     ? 'It shows the game’s whole 640 × 480 frame'
     : `It shows ${s.width} × ${s.height} of the game’s 640 × 480 frame`;
-  const scale = Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001 ? ', pixel for pixel.'
-    : `, enlarged ${s.scaleX.toFixed(3)} times${Math.abs(s.scaleX - s.scaleY) > 0.002 ? ` across and ${s.scaleY.toFixed(3)} down` : ''}.`;
+  const factor = `${s.scaleX.toFixed(3)} times${Math.abs(s.scaleX - s.scaleY) > 0.002 ? ` across and ${s.scaleY.toFixed(3)} down` : ''}`;
+  const scale = s.smoothed ? `, ${s.scaleX < 1 ? 'shrunk to' : 'enlarged'} ${factor} with smoothing.`
+    : Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001 ? ', pixel for pixel.'
+    : `, enlarged ${factor}.`;
   html += `<p>The screenshot is ${L.width} × ${L.height}. ${size}${scale}`;
   if (!r.place) {
     out.innerHTML = html + ' No place’s picture matches it. The page reads screenshots of a puzzle or a camp, taken straight from the screen.</p>';
@@ -136,15 +140,21 @@ function shotShow() {
 
 /* The frame as the screenshot shows it, at the game's size, with each
    Zoombini's number at its origin. Pixels the screenshot leaves out are
-   gray. */
+   gray. A smoothed screenshot's frame is its colors sampled at each frame
+   pixel. */
 function shotDrawFrame(box, r) {
   const c = document.createElement('canvas');
   c.width = ZB_SHOT_W; c.height = ZB_SHOT_H; c.className = 'scene';
   const g = c.getContext('2d'), im = g.createImageData(ZB_SHOT_W, ZB_SHOT_H), d = im.data;
-  for (let i = 0; i < r.keys.length; i++) {
-    const k = r.keys[i];
-    if (k < 0) { d[4 * i] = d[4 * i + 1] = d[4 * i + 2] = 96; }
-    else { d[4 * i] = (k >> 12) << 2; d[4 * i + 1] = ((k >> 6) & 63) << 2; d[4 * i + 2] = (k & 63) << 2; }
+  for (let i = 0; i < ZB_SHOT_W * ZB_SHOT_H; i++) {
+    if (r.frame) {
+      const shown = r.frame[3 * i] === r.frame[3 * i];
+      for (let k = 0; k < 3; k++) d[4 * i + k] = shown ? r.frame[3 * i + k] : 96;
+    } else {
+      const k = r.keys[i];
+      if (k < 0) { d[4 * i] = d[4 * i + 1] = d[4 * i + 2] = 96; }
+      else { d[4 * i] = (k >> 12) << 2; d[4 * i + 1] = ((k >> 6) & 63) << 2; d[4 * i + 2] = (k & 63) << 2; }
+    }
     d[4 * i + 3] = 255;
   }
   g.putImageData(im, 0, 0);
