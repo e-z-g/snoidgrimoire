@@ -21,7 +21,7 @@ let SHOT_BUSY = false;
 SCENARIO_PANES.screenshot = function shotPane(view) {
   view.innerHTML = '<h1>Screenshot</h1>'
     + '<p class="sub">Give the page a screenshot of the game. It shows the place and each Zoombini’s traits. '
-    + 'At the Allergic Cliffs and the Stone Cold Caves it also shows the rules that put the Zoombinis where they stand.</p>'
+    + 'At the Allergic Cliffs and the Stone Cold Caves it also shows the rules that put the Zoombinis where they stand, and at Bubblewonder Abyss the grid.</p>'
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
     + ' <span class="note">or drop one here, or paste one.</span></div>'
     + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '
@@ -117,7 +117,7 @@ function shotShow() {
   const scale = s.smoothed ? `, ${s.scaleX < 1 ? 'shrunk to' : 'enlarged'} ${factor} with smoothing.`
     : Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001 ? ', pixel for pixel.'
     : `, enlarged ${factor}.`;
-  html += `<p>The screenshot is ${L.width} × ${L.height}. ${size}${scale}`;
+  html += `<p>The screenshot is ${L.width} × ${L.height}${s.bars ? ', with plain bars around the frame' : ''}. ${size}${scale}`;
   if (!r.place) {
     out.innerHTML = html + ' No place’s picture matches it. The page reads screenshots of a puzzle or a camp, taken straight from the screen.</p>';
     return;
@@ -130,9 +130,10 @@ function shotShow() {
   html += '<div class="wide" id="shotFrame"></div>';
   if (r.puzzle && r.place === 'BRIDGE') html += shotBridgeHtml(r);
   if (r.puzzle && r.place === 'TUNNELS') html += shotTunnelsHtml(r);
+  if (r.puzzle && r.place === 'MAZE2') html += shotMaze2Html(r);
   html += shotTableHtml(r);
   const band = r.zoombinis.map(z => z.traits);
-  if (ZB_PUZZLES.has(r.place) && band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null))) {
+  if (ZB_PUZZLES.has(r.place) && r.place !== 'MAZE2' && band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null))) {
     html += `<p><a href="#solve=${r.place}&band=${zbBandCode(band)}">Take ${esc(place.name)} apart for this band</a></p>`;
   }
   out.innerHTML = html;
@@ -243,6 +244,33 @@ function shotBridgeHtml(r) {
     }
     if (l.fitting.length > shown.length) html += `<li class="note">and ${l.fitting.length - shown.length} more</li>`;
     html += '</ul>';
+  }
+  return html;
+}
+
+/* The Abyss: the layout, its colors and what each feature arrow shows. */
+function shotMaze2Html(r) {
+  const P = r.puzzle;
+  let html = '<h2>Bubblewonder Abyss</h2>';
+  if (!P.layout) return html + '<p>The page could not match the grid to one of the game’s layouts.</p>';
+  const small = P.layout === ZB_MAZE2_SMALL_LAYOUT, arrows = P.cells.filter(c => c.type === 2);
+  html += `<p>The grid is <a href="#MAZE2/REGS/${P.layout}">MAZE2 REGS ${P.layout}</a>, `
+    + (small ? 'level 4’s layout for a band under five' : `the ${P.variant ? 'second' : 'first'} layout of level ${P.level}, ${esc(ZB_LEVELS[P.level - 1])}`) + '.';
+  const colors = [...new Set(P.cells.filter(c => c.group > 1).map(c => c.color))];
+  if (colors.length) html += ` Its colors are ${esc(zbWordsOr(colors, 'and'))}.`;
+  html += P.turned.length ? ` ${plural(P.turned.length, 'arrow')} ${P.turned.length === 1 ? 'points' : 'point'} away from its starting way, so a bubble has passed.` : ' Every arrow points its starting way.';
+  html += '</p><ul>';
+  arrows.forEach((c, k) => {
+    const n = r.zoombinis.filter(z => c.value && z.traits[c.kind] === c.value).length;
+    html += `<li>Arrow ${ZB_MAZE2_LETTERS[k]}, ${c.row + 1} across and ${c.col + 1} down, pointing ${ZB_MAZE2_WAYS[c.dir]}, `
+      + (c.value ? `turns Zoombinis with ${esc(zbTraitWith(c.kind, c.value))} (${n || 'none'} of those read).` : 'shows no feature.') + '</li>';
+  });
+  html += '</ul>';
+  const band = r.zoombinis.map(z => z.traits);
+  if (band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null)) && (band.length < 5) === small) {
+    const set = { layout: P.layout };
+    arrows.forEach((c, k) => { set[`a${k + 1}`] = zbMaze2SlotOption(c.slot); });
+    html += `<p><a href="#solve=MAZE2${P.level === 1 ? '' : `&level=${P.level}`}&band=${zbBandCode(band)}&set=${encodeURIComponent(JSON.stringify(set))}">Take it apart</a></p>`;
   }
   return html;
 }

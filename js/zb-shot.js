@@ -1136,12 +1136,39 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur,
   };
   const out = { shot, place: best.place, picture: best.picture, windows: best.windows, dx: Math.round(best.dx), dy: Math.round(best.dy),
-    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, zoombinis: [] };
+    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, rgb: best.rgb, tolerance, zoombinis: [] };
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
   out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place) }, tolerance);
   out.tolerance = tolerance;
   return out;
+}
+
+/* A screenshot without the plain bars around it, as a player or a window
+   puts beside a 4:3 frame on a wider screen: the columns and rows at each
+   edge whose pixels are all within 6 of the corner's color in red, green
+   and blue. Returns { rgba, width, height, left, top }, the screenshot
+   itself when it has no bars or is nothing but one color. */
+function zbShotTrim(rgba, width, height) {
+  const plain = (x0, y0, dx, dy, n, c) => {
+    for (let i = 0; i < n; i++) {
+      const o = 4 * ((y0 + i * dy) * width + x0 + i * dx);
+      if (Math.abs(rgba[o] - c[0]) > 6 || Math.abs(rgba[o + 1] - c[1]) > 6 || Math.abs(rgba[o + 2] - c[2]) > 6) return false;
+    }
+    return true;
+  };
+  const color = (x, y) => [rgba[4 * (y * width + x)], rgba[4 * (y * width + x) + 1], rgba[4 * (y * width + x) + 2]];
+  let left = 0, right = width, top = 0, bottom = height;
+  const a = color(0, 0), b = color(width - 1, height - 1);
+  while (left < right - 1 && plain(left, 0, 0, 1, height, a)) left++;
+  while (right > left + 1 && plain(right - 1, 0, 0, 1, height, b)) right--;
+  while (top < bottom - 1 && plain(left, top, 1, 0, right - left, a)) top++;
+  while (bottom > top + 1 && plain(left, bottom - 1, 1, 0, right - left, b)) bottom--;
+  const w = right - left, h = bottom - top;
+  if ((w === width && h === height) || w < 16 || h < 16) return { rgba, width, height, left: 0, top: 0 };
+  const out = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) out.set(rgba.subarray(4 * ((y + top) * width + left), 4 * ((y + top) * width + left + w)), 4 * y * w);
+  return { rgba: out, width: w, height: h, left, top };
 }
 
 /* A screenshot read whole: `rgba` its pixels, `width` x `height`, and
@@ -1153,10 +1180,16 @@ function zbShotSmoothRead(rgba, width, height, archives) {
    Windows program's. `zoombinis` is zbShotGroup's, and `puzzle` what the
    place's reader in ZB_SHOT_PUZZLES finds, or null. A smoothed screenshot
    is zbShotSmoothRead's, with `zoombinis` zbShotSmoothZoombinis's and
-   `puzzle` likewise. A reader's
+   `puzzle` likewise. Plain bars around the frame are cut off first
+   (zbShotTrim), and `shot.bars` has their widths. A reader's
    `zoombinis` sets their order, as the cliffs' gives them by bridge and
    the order they crossed in. */
 function zbShotRead(rgba, width, height, archives) {
+  const t = zbShotTrim(rgba, width, height);
+  if (t.width < width || t.height < height) {
+    const r = zbShotRead(t.rgba, t.width, t.height, archives);
+    return { ...r, shot: { ...r.shot, bars: { left: t.left, top: t.top, right: width - t.left - t.width, bottom: height - t.top - t.height } } };
+  }
   if (zbShotSmoothed(rgba)) {
     const r = zbShotSmoothRead(rgba, width, height, archives);
     if (!r) return { shot: { width, height, scaleX: 1, scaleY: 1, smoothed: true }, place: null, fit: 0, zoombinis: [], puzzle: null };
@@ -1175,7 +1208,7 @@ function zbShotRead(rgba, width, height, archives) {
       for (const windows of [true, false]) {
         const palKeys = zbShotPaletteKeys(pal, windows);
         const a = zbShotAlign(shot, pixels, palKeys);
-        if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys, pixels, arc };
+        if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys, pixels, arc, rgb: zbShotPaletteRgb(pal, windows) };
       }
     }
   }
@@ -1289,8 +1322,131 @@ function zbShotTunnels(frame, zoombinis) {
   return { through, waiting, levels, zoombinis: band };
 }
 
+/* Bubblewonder Abyss. The grid is one of MAZE2's layouts (zbMaze2Layouts),
+   each square drawn from tBMP 5100 at its place in REGS 16000, minus the
+   shape's registration point in REGS 18000 and 18001, as ScummVM's
+   renderGridCells draws it: a whirlpool is shape 2 + its frame; an arrow
+   its color's first shape, one more for each way it may point (+ 1 + way),
+   its pointer (+ 5 + way) and, on a feature arrow, the feature (5 x the
+   trait's number from 1 + the value + 5); a sticky square + 9 + its
+   frame; a colored square + 19. Every way of drawing each square is
+   compared with the frame in color, blurred as a smoothed frame is, a
+   pixel within the tolerance counting for it and any other against. A
+   layout's score is the sum of its squares' best, each color group taking
+   the color that does best over its squares, and the best layout is read.
+   Returns { layout, level, variant, score, cells, slots, shapes, turned,
+   zoombinis }: `cells` the layout's with `dir`, `color`, the feature
+   (`kind`, `value`, `slot`) and `fit`, the share of the drawing that
+   counts for it; `slots` the feature arrows' slots in order and `shapes`
+   each group's first shape, as a deal has them; `turned` the arrows that
+   point another way than the layout starts them. `layout` is null when no
+   layout scores above 0. */
+function zbShotMaze2(frame, zoombinis) {
+  const arc = frame.arc, W = ZB_SHOT_W, H = ZB_SHOT_H, abs = Math.abs;
+  const smooth = !!frame.frame, blur = smooth ? frame.shot.blur : 0, tolerance = smooth ? frame.tolerance : 12;
+  let colors = frame.frame;
+  if (!colors) {
+    colors = new Float32Array(W * H * 3).fill(NaN);
+    for (let i = 0; i < W * H; i++) {
+      const k = frame.keys[i];
+      if (k < 0) continue;
+      colors[3 * i] = (k >> 12) << 2; colors[3 * i + 1] = ((k >> 6) & 63) << 2; colors[3 * i + 2] = (k & 63) << 2;
+    }
+  }
+  const sprites = decodeBitmapResource(arc.get('tBMP', 5100)).frames;
+  const rx = parseRegs(arc.get('REGS', 18000)), ry = parseRegs(arc.get('REGS', 18001)), at = parseRegs(arc.get('REGS', 16000));
+  const looks = new Map();
+  /* shapes drawn one over another, as points from the square's place */
+  const look = shapes => {
+    const key = shapes.join(' ');
+    if (!looks.has(key)) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const s of shapes) {
+        const f = sprites[s - 1];
+        x0 = Math.min(x0, -rx[s]); y0 = Math.min(y0, -ry[s]); x1 = Math.max(x1, f.width - rx[s]); y1 = Math.max(y1, f.height - ry[s]);
+      }
+      const img = { width: x1 - x0, height: y1 - y0, pixels: new Uint8Array((x1 - x0) * (y1 - y0)) };
+      for (const s of shapes) {
+        const f = sprites[s - 1];
+        for (let y = 0; y < f.height; y++) {
+          for (let x = 0; x < f.width; x++) {
+            const v = f.pixels[y * f.width + x];
+            if (v) img.pixels[(y - ry[s] - y0) * img.width + x - rx[s] - x0] = v;
+          }
+        }
+      }
+      const pts = zbShotBlurred(img, frame.rgb, blur);
+      for (let p = 0; p < pts.length; p += 7) { pts[p] += x0; pts[p + 1] += y0; }
+      looks.set(key, pts);
+    }
+    return looks.get(key);
+  };
+  const score = (shapes, row, col) => {
+    const pts = look(shapes), X = at[2 * (row * 13 + col)], Y = at[2 * (row * 13 + col) + 1];
+    let matched = 0, known = 0;
+    for (let p = 0; p < pts.length; p += 7) {
+      const x = X + pts[p], y = Y + pts[p + 1];
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const o = 3 * (y * W + x);
+      if (colors[o] !== colors[o]) continue;
+      known++;
+      if (abs(colors[o] - pts[p + 2]) + abs(colors[o + 1] - pts[p + 3]) + abs(colors[o + 2] - pts[p + 4]) <= tolerance) matched++;
+    }
+    return { value: 2 * matched - known, fit: known ? matched / known : 0 };
+  };
+  /* a square's best drawing in one color: { value, fit, dir, slot } */
+  const bestIn = (c, base) => {
+    let best = null;
+    const keep = (shapes, dir, slot) => {
+      const s = score(shapes, c.row, c.col);
+      if (!best || s.value > best.value) best = { ...s, dir, slot };
+    };
+    if (c.type === 1) for (let d = 0; d < 4; d++) keep([2 + d], c.dir, 0);
+    else if (c.type >= 2 && c.type <= 4) {
+      const ways = [0, 1, 2, 3].filter(d => c.ways[d]), may = ways.length ? ways : [0, 1, 2, 3];
+      const under = [base, ...ways.map(d => base + d + 1)];
+      for (const d of may) {
+        if (c.type !== 2) { keep([...under, base + d + 5], d, 0); continue; }
+        for (let slot = 0; slot <= 20; slot++) keep(slot ? [...under, base + d + 5, slot + 10] : [...under, base + d + 5], d, slot);
+      }
+    } else if (c.type === 5) for (let d = 0; d < 6; d++) keep([base + 9 + d], c.dir, 0);
+    else if (c.type === 6) keep([base + 19], c.dir, 0);
+    else if (c.type === 7) keep([base + 20], c.dir, 0);
+    return best || { value: 0, fit: 0, dir: c.dir, slot: 0 };
+  };
+  const bases = ZB_MAZE2_COLOR_POOL.slice(2, 9);
+  let read = null;
+  for (const layout of Object.values(zbMaze2Layouts(arc))) {
+    const shapes = new Array(9).fill(0), cells = new Array(layout.cells.length);
+    shapes[1] = ZB_MAZE2_COLOR_POOL[1];
+    let total = 0;
+    for (const group of [...new Set(layout.cells.map(c => c.group))]) {
+      const own = layout.cells.map((c, i) => i).filter(i => layout.cells[i].group === group);
+      let top = null;
+      for (const base of group === 1 ? [shapes[1]] : bases) {
+        const each = own.map(i => bestIn(layout.cells[i], base)), value = each.reduce((n, e) => n + e.value, 0);
+        if (!top || value > top.value) top = { base, each, value };
+      }
+      shapes[group] = top.base;
+      total += top.value;
+      own.forEach((i, k) => {
+        const c = layout.cells[i], e = top.each[k];
+        cells[i] = { ...c, index: i, start: c.dir, dir: e.dir, fit: e.fit, color: ZB_MAZE2_COLORS[top.base] };
+        if (c.type === 2) Object.assign(cells[i], zbMaze2SlotTrait(e.slot), { slot: e.slot });
+      });
+    }
+    if (!read || total > read.score) read = { layout: layout.id, score: total, cells, shapes };
+  }
+  if (!read || read.score <= 0) return { layout: null, zoombinis };
+  const id = read.layout, small = id === ZB_MAZE2_SMALL_LAYOUT;
+  const level = small ? 4 : [1, 2, 3, 4].find(l => id >= ZB_MAZE2_FIRST_LAYOUT[l] && id <= ZB_MAZE2_FIRST_LAYOUT[l] + (l === 4 ? 2 : 1));
+  return { ...read, level, variant: small ? 0 : id - ZB_MAZE2_FIRST_LAYOUT[level],
+    slots: read.cells.filter(c => c.type === 2).map(c => c.slot),
+    turned: read.cells.filter(c => c.type >= 2 && c.type <= 4 && c.dir !== c.start), zoombinis };
+}
+
 /* What each place's reader finds, by place. */
-const ZB_SHOT_PUZZLES = { BRIDGE: zbShotBridge, TUNNELS: zbShotTunnels };
+const ZB_SHOT_PUZZLES = { BRIDGE: zbShotBridge, TUNNELS: zbShotTunnels, MAZE2: zbShotMaze2 };
 
 /* Where a place's Zoombinis come to stand, as x and y pairs: the places a
    smoothed reading tries whether or not a part was found there, and reads

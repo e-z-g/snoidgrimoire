@@ -42,10 +42,12 @@ const code = t => TRAITS.map(k => t[k] ?? '?').join('');
 
 /* A place's picture with a band standing at its waiting places, as 640 x 480
    indices, and where each Zoombini stands. */
-function scene(key, band) {
+let scenePicture = null;
+function scene(key, band, level = 1) {
   const arc = archives.get(key), pic = S.zbPlacePicture(arc, key, 1);
   const frame = S.decodeBitmapResource(arc.get('tBMP', pic.layers[0].id)).frames[0];
   const pixels = Uint8Array.from(frame.pixels);
+  scenePicture = frame.pixels;
   const placed = S.zbBandWaiting(key, band);
   for (const p of placed) {
     for (const part of S.zbZoombiniPlacements(sheet, p.z)) {
@@ -59,7 +61,45 @@ function scene(key, band) {
     }
   }
   const pal = S.zbPalette(S.parsePaletteResource(arc.get('SHPL', pic.palette), 'SHPL'));
-  return { pixels, pal, placed };
+  return { pixels, pal, placed, grid: key === 'MAZE2' ? abyss(arc, pixels, band, level) : null };
+}
+/* The Abyss's grid as dealt for the band, drawn under the band as
+   ScummVM's renderGridCells draws it. Returns the deal's state. */
+function abyss(arc, pixels, band, level) {
+  const d = S.ZB_PUZZLES.get('MAZE2').deal(level, band, S.zbRandom(31 + level), {}, arc), st = d.state;
+  const layout = S.zbMaze2Layout(arc, st.mazeLayoutRegsId), cells = S.zbMaze2Grid(layout, st.selectedPathSlots, st.waveGroupShapeBase).cells;
+  const sprites = S.decodeBitmapResource(arc.get('tBMP', 5100)).frames;
+  const rx = S.parseRegs(arc.get('REGS', 18000)), ry = S.parseRegs(arc.get('REGS', 18001)), at = S.parseRegs(arc.get('REGS', 16000));
+  const under = Uint8Array.from(pixels);
+  const draw = (shape, c) => {
+    const f = sprites[shape - 1], X = at[2 * (c.row * 13 + c.col)] - rx[shape], Y = at[2 * (c.row * 13 + c.col) + 1] - ry[shape];
+    for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) {
+      const v = f.pixels[y * f.width + x];
+      if (v && X + x >= 0 && Y + y >= 0 && X + x < 640 && Y + y < 480) under[(Y + y) * 640 + X + x] = v;
+    }
+  };
+  for (const c of cells) {
+    const base = st.waveGroupShapeBase[c.group];
+    if (c.type === 1) draw(2, c);
+    else if (c.type >= 2 && c.type <= 4) {
+      draw(base, c);
+      c.ways.forEach((w, k) => { if (w) draw(base + k + 1, c); });
+      draw(base + c.dir + 5, c);
+      if (c.type === 2 && c.slot) draw(c.slot + 10, c);
+    } else if (c.type === 5) draw(base + 9, c);
+    else if (c.type === 6) draw(base + 19, c);
+  }
+  // the band stays over the grid: only the pixels still the picture's change
+  for (let i = 0; i < pixels.length; i++) if (pixels[i] === scenePicture[i]) pixels[i] = under[i];
+  return st;
+}
+/* What a reading of the Abyss must give for a grid drawn here. */
+function abyssCheck(about, r, st) {
+  const P = r.puzzle;
+  if (!P || P.layout !== st.mazeLayoutRegsId) { fail(`${about}, the grid read as REGS ${P && P.layout}, not ${st.mazeLayoutRegsId}`); return; }
+  if (JSON.stringify(P.slots) !== JSON.stringify(st.selectedPathSlots.slice(0, P.slots.length))) fail(`${about}, the feature arrows' slots read ${P.slots}, not ${st.selectedPathSlots}`);
+  for (const c of P.cells) if (c.group > 1 && P.shapes[c.group] !== st.waveGroupShapeBase[c.group]) { fail(`${about}, group ${c.group} read ${P.shapes[c.group]}, not ${st.waveGroupShapeBase[c.group]}`); break; }
+  if (P.turned.length) fail(`${about}, ${P.turned.length} arrows read as turned`);
 }
 /* The indices as a screenshot: in the Windows colors through a 6-bit DAC or
    in the stored ones, enlarged by `scale` with each pixel copied (screen
@@ -88,12 +128,13 @@ if (!process.argv.includes('--smoothed')) {
   let read = 0, unread = 0, inferred = 0, all = 0;
   const t = Date.now();
   keys.forEach((key, i) => {
-    const band = S.zbDealBand(S.zbRandom(1000 + i), 16), sc = scene(key, band);
+    const band = S.zbDealBand(S.zbRandom(1000 + i), 16), sc = scene(key, band, 4);
     const way = ways[i % ways.length], shot = shoot(sc, way);
     const r = S.zbShotRead(shot.rgba, shot.width, shot.height, archives);
     const about = `${key} (${way.windows ? 'Windows' : 'stored'} colors, x${way.scale}${way.cut ? `, cut ${way.cut}` : ''})`;
     if (r.place !== key) { fail(`${about} read as ${r.place}`); return; }
     if (r.dx !== (way.cut || 0) || r.dy !== (way.cut || 0)) fail(`${about} at (${r.dx}, ${r.dy}), not ${way.cut || 0}`);
+    if (sc.grid) abyssCheck(about, r, sc.grid);
     if (r.windows !== way.windows) fail(`${about} read in the ${r.windows ? 'Windows' : 'stored'} colors`);
     for (const p of sc.placed) {
       all++;
@@ -145,7 +186,7 @@ function shootSmooth({ pixels, pal }, { windows, scale, cutX = 0, cutY = 0, w, h
 if (!process.argv.includes('--exact')) {
   const ways = [
     { windows: true, scale: 1.325, crop: [310, 320] }, { windows: true, scale: 2 },
-    { windows: false, scale: 1.6, crop: [500, 375] }, { windows: true, scale: 1.25 },
+    { windows: false, scale: 1.6, crop: [500, 375] }, { windows: true, scale: 1.25, bars: 120 },
   ];
   const keys = Object.keys(S.ZB_WAITING).filter(k => !S.ZB_WAITING[k].small);
   let read = 0, unread = 0, all = 0;
@@ -153,7 +194,7 @@ if (!process.argv.includes('--exact')) {
   const only = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7);
   keys.forEach((key, i) => {
     if (only && key !== only) return;
-    const band = S.zbDealBand(S.zbRandom(2000 + i), 16), sc = scene(key, band), way = { ...ways[i % ways.length] };
+    const band = S.zbDealBand(S.zbRandom(2000 + i), 16), sc = scene(key, band, 3), way = { ...ways[i % ways.length] };
     if (way.crop) {
       /* a part of the frame around the band */
       const xs = sc.placed.map(p => p.x), ys = sc.placed.map(p => p.y);
@@ -163,17 +204,28 @@ if (!process.argv.includes('--exact')) {
       way.w = Math.floor(way.crop[0] * way.scale);
       way.h = Math.floor(way.crop[1] * way.scale);
     }
-    const shot = shootSmooth(sc, way), t1 = Date.now();
+    let shot = shootSmooth(sc, way);
+    if (way.bars) {
+      /* black bars at the left and right, as a 4:3 frame has on a wide screen */
+      const w = shot.width + 2 * way.bars, rgba = new Uint8Array(w * shot.height * 4);
+      for (let y = 0; y < shot.height; y++) {
+        for (let x = 0; x < w; x++) rgba[4 * (y * w + x) + 3] = 255;
+        rgba.set(shot.rgba.subarray(4 * y * shot.width, 4 * (y + 1) * shot.width), 4 * (y * w + way.bars));
+      }
+      shot = { rgba, width: w, height: shot.height };
+    }
+    const t1 = Date.now();
     const r = S.zbShotRead(shot.rgba, shot.width, shot.height, archives);
     const about = `${key} smoothed (${way.windows ? 'Windows' : 'stored'} colors, x${way.scale}${way.crop ? `, from (${way.cutX}, ${way.cutY})` : ''})`;
     if (r.place !== key) { fail(`${about} read as ${r.place}`); return; }
     if (Math.abs(r.dx - (way.cutX || 0)) > 1 || Math.abs(r.dy - (way.cutY || 0)) > 1) fail(`${about} at (${r.dx}, ${r.dy})`);
     if (Math.abs(r.shot.scaleX / way.scale - 1) > 0.005 || Math.abs(r.shot.scaleY / way.scale - 1) > 0.005) fail(`${about} enlarged ${r.shot.scaleX} x ${r.shot.scaleY}`);
     if (r.windows !== way.windows) fail(`${about} read in the ${r.windows ? 'Windows' : 'stored'} colors`);
+    if (sc.grid) abyssCheck(about, r, sc.grid);
     const near = (g, p) => Math.abs(g.x - p.x) <= 1 && Math.abs(g.y - p.y) <= 1;
     let here = 0;
     for (const p of sc.placed) {
-      const shown = p.x >= (way.cutX || 0) && p.x < (way.cutX || 0) + shot.width / way.scale && p.y >= (way.cutY || 0) && p.y < (way.cutY || 0) + shot.height / way.scale;
+      const shown = p.x >= (way.cutX || 0) && p.x < (way.cutX || 0) + (shot.width - 2 * (way.bars || 0)) / way.scale && p.y >= (way.cutY || 0) && p.y < (way.cutY || 0) + shot.height / way.scale;
       if (!shown) continue;
       all++;
       const z = r.zoombinis.find(g => near(g, p));
@@ -225,6 +277,15 @@ else {
           ...l.upper.map(f => `${l.level}: the ${f.upperMatches ? 'upper' : 'lower'} guardian, ${S.zbTunnelsRuleWords(f.rule)}`)])
         : r.puzzle.levels.flatMap(l => l.fitting.map(f => `${l.level}: ${S.zbBridgeRuleWords(f.rule)}, ${f.upperMatches ? 'upper' : 'lower'}`));
       if (JSON.stringify(rules) !== JSON.stringify(expected.rules)) fail(`${name}, the rules that fit are ${JSON.stringify(rules)}`);
+    }
+    if (expected.grid) {
+      const P = r.puzzle, g = expected.grid;
+      const arrows = P.cells ? P.cells.filter(c => c.type === 2).map(c => (c.value ? S.zbTraitWith(c.kind, c.value) : 'no feature')) : [];
+      const colors = P.cells ? [...new Set(P.cells.filter(c => c.group > 1).map(c => c.color))].sort() : [];
+      if (P.layout !== g.layout) fail(`${name}, the grid read as REGS ${P.layout}, not ${g.layout}`);
+      else if (JSON.stringify(arrows) !== JSON.stringify(g.arrows)) fail(`${name}, the feature arrows show ${JSON.stringify(arrows)}`);
+      else if (JSON.stringify(colors) !== JSON.stringify(g.colors)) fail(`${name}, the grid's colors are ${colors}`);
+      else if (P.turned.length !== g.turned) fail(`${name}, ${P.turned.length} arrows turned, not ${g.turned}`);
     }
     if (verbose) for (const a of actual) console.log(`  (${a.x}, ${a.y}) ${a.code}${a.inferred.length ? `, ${a.inferred.join(' and ')} inferred` : ''}`);
     console.log(`Taken in the game, ${name}, ${png.width} x ${png.height}. It shows ${r.shot.width} x ${r.shot.height} of the frame at (${r.dx}, ${r.dy}),`
