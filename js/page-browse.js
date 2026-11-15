@@ -694,7 +694,10 @@ function showScript(entry, arc, tag, id, bytes, body) {
    snoid turned round to start with, drawn over its room, with its sounds. */
 const SNOID_PICK = { zoombini: { hair: 1, eyes: 1, nose: 1, feet: 1 }, fleen: { hair: 1, eyes: 1, nose: 1, feet: 1 },
   turned: false, room: true, sound: false, zoom: 2 };
-const SNOID_TICK_MS = 100;       // the Zoombini maker's tick, which looked right; the program's is not read
+// The program steps a snoid's view every 6 ticks of its clock, which counts
+// 17 ms on Windows and the Mac alike (addView's interval 6, zbtools
+// view.cpp; clockTime, debug.cpp; E2GETTIME, Mac CODE 5 0x317e): 102 ms.
+const SNOID_TICK_MS = 6 * 17;
 const SNOID_SOUNDS = new Map();  // 'ZOOMBINI 125' -> an object URL
 
 /* A snoid script, played: the snoid its layout word names, put together by
@@ -734,7 +737,7 @@ function snoidPlayer(entry, arc, id, script, box) {
     return `<option value="${i + 1}"${i + 1 === traits[k] ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(cap(n))}</option>`;
   }).join('')}</select></label>`;
   const zoom = SNOID_PICK.zoom;
-  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')} at ${1000 / SNOID_TICK_MS} per second.`
+  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')}, one every ${SNOID_TICK_MS} ms.`
     + (own ? ` It is made for Zoombinis with ${names.feet[own - 1].toLowerCase()}.`
       : feetFor.length < 5 ? ` Its foot poses only fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))}.` : '')
     + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} ${movie.missing.length === 1 ? 'lies' : 'lie'} past the end of ${movie.missing.length === 1 ? 'its' : 'their'} block and ${movie.missing.length === 1 ? 'is' : 'are'} not drawn.</span>` : '') + '</p>'

@@ -136,9 +136,10 @@ function townBuild() {
     // One distance for all its frames, from the lowest foot among them.
     let foot = -Infinity;
     for (const f of inh.frames) if (f) foot = Math.max(foot, f.y + tFoot(4000, f.shape));
-    // The game gives each a frame interval of 4 to 6 ticks of 60 a second
-    // and a start at random; here they are spread the same way, fixed.
-    return { inh, frame: (i * 7) % inh.frames.length, interval: (4 + (i % 3)) * 1000 / 60, next: now, rho: tStandDist(foot) };
+    // The game gives each a frame interval of 4 to 6 ticks of its clock,
+    // which counts 17 ms (clockTime, zbtools debug.cpp), and a start at
+    // random; here they are spread the same way, fixed.
+    return { inh, frame: (i * 7) % inh.frames.length, interval: (4 + (i % 3)) * 17, next: now, rho: tStandDist(foot) };
   });
   const tower = TSCENE.things.find(t => t.gate && t.gate.reward === ZB_TOWN_CLOCK_SLOT);
   TCLOCK = TSCENE.clock ? { shapes: null, rho: (tower ? tStandDist(tower.y + tFoot(1000, tower.shape)) : TOWN_TUNE.FAR * 0.97) * 0.99 } : null;
