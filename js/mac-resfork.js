@@ -42,7 +42,8 @@ function openResourceFork(bytes) {
   const nameListOffRel = u16be(bytes, mapOff + 26);
   const typeListAbs = mapOff + typeListOffRel;
   inRange(typeListAbs, 2, 'type list');
-  const numTypes = u16be(bytes, typeListAbs) + 1;
+  // stored minus one, so a fork with no resources stores 0xFFFF
+  const numTypes = (u16be(bytes, typeListAbs) + 1) & 0xFFFF;
   inRange(typeListAbs + 2, numTypes * 8, `type list (${numTypes} types)`);
 
   const typeList = [];
