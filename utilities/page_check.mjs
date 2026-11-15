@@ -21,6 +21,8 @@
 //     and the clock; looking at the clock tower names it; sway, red-cyan and Cardboard draw, and Cardboard's button
 //     leaves it; the sliders empty the town and write the address; the
 //     map's Zoombiniville links to it;
+//   - with reference/screenshots/bridge-crossed.png, the Screenshot pane
+//     reads it to its place, its Zoombinis and a rule, and draws them;
 //   - on the phone, nothing is wider than the screen.
 // SHOTS=<dir> saves a screenshot of each view there.
 import fs from 'node:fs';
@@ -101,6 +103,7 @@ const VIEWS = [
   ['scenario/puzzles', "document.querySelectorAll('#view details.sec').length === 12"],
   ['scenario/snoids', "document.querySelectorAll('#view .trow canvas').length === 20 && document.querySelectorAll('#view .ids a').length >= 717"],
   ['scenario/town', "/Zoombiniville/.test(document.getElementById('view').textContent)"],
+  ['scenario/screenshot', "!!document.getElementById('shotDrop') && !!document.getElementById('shotFile')"],
   ['components/pictures', "document.querySelectorAll('#view .card').length === 65 && document.querySelector('#view .card .pic canvas')"],
   ['components/sheets', "document.querySelectorAll('#view .card').length === 112 && document.querySelector('#views a.on').dataset.view === 'components'"],
   ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice, kind/.test(document.getElementById('view').innerHTML)"],
@@ -323,6 +326,27 @@ try {
           const wide = dev.mobile ? await p.evaluate('document.documentElement.scrollWidth > innerWidth + 1 || document.getElementById(\'view\').scrollWidth > document.getElementById(\'view\').clientWidth + 1 || document.getElementById(\'bar\').scrollWidth > document.getElementById(\'bar\').clientWidth + 1') : false;
           if (shots) await p.shot(path.join(shots, `${dev.name}-${hash.replace(/\//g, '-')}.png`));
           results.push({ hash, met, ms: Date.now() - t0, wide });
+        }
+        // A screenshot taken in the game read on the Screenshot pane: its
+        // place, its Zoombinis and, at the cliffs, its rule, as its .json has them.
+        const shotPng = path.join(REF, 'screenshots', 'bridge-crossed.png');
+        if (fs.existsSync(shotPng)) {
+          const expected = JSON.parse(fs.readFileSync(shotPng.replace(/\.png$/, '.json'), 'utf8'));
+          await p.evaluate("location.hash = '#scenario/screenshot'");
+          const t0 = Date.now();
+          await p.evaluate("fetch('reference/screenshots/bridge-crossed.png').then(r => r.blob()).then(b => shotTake(new File([b], 'bridge-crossed.png', { type: 'image/png' })))");
+          while (Date.now() - t0 < 60000 && !(await p.evaluate('!!SHOT_LAST && !SHOT_BUSY'))) await new Promise(res => setTimeout(res, 200));
+          const note = await p.evaluate(`(() => {
+            const r = SHOT_LAST && SHOT_LAST.read, rows = document.querySelectorAll('#shotOut [data-shotz] canvas').length;
+            if (!r) return SHOT_LAST ? SHOT_LAST.error : 'no reading';
+            if (r.place !== ${JSON.stringify(expected.place)}) return 'read as ' + r.place;
+            if (r.zoombinis.length !== ${expected.zoombinis.length} || rows !== ${expected.zoombinis.length}) return r.zoombinis.length + ' Zoombinis read, ' + rows + ' drawn';
+            const text = document.getElementById('shotOut').textContent;
+            return /accepts Zoombinis with/.test(text) && document.querySelector('#shotFrame canvas') ? '' : 'no rule or no frame shown';
+          })()`);
+          const wide = dev.mobile ? await p.evaluate("document.documentElement.scrollWidth > innerWidth + 1 || document.getElementById('view').scrollWidth > document.getElementById('view').clientWidth + 1") : false;
+          if (shots) await p.shot(path.join(shots, `${dev.name}-screenshot-read.png`));
+          results.push({ hash: 'scenario/screenshot, bridge-crossed.png read', met: !note, ms: Date.now() - t0, wide, note });
         }
         // A gallery saved whole: every sound, tune and string list in the zip.
         if (!dev.mobile) for (const [key, tag, ext] of [['sounds', '\\0SND', 'wav'], ['music', 'tMID', 'mid'], ['text', 'STRL', 'txt']]) {

@@ -91,6 +91,38 @@ function zbBridgeCandidates(level, band) {
   return { rules, counts, count: null, candidates: [] };
 }
 
+/* Where a Zoombini stands once across, by bridge: 16 places each, filled in
+   the order the Zoombinis cross (ScummVM's kUpperLaneArrivalPositions and
+   kLowerLaneArrivalPositions; ZOOMBINI.EXE has them at `exe` as
+   little-endian x, y pairs). */
+const ZB_BRIDGE_ARRIVALS = {
+  upper: { exe: 0xbe420, at: [618, 45, 582, 49, 552, 36, 524, 32, 493, 25, 464, 27, 422, 36, 618, 86, 588, 81, 556, 76, 615, 129, 580, 122, 550, 116, 522, 112, 493, 106, 530, 69] },
+  lower: { exe: 0xbe480, at: [615, 342, 590, 332, 579, 303, 549, 290, 522, 281, 492, 271, 621, 314, 602, 283, 573, 267, 533, 248, 622, 257, 596, 242, 561, 235, 621, 197, 594, 187, 566, 178] },
+};
+/* The gate's pegs: SCRB 1215 + n shows the gate with n pegs gone, on its
+   first tick, and the last tick of 1220 shows all six gone (ScummVM's
+   refreshPegDisplay). The gate is the sprite of shape 175 + n. */
+const ZB_BRIDGE_GATE = { script: 1215, shape: 175 };
+
+/* The rules of a level's form that would split Zoombinis as `up` and `low`
+   are split, over the upper bridge and the lower: [{ rule, upperMatches }].
+   A trait read as null may be any value. */
+function zbBridgeRulesFitting(level, up, low) {
+  /* whether z may match the rule or not, as `matches` gives */
+  const could = (z, rule, matches) => {
+    if (rule.some(r => z[r.kind] != null && r.values.includes(z[r.kind]))) return matches;
+    if (rule.every(r => z[r.kind] != null)) return !matches;
+    return true;
+  };
+  const out = [];
+  for (const rule of zbBridgeRules(level)) {
+    for (const upperMatches of [true, false]) {
+      if (up.every(z => could(z, rule, upperMatches)) && low.every(z => could(z, rule, !upperMatches))) out.push({ rule, upperMatches });
+    }
+  }
+  return out;
+}
+
 /* A rule and its bridge as which of the band go over the upper bridge: a
    bit a band member. */
 function zbBridgeUpperMask(band, rule, upperMatches) {

@@ -108,9 +108,44 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
       }
     }
   }
+  // Where the Zoombinis stand once across: ScummVM's tables and the program's bytes.
+  const dv = new DataView(exe.buffer, exe.byteOffset);
+  for (const [side, name] of [['upper', 'kUpperLaneArrivalPositions'], ['lower', 'kLowerLaneArrivalPositions']]) {
+    const a = S.ZB_BRIDGE_ARRIVALS[side];
+    const m = scummMatch(new RegExp(`${name}\\[16\\]\\{([^}]*)\\}`), h, name);
+    const places = [...m[1].matchAll(/Point\((-?\d+),\s*(-?\d+)\)/g)].flatMap(q => [+q[1], +q[2]]);
+    if (!same(places, a.at)) fail(`the ${side} bridge's arrival places are not ScummVM's ${name}`);
+    const inExe = Array.from({ length: 32 }, (_, i) => dv.getInt16(a.exe + 2 * i, true));
+    if (!same(inExe, a.at)) fail(`ZOOMBINI.EXE at 0x${a.exe.toString(16)} is not the ${side} bridge's arrival places`);
+  }
+  // refreshPegDisplay reloads the gate from this base, one script a peg gone.
+  const gateBase = scummMatch(/reloadScrbAnimation\(_cliffGateFeatureId, (kResScrb\w+) \+ scrbStage\)/, cpp, 'refreshPegDisplay')[1];
+  const gate = scummMatch(new RegExp(`${gateBase} = (\\d+)`), h, gateBase);
+  if (+gate[1] !== S.ZB_BRIDGE_GATE.script) fail(`the gate's scripts start at ${S.ZB_BRIDGE_GATE.script}, ScummVM's at ${gate[1]}`);
+
+  // A dealt rule is among the rules that split the band as it splits it,
+  // and a trait unread lets a rule through either way.
+  let fits = 0;
+  for (let level = 1; level <= 4; level++) {
+    for (const { band, seed } of bands(10, 300 + level, [16, 9])) {
+      const d = P.deal(level, band, S.zbRandom(seed), {});
+      const up = band.filter(z => S.zbBridgeMatches(z, d.state.rule) === d.state.matchingTraitsUseUpperLane);
+      const low = band.filter(z => !up.includes(z));
+      const fitting = S.zbBridgeRulesFitting(level, up, low);
+      const key = f => JSON.stringify([f.rule, f.upperMatches]);
+      if (!fitting.some(f => key(f) === key({ rule: d.state.rule, upperMatches: d.state.matchingTraitsUseUpperLane }))) {
+        fail(`level ${level}: the dealt rule does not fit the split it makes`);
+        break;
+      }
+      const blind = S.zbBridgeRulesFitting(level, up.map(z => ({ ...z, hair: null })), low.map(z => ({ ...z, hair: null })));
+      if (fitting.some(f => !blind.some(b => key(b) === key(f)))) { fail(`level ${level}: a rule that fits drops out when hair is unread`); break; }
+      fits++;
+    }
+  }
+
   let bad = null;
   try { P.edit(3, bands(1, 5)[0].band, {}, { t1: 'hair:1', t2: 'hair:2', upper: 'with' }); } catch (e) { bad = e.message; }
   if (!bad) fail('the form accepts two values of one trait at level 3');
 
-  print(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it guarantees, ${played} played against the dealt rule. Tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}. 20, 40, 150 and 500 rules. ${dealt} deals split as the program's search does`);
+  print(`${trips} forms given back, ${walked} strategies walked down every branch (${leaves} ends), none short of what it guarantees, ${played} played against the dealt rule. Tables as ScummVM's and in ZOOMBINI.EXE at 0x${(at[0] || 0).toString(16)}. 20, 40, 150 and 500 rules. ${dealt} deals split as the program's search does. The arrival places as ScummVM's and in ZOOMBINI.EXE, and ${fits} dealt rules among those that fit their splits`);
 }

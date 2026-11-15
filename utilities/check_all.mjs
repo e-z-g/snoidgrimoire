@@ -27,6 +27,7 @@ const CHECKS = [
   ['feature', 'every feature script\'s sheet found by the numbering, and its sprites on the room'],
   ['music', 'every tune made into what QuickTime\'s instruments play, nothing left out, and two rendered'],
   ['puzzle', 'the twelve puzzles\' rules and deals against ScummVM and the program'],
+  ['shot', 'screenshots read back, made here at every waiting place and taken in the game, against what a person read'],
   ['page', 'index.html in headless Chrome, the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
 ];
 const filters = process.argv.slice(2);

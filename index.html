@@ -248,6 +248,9 @@ body:has(#town.cardboard) #bar { display: none; }
 #sdiagram .lhits rect:hover { fill: rgba(255,255,255,0.12); }
 #sdiagram [data-pad] { cursor: crosshair; }
 #sdiagram svg:has([data-pad]) { touch-action: none; }
+.shotdrop { border: 2px dashed var(--line); border-radius: 8px; padding: 18px; margin: 10px 0; }
+.shotdrop.over { border-color: var(--accent); }
+#shotFrame canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #sdiagram canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; margin: 0 auto; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #spanel {
   width: 420px; flex: none; border-left: 1px solid var(--line); background: var(--panel); overflow: auto;
@@ -437,6 +440,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-puzzle-smoke.js"></script>
 <script src="js/zb-puzzle-maze2.js"></script>
 <script src="js/zb-hardest.js"></script>
+<script src="js/zb-shot.js"></script>
 <script src="js/zb-xref.js"></script>
 <script src="js/zb-search.js"></script>
 <script src="js/page-open.js"></script>
@@ -452,5 +456,6 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>
 <script src="js/page-layout.js"></script>
+<script src="js/page-shot.js"></script>
 </body>
 </html>
