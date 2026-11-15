@@ -346,7 +346,7 @@ try {
             if (r.place !== ${JSON.stringify(expected.place)}) return 'read as ' + r.place;
             if (r.zoombinis.length !== ${expected.zoombinis.length} || rows < ${complete}) return r.zoombinis.length + ' Zoombinis read, ' + rows + ' drawn';
             const text = document.getElementById('shotOut').textContent;
-            if (${!!expected.rules} && !/accepts Zoombinis with/.test(text)) return 'no rule shown';
+            if (${!!expected.rules} && !/(accepts|lets through) Zoombinis with/.test(text)) return 'no rule shown';
             return document.querySelector('#shotFrame canvas') ? '' : 'no frame shown';
           })()`);
           const seconds = await p.evaluate('SHOT_LAST && SHOT_LAST.seconds');

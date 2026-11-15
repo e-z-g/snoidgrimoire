@@ -10,8 +10,9 @@
 //   - screenshots taken in the game, in reference/screenshots (or
 //     $ZB_SCREENSHOTS), each with a .json beside it of what a person read
 //     off it by eye: the place, each Zoombini's origin and traits (four
-//     digits, as zbBandCode writes them), and for the cliffs the pegs gone
-//     and the rule. The reader matches all of it.
+//     digits, as zbBandCode writes them), for the cliffs the pegs gone
+//     and the rule, and for the caves the guardians' rules. The reader
+//     matches all of it.
 //
 //   node utilities/shot_check.mjs        # both
 //   node utilities/shot_check.mjs -v     # and every Zoombini read
@@ -218,7 +219,11 @@ else {
     for (const a of actual) if (!expected.zoombinis.some(e => at(a, e))) fail(`${name}, a Zoombini read at (${a.x}, ${a.y}) where none stands`);
     if (expected.pegsGone != null && (!r.puzzle || r.puzzle.pegsGone !== expected.pegsGone)) fail(`${name}, ${r.puzzle.pegsGone} pegs gone, not ${expected.pegsGone}`);
     if (expected.rules && r.puzzle) {
-      const rules = r.puzzle.levels.flatMap(l => l.fitting.map(f => `${l.level}: ${S.zbBridgeRuleWords(f.rule)}, ${f.upperMatches ? 'upper' : 'lower'}`));
+      const rules = r.place === 'TUNNELS'
+        ? r.puzzle.levels.flatMap(l => [
+          ...l.side.map(f => `${l.level}: the ${f.leftMatches ? 'left' : 'right'} guardian, ${S.zbTunnelsRuleWords(f.rule)}`),
+          ...l.upper.map(f => `${l.level}: the ${f.upperMatches ? 'upper' : 'lower'} guardian, ${S.zbTunnelsRuleWords(f.rule)}`)])
+        : r.puzzle.levels.flatMap(l => l.fitting.map(f => `${l.level}: ${S.zbBridgeRuleWords(f.rule)}, ${f.upperMatches ? 'upper' : 'lower'}`));
       if (JSON.stringify(rules) !== JSON.stringify(expected.rules)) fail(`${name}, the rules that fit are ${JSON.stringify(rules)}`);
     }
     if (verbose) for (const a of actual) console.log(`  (${a.x}, ${a.y}) ${a.code}${a.inferred.length ? `, ${a.inferred.join(' and ')} inferred` : ''}`);

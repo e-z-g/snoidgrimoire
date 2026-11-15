@@ -98,6 +98,64 @@ const ZB_TUNNELS_CHANCES = [16, 18, 20, 22];
 /* The entrances left to right, ScummVM's drop zones 1-4. */
 const ZB_TUNNELS_ENTRANCES = ['leftmost', 'second from the left', 'second from the right', 'rightmost'];
 
+/* Where the Zoombinis let through stand, in the four caves: 16 places a
+   cave, x and y, filled in order (ScummVM's kOutputLanePositions, which
+   ZOOMBINI.EXE has at file offset 0xcfc40). The caves are in the table's
+   order: upper left, upper right, lower left, lower right. `entrance` is
+   the tunnel, 0-3 from the left, that comes out in each (ScummVM's
+   kDropZoneToLane). */
+const ZB_TUNNELS_CAVES = {
+  exe: 0xcfc40,
+  names: ['upper left', 'upper right', 'lower left', 'lower right'],
+  entrance: [0, 3, 1, 2],
+  at: [
+    [277, 62, 264, 63, 247, 64, 230, 66, 274, 84, 255, 86, 236, 90, 214, 92, 273, 102, 255, 104, 235, 108, 215, 112, 258, 120, 239, 128, 220, 130, 200, 133],
+    [403, 60, 381, 61, 362, 64, 346, 69, 412, 80, 392, 84, 372, 87, 353, 93, 414, 98, 401, 103, 382, 107, 363, 110, 415, 118, 403, 121, 387, 123, 370, 127],
+    [288, 213, 273, 219, 257, 223, 238, 226, 222, 230, 283, 235, 268, 239, 252, 245, 237, 248, 221, 252, 287, 257, 270, 260, 253, 262, 240, 265, 220, 270, 259, 280],
+    [414, 217, 389, 223, 373, 228, 357, 233, 415, 238, 399, 247, 382, 249, 362, 255, 419, 259, 400, 263, 381, 267, 363, 276, 420, 271, 401, 278, 387, 283, 371, 268],
+  ],
+};
+
+/* The rules of a level's form that put Zoombinis in the caves where they
+   stand: `through` is the Zoombinis gone through each tunnel, 0-3 from
+   the left. A rule fits the left and right guardians when one side's
+   Zoombinis all have a value of it and the other's none, and the upper
+   and lower guardians likewise. A trait that is null may be any value.
+   Returns { side: [{ rule, leftMatches }], upper: [{ rule, upperMatches }],
+   closed }. At level 1 only the side guardians have a rule and one pair of
+   tunnels is closed: `closed` is 'outer' or 'inner' where the other pair
+   alone was used, either of them (null) where nobody has gone through,
+   and no rule fits where both pairs were used. At 2-4 the two rules are
+   different ones, so a side rule that is the only upper rule does not
+   fit, nor the other way round. */
+function zbTunnelsRulesFitting(level, through) {
+  const could = (z, rule, matches) => {
+    if (rule.some(r => z[r.kind] != null && r.values.includes(z[r.kind]))) return matches;
+    if (rule.every(r => z[r.kind] != null)) return !matches;
+    return true;
+  };
+  const fits = (rule, matches, a, b) => a.every(z => could(z, rule, matches)) && b.every(z => could(z, rule, !matches));
+  const left = [...through[0], ...through[1]], right = [...through[2], ...through[3]];
+  const up = [...through[0], ...through[3]], low = [...through[1], ...through[2]];
+  let side = [], upper = [], closed = null;
+  if (level === 1) {
+    if (up.length && low.length) return { side, upper, closed };
+    closed = up.length ? 'inner' : low.length ? 'outer' : null;
+  }
+  for (const rule of zbTunnelsRules(level)) {
+    for (const matches of [true, false]) {
+      if (fits(rule, matches, left, right)) side.push({ rule, leftMatches: matches });
+      if (level > 1 && fits(rule, matches, up, low)) upper.push({ rule, upperMatches: matches });
+    }
+  }
+  if (level > 1) {
+    const same = (a, b) => JSON.stringify(a.rule) === JSON.stringify(b.rule);
+    const sideKept = side.filter(a => upper.some(b => !same(a, b))), upperKept = upper.filter(b => side.some(a => !same(a, b)));
+    side = sideKept; upper = upperKept;
+  }
+  return { side, upper, closed };
+}
+
 /* Every rule of a level's form, in the program's order, as
    [{ kind, values: [v] or [v, w] }]. Levels 1 and 2 have the same 20. */
 function zbTunnelsRules(level) {

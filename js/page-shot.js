@@ -2,7 +2,8 @@
    given by the visitor, read back by js/zb-shot.js. The page draws the
    frame it found, with each Zoombini numbered, and a table of the
    Zoombinis. At the Allergic Cliffs it also gives the pegs left and the
-   rules that fit.
+   rules that fit, and at the Stone Cold Caves the guardians' rules that
+   fit.
    =========================================================================
 
    The screenshot stays in the page's memory and goes nowhere else. Reading
@@ -20,7 +21,7 @@ let SHOT_BUSY = false;
 SCENARIO_PANES.screenshot = function shotPane(view) {
   view.innerHTML = '<h1>Screenshot</h1>'
     + '<p class="sub">Give the page a screenshot of the game. It shows the place and each Zoombini’s traits. '
-    + 'At the Allergic Cliffs it also shows the pegs left and the rules that put the Zoombinis where they stand.</p>'
+    + 'At the Allergic Cliffs and the Stone Cold Caves it also shows the rules that put the Zoombinis where they stand.</p>'
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
     + ' <span class="note">or drop one here, or paste one.</span></div>'
     + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '
@@ -128,6 +129,7 @@ function shotShow() {
     + ` <span class="note">${L.seconds.toFixed(1)} s</span></p>`;
   html += '<div class="wide" id="shotFrame"></div>';
   if (r.puzzle && r.place === 'BRIDGE') html += shotBridgeHtml(r);
+  if (r.puzzle && r.place === 'TUNNELS') html += shotTunnelsHtml(r);
   html += shotTableHtml(r);
   const band = r.zoombinis.map(z => z.traits);
   if (ZB_PUZZLES.has(r.place) && band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null))) {
@@ -176,6 +178,7 @@ function shotWhere(z) {
   if (!z.where) return '';
   const w = z.where;
   if (w.side === 'upper' || w.side === 'lower') return `across the ${w.side} bridge, the ${SHOT_ORDINALS[w.slot]} to cross it`;
+  if (w.side === 'cave') return `in the ${ZB_TUNNELS_CAVES.names[w.cave]} cave, the ${SHOT_ORDINALS[w.slot]} into it`;
   if (w.side === 'waiting') return 'waiting to cross';
   return 'on its way across';
 }
@@ -190,7 +193,8 @@ function shotTableHtml(r) {
       const inferred = z.inferred && z.inferred[k];
       return `<td${inferred ? ' class="note" title="Most of this part is hidden. The page read it from the little that shows."' : ''}>${esc(zbTraitWith(k, v))}${inferred ? ' (partly hidden)' : ''}</td>`;
     };
-    html += `<tr><td>${i + 1}</td><td data-shotz="${i}"></td>${ZB_TRAIT_KINDS.map(cell).join('')}<td class="note">${esc(shotWhere(z))}</td></tr>`;
+    const where = [shotWhere(z), z.behind ? 'partly behind the scenery' : ''].filter(Boolean).join(', ');
+    html += `<tr><td>${i + 1}</td><td data-shotz="${i}"></td>${ZB_TRAIT_KINDS.map(cell).join('')}<td class="note">${esc(where)}</td></tr>`;
   });
   return html + '</table></div>';
 }
@@ -241,6 +245,58 @@ function shotBridgeHtml(r) {
     html += '</ul>';
   }
   return html;
+}
+
+/* The caves: who has gone through each tunnel, and the rules that fit. */
+function shotTunnelsHtml(r) {
+  const P = r.puzzle, gone = P.through.flat().length;
+  let html = '<h2>Stone Cold Caves</h2>';
+  if (!gone) return html + '<p>Nobody has gone through a tunnel so far, so every rule fits.</p>';
+  const counts = ZB_TUNNELS_CAVES.names.map((n, c) => [n, P.through[ZB_TUNNELS_CAVES.entrance[c]].length]).filter(([, k]) => k)
+    .map(([n, k]) => `${k} in the ${n} cave`);
+  if (P.waiting.length) counts.push(`${P.waiting.length} still to go`);
+  html += `<p>There are ${zbWordsOr(counts, 'and')}.</p>`;
+  const band = [...P.through.flat(), ...P.waiting].map(z => z.traits);
+  const complete = band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null));
+  const fitting = P.levels.filter(l => l.side.length && (l.level === 1 || l.upper.length));
+  if (!fitting.length) return html + '<p>No rules of any level put the Zoombinis in the caves where they stand. A Zoombini may be misread.</p>';
+  const list = (rules, name, matches) => {
+    const shown = rules.slice(0, 8);
+    let out = '<ul>';
+    for (const f of shown) out += `<li>The ${f[matches] ? name[0] : name[1]} guardian lets through Zoombinis with ${esc(zbTunnelsRuleWords(f.rule))}.</li>`;
+    if (rules.length > shown.length) out += `<li class="note">and ${rules.length - shown.length} more</li>`;
+    return out + '</ul>';
+  };
+  for (const l of fitting) {
+    html += `<p><b>Level ${l.level}, ${esc(ZB_LEVELS[l.level - 1])}.</b> `;
+    if (l.level === 1) {
+      html += `The two ${l.closed} tunnels are closed. ${l.side.length === 1 ? 'One rule fits.' : `${l.side.length} rules fit.`}</p>` + list(l.side, ['left', 'right'], 'leftMatches');
+    } else {
+      html += `${l.side.length === 1 ? 'One rule fits' : `${l.side.length} rules fit`} the left and right guardians, and ${l.upper.length === 1 ? 'one fits' : `${l.upper.length} fit`} the upper and lower.</p>`
+        + list(l.side, ['left', 'right'], 'leftMatches') + list(l.upper, ['upper', 'lower'], 'upperMatches');
+    }
+    if (l.dealt && !l.dealt.length) html += '<p class="note">The program would not deal these rules for this band, so either the screenshot leaves out some of the band or the level is another.</p>';
+    const pair = l.dealt && l.dealt.length ? l.dealt[0] : l.level === 1 ? [l.side[0]] : [l.side[0], l.upper.find(u => JSON.stringify(u.rule) !== JSON.stringify(l.side[0].rule))];
+    if (complete && pair.every(Boolean)) {
+      html += `<p><a href="#solve=TUNNELS${l.level === 1 ? '' : `&level=${l.level}`}&band=${zbBandCode(band)}&set=${encodeURIComponent(JSON.stringify(shotTunnelsForm(l, pair)))}">Take it apart</a></p>`;
+    }
+  }
+  return html;
+}
+
+/* A pair of rules in the shape the caves' form on the solve page reads
+   (zb-puzzle-tunnels.js's form and edit). */
+function shotTunnelsForm(l, pair) {
+  const set = { left: pair[0].leftMatches ? 'with' : 'without' };
+  const put = (p, rule) => {
+    if (l.level <= 2) set[p] = `${rule[0].kind}:${rule[0].values[0]}`;
+    else if (l.level === 3) { set[p + 'Kind'] = rule[0].kind; set[p + 'Values'] = rule[0].values.slice().sort((a, b) => a - b); }
+    else { set[p + '1'] = `${rule[0].kind}:${rule[0].values[0]}`; set[p + '2'] = `${rule[1].kind}:${rule[1].values[0]}`; }
+  };
+  put('a', pair[0].rule);
+  if (l.level === 1) set.closed = l.closed || 'inner';
+  else { put('b', pair[1].rule); set.upper = pair[1].upperMatches ? 'with' : 'without'; }
+  return set;
 }
 
 /* A rule in the shape the cliffs' form on the solve page reads

@@ -127,6 +127,29 @@ export default function check({ S, fail, print, scumm, exe, scummMatch, bands, f
   const posAt = find(exe, pos.flatMap(([x, y]) => [x & 255, x >> 8, y & 255, y >> 8]));
   if (posAt.length !== 1) fail(`the entrances' positions are in ZOOMBINI.EXE ${posAt.length} times, not once`);
 
+  // Where those let through stand: ScummVM's four lanes of 16, the bytes in
+  // ZOOMBINI.EXE, and each lane's tunnel through kDropZoneToLane.
+  const lanes = [...scummMatch(/kOutputLanePositions\[4\]\[16\]\{([\s\S]*?)\n\t\};/, h, 'kOutputLanePositions')[1].matchAll(/Common::Point\((\d+), (\d+)\)/g)].flatMap(m => [Number(m[1]), Number(m[2])]);
+  const C = S.ZB_TUNNELS_CAVES;
+  if (!same(lanes, C.at.flat())) fail('the caves\' standing places are not ScummVM\'s kOutputLanePositions');
+  if (!lanes.every((v, i) => (exe[C.exe + 2 * i] | exe[C.exe + 2 * i + 1] << 8) === v)) fail(`the caves' standing places are not in ZOOMBINI.EXE at 0x${C.exe.toString(16)}`);
+  const zones = [...scummMatch(/kDropZoneToLane\[4\]\{([\s\S]*?)\};/, h, 'kDropZoneToLane')[1].matchAll(/\b(\d+),/g)].map(m => Number(m[1]));
+  if (zones.length !== 4 || zones.some((lane, tunnel) => C.entrance[lane] !== tunnel)) fail(`the caves' tunnels are ${C.entrance}, ScummVM's lanes by drop zone ${zones}`);
+  // The dealt rules are among those that fit where the deal sends the band,
+  // with one Zoombini's hair unread too.
+  for (const level of [1, 2, 3, 4]) {
+    for (const { band, seed } of bands(40, 120 + level, [16, 11, 5])) {
+      const d = S.ZB_PUZZLES.get('TUNNELS').deal(level, band, S.zbRandom(seed), {}), st = d.state;
+      const through = [[], [], [], []];
+      band.forEach((z, i) => through[st.entrance[i]].push(i ? z : { ...z, hair: null }));
+      const f = S.zbTunnelsRulesFitting(level, through), key = r => JSON.stringify(r);
+      const g = st.guardRules;
+      if (!f.side.some(x => key(x.rule) === key(g[0].rule) && x.leftMatches === g[0].traitMatchOnPrimarySide)) fail(`level ${level}: the dealt side rule does not fit where it sends the band`);
+      if (level > 1 && !f.upper.some(x => key(x.rule) === key(g[1].rule) && x.upperMatches === g[1].traitMatchOnPrimarySide)) fail(`level ${level}: the dealt upper rule does not fit where it sends the band`);
+      if (level === 1 && f.closed && f.closed !== (st.level1BlockedPairToggle ? 'outer' : 'inner')) fail('level 1: the closed pair read is not the dealt one');
+    }
+  }
+
   // ---- deals, dealt again as ScummVM writes them -------------------------------
   // Its descriptors' matching (matchLevel2/3/4Descriptor) and its pair scoring, written out.
   const matchOne = (z, rule) => rule.some(r => r.values.some(v => z[r.kind] === v));

@@ -818,10 +818,16 @@ function zbShotBodyCount(frame, bare, bx, by, bc, n, X, Y, tolerance, step) {
    a trait's five values are tried, the eyes and feet with each pose the
    family has for them (zbShotPoseChoices). The best of all is read when
    55% of what shows of it counts for it. It then covers what it shows,
-   and the rest are tried again, until none is good enough. A trait is
+   and the rest are tried again, until none is good enough. Then the
+   place's standing places (`env.stands`, zbShotStands's) are tried the
+   same way with a pixel that shows the bare picture counting nothing, as
+   it does where a cave's wall stands in front of a Zoombini. Each
+   standing place where no part gave a candidate is a candidate in every
+   family. A trait is
    read where its best value beats the next by `margin` pixels and left
-   null otherwise. Returns [{ x, y, traits, scores, pose, tick, body,
-   facing, matched, missed }]: (x, y) the body's record, which for a
+   null otherwise. Returns [{ x, y, traits, scores, behind, pose, tick,
+   body, facing, matched, missed }]: `behind` whether it was read that
+   second way, (x, y) the body's record, which for a
    Zoombini standing is its origin, `scores` each trait's five values'
    scores, `pose` the script, and `tick` and `body` the pose. */
 function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
@@ -847,6 +853,7 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
     return looks.get(id);
   };
   const mask = new Uint8Array(W * H);
+  let bareCost = 2;
   const score = (z, pi, x, y) => {
     const l = look(z, pi);
     if (!l) return { matched: 0, missed: 0, value: -1e9 };
@@ -857,7 +864,7 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
       const i = Y * W + X, o = 3 * i;
       if (mask[i] || frame[o] !== frame[o]) continue;
       if (abs(frame[o] - l.pts[p + 2]) + abs(frame[o + 1] - l.pts[p + 3]) + abs(frame[o + 2] - l.pts[p + 4]) <= tolerance) matched += bare[i] ? 0 : 1;
-      else missed += bare[i] ? 2 : 1;
+      else missed += bare[i] ? bareCost : 1;
     }
     return { matched, missed, value: matched - missed };
   };
@@ -980,6 +987,16 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
 
   /* the best candidate at each place, the best 80 places at least 4
      apart, and their traits */
+  /* the place's standing places where no part gave a candidate, in every
+     family */
+  const stands = env.stands || [], standing = (x, y) => zbShotPlaceIn(stands, x, y) >= 0;
+  const near = [...hyp.values()];
+  for (let i = 0; i < stands.length; i += 2) {
+    const x = stands[i], y = stands[i + 1];
+    if (x < 0 || y < 0 || x >= W || y >= H || frame[3 * (y * W + x)] !== frame[3 * (y * W + x)]) continue;
+    if (near.some(h => abs(h.x - x) <= 3 && abs(h.y - y) <= 3)) continue;
+    for (const members of families.values()) propose(x, y, members[0], {}, 0);
+  }
   const atPlace = new Map();
   for (const h of hyp.values()) {
     const s = score(h.z, h.pi, h.x, h.y), k = h.y * W + h.x;
@@ -996,11 +1013,19 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
      fails is tried again only once another is read, since only what that
      one covers changes its score. */
   const read = [];
-  let version = 0;
+  let version = 0, behind = false;
   for (;;) {
     for (const o of cands) Object.assign(o, score(o.z, o.pi, o.x, o.y));
     cands.sort((a, b) => b.value - a.value);
-    const at = cands.findIndex(o => o.failed !== version && o.matched >= 40);
+    let at = cands.findIndex(o => o.failed !== version && o.matched >= 40 && (!behind || standing(o.x, o.y)));
+    if (at < 0 && !behind && stands.length) {
+      /* everything in the open is read: the standing places again, with
+         the scenery taken to cover what shows the bare picture */
+      behind = true;
+      bareCost = 0;
+      version++;
+      continue;
+    }
     if (at < 0) break;
     let c = cands[at];
     const body = poses[c.pi].body.shape, facing = poses[c.pi].facing;
@@ -1034,7 +1059,7 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
       const second = Math.max(...scores[k].filter((v, i) => i + 1 !== c.z[k]));
       traits[k] = c.value - second >= margin ? c.z[k] : null;
     }
-    read.push({ x: c.x, y: c.y, traits, scores, pose: poses[c.pi].from, tick: poses[c.pi].tick, body: poses[c.pi].body,
+    read.push({ x: c.x, y: c.y, traits, scores, behind, pose: poses[c.pi].from, tick: poses[c.pi].tick, body: poses[c.pi].body,
       facing: poses[c.pi].facing, matched: c.matched, missed: c.missed });
     const { all } = look(c.z, c.pi);
     for (let p = 0; p < all.length; p += 2) {
@@ -1114,7 +1139,7 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, zoombinis: [] };
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
-  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids }, tolerance);
+  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place) }, tolerance);
   out.tolerance = tolerance;
   return out;
 }
@@ -1225,5 +1250,53 @@ function zbShotBridge(frame, zoombinis) {
   return { pegsGone, gateFit, upper, lower, waiting, crossing, levels, zoombinis: band };
 }
 
+/* Stone Cold Caves. A Zoombini let through stands at its cave's next
+   place (ZB_TUNNELS_CAVES), so the place gives the tunnel it went through
+   and the order. Any other is still to go. Returns { through, waiting,
+   levels, zoombinis }: `through` the Zoombinis gone through each tunnel,
+   0-3 from the left, in the order they went, `levels` for each level
+   zbTunnelsRulesFitting's rules with, where every trait is read and the
+   whole band shows, `dealt`, the pairs of them the program could deal
+   that band (zbTunnelsPairCandidates, or at level 1 the side rules
+   zbTunnelsL1Candidates stops at), and `zoombinis` all of them, by tunnel.
+   It sets `where` on each Zoombini. */
+function zbShotTunnels(frame, zoombinis) {
+  const through = [[], [], [], []], waiting = [];
+  for (const z of zoombinis) {
+    let cave = -1, slot = -1;
+    ZB_TUNNELS_CAVES.at.forEach((at, c) => { const i = zbShotPlaceIn(at, z.x, z.y); if (i >= 0) { cave = c; slot = i; } });
+    if (cave < 0) { z.where = { side: 'waiting' }; waiting.push(z); continue; }
+    z.where = { side: 'cave', cave, slot, tunnel: ZB_TUNNELS_CAVES.entrance[cave] };
+    through[z.where.tunnel].push(z);
+  }
+  for (const list of through) list.sort((a, b) => a.where.slot - b.where.slot);
+  const band = [...through.flat(), ...waiting], traits = band.map(z => z.traits);
+  const complete = band.length > 0 && band.every(z => ZB_SHOT_TRAITS.every(k => z.traits[k] != null));
+  const key = r => JSON.stringify(r);
+  const levels = [1, 2, 3, 4].map(level => {
+    const fitting = zbTunnelsRulesFitting(level, through.map(l => l.map(z => z.traits)));
+    let dealt = null;
+    if (complete && level === 1) {
+      const dealable = new Set(zbTunnelsL1Candidates(traits).candidates.map(key));
+      dealt = fitting.side.filter(f => dealable.has(key(f.rule))).map(f => [f]);
+    } else if (complete) {
+      const dealable = new Set(zbTunnelsPairCandidates(zbTunnelsRules(level), traits).candidates.map(([a, b]) => key(a) + key(b)));
+      dealt = [];
+      for (const a of fitting.side) for (const b of fitting.upper) if (dealable.has(key(a.rule) + key(b.rule))) dealt.push([a, b]);
+    }
+    return { level, ...fitting, dealt };
+  });
+  return { through, waiting, levels, zoombinis: band };
+}
+
 /* What each place's reader finds, by place. */
-const ZB_SHOT_PUZZLES = { BRIDGE: zbShotBridge };
+const ZB_SHOT_PUZZLES = { BRIDGE: zbShotBridge, TUNNELS: zbShotTunnels };
+
+/* Where a place's Zoombinis come to stand, as x and y pairs: the places a
+   smoothed reading tries whether or not a part was found there, and reads
+   on less than elsewhere. */
+function zbShotStands(place) {
+  if (place === 'TUNNELS') return ZB_TUNNELS_CAVES.at.flat();
+  if (place === 'BRIDGE') return [...ZB_BRIDGE_ARRIVALS.upper.at, ...ZB_BRIDGE_ARRIVALS.lower.at];
+  return [];
+}
