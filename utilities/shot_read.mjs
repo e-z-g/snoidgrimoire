@@ -5,8 +5,9 @@
 //   node utilities/shot_read.mjs -v a.png         # and every Zoombini
 //   node utilities/shot_read.mjs --json a.png     # the puzzle's state as JSON
 //   node utilities/shot_read.mjs --smooth=1.5 a.png   # enlarged with smoothing first
+//   node utilities/shot_read.mjs --skip=hotel a.png    # without zb-shot-hotel.js
 import fs from 'node:fs';
-import { site, archiveBytes, archiveNames, haveDisc } from './load.mjs';
+import { site, pageScripts, archiveBytes, archiveNames, haveDisc } from './load.mjs';
 import { readPng } from './png.mjs';
 
 if (!haveDisc()) {
@@ -14,7 +15,9 @@ if (!haveDisc()) {
   process.exit(0);
 }
 const flags = process.argv.slice(2).filter(a => a.startsWith('-')), files = process.argv.slice(2).filter(a => !a.startsWith('-'));
-const S = site();
+/* --skip=hotel,caves leaves out those places' readers, as while one is half written */
+const skipped = (flags.find(f => f.startsWith('--skip=')) || '').slice(7).split(',').filter(Boolean).map(k => `js/zb-shot-${k}.js`);
+const S = site({ files: pageScripts().filter(f => f.startsWith('js/') && !f.startsWith('js/page-') && !skipped.includes(f)) });
 const archives = new Map(archiveNames().map(n => [n, S.openMohawk(archiveBytes(n))]));
 const TRAITS = ['hair', 'eyes', 'nose', 'feet'];
 const code = t => TRAITS.map(k => t[k] ?? '?').join('');
