@@ -2,8 +2,9 @@
    given by the visitor, read back by js/zb-shot.js. The page draws the
    frame it found, with each Zoombini numbered, and a table of the
    Zoombinis. At the Allergic Cliffs it also gives the pegs left and the
-   rules that fit, and at the Stone Cold Caves the guardians' rules that
-   fit.
+   rules that fit, at the Stone Cold Caves the guardians' rules that fit,
+   at Bubblewonder Abyss the grid, and at any other puzzle the sentences
+   of that puzzle's reader (js/zb-shot-<archive>.js).
    =========================================================================
 
    The screenshot stays in the page's memory and goes nowhere else. Reading
@@ -21,7 +22,7 @@ let SHOT_BUSY = false;
 SCENARIO_PANES.screenshot = function shotPane(view) {
   view.innerHTML = '<h1>Screenshot</h1>'
     + '<p class="sub">Give the page a screenshot of the game. It shows the place and each Zoombini’s traits. '
-    + 'At the Allergic Cliffs and the Stone Cold Caves it also shows the rules that put the Zoombinis where they stand, and at Bubblewonder Abyss the grid.</p>'
+    + 'At a puzzle it also shows the puzzle’s pieces as they stand, and the hidden rules that fit them.</p>'
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
     + ' <span class="note">or drop one here, or paste one.</span></div>'
     + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '

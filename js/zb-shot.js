@@ -1129,9 +1129,32 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     }
   }
   tried.sort((a, b) => b.alike - a.alike);
+  /* the other looks (ZB_SHOT_LOOKS): the two whose colors are most like
+     the screenshot's, where they are more like it than any bare
+     picture's */
+  const others = [];
+  for (const p of ZB_SHOT_PLACES) {
+    const arc = archives.get(p.key);
+    if (!arc || !ZB_SHOT_LOOKS[p.key]) continue;
+    for (const pic of zbShotPictures(arc, p.key)) {
+      const pal = zbPalette(parsePaletteResource(arc.get('SHPL', pic.palette), 'SHPL'));
+      for (const windows of [true, false]) {
+        for (const v of zbShotOtherLooks(p.key, arc, pic.id, pal, windows)) {
+          const quarter = zbShotLevel(v.pixels, v.rgb, 4);
+          const hist = zbShotHistogram(quarter.w * quarter.h, (i, c) => {
+            c[0] = Math.round(quarter.rgb[3 * i]); c[1] = Math.round(quarter.rgb[3 * i + 1]); c[2] = Math.round(quarter.rgb[3 * i + 2]);
+          });
+          let alike = 0;
+          for (let i = 0; i < 4096; i++) alike += Math.min(hist[i], shotHist[i]);
+          if (tried.length && alike > tried[0].alike) others.push({ place: p.key, picture: pic.id, windows, pixels: v.pixels, pal: v.pal, palKeys: v.palKeys, rgb: v.rgb, look: v.about, quarter, alike, arc });
+        }
+      }
+    }
+  }
+  others.sort((a, b) => b.alike - a.alike);
   const sums = zbShotSums(rgba, width, height);
   let best = null;
-  for (const t of tried.slice(0, 4)) {
+  for (const t of [...tried.slice(0, 4), ...others.slice(0, 2)]) {
     const levels = { 1: zbShotLevel(t.pixels, t.rgb, 1), 4: t.quarter, 16: zbShotLevel(t.pixels, t.rgb, 16) };
     const a = zbShotSmoothAlign(rgba, sums, width, height, levels);
     if (a && (!best || a.error < best.error)) best = { ...t, ...a };
@@ -1147,18 +1170,40 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     shown++;
     same += bare[i];
   }
-  const palKeys = zbShotPaletteKeys(best.pal, best.windows);
+  const palKeys = best.palKeys || zbShotPaletteKeys(best.pal, best.windows);
   const keys = zbShotSmoothKeys(frame, best.rgb, palKeys, 30);
   const shot = {
     width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur,
   };
   const out = { shot, place: best.place, picture: best.picture, windows: best.windows, dx: Math.round(best.dx), dy: Math.round(best.dy),
     fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, archives, rgb: best.rgb, tolerance, zoombinis: [] };
+  if (best.look) out.look = best.look;
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
   out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place) }, tolerance);
   out.tolerance = tolerance;
   return out;
+}
+
+/* The other looks of a place. A place whose program draws over most of
+   the picture, or changes the palette as play goes on, sets
+   ZB_SHOT_LOOKS[its archive] to a function of the archive, a picture's id
+   and that picture's palette as the screen shows it at the start (256
+   [r, g, b], 8 bits a component). It returns [{ pixels, pal, about }]:
+   `pixels` the picture with the place's fixed pieces drawn on it (640 x
+   480 indices), `pal` the palette then, and `about` what a reader needs
+   of the look, which the frame has as `look`. Hotel Dimensia covers its
+   picture with doors, and it darkens with each Zoombini turned away. */
+const ZB_SHOT_LOOKS = {};
+/* Each of those looks for one picture, shown as the Windows program shows
+   colors or as stored: [{ pixels, pal, palKeys, rgb, about }], `palKeys`
+   and `rgb` as zbShotPaletteKeys and zbShotPaletteRgb give them. */
+function zbShotOtherLooks(key, arc, picture, pal, windows) {
+  if (!ZB_SHOT_LOOKS[key]) return [];
+  return ZB_SHOT_LOOKS[key](arc, picture, windows ? zbWindowsPalette(pal) : pal).map(v => ({
+    pixels: v.pixels, pal: v.pal, about: v.about, palKeys: zbShotPaletteKeys(v.pal, false),
+    rgb: windows ? v.pal.map(c => [0, 1, 2].map(k => ((c[k] >> 2) << 2) | (c[k] >> 6))) : v.pal.map(c => [c[0], c[1], c[2]]),
+  }));
 }
 
 /* A screenshot without the plain bars around it, as a player or a window
@@ -1226,6 +1271,21 @@ function zbShotRead(rgba, width, height, archives) {
         const palKeys = zbShotPaletteKeys(pal, windows);
         const a = zbShotAlign(shot, pixels, palKeys);
         if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys, pixels, arc, archives, rgb: zbShotPaletteRgb(pal, windows) };
+      }
+    }
+  }
+  /* the other looks (ZB_SHOT_LOOKS): the best place's, or every place's
+     when no bare picture fits */
+  for (const p of ZB_SHOT_PLACES) {
+    const arc = archives.get(p.key);
+    if (!arc || !ZB_SHOT_LOOKS[p.key] || (best && best.fit >= 0.5 && best.place !== p.key)) continue;
+    for (const pic of zbShotPictures(arc, p.key)) {
+      const pal = zbPalette(parsePaletteResource(arc.get('SHPL', pic.palette), 'SHPL'));
+      for (const windows of [true, false]) {
+        for (const v of zbShotOtherLooks(p.key, arc, pic.id, pal, windows)) {
+          const a = zbShotAlign(shot, v.pixels, v.palKeys);
+          if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys: v.palKeys, pixels: v.pixels, arc, archives, rgb: v.rgb, look: v.about };
+        }
       }
     }
   }

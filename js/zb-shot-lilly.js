@@ -148,6 +148,7 @@ function zbShotLilly(frame) {
     const name = `The toad with ${zbLillyWords(t.type, t.value)}${t.type === 3 ? ' mark' : t.type === 2 ? ' pad' : ''}`;
     lines.push(t.rows.length ? `${name} crosses from ${rowWords(t.rows)}.` : `${name} crosses from no row as the pond stands.`);
   }
+  lines.push('The page does not read the Zoombinis at the pond, which are drawn small and whose traits play no part there.');
   const text = k => pond.pads[k].map(r => r.map(v => (v == null ? '-' : v)).join(''));
   return { pond, toads, wand, zoombinis: [],
     state: { shapes: text('shape'), colors: text('color'), patterns: text('pattern'), wand,
