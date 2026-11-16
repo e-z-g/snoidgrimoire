@@ -31,17 +31,12 @@
 /* The rafts' scripts, and a seat's drop point from its corner. */
 const ZB_SHOT_FERRY = { first: 1510, count: 20, dropX: 22, dropY: -7 };
 
-/* Captain Cajun's Ferryboat. Returns { script, level, fit, seats,
-   seating, dock, clashes, open, zoombinis, state, lines, link }: `script`
-   the raft's SCRB and `fit` the share of the raft's pixels in view that
-   match, `seats` zbFerryRaft's, `seating` the Zoombini in each seat or
-   null, `dock` the others, `clashes` the pairs of seats next to each
-   other whose Zoombinis share no trait, and `open` for each free seat how
-   many of `dock` share a trait with everyone next to it. `script` is null
-   when no raft fits half its pixels. */
-function zbShotFerry(frame, zoombinis) {
-  const env = zbShotEnv(frame), arc = frame.arc, skip = zbShotCovered(zoombinis);
-  const sprites = decodeBitmapResource(arc.get('tBMP', ZB_FERRY_SEAT.sheet)).frames;
+/* The raft that fits the frame best where `skip` leaves it in view:
+   { script, fit, pieces }, `fit` zbShotDrawingFit's and `pieces` the
+   raft's seats and cargo in zbShotDrawing's form, or null where the
+   archive has no raft. */
+function zbShotFerryRaft(env, skip) {
+  const arc = env.arc, sprites = decodeBitmapResource(arc.get('tBMP', ZB_FERRY_SEAT.sheet)).frames;
   let best = null;
   for (let script = ZB_SHOT_FERRY.first; script < ZB_SHOT_FERRY.first + ZB_SHOT_FERRY.count; script++) {
     if (!arc.has('SCRB', script)) continue;
@@ -54,8 +49,40 @@ function zbShotFerry(frame, zoombinis) {
       }
     }
     const fit = zbShotDrawingFit(env, zbShotDrawing(env, pieces), 0, 0, skip);
-    if (!best || fit.value > best.fit.value) best = { script, fit };
+    if (!best || fit.value > best.fit.value) best = { script, fit, pieces };
   }
+  return best;
+}
+
+/* The ferry's picture with the raft drawn on it, as 640 x 480 indices,
+   for a reading that draws the whole scene, or null where no raft fits
+   half its pixels. */
+ZB_SHOT_SCENES.FERRY = (env, pixels) => {
+  const best = zbShotFerryRaft(env, null);
+  if (!best || best.fit.fit < 0.5) return null;
+  const out = Uint8Array.from(pixels);
+  for (const p of best.pieces) {
+    for (let y = 0; y < p.sprite.height; y++) {
+      for (let x = 0; x < p.sprite.width; x++) {
+        const v = p.sprite.pixels[y * p.sprite.width + x], X = p.x + x, Y = p.y + y;
+        if (v && X >= 0 && Y >= 0 && X < ZB_SHOT_W && Y < ZB_SHOT_H) out[Y * ZB_SHOT_W + X] = v;
+      }
+    }
+  }
+  return out;
+};
+
+/* Captain Cajun's Ferryboat. Returns { script, level, fit, seats,
+   seating, dock, clashes, open, zoombinis, state, lines, link }: `script`
+   the raft's SCRB and `fit` the share of the raft's pixels in view that
+   match, `seats` zbFerryRaft's, `seating` the Zoombini in each seat or
+   null, `dock` the others, `clashes` the pairs of seats next to each
+   other whose Zoombinis share no trait, and `open` for each free seat how
+   many of `dock` share a trait with everyone next to it. `script` is null
+   when no raft fits half its pixels. */
+function zbShotFerry(frame, zoombinis) {
+  const env = zbShotEnv(frame), arc = frame.arc, skip = zbShotCovered(zoombinis);
+  const best = zbShotFerryRaft(env, skip);
   const code = z => ZB_SHOT_TRAITS.map(k => z.traits[k] ?? '?').join('');
   if (!best || best.fit.fit < 0.5) {
     for (const z of zoombinis) z.where = '';
@@ -115,5 +142,18 @@ function zbShotFerry(frame, zoombinis) {
   return { script, level, fit: best.fit.fit, seats, seating, dock, clashes, open, zoombinis: band,
     state: { raft: script, level, seats: seating.map(z => (z ? code(z) : null)), dock: dock.length }, lines, link };
 }
+
+/* Every seat's drop point on every raft, for a smoothed reading to try. */
+ZB_SHOT_STANDS.FERRY = arc => {
+  const seen = new Set(), out = [];
+  for (let script = ZB_SHOT_FERRY.first; script < ZB_SHOT_FERRY.first + ZB_SHOT_FERRY.count; script++) {
+    if (!arc.has('SCRB', script)) continue;
+    for (const s of zbFerryRaft(arc, script)) {
+      const x = s.x + ZB_SHOT_FERRY.dropX, y = s.y + ZB_SHOT_FERRY.dropY;
+      if (!seen.has(`${x},${y}`)) { seen.add(`${x},${y}`); out.push(x, y); }
+    }
+  }
+  return out;
+};
 
 ZB_SHOT_PUZZLES.FERRY = zbShotFerry;

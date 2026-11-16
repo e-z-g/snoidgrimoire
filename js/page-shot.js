@@ -26,7 +26,7 @@ SCENARIO_PANES.screenshot = function shotPane(view) {
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
     + ' <span class="note">or drop one here, or paste one.</span></div>'
     + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '
-    + 'It also reads one enlarged or shrunk with smoothing, as a browser or a forum shows a picture. '
+    + 'It also reads one enlarged or shrunk with smoothing, as a browser or a forum shows a picture, and one saved as a JPEG. '
     + 'Such a reading needs several seconds, and a Zoombini mostly hidden behind others may go unread. '
     + 'It cannot read a photo of a screen.</p>'
     + '<div id="shotOut"></div>';
@@ -115,8 +115,9 @@ function shotShow() {
     ? 'It shows the game’s whole 640 × 480 frame'
     : `It shows ${s.width} × ${s.height} of the game’s 640 × 480 frame`;
   const factor = `${s.scaleX.toFixed(3)} times${Math.abs(s.scaleX - s.scaleY) > 0.002 ? ` across and ${s.scaleY.toFixed(3)} down` : ''}`;
-  const scale = s.smoothed ? `, ${s.scaleX < 1 ? 'shrunk to' : 'enlarged'} ${factor} with smoothing.`
-    : Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001 ? ', pixel for pixel.'
+  const same = Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001, lossy = s.compressed ? ' Its colors are a compressed picture’s, as a JPEG’s are, so the page leaves a trait unread where the compression puts it in doubt.' : '';
+  const scale = s.smoothed ? (same ? `, at the game’s size.${lossy}` : `, ${s.scaleX < 1 ? 'shrunk to' : 'enlarged'} ${factor} with smoothing.${lossy}`)
+    : same ? ', pixel for pixel.'
     : `, enlarged ${factor}.`;
   html += `<p>The screenshot is ${L.width} × ${L.height}${s.bars ? ', with plain bars around the frame' : ''}. ${size}${scale}`;
   if (!r.place) {
@@ -154,8 +155,8 @@ function shotDrawFrame(box, r) {
   const g = c.getContext('2d'), im = g.createImageData(ZB_SHOT_W, ZB_SHOT_H), d = im.data;
   for (let i = 0; i < ZB_SHOT_W * ZB_SHOT_H; i++) {
     if (r.frame) {
-      const shown = r.frame[3 * i] === r.frame[3 * i];
-      for (let k = 0; k < 3; k++) d[4 * i + k] = shown ? r.frame[3 * i + k] : 96;
+      const colors = r.display || r.frame, shown = colors[3 * i] === colors[3 * i];
+      for (let k = 0; k < 3; k++) d[4 * i + k] = shown ? colors[3 * i + k] : 96;
     } else {
       const k = r.keys[i];
       if (k < 0) { d[4 * i] = d[4 * i + 1] = d[4 * i + 2] = 96; }

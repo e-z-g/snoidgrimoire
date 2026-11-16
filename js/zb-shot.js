@@ -1060,7 +1060,7 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
       }
     }
     c = descend(c, 3);
-    if (c.matched < 60 || c.matched < 0.55 * (c.matched + c.missed)) {
+    if (c.matched < 60 || c.matched < (env.share || 0.55) * (c.matched + c.missed)) {
       cands[at] = { ...c, failed: version };
       continue;
     }
@@ -1076,7 +1076,7 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
       const second = Math.max(...scores[k].filter((v, i) => i + 1 !== c.z[k]));
       traits[k] = c.value - second >= margin ? c.z[k] : null;
     }
-    read.push({ x: c.x, y: c.y, traits, scores, behind, pose: poses[c.pi].from, tick: poses[c.pi].tick, body: poses[c.pi].body,
+    read.push({ x: c.x, y: c.y, traits, scores, behind, z: { ...c.z }, pi: c.pi, pose: poses[c.pi].from, tick: poses[c.pi].tick, body: poses[c.pi].body,
       facing: poses[c.pi].facing, matched: c.matched, missed: c.missed });
     const { all } = look(c.z, c.pi);
     for (let p = 0; p < all.length; p += 2) {
@@ -1086,7 +1086,262 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
     version++;
     cands = cands.filter((o, i) => i !== at && Math.hypot(o.x - c.x, o.y - c.y) > 6);
   }
-  return read.sort((a, b) => a.y - b.y || a.x - b.x);
+  read.sort((a, b) => a.y - b.y || a.x - b.x);
+  if (env.whole) zbShotWholeTraits(env, read);
+  return read;
+}
+
+/* The traits of the Zoombinis read in a compressed frame, read a second
+   time on the whole picture. The first reading compares each sprite's
+   inner pixels alone and leaves a Zoombini where and in the pose it first
+   fit. A JPEG stores brightness closely and color coarsely: a spring's
+   yellow stripes come out pale, and against wood the gray of wheels then
+   fits them as well. Here the scene is drawn whole for each value of each
+   trait: the place's picture with its pieces (`env.whole.pixels`), then
+   every Zoombini read from the back (the least y) to the front, with the
+   one in question wearing the value in each pose that goes with it. The
+   scene and the frame are compared over the box around that Zoombini, in
+   brightness at each pixel and in the two color differences averaged over
+   each `block` x `block` pixels, at `weight` times the brightness's
+   weight, each difference held to `cap`.
+
+   Before that the Zoombini's place within 3 pixels, its pose among every
+   family's, and its feet with the pose are settled the same way, three
+   times over, since a Zoombini a pixel out of place or in another pose
+   fits the wrong part best. One at a standing place (`env.stands`) stays
+   there. The feet are tried where the pose draws them and as a standing
+   Zoombini's (ZB_SHOT_STANDING_FEET), since one that turns its head as it
+   waits has its feet still. Every Zoombini is settled twice, since one
+   beside a neighbor still out of place fits worse for the neighbor's error.
+   The second time, where more than half are drawn with one body, each is
+   held to that body: a band that waits is drawn alike, and one given a
+   turned head with its larger cap covered its neighbor's spring.
+
+   The value with the least difference is the trait when it beats the
+   next by `lead`, and otherwise the trait is unread. In the JPEG this was
+   written for, every value read was right and led by 1,318 or more.
+
+   `env.whole` is { colors, pixels, rgb, dx, dy }: the frame's colors as
+   given, the picture's indices, the palette's colors as given, and the
+   frame's offset in the screenshot, which sets where the blocks lie. It
+   sets each Zoombini's place, `traits`, and `whole`, the difference by
+   value for each trait. */
+/* A standing Zoombini's feet as [pose, x, y], x and y from the body's
+   record: the poses the waiting scripts draw (ZOOMBINI SCRS 101). */
+const ZB_SHOT_STANDING_FEET = [[1, 0, 0], [2, 0, 0], [2, 0, 1], [2, 0, -1], [3, 0, 0], [3, 0, -1]];
+function zbShotWholeTraits(env, read, lead = 800, cap = 40, block = 16, weight = 2) {
+  const { sheet, poses, grids } = env, { colors, pixels, rgb, dx, dy } = env.whole, W = ZB_SHOT_W, H = ZB_SHOT_H, abs = Math.abs, min = Math.min;
+  const images = new Map();
+  /* `lift` 1 and up draws the feet as a standing Zoombini's are, in the
+     pose ZB_SHOT_STANDING_FEET[lift - 1], whatever feet the pose draws */
+  const image = (z, pi, lift = 0) => {
+    const id = (zbZoombiniId(z) * 8192 + pi) * 64 + lift;
+    if (!images.has(id)) {
+      let tick = poses[pi].tick;
+      if (lift) {
+        const at = zbSnoidParts(tick).findIndex(q => q.part === 'feet'), [shape, fx, fy] = ZB_SHOT_STANDING_FEET[lift - 1], b = poses[pi].body;
+        tick = { ...tick, records: tick.records.map((r, k) => (k === at ? { ...r, shape, x: b.x + fx, y: b.y + fy } : r)) };
+      }
+      const missing = [], placed = zbSnoidPlacements(sheet, z, tick, missing);
+      const img = missing.length ? null : zbSnoidCompose(sheet, placed);
+      images.set(id, img && { ...img, ox: img.ox + poses[pi].body.x, oy: img.oy + poses[pi].body.y });
+    }
+    return images.get(id);
+  };
+  /* the frame's brightness, and its color differences by block */
+  const luma = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b, cb = (r, g, b) => -0.169 * r - 0.331 * g + 0.5 * b, cr = (r, g, b) => 0.5 * r - 0.419 * g - 0.081 * b;
+  let uniform = null, visit = 0;
+  for (const me of [...read, ...read]) {
+    /* on the second round, the body most of them are drawn with: a band
+       that waits is drawn with one body, and a Zoombini given another, a
+       head turned with its larger cap, covers its neighbor wrongly */
+    if (visit++ === read.length) {
+      const count = new Map(), key = z => `${poses[z.pi].body.shape} ${poses[z.pi].facing}`;
+      for (const z of read) count.set(key(z), (count.get(key(z)) || 0) + 1);
+      const top = [...count].sort((a, b) => b[1] - a[1])[0];
+      if (top && top[1] * 2 > read.length) uniform = top[0];
+    }
+    /* the box, widened to whole blocks */
+    let x0 = Math.max(0, me.x - 34), y0 = Math.max(0, me.y - 46), x1 = min(W, me.x + 34), y1 = min(H, me.y + 40);
+    x0 -= (((x0 - dx) % block) + block) % block; y0 -= (((y0 - dy) % block) + block) % block;
+    if (x0 < 0) x0 += block;
+    if (y0 < 0) y0 += block;
+    const w = x1 - x0, h = y1 - y0;
+    if (w < 8 || h < 8) continue;
+    const scene = new Float32Array(w * h * 3);
+    const draw = (img, X, Y) => {
+      for (let y = 0; y < img.height; y++) {
+        const sy = Y + y - img.oy - y0;
+        if (sy < 0 || sy >= h) continue;
+        for (let x = 0; x < img.width; x++) {
+          const v = img.pixels[y * img.width + x], sx = X + x - img.ox - x0;
+          if (!v || sx < 0 || sx >= w) continue;
+          const c = rgb[v], o = 3 * (sy * w + sx);
+          scene[o] = c[0]; scene[o + 1] = c[1]; scene[o + 2] = c[2];
+        }
+      }
+    };
+    const lifts = [0, ...ZB_SHOT_STANDING_FEET.map((f, k) => k + 1)];
+    /* the scene under this Zoombini, the picture and the Zoombinis behind
+       it, drawn once, and the ones in front, drawn over each try */
+    const under = new Float32Array(w * h * 3), place = read.indexOf(me);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const c = rgb[pixels[(y0 + y) * W + x0 + x]], o = 3 * (y * w + x);
+        under[o] = c[0]; under[o + 1] = c[1]; under[o + 2] = c[2];
+      }
+    }
+    const near = read.filter(other => other !== me && abs(other.x - me.x) < 110 && abs(other.y - me.y) < 130);
+    const drawOther = other => { const img = image(other.z, other.pi, other.lift || 0); if (img) draw(img, other.x, other.y); };
+    scene.set(under);
+    for (const other of near) if (read.indexOf(other) < place) drawOther(other);
+    under.set(scene);
+    const over = near.filter(other => read.indexOf(other) > place);
+    const given = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const f = 3 * ((y0 + y) * W + x0 + x), o = 3 * (y * w + x);
+        if (colors[f] !== colors[f]) { given[o] = NaN; continue; }
+        given[o] = luma(colors[f], colors[f + 1], colors[f + 2]); given[o + 1] = cb(colors[f], colors[f + 1], colors[f + 2]); given[o + 2] = cr(colors[f], colors[f + 1], colors[f + 2]);
+      }
+    }
+    const differ = (z, pi, lift = me.lift || 0) => {
+      const mine = image(z, pi, lift);
+      if (!mine) return Infinity;
+      scene.set(under);
+      draw(mine, me.x, me.y);
+      for (const other of over) drawOther(other);
+      let total = 0;
+      for (let y = 0; y < h; y += block) {
+        for (let x = 0; x < w; x += block) {
+          let mb = 0, mr = 0, fb = 0, fr = 0, seen = 0;
+          for (let j = 0; j < block && y + j < h; j++) {
+            for (let i = 0; i < block && x + i < w; i++) {
+              const o = 3 * ((y + j) * w + x + i);
+              if (given[o] !== given[o]) continue;
+              seen++;
+              const r = scene[o], g = scene[o + 1], b = scene[o + 2];
+              total += min(cap, abs(0.299 * r + 0.587 * g + 0.114 * b - given[o]));
+              mb += -0.169 * r - 0.331 * g + 0.5 * b; mr += 0.5 * r - 0.419 * g - 0.081 * b;
+              fb += given[o + 1]; fr += given[o + 2];
+            }
+          }
+          if (seen) total += weight * seen * min(cap, (abs(mb - fb) + abs(mr - fr)) / seen);
+        }
+      }
+      return total;
+    };
+    /* its place and its traits settled in turn, since a Zoombini a pixel
+       out of place fits the wrong part best */
+    const valuesOf = k => [1, 2, 3, 4, 5].map(v => {
+      const t = { ...me.z, [k]: v };
+      let least = Infinity, pose = me.pi;
+      for (const pj of zbShotPoseChoices(poses, grids, me.pi, k)) { const d = differ(t, pj, k === 'feet' ? 0 : me.lift || 0); if (d < least) { least = d; pose = pj; } }
+      if (k === 'feet') for (const up of lifts.slice(1)) { const d = differ(t, me.pi, up); if (d < least) { least = d; pose = me.pi; } }
+      return { least, pose };
+    });
+    const stands = env.stands || [], stand = zbShotPlaceIn(stands, me.x, me.y);
+    if (stand >= 0) { me.x = stands[2 * stand]; me.y = stands[2 * stand + 1]; }
+    const reach = stand >= 0 ? 0 : 3;
+    for (let pass = 0; pass < 3; pass++) {
+      const at = { x: me.x, y: me.y };
+      let least = Infinity, to = at;
+      for (let j = -reach; j <= reach; j++) {
+        for (let i = -reach; i <= reach; i++) {
+          me.x = at.x + i; me.y = at.y + j;
+          const d = differ(me.z, me.pi);
+          if (d < least) { least = d; to = { x: me.x, y: me.y }; }
+        }
+      }
+      me.x = to.x; me.y = to.y;
+      /* and its pose, among every family's */
+      let pose = me.pi;
+      const allowed = pi => !uniform || `${poses[pi].body.shape} ${poses[pi].facing}` === uniform;
+      least = allowed(me.pi) ? differ(me.z, me.pi) : Infinity;
+      for (const members of env.families.values()) {
+        if (!allowed(members[0])) continue;
+        for (const pj of zbShotPoseChoices(poses, grids, members[0], 'eyes')) {
+          const d = differ(me.z, pj);
+          if (d < least) { least = d; pose = pj; }
+        }
+      }
+      me.pi = pose;
+      /* the feet with the pose, among the families that draw this body,
+         and as a standing Zoombini's: a family draws its feet in its
+         poses alone, and a Zoombini that turns its head as it waits
+         has its feet still */
+      const body = poses[me.pi].body.shape, facing = poses[me.pi].facing;
+      let feet = me.z.feet, lift = me.lift || 0;
+      least = differ(me.z, me.pi);
+      for (const members of env.families.values()) {
+        if (poses[members[0]].body.shape !== body || poses[members[0]].facing !== facing) continue;
+        for (let v = 1; v <= 5; v++) {
+          const t = { ...me.z, feet: v };
+          for (const pj of zbShotPoseChoices(poses, grids, members[0], 'feet')) {
+            const d = differ(t, pj, 0);
+            if (d < least) { least = d; pose = pj; feet = v; lift = 0; }
+          }
+        }
+      }
+      /* standing feet, which are the same whatever the pose's feet */
+      for (let v = 1; v <= 5; v++) {
+        for (let up = 1; up <= ZB_SHOT_STANDING_FEET.length; up++) {
+          const d = differ({ ...me.z, feet: v }, pose, up);
+          if (d < least) { least = d; feet = v; lift = up; }
+        }
+      }
+      me.lift = lift;
+      me.pi = pose;
+      me.z.feet = feet;
+      for (const k of ZB_SHOT_TRAITS) {
+        const by = valuesOf(k), top = by.reduce((a, c) => (c.least < a.least ? c : a));
+        me.z[k] = by.indexOf(top) + 1;
+        me.pi = top.pose;
+      }
+    }
+    me.whole = {};
+    for (const k of ZB_SHOT_TRAITS) {
+      const by = [1, 2, 3, 4, 5].map(v => {
+        const t = { ...me.z, [k]: v };
+        let least = Infinity;
+        for (const pj of zbShotPoseChoices(poses, grids, me.pi, k)) least = min(least, differ(t, pj, k === 'feet' ? 0 : me.lift || 0));
+        if (k === 'feet') for (const up of lifts.slice(1)) least = min(least, differ(t, me.pi, up));
+        return least;
+      });
+      const least = min(...by), value = by.indexOf(least) + 1, next = min(...by.filter((d, i) => i + 1 !== value));
+      me.whole[k] = by;
+      me.traits[k] = next - least >= lead ? value : null;
+      if (me.traits[k]) me.z[k] = value;
+    }
+    Object.assign(me, { pose: poses[me.pi].from, tick: poses[me.pi].tick, body: poses[me.pi].body, facing: poses[me.pi].facing });
+  }
+}
+
+/* A color with its brightness first and its two color differences at
+   half weight: [luma, 128 + Cb / 2, 128 + Cr / 2]. A compressed
+   screenshot is compared in these, since compression such as a JPEG's
+   stores brightness closely and color at half the resolution. */
+function zbShotLumaFirst(r, g, b) {
+  return [0.299 * r + 0.587 * g + 0.114 * b, 128 + 0.5 * (-0.169 * r - 0.331 * g + 0.5 * b), 128 + 0.5 * (0.5 * r - 0.419 * g - 0.081 * b)];
+}
+
+/* Whether a frame's colors are a compressed picture's: over a sample of
+   its pixels, the middle error in color against the place's picture is
+   more than 1.8 times the middle error in brightness. A frame enlarged
+   with smoothing errs alike in both. */
+function zbShotCompressed(frame, pixels, rgb) {
+  const luma = [], chroma = [];
+  for (let i = 0; i < ZB_SHOT_W * ZB_SHOT_H; i += 37) {
+    const o = 3 * i;
+    if (frame[o] !== frame[o]) continue;
+    const c = rgb[pixels[i]], r = frame[o] - c[0], g = frame[o + 1] - c[1], b = frame[o + 2] - c[2];
+    luma.push(Math.abs(0.299 * r + 0.587 * g + 0.114 * b));
+    chroma.push(Math.abs(-0.169 * r - 0.331 * g + 0.5 * b) + Math.abs(0.5 * r - 0.419 * g - 0.081 * b));
+  }
+  if (luma.length < 100) return false;
+  const middle = list => list.sort((x, y) => x - y)[list.length >> 1];
+  const l = middle(luma), c = middle(chroma);
+  return c > 2 && c > 1.8 * l;
 }
 
 /* A smoothed screenshot read: where it lies among the places' pictures
@@ -1100,7 +1355,10 @@ function zbShotSmoothZoombinis(env, tolerance, margin = 4) {
    of the frame shown that is the bare picture, and `place` is null when
    it is under 30%. `frame` is zbShotSmoothFrame's colors, `keys` those
    colors as the nearest of the palette's, and `tolerance` six times the
-   spread zbShotBlurFit found, from 30 to 60. */
+   spread zbShotBlurFit found, from 30 to 60. A compressed frame
+   (zbShotCompressed) has `shot.compressed`, its `frame` and `rgb` are in
+   zbShotLumaFirst's terms, `display` has the frame's colors as given, and a
+   trait must beat the next by 10 pixels, not 4. */
 function zbShotSmoothRead(rgba, width, height, archives) {
   /* a copy, so that every array the search reads is of one kind. Arrays
      of two kinds slow the loops where the pixels came from elsewhere. */
@@ -1160,10 +1418,27 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     if (a && (!best || a.error < best.error)) best = { ...t, ...a };
   }
   if (!best) return null;
-  const frame = zbShotSmoothFrame(rgba, width, height, best);
-  const { blur, spread } = zbShotBlurFit(frame, best.pixels, best.rgb);
+  /* a frame within 0.3% of the game's size is the game's size */
+  if (Math.abs(best.sx - 1) < 0.003 && Math.abs(best.sy - 1) < 0.003) {
+    best.sx = best.sy = 1;
+    best.dx = Math.round(best.dx);
+    best.dy = Math.round(best.dy);
+  }
+  let frame = zbShotSmoothFrame(rgba, width, height, best), rgb = best.rgb, display = null;
+  const compressed = zbShotCompressed(frame, best.pixels, rgb);
+  if (compressed) {
+    display = frame;
+    frame = Float32Array.from(frame);
+    for (let o = 0; o < frame.length; o += 3) {
+      if (frame[o] !== frame[o]) continue;
+      const t = zbShotLumaFirst(frame[o], frame[o + 1], frame[o + 2]);
+      frame[o] = t[0]; frame[o + 1] = t[1]; frame[o + 2] = t[2];
+    }
+    rgb = rgb.map(c => zbShotLumaFirst(c[0], c[1], c[2]));
+  }
+  const { blur, spread } = zbShotBlurFit(frame, best.pixels, rgb);
   const tolerance = Math.min(60, Math.max(30, 6 * spread));
-  const bare = zbShotBare(frame, best.pixels, best.rgb, blur, tolerance);
+  const bare = zbShotBare(frame, best.pixels, rgb, blur, tolerance);
   let shown = 0, same = 0;
   for (let i = 0; i < bare.length; i++) {
     if (frame[3 * i] !== frame[3 * i]) continue;
@@ -1171,16 +1446,19 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     same += bare[i];
   }
   const palKeys = best.palKeys || zbShotPaletteKeys(best.pal, best.windows);
-  const keys = zbShotSmoothKeys(frame, best.rgb, palKeys, 30);
+  const keys = zbShotSmoothKeys(frame, rgb, palKeys, 30);
   const shot = {
-    width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur,
+    width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur, compressed,
   };
   const out = { shot, place: best.place, picture: best.picture, windows: best.windows, dx: Math.round(best.dx), dy: Math.round(best.dy),
-    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, archives, rgb: best.rgb, tolerance, zoombinis: [] };
+    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, archives, rgb, tolerance, zoombinis: [] };
+  if (display) out.display = display;
   if (best.look) out.look = best.look;
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
-  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place) }, tolerance);
+  const scene = compressed && ZB_SHOT_SCENES[best.place] ? ZB_SHOT_SCENES[best.place](zbShotEnv(out), best.pixels) : null;
+  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place, best.arc), share: compressed ? 0.5 : 0.55,
+    whole: compressed && best.sx === 1 && best.sy === 1 ? { colors: display, pixels: scene || best.pixels, rgb: best.rgb, dx: Math.round(best.dx), dy: Math.round(best.dy) } : null }, tolerance, compressed ? 10 : 4);
   out.tolerance = tolerance;
   return out;
 }
@@ -1621,9 +1899,16 @@ const ZB_SHOT_PUZZLES = { BRIDGE: zbShotBridge, TUNNELS: zbShotTunnels, MAZE2: z
 
 /* Where a place's Zoombinis come to stand, as x and y pairs: the places a
    smoothed reading tries whether or not a part was found there, and reads
-   on less than elsewhere. */
-function zbShotStands(place) {
+   on less than elsewhere. A reader in a separate file gives its place's
+   as ZB_SHOT_STANDS[archive], a function of the opened archive. */
+const ZB_SHOT_STANDS = {};
+/* A place's picture with its fixed pieces drawn on it, for a reading that
+   draws the whole scene (zbShotWholeTraits): ZB_SHOT_SCENES[archive] is a
+   function of zbShotEnv's result and the picture's indices that returns
+   the indices with the pieces on, or null. */
+const ZB_SHOT_SCENES = {};
+function zbShotStands(place, arc) {
   if (place === 'TUNNELS') return ZB_TUNNELS_CAVES.at.flat();
   if (place === 'BRIDGE') return [...ZB_BRIDGE_ARRIVALS.upper.at, ...ZB_BRIDGE_ARRIVALS.lower.at];
-  return [];
+  return ZB_SHOT_STANDS[place] ? ZB_SHOT_STANDS[place](arc) : [];
 }
