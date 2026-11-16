@@ -176,7 +176,7 @@ function shotDrawFrame(box, r) {
   box.appendChild(c);
 }
 
-/* What a reader in a file of its own found (zb-shot.js, "A place's
+/* What a reader in a separate file found (zb-shot.js, "A place's
    reader"): its sentences, and its link to take the puzzle apart. */
 function shotPuzzleHtml(r, place) {
   const P = r.puzzle;

@@ -1326,10 +1326,10 @@ function zbShotCovered(zoombinis) {
 
 /* A place's reader is ZB_SHOT_PUZZLES[its archive]: a function of the
    frame and the Zoombinis read that returns what it found. The readers in
-   this file have a part of the page each (page-shot.js). One in a file of
-   its own (zb-shot-<archive in lower case>.js) adds itself to
+   this file have a part of the page each (page-shot.js). One in a separate
+   file (zb-shot-<archive in lower case>.js) adds itself to
    ZB_SHOT_PUZZLES and returns, besides what it found:
-     zoombinis  all of them, in the order the page lists them, each with
+     zoombinis  all of them, in the order of the page's table, each with
                 `where`, a few words on where it is ("in seat 3");
      state      what a person could read off the screenshot by eye, as
                 plain JSON, which the check compares with the .json beside

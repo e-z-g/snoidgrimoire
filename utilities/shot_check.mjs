@@ -12,7 +12,7 @@
 //     off it by eye: the place, each Zoombini's origin and traits (four
 //     digits, as zbBandCode writes them), for the cliffs the pegs gone
 //     and the rule, for the caves the guardians' rules, and for a reader
-//     in a file of its own its `state`. With "smooth": 1.5 the check also
+//     in a separate file its `state`. With "smooth": 1.5 the check also
 //     reads the screenshot enlarged that much with smoothing. The reader
 //     matches all of it.
 //
