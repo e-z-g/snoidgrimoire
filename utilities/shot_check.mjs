@@ -11,7 +11,9 @@
 //     $ZB_SCREENSHOTS), each with a .json beside it of what a person read
 //     off it by eye: the place, each Zoombini's origin and traits (four
 //     digits, as zbBandCode writes them), for the cliffs the pegs gone
-//     and the rule, and for the caves the guardians' rules. The reader
+//     and the rule, for the caves the guardians' rules, and for a reader
+//     in a file of its own its `state`. With "smooth": 1.5 the check also
+//     reads the screenshot enlarged that much with smoothing. The reader
 //     matches all of it.
 //
 //   node utilities/shot_check.mjs        # both
@@ -249,6 +251,30 @@ if (!process.argv.includes('--exact')) {
 
 // ---- screenshots taken in the game --------------------------------------------
 
+/* A reader's `state` against the .json's: every key the .json gives must
+   be the same. */
+function stateCheck(about, r, expected) {
+  const actual = r.puzzle && r.puzzle.state;
+  if (!actual) { fail(`${about}, the reader gave no state`); return; }
+  for (const k of Object.keys(expected)) {
+    if (JSON.stringify(actual[k]) !== JSON.stringify(expected[k])) fail(`${about}, ${k} read ${JSON.stringify(actual[k])}, not ${JSON.stringify(expected[k])}`);
+  }
+}
+/* A PNG enlarged `scale` times with smoothing, as a browser shows one. */
+function enlarge(png, scale) {
+  const w = Math.floor(png.width * scale), h = Math.floor(png.height * scale), rgba = new Uint8Array(w * h * 4);
+  const at = (x, y, k) => png.rgba[4 * (Math.min(png.height - 1, Math.max(0, y)) * png.width + Math.min(png.width - 1, Math.max(0, x))) + k];
+  for (let y = 0; y < h; y++) {
+    const v = (y + 0.5) / scale - 0.5, y0 = Math.floor(v), fy = v - y0;
+    for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / scale - 0.5, x0 = Math.floor(u), fx = u - x0, o = 4 * (y * w + x);
+      for (let k = 0; k < 3; k++) rgba[o + k] = Math.round((at(x0, y0, k) * (1 - fx) + at(x0 + 1, y0, k) * fx) * (1 - fy) + (at(x0, y0 + 1, k) * (1 - fx) + at(x0 + 1, y0 + 1, k) * fx) * fy);
+      rgba[o + 3] = 255;
+    }
+  }
+  return { rgba, width: w, height: h };
+}
+
 if (process.argv.includes('--smoothed')) { /* the screenshots made here, smoothed, alone */ }
 else if (!fs.existsSync(DIR)) console.log(`No screenshots taken in the game, as ${DIR} is missing`);
 else {
@@ -286,6 +312,22 @@ else {
       else if (JSON.stringify(arrows) !== JSON.stringify(g.arrows)) fail(`${name}, the feature arrows show ${JSON.stringify(arrows)}`);
       else if (JSON.stringify(colors) !== JSON.stringify(g.colors)) fail(`${name}, the grid's colors are ${colors}`);
       else if (P.turned.length !== g.turned) fail(`${name}, ${P.turned.length} arrows turned, not ${g.turned}`);
+    }
+    if (expected.state) stateCheck(name, r, expected.state);
+    if (expected.smooth) {
+      /* the same screenshot enlarged with smoothing: the same state, and
+         no Zoombini read where none stands */
+      const big = enlarge(png, expected.smooth), rs = S.zbShotRead(big.rgba, big.width, big.height, archives), about = `${name} smoothed x${expected.smooth}`;
+      if (rs.place !== expected.place) fail(`${about} read as ${rs.place}, not ${expected.place}`);
+      else {
+        if (expected.state) stateCheck(about, rs, expected.state);
+        for (const z of rs.zoombinis) {
+          const e = expected.zoombinis.find(q => Math.abs(q.x - z.x) <= 1 && Math.abs(q.y - z.y) <= 1);
+          if (!e) fail(`${about}, a Zoombini read at (${z.x}, ${z.y}) where none stands`);
+          else if ([...code(z.traits)].some((c, k) => c !== '?' && c !== e.code[k])) fail(`${about}, (${e.x}, ${e.y}) read ${code(z.traits)}, not ${e.code}`);
+        }
+        console.log(`  and smoothed x${expected.smooth}, ${rs.zoombinis.length} of ${expected.zoombinis.length} Zoombinis read.`);
+      }
     }
     if (verbose) for (const a of actual) console.log(`  (${a.x}, ${a.y}) ${a.code}${a.inferred.length ? `, ${a.inferred.join(' and ')} inferred` : ''}`);
     console.log(`Taken in the game, ${name}, ${png.width} x ${png.height}. It shows ${r.shot.width} x ${r.shot.height} of the frame at (${r.dx}, ${r.dy}),`

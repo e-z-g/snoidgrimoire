@@ -359,13 +359,30 @@ function zbShotInferHidden(keys, fg, groups, sheet, palKeys, slack = 2) {
   }
 }
 
-/* The pictures a place may show: [{ id, palette }], the picture and the
-   palette of the same id (zb-journey.js). */
+/* The archives whose pictures a screenshot may show, with a name for each:
+   the places, the map (RODMAP, or MAP in the European layout) and the
+   passages between places. */
+const ZB_SHOT_PLACES = [...ZB_PLACES.map(p => ({ key: p.key, name: p.name })),
+  { key: 'RODMAP', name: 'the map' }, { key: 'MAP', name: 'the map' }, { key: 'XFER', name: 'a passage between two places' }];
+const ZB_SHOT_PLACE_BY_KEY = new Map(ZB_SHOT_PLACES.map(p => [p.key, p]));
+
+/* The pictures an archive may show: [{ id, palette }], every tBMP that is
+   one 640 x 480 picture with a palette of the same id. Hotel Dimensia has
+   one for each of three sizes of hotel and the Mudball Wall two.
+   Zoombiniville's panorama is drawn from a sheet, so it has none. */
+const ZB_SHOT_PICTURES = new WeakMap();
 function zbShotPictures(arc, key) {
-  const p = ZB_PLACE_BY_KEY.get(key);
-  if (!p || p.panorama) return [];
-  return [...new Set([p.background, p.hard].filter(Boolean))]
-    .filter(id => arc.has('tBMP', id) && arc.has('SHPL', id)).map(id => ({ id, palette: id }));
+  if (!ZB_SHOT_PLACE_BY_KEY.has(key)) return [];
+  if (!ZB_SHOT_PICTURES.has(arc)) {
+    const out = [];
+    for (const r of arc.list('SHPL')) {
+      if (!arc.has('tBMP', r.id)) continue;
+      const b = decodeBitmapResource(arc.get('tBMP', r.id));
+      if (b.frames.length === 1 && b.frames[0].width === ZB_SHOT_W && b.frames[0].height === ZB_SHOT_H) out.push({ id: r.id, palette: r.id });
+    }
+    ZB_SHOT_PICTURES.set(arc, out);
+  }
+  return ZB_SHOT_PICTURES.get(arc);
 }
 
 /* ---- a smoothed screenshot ------------------------------------------------ */
@@ -1094,7 +1111,7 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     c[0] = rgba[p]; c[1] = rgba[p + 1]; c[2] = rgba[p + 2];
   });
   const tried = [];
-  for (const p of ZB_PLACES) {
+  for (const p of ZB_SHOT_PLACES) {
     const arc = archives.get(p.key);
     if (!arc) continue;
     for (const pic of zbShotPictures(arc, p.key)) {
@@ -1136,7 +1153,7 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     width: Math.round(width / best.sx), height: Math.round(height / best.sy), scaleX: best.sx, scaleY: best.sy, smoothed: true, blur,
   };
   const out = { shot, place: best.place, picture: best.picture, windows: best.windows, dx: Math.round(best.dx), dy: Math.round(best.dy),
-    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, rgb: best.rgb, tolerance, zoombinis: [] };
+    fit: shown ? same / shown : 0, error: best.error, keys, frame, pixels: best.pixels, palKeys, arc: best.arc, archives, rgb: best.rgb, tolerance, zoombinis: [] };
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
   out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb: best.rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place) }, tolerance);
@@ -1199,7 +1216,7 @@ function zbShotRead(rgba, width, height, archives) {
   }
   const shot = zbShotUnscale(rgba, width, height);
   let best = null;
-  for (const p of ZB_PLACES) {
+  for (const p of ZB_SHOT_PLACES) {
     const arc = archives.get(p.key);
     if (!arc) continue;
     for (const pic of zbShotPictures(arc, p.key)) {
@@ -1208,7 +1225,7 @@ function zbShotRead(rgba, width, height, archives) {
       for (const windows of [true, false]) {
         const palKeys = zbShotPaletteKeys(pal, windows);
         const a = zbShotAlign(shot, pixels, palKeys);
-        if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys, pixels, arc, rgb: zbShotPaletteRgb(pal, windows) };
+        if (!best || a.fit > best.fit) best = { ...a, place: p.key, picture: pic.id, windows, palKeys, pixels, arc, archives, rgb: zbShotPaletteRgb(pal, windows) };
       }
     }
   }
@@ -1225,6 +1242,100 @@ function zbShotRead(rgba, width, height, archives) {
 }
 
 /* ---- the puzzles --------------------------------------------------------- */
+
+/* What a place's reader works with, from the frame zbShotRead or
+   zbShotSmoothRead found: { arc, archives, rgb, colors, blur, tolerance,
+   smoothed }. `colors` is the frame's red, green and blue at each of its
+   640 x 480 pixels, NaN where the screenshot leaves the pixel out. `rgb`
+   is the place's palette as the screenshot shows it. `blur` is 0 and
+   `tolerance` 12 for a screenshot that copies pixels, whose colors have 6
+   bits a component, and zbShotBlurFit's for a smoothed one. */
+function zbShotEnv(frame) {
+  const smoothed = !!frame.frame;
+  let colors = frame.frame;
+  if (!colors) {
+    colors = new Float32Array(ZB_SHOT_W * ZB_SHOT_H * 3).fill(NaN);
+    for (let i = 0; i < ZB_SHOT_W * ZB_SHOT_H; i++) {
+      const k = frame.keys[i];
+      if (k < 0) continue;
+      colors[3 * i] = (k >> 12) << 2; colors[3 * i + 1] = ((k >> 6) & 63) << 2; colors[3 * i + 2] = (k & 63) << 2;
+    }
+  }
+  return { arc: frame.arc, archives: frame.archives, rgb: frame.rgb, colors, smoothed, blur: smoothed ? frame.shot.blur : 0, tolerance: smoothed ? frame.tolerance : 12 };
+}
+
+/* Sprites drawn one over another, as a reader compares them with the
+   frame: `pieces` is [{ sprite, x, y }], each sprite { width, height,
+   pixels } with its top left corner at (x, y) from the drawing's origin,
+   later ones over earlier, index 0 clear. `rgb` may give the pieces
+   another palette than the place's. Returns { points, x0, y0, width,
+   height, count }: `points` zbShotBlurred's, moved so that x and y are
+   from the origin, and `count` how many. */
+function zbShotDrawing(env, pieces, rgb = env.rgb) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pieces) {
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + p.sprite.width); y1 = Math.max(y1, p.y + p.sprite.height);
+  }
+  if (!pieces.length) return { points: [], x0: 0, y0: 0, width: 0, height: 0, count: 0 };
+  const img = { width: x1 - x0, height: y1 - y0, pixels: new Uint8Array((x1 - x0) * (y1 - y0)) };
+  for (const p of pieces) {
+    const f = p.sprite;
+    for (let y = 0; y < f.height; y++) {
+      for (let x = 0; x < f.width; x++) {
+        const v = f.pixels[y * f.width + x];
+        if (v) img.pixels[(y + p.y - y0) * img.width + x + p.x - x0] = v;
+      }
+    }
+  }
+  const points = zbShotBlurred(img, rgb, env.blur);
+  for (let p = 0; p < points.length; p += 7) { points[p] += x0; points[p + 1] += y0; }
+  return { points, x0, y0, width: img.width, height: img.height, count: points.length / 7 };
+}
+
+/* How well a drawing fits the frame with its origin at (X, Y): { matched,
+   known, value, fit, shown }. `known` counts its points that the frame
+   shows, `matched` those within the tolerance in red, green and blue
+   together, `value` matched minus the others, `fit` matched over known and
+   `shown` known over the drawing's points. `skip`, if given, is a
+   Uint8Array over the frame, and a pixel it marks counts as not shown, as
+   one under a Zoombini is. */
+function zbShotDrawingFit(env, drawing, X, Y, skip) {
+  const pts = drawing.points, colors = env.colors, tolerance = env.tolerance, abs = Math.abs;
+  let matched = 0, known = 0;
+  for (let p = 0; p < pts.length; p += 7) {
+    const x = X + pts[p], y = Y + pts[p + 1];
+    if (x < 0 || y < 0 || x >= ZB_SHOT_W || y >= ZB_SHOT_H) continue;
+    const i = y * ZB_SHOT_W + x, o = 3 * i;
+    if (colors[o] !== colors[o] || (skip && skip[i])) continue;
+    known++;
+    if (abs(colors[o] - pts[p + 2]) + abs(colors[o + 1] - pts[p + 3]) + abs(colors[o + 2] - pts[p + 4]) <= tolerance) matched++;
+  }
+  return { matched, known, value: 2 * matched - known, fit: known ? matched / known : 0, shown: drawing.count ? known / drawing.count : 0 };
+}
+
+/* The frame pixels the Zoombinis read cover, as a Uint8Array for
+   zbShotDrawingFit's `skip`: each one's box, 44 wide and 62 high around
+   its origin, which is near the middle of its body. */
+function zbShotCovered(zoombinis) {
+  const skip = new Uint8Array(ZB_SHOT_W * ZB_SHOT_H);
+  for (const z of zoombinis) {
+    for (let y = Math.max(0, z.y - 34); y < Math.min(ZB_SHOT_H, z.y + 28); y++) skip.fill(1, y * ZB_SHOT_W + Math.max(0, z.x - 22), y * ZB_SHOT_W + Math.min(ZB_SHOT_W, z.x + 22));
+  }
+  return skip;
+}
+
+/* A place's reader is ZB_SHOT_PUZZLES[its archive]: a function of the
+   frame and the Zoombinis read that returns what it found. The readers in
+   this file have a part of the page each (page-shot.js). One in a file of
+   its own (zb-shot-<archive in lower case>.js) adds itself to
+   ZB_SHOT_PUZZLES and returns, besides what it found:
+     zoombinis  all of them, in the order the page lists them, each with
+                `where`, a few words on where it is ("in seat 3");
+     state      what a person could read off the screenshot by eye, as
+                plain JSON, which the check compares with the .json beside
+                a screenshot;
+     lines      sentences for the page, in order;
+     link       { hash, text }, a link to take the puzzle apart, or null. */
 
 /* The index of the place in `at` (x, y pairs) within 3 pixels of (x, y),
    or -1. */

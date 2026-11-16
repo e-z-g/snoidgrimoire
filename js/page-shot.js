@@ -58,7 +58,7 @@ document.addEventListener('paste', e => {
 /* The archives a reading needs, opened. The ones not open come from
    archive.org first, where the page has that source. */
 async function shotArchives() {
-  const names = ['ZOOMBINI', ...ZB_PLACES.map(p => p.key)];
+  const names = ['ZOOMBINI', ...ZB_SHOT_PLACES.map(p => p.key)];
   for (const n of names) {
     const e = ARCHIVES.get(n);
     if (e && !e.bytes && e.remote) await ensureBytes(e);
@@ -119,11 +119,12 @@ function shotShow() {
     : `, enlarged ${factor}.`;
   html += `<p>The screenshot is ${L.width} × ${L.height}${s.bars ? ', with plain bars around the frame' : ''}. ${size}${scale}`;
   if (!r.place) {
-    out.innerHTML = html + ' No place’s picture matches it. The page reads screenshots of a puzzle or a camp, taken straight from the screen.</p>';
+    out.innerHTML = html + ' No picture of the game’s matches it. The page reads a screenshot of a puzzle, a camp, Zoombini Isle, the map or a passage between places.</p>';
     return;
   }
-  const place = ZB_PLACE_BY_KEY.get(r.place);
-  html += ` The place is <a href="#scenario/places/${r.place}">${esc(place.name)}</a>, in the ${r.windows ? 'Windows' : 'Mac'} program’s colors.`
+  const place = ZB_SHOT_PLACE_BY_KEY.get(r.place);
+  const named = ZB_PLACE_BY_KEY.has(r.place) ? `<a href="#scenario/places/${r.place}">${esc(place.name)}</a>` : esc(place.name);
+  html += ` ${ZB_PLACE_BY_KEY.has(r.place) ? 'The place is' : 'It shows'} ${named}, in the ${r.windows ? 'Windows' : 'Mac'} program’s colors.`
     + ` <a href="#${r.place}/tBMP/${r.picture}">${r.place} tBMP ${r.picture}</a> matches ${Math.round(100 * r.fit)}% of its pixels.`
     + ` ${r.zoombinis.length ? `The page found ${plural(r.zoombinis.length, 'Zoombini')}.` : 'The page found no Zoombinis.'}`
     + ` <span class="note">${L.seconds.toFixed(1)} s</span></p>`;
@@ -131,9 +132,10 @@ function shotShow() {
   if (r.puzzle && r.place === 'BRIDGE') html += shotBridgeHtml(r);
   if (r.puzzle && r.place === 'TUNNELS') html += shotTunnelsHtml(r);
   if (r.puzzle && r.place === 'MAZE2') html += shotMaze2Html(r);
+  if (r.puzzle && r.puzzle.lines) html += shotPuzzleHtml(r, place);
   html += shotTableHtml(r);
   const band = r.zoombinis.map(z => z.traits);
-  if (ZB_PUZZLES.has(r.place) && r.place !== 'MAZE2' && band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null))) {
+  if (ZB_PUZZLES.has(r.place) && r.place !== 'MAZE2' && !(r.puzzle && r.puzzle.link) && band.length && band.length <= 16 && band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null))) {
     html += `<p><a href="#solve=${r.place}&band=${zbBandCode(band)}">Take ${esc(place.name)} apart for this band</a></p>`;
   }
   out.innerHTML = html;
@@ -174,9 +176,19 @@ function shotDrawFrame(box, r) {
   box.appendChild(c);
 }
 
+/* What a reader in a file of its own found (zb-shot.js, "A place's
+   reader"): its sentences, and its link to take the puzzle apart. */
+function shotPuzzleHtml(r, place) {
+  const P = r.puzzle;
+  let html = `<h2>${esc(place.name)}</h2>` + P.lines.map(l => `<p>${esc(l)}</p>`).join('');
+  if (P.link) html += `<p><a href="#${esc(P.link.hash)}">${esc(P.link.text)}</a></p>`;
+  return html;
+}
+
 /* Where a Zoombini stands, in words. */
 function shotWhere(z) {
   if (!z.where) return '';
+  if (typeof z.where === 'string') return z.where;
   const w = z.where;
   if (w.side === 'upper' || w.side === 'lower') return `across the ${w.side} bridge, the ${SHOT_ORDINALS[w.slot]} to cross it`;
   if (w.side === 'cave') return `in the ${ZB_TUNNELS_CAVES.names[w.cave]} cave, the ${SHOT_ORDINALS[w.slot]} into it`;
