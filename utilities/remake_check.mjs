@@ -206,6 +206,111 @@ for (const [name, o, v] of monos) {
 }
 for (const [cls, list] of monoBad) fail(`${list.length} ${cls} not read exactly, as ${list[0]}`);
 console.log(`${monoRead.toLocaleString()} of ${monos.length.toLocaleString()} MonoBehaviours read by their scripts' layouts to exactly their size`);
+
+// Scenario's reading of the remake: every .swf read to its last byte, with
+// every clip's first frame and its atlases found by their Resources paths;
+// every scene's sprites and clips, as zbRemakeScene has them, found
+// in the files; the town's four backdrops; and the trait names that the
+// Snoids pane reads from Bubblewonder Abyss, against REMAKE.md's table.
+const objAt = (name, id) => {
+  const sf = parsed.get(name);
+  if (!sf) return null;
+  if (!sf.byId) sf.byId = new Map(sf.objects.map(o => [o.pathId, o]));
+  return sf.byId.get(id) || null;
+};
+const readAt = (name, id) => { const sf = parsed.get(name), o = objAt(name, id), b = bytesOf(name); return S.zbUnityRead(sf, o, b.subarray(sf.dataOffset + o.start, sf.dataOffset + o.start + o.size)); };
+const targetOf = (name, p) => {
+  if (!p || (!p.m_FileID && !p.m_PathID)) return null;
+  const t = p.m_FileID === 0 ? name : S.zbUnitySideName(parsed.get(name).externals[p.m_FileID - 1]);
+  return objAt(t, p.m_PathID) ? { file: t, pathId: p.m_PathID } : null;
+};
+const sceneApi = {
+  objects: n => parsed.get(n).objects,
+  async read(n, id) {
+    const v = readAt(n, id);
+    if (objAt(n, id).classId !== 114) return v;
+    const cls = scriptOf(n, v.m_Script);
+    if (cls) try { Object.assign(v, S.zbUnityScriptFields(layouts, cls, v.rest, parsed.get(n).little)); } catch (e) { /* the header only */ }
+    return v;
+  },
+  target: targetOf,
+};
+const byPath = new Map();
+let sceneList = [], sortingLayers = [];
+for (const o of parsed.get('globalgamemanagers').objects) {
+  if (o.classId === 147) for (const [p, ptr] of readAt('globalgamemanagers', o.pathId).m_Container) {
+    const t = targetOf('globalgamemanagers', ptr);
+    if (!t) continue;
+    if (!byPath.has(p)) byPath.set(p, []);
+    byPath.get(p).push(t);
+  }
+  if (o.classId === 141) sceneList = readAt('globalgamemanagers', o.pathId).scenes;
+  if (o.classId === 78) sortingLayers = readAt('globalgamemanagers', o.pathId).m_SortingLayers;
+}
+const atPath = (p, cls) => (byPath.get(p.toLowerCase()) || []).find(t => objAt(t.file, t.pathId).classId === cls) || null;
+const swfs = new Map();
+const swfAt = p => {
+  const k = p.toLowerCase();
+  if (!swfs.has(k)) { const t = atPath(k + '/' + k.split('/').pop(), 49); swfs.set(k, t ? S.zbUniSwfRead(readAt(t.file, t.pathId).m_Script) : null); }
+  return swfs.get(k);
+};
+let swfCount = 0, clipCount = 0, swfBytes = 0;
+for (const [p, list] of byPath) {
+  if (!/\.swf$/.test(p)) continue;
+  const swfPath = p.slice(0, p.lastIndexOf('/'));
+  let swf;
+  try { swf = swfAt(swfPath); swfBytes += readAt(list[0].file, list[0].pathId).m_Script.length; }
+  catch (e) { fail(`${p}: ${e.message}`); continue; }
+  swfCount++;
+  for (const [name, clip] of Object.entries(swf.byClass)) {
+    if (clip.kind !== 'clip') continue;
+    clipCount++;
+    try {
+      for (const op of S.zbUniSwfFrame(swf, name, 0)) if (!atPath(swfPath + '/' + S.zbUniSwfAtlasName(swfPath, op.texture), 28)) throw new Error(`no atlas ${op.texture}`);
+    } catch (e) { fail(`${p} ${name}: ${e.message}`); }
+  }
+}
+console.log(`${swfCount} uniSWF files read to their last byte (${swfBytes.toLocaleString()} bytes), the first frames of ${clipCount.toLocaleString()} clips with their atlases`);
+let sceneSprites = 0, sceneClips = 0, scenesRead = 0;
+const sceneFiles = new Map();   // a scene with sprites -> the files its sprites and textures are in
+for (let i = 0; i < sceneList.length; i++) {
+  if (!parsed.has('level' + i)) continue;
+  let scene;
+  try { scene = await S.zbRemakeScene('level' + i, sceneApi, sortingLayers); } catch (e) { fail(`level${i}: ${e.message}`); continue; }
+  scenesRead++;
+  const files = new Set(['level' + i]);
+  for (const it of scene.items) {
+    if (it.kind === 'sprite') {
+      const tex = targetOf(it.file, readAt(it.file, it.pathId).m_RD.texture);
+      if (!tex) fail(`level${i} ${it.name}: its sprite's texture is not found`);
+      else { sceneSprites++; files.add(it.file); files.add(tex.file); }
+    } else {
+      const swf = swfAt(it.swf);
+      if (!swf || !swf.byClass[it.symbol]) fail(`level${i} ${it.name}: the clip ${it.symbol} of ${it.swf} is not found`);
+      else sceneClips++;
+    }
+  }
+  if (files.size > 1) sceneFiles.set(i, files);
+}
+const towns = ['north', 'east', 'south', 'west'].map(d => atPath(`zoombiniville/zoombiniville_${d}_bg`, 1));
+const townItems = [];
+for (const t of towns) townItems.push(t ? (await S.zbRemakeScene(t.file, sceneApi, sortingLayers, t.pathId)).items.length : 0);
+if (townItems.some(n => !n)) fail(`the town's backdrops draw ${townItems.join(', ')} things`);
+console.log(`${scenesRead} scenes read, with ${sceneSprites.toLocaleString()} sprites and ${sceneClips} clips found, and the town's four backdrops with ${townItems.join(', ')}`);
+const expectedNames = { hair: ['shaggy', 'polytail', 'tuft', 'buzz', 'hat'], eyes: ['dots', 'sleepy', 'sunglasses', 'glasses', 'single'],
+  nose: ['yellow', 'purple', 'red', 'green', 'blue'], feet: ['wheels', 'propeller', 'spring', 'sneakers', 'skates'] };
+const abyss = sceneList.findIndex(p => /bubblewonder/i.test(p));
+let traitNames = null;
+for (const o of (parsed.get('level' + abyss) || { objects: [] }).objects) {
+  if (o.classId !== 114) continue;
+  const v = await sceneApi.read('level' + abyss, o.pathId);
+  if (!v._zoombiniHair) continue;
+  traitNames = {};
+  for (const [t, f] of [['hair', '_zoombiniHair'], ['eyes', '_zoombiniEyes'], ['nose', '_zoombiniNose'], ['feet', '_zoombiniFeet']])
+    traitNames[t] = v[f].map(p => { const at = targetOf('level' + abyss, p); return at ? readAt(at.file, at.pathId).m_Name.replace(/^[a-z]+_/, '') : ''; });
+}
+if (JSON.stringify(traitNames) !== JSON.stringify(expectedNames)) fail(`the trait names read ${JSON.stringify(traitNames)}`);
+else console.log('the twenty trait names read from BubblewonderAbyssGrid as REMAKE.md has them');
 console.log(`${objects.toLocaleString()} objects read, ${texts} text assets, ${sounds} sounds and ${textures} textures as UnityPy has them (decoded in ${(decodeMs / 1000).toFixed(1)} s)`);
 
 // The page: the files handed to it, then a view of each kind.
@@ -248,7 +353,11 @@ const vorbisView = vorbis.length ? views[views.length - 1].join('/') : null;
 // globalgamemanagers.assets, and its fields need the metadata and the
 // binary, as from the app folder.
 const pixelFiles = [textureView, spriteView].filter(Boolean).map(([f]) => f + '.resS');
-const handed = names.filter(n => views.some(([f]) => n === f || n === f + '.resource') || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers|globalgamemanagers\.assets)$/.test(n))
+// The scene drawn in the page is the one whose sprites' files weigh least.
+const sceneWeight = files => [...files].reduce((t, f) => t + weight(f), 0);
+const [sceneShown, sceneShownFiles] = [...sceneFiles].sort((a, b) => sceneWeight(a[1]) - sceneWeight(b[1]))[0] || [null, new Set()];
+for (const f of sceneShownFiles) pixelFiles.push(f, f + '.resS', f + '.resource');
+const handed = names.filter(n => views.some(([f]) => n === f || n === f + '.resource') || pixelFiles.includes(n) || sceneShownFiles.has(n) || /^(resources\.resource|globalgamemanagers|globalgamemanagers\.assets)$/.test(n))
   .concat([...new Set(['global-metadata.dat', path.basename(BINARY), path.basename(FMOD)])]);
 fileBytes.clear();
 console.log(`the page is handed ${handed.length} files, ${Math.round(handed.reduce((t, n) => t + fs.statSync(handedPath(n)).size, 0) / 1e6)} MB (${handed.join(', ')})`);
@@ -282,12 +391,14 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
         await evaluate(`location.hash = ${JSON.stringify(hash)}`);
         if (!await wait(test)) out.push(`${hash}: ${what}`);
       };
-      await shows('#scenario/remake', `/AllergicCliffs/.test(document.getElementById('view').textContent) && document.querySelectorAll('#view tr').length >= 24`, 'the scenes are not listed by name');
+      await shows('#scenario/places', `/Allergic Cliffs/.test(document.getElementById('view').textContent) && document.querySelectorAll('#view tr').length >= 24`, 'the scenes are not listed by name');
       await shows('#remake/@resources', `document.querySelectorAll('#view .ids a').length >= 1000`, 'the Resources paths are not listed');
-      await shows('#components/text', `/The 2015 remake/.test(document.getElementById('view').textContent) && document.querySelectorAll('#view section a').length >= 1`, 'the text assets are not in the gallery');
-      await shows('#components/sounds', `document.querySelectorAll('#view section button.play').length >= 1`, 'the sounds are not in the gallery');
-      await evaluate(`(() => { window.Audio = function () { return { play() {} }; }; document.querySelector('#view section button.play').click(); })()`);
-      if (!await wait(`/Hz/.test(document.querySelector('#view section td.note').textContent)`)) out.push('a sound in the gallery did not play');
+      await shows('#components/text', `document.querySelectorAll('#view details a').length >= 1`, 'the text assets are not in the gallery');
+      await shows('#scenario/puzzles', `document.querySelectorAll('#view details').length === 12`, 'the twelve puzzles are not listed');
+      if (sceneShown != null) await shows(`#scenario/places/${sceneShown}`, `(() => { const c = document.querySelector('#view canvas.scene'); if (!c) return false; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] !== 0x33 || d[i + 1] !== 0x33 || d[i + 2] !== 0x44) n++; return n > 1000 && document.querySelectorAll('#view tr').length > 1; })()`, 'the scene is not drawn');
+      await shows('#components/sounds', `document.querySelectorAll('#view button.play').length >= 1`, 'the sounds are not in the gallery');
+      await evaluate(`(() => { window.Audio = function () { return { play() {} }; }; const b = document.querySelector('#view button.play'); b.closest('details').open = true; b.click(); })()`);
+      if (!await wait(`/Hz/.test(document.querySelector('#view td.note').textContent)`)) out.push('a sound in the gallery did not play');
       return out;
     },
   });

@@ -49,7 +49,7 @@ function galleryThumb(frame, pal, transparent, w = 160, h = 120) {
 }
 
 function galleryHead(view, title, sub, what) {
-  const key = Object.keys(ZB_GALLERIES).find(k => ZB_TABS.components.subs.some(s => s[0] === k && s[1] === title));
+  const key = Object.keys(ZB_GALLERIES).find(k => tabsNow().components.subs.some(s => s[0] === k && s[1] === title));
   view.innerHTML = `<h1>${title}</h1><p class="sub">${sub}</p>` + unfetchedNote(what)
     + (GALLERY_FILES[key] ? '<div class="tools"><button id="saveall">Save all as .zip</button></div>' : '');
   wireFetchAll(view);

@@ -25,9 +25,20 @@ let DATA_LAST = null;   // the archive Data was last on, for its tab's link
 function tabOfHash() {
   const m = /^#(scenario|components)(?:\/(\w+))?(?:\/(\w+))?$/.exec(location.hash);
   if (!m) return null;
-  const T = ZB_TABS[m[1]], sub = T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0];
-  return { tab: m[1], sub, item: sub === 'places' && ZB_PLACE_BY_KEY.has(m[3]) ? m[3] : null };
+  const T = tabsNow()[m[1]], sub = T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0];
+  const item = sub !== 'places' ? null : zbEdition() === '2015' ? (/^\d+$/.test(m[3] || '') ? m[3] : null) : ZB_PLACE_BY_KEY.has(m[3]) ? m[3] : null;
+  return { tab: m[1], sub, item };
 }
+/* Which game Scenario and Components show: the 1996 game's archives, or
+   the 2015 remake's files where only those are open. With both open, the
+   visitor picks, and the browser stores the choice as
+   snoidgrimoire-edition. */
+function zbEdition() {
+  if (typeof remakeIsOpen !== 'function' || !remakeIsOpen()) return '1996';
+  if (!ARCHIVES.size) return '2015';
+  return localStorage.getItem('snoidgrimoire-edition') === '2015' ? '2015' : '1996';
+}
+function tabsNow() { return zbEdition() === '2015' ? ZB_REMAKE_TABS : ZB_TABS; }
 /* Which of the four the address is under. */
 function topTabOfHash() {
   if (/^#search=/.test(location.hash)) return 'search';
@@ -41,7 +52,7 @@ function topTabOfHash() {
 function renderTopTabs() {
   const nav = $('views'), on = topTabOfHash();
   if (on === 'data') { const h = parseHash(); if (ARCHIVES.has(h.archive)) DATA_LAST = h.archive; }
-  const data = DATA_LAST || (ARCHIVES.has('RODMAP') ? 'RODMAP' : (sortedArchives()[0] || {}).name || '');
+  const data = DATA_LAST || (ARCHIVES.has('RODMAP') ? 'RODMAP' : (sortedArchives()[0] || {}).name || (zbEdition() === '2015' ? 'remake' : ''));
   const tabs = [['world', 'World', '#journey'], ['scenario', 'Scenario', '#scenario'], ['components', 'Components', '#components'], ['data', 'Data', '#' + data]]
     .filter(t => t[0] !== 'world' || journeyAvailable());
   nav.innerHTML = tabs.map(([k, n, h]) => `<a data-view="${k}" href="${h}"${k === on ? ' class="on"' : ''}>${n}</a>`).join('');
@@ -50,20 +61,32 @@ function renderTopTabs() {
 /* A Scenario or Components pane, in the browser's frame: its list on the
    side, the pane in the view. */
 function renderTab(t) {
-  const T = ZB_TABS[t.tab], sub = T.subs.find(s => s[0] === t.sub);
+  const remake = zbEdition() === '2015', T = tabsNow()[t.tab], sub = T.subs.find(s => s[0] === t.sub);
+  const itemName = t.item && (remake ? remakeSceneTitle(+t.item) : ZB_PLACE_BY_KEY.get(t.item).name);
   $('crumbs').innerHTML = `<a href="#${t.tab}">${T.name}</a><span class="sep">›</span>`
-    + (t.item ? `<a href="#${t.tab}/${t.sub}">${esc(sub[1])}</a><span class="sep">›</span><span>${esc(ZB_PLACE_BY_KEY.get(t.item).name)}</span>` : `<span>${esc(sub[1])}</span>`);
+    + (t.item ? `<a href="#${t.tab}/${t.sub}">${esc(sub[1])}</a><span class="sep">›</span><span>${esc(itemName)}</span>` : `<span>${esc(sub[1])}</span>`);
   const view = $('view');
   view.scrollTop = 0;
   try {
-    (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES)[t.sub](view, t.item);
+    const panes = remake ? (t.tab === 'scenario' ? REMAKE_SCENARIO_PANES : REMAKE_GALLERIES) : (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES);
+    const shown = panes[t.sub](view, t.item);
+    if (shown && shown.catch) shown.catch(e => { view.insertAdjacentHTML('beforeend', `<p class="bad">This could not be shown (${esc(e.message)}).</p>`); console.error(e); });
   } catch (e) {
     view.innerHTML += `<p class="bad">This could not be shown (${esc(e.message)}).</p>`;
     console.error(e);
   }
   // The side after the pane, since drawing a gallery may have just sorted its pictures from its sheets.
-  $('side').innerHTML = `<h2>${T.name}</h2>` + T.subs.map(([k, n]) => `<div class="arc${k === t.sub ? ' on' : ''}" data-href="#${t.tab}/${k}"><span class="name">${esc(n)}</span><span class="place">${esc(tabCount(t.tab, k))}</span></div>`).join('');
+  // With both games open, the side starts with a choice between them.
+  const both = ARCHIVES.size && typeof remakeIsOpen === 'function' && remakeIsOpen();
+  $('side').innerHTML = `<h2>${T.name}</h2>`
+    + (both ? `<div class="tools edition">${['1996', '2015'].map(e => `<button data-edition="${e}"${e === zbEdition() ? ' class="on"' : ''}>${e === '1996' ? 'The 1996 game' : 'The 2015 remake'}</button>`).join(' ')}</div>` : '')
+    + T.subs.map(([k, n]) => `<div class="arc${k === t.sub ? ' on' : ''}" data-href="#${t.tab}/${k}"><span class="name">${esc(n)}</span><span class="place">${esc(remake ? remakeTabCount(t.tab, k) : tabCount(t.tab, k))}</span></div>`).join('');
   for (const el of $('side').querySelectorAll('[data-href]')) el.addEventListener('click', () => { location.hash = el.dataset.href; });
+  for (const el of $('side').querySelectorAll('[data-edition]')) el.addEventListener('click', () => {
+    localStorage.setItem('snoidgrimoire-edition', el.dataset.edition);
+    const subs = tabsNow()[t.tab].subs, h = `#${t.tab}/${subs.some(s => s[0] === t.sub) ? t.sub : subs[0][0]}`;
+    if (location.hash === h) route(); else location.hash = h;
+  });
 }
 /* The side list's figure beside a pane: the number of things in it. */
 function tabCount(tab, sub) {
