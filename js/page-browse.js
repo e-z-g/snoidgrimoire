@@ -43,7 +43,7 @@ function browseStart(first) {
 
 /* The view for the address: the map's (page-map.js) or an archive's. */
 function route() {
-  const tab = tabOfHash(), search = tab ? null : searchOfHash(), changes = !tab && search == null && isChangesHash(), mods = !tab && search == null && isModsHash(), saves = !tab && search == null && isSavesHash();
+  const tab = tabOfHash(), search = tab ? null : searchOfHash(), changes = !tab && search == null && isChangesHash(), mods = !tab && search == null && isModsHash(), saves = !tab && search == null && isSavesHash(), remake = !tab && search == null && isRemakeHash();
   const town = !tab && search == null && /^#town\b/.test(location.hash) && ARCHIVES.has('TOWN');
   const solve = !town && isSolveHash();
   const map = !town && !solve && isJourneyHash() && journeyAvailable();
@@ -53,7 +53,8 @@ function route() {
   $('app').hidden = map || town || solve;
   renderTopTabs();
   if (search == null) $('q').value = '';
-  if (saves) renderSaves();
+  if (remake) renderRemake();
+  else if (saves) renderSaves();
   else if (mods) renderMods();
   else if (changes) renderChanges();
   else if (search != null) renderSearch(search);
@@ -64,7 +65,7 @@ function route() {
   else render();
 }
 
-window.addEventListener('hashchange', () => { if (ARCHIVES.size) route(); });
+window.addEventListener('hashchange', () => { if (ARCHIVES.size || REMAKE_FILES.size) route(); });
 
 /* ---- the frame of the page ----------------------------------------------- */
 
@@ -128,6 +129,7 @@ function renderSide(entry, h) {
   html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits || EXE_EDIT ? plural(edits + (EXE_EDIT ? 1 : 0), 'edit') : 'nothing edited'}</span></div>`;
   html += `<div class="arc${isSavesHash() ? ' on' : ''}" data-arc="saves"><span class="name">Saves</span><span class="place">${SAVES.length ? plural(SAVES.length, 'game') + ' open' : 'saved games'}</span></div>`;
   html += `<div class="arc${isModsHash() ? ' on' : ''}" data-arc="mods"><span class="name">Mods</span><span class="place">recolor, Fleen parts</span></div>`;
+  html += `<div class="arc${isRemakeHash() ? ' on' : ''}" data-arc="remake"><span class="name">2015 remake</span><span class="place">${REMAKE_FILES.size ? plural([...REMAKE_FILES.values()].filter(e => e.sf).length, 'file') + ' open' : 'its Unity files'}</span></div>`;
   for (const e of sortedArchives()) {
     html += `<div class="arc${e === entry ? ' on' : ''}${e.remote && !e.bytes ? ' unfetched' : ''}" data-arc="${esc(e.name)}">`
       + `<span class="name">${esc(e.name)}</span><span class="place">${esc(placeOf(e.name))}</span></div>`;

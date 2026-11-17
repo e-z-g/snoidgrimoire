@@ -250,6 +250,7 @@ body:has(#town.cardboard) #bar { display: none; }
 #sdiagram svg:has([data-pad]) { touch-action: none; }
 .shotdrop { border: 2px dashed var(--line); border-radius: 8px; padding: 18px; margin: 10px 0; }
 .shotdrop.over { border-color: var(--accent); }
+pre.fields { white-space: pre-wrap; overflow: auto; max-height: 60vh; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 #shotFrame canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #sdiagram canvas.scene { display: block; width: 100%; height: auto; max-width: 960px; margin: 0 auto; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; }
 #spanel {
@@ -330,6 +331,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       <div class="row">
         <label class="btn">Files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
         <label class="btn">DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
+        <label class="btn">2015 remake’s Data folder…<input id="pickRemake" type="file" webkitdirectory hidden></label>
       </div>
     </div>
     <ul>
@@ -461,6 +463,9 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-galleries.js"></script>
 <script src="js/page-edit.js"></script>
 <script src="js/page-saves.js"></script>
+<script src="js/zb-unity-types.js"></script>
+<script src="js/zb-unity.js"></script>
+<script src="js/page-unity.js"></script>
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>
