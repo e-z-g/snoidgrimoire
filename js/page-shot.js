@@ -100,9 +100,6 @@ async function shotTake(file) {
   shotShow();
 }
 
-const SHOT_ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth',
-  'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth'];
-
 /* The last reading, under the pane's controls. */
 function shotShow() {
   const out = $('shotOut');
@@ -192,10 +189,11 @@ function shotWhere(z) {
   if (!z.where) return '';
   if (typeof z.where === 'string') return z.where;
   const w = z.where;
-  if (w.side === 'upper' || w.side === 'lower') return `across the ${w.side} bridge, the ${SHOT_ORDINALS[w.slot]} to cross it`;
-  if (w.side === 'cave') return `in the ${ZB_TUNNELS_CAVES.names[w.cave]} cave, the ${SHOT_ORDINALS[w.slot]} into it`;
-  if (w.side === 'waiting') return 'waiting to cross';
-  return 'on its way across';
+  const nth = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
+  if (w.side === 'upper' || w.side === 'lower') return `${w.side} bridge, ${nth(w.slot + 1)}`;
+  if (w.side === 'cave') return `${ZB_TUNNELS_CAVES.names[w.cave]} cave, ${nth(w.slot + 1)}`;
+  if (w.side === 'waiting') return 'waiting';
+  return 'on the way';
 }
 
 function shotTableHtml(r) {
@@ -206,9 +204,9 @@ function shotTableHtml(r) {
       const v = z.traits[k];
       if (v == null) return '<td class="note">hidden</td>';
       const inferred = z.inferred && z.inferred[k];
-      return `<td${inferred ? ' class="note" title="Most of this part is hidden. The page read it from the little that shows."' : ''}>${esc(zbTraitWith(k, v))}${inferred ? ' (partly hidden)' : ''}</td>`;
+      return `<td${inferred ? ' class="note" title="Most of this part is hidden. The page read it from the little that shows."' : ''}>${esc(zbTraitWith(k, v).replace(/^an? /, ''))}${inferred ? ' (partly hidden)' : ''}</td>`;
     };
-    const where = [shotWhere(z), z.behind ? 'partly behind the scenery' : ''].filter(Boolean).join(', ');
+    const where = [shotWhere(z), z.behind ? 'partly hidden' : ''].filter(Boolean).join(', ');
     html += `<tr><td>${i + 1}</td><td data-shotz="${i}"></td>${ZB_TRAIT_KINDS.map(cell).join('')}<td class="note">${esc(where)}</td></tr>`;
   });
   return html + '</table></div>';
@@ -224,6 +222,9 @@ function shotDrawZoombinis(out, r) {
     if (ZB_TRAIT_KINDS.some(k => t[k] == null)) continue;
     const c = indexedCanvas(zbZoombiniImage(sheet, t), pal, true);
     c.style.height = '40px';
+    c.style.width = 'auto';
+    c.style.maxWidth = 'none';
+    td.style.minWidth = '32px';
     td.appendChild(c);
   }
 }
@@ -249,12 +250,14 @@ function shotBridgeHtml(r) {
   if (!fitting.length) return html + '<p>No rule of any level puts the Zoombinis where they stand. A Zoombini may be misread, or a sneeze may be under way.</p>';
   for (const l of fitting) {
     const shown = l.fitting.slice(0, 12);
-    html += `<p><b>Level ${l.level}, ${esc(ZB_LEVELS[l.level - 1])}.</b> ${l.fitting.length === 1 ? 'One rule fits.' : `${l.fitting.length} rules fit.`}</p><ul>`;
+    const noneDealt = l.dealt && !l.dealt.length;
+    html += `<p><b>Level ${l.level}, ${esc(ZB_LEVELS[l.level - 1])}.</b> ${l.fitting.length === 1 ? '1 rule fits.' : `${l.fitting.length} rules fit.`}`
+      + (noneDealt ? ` <span class="note">The program would ${l.fitting.length === 1 ? 'not deal it' : 'deal none of them'} for this band, so either the screenshot leaves out some of the band or the level is another.</span>` : '') + '</p><ul>';
     for (const f of shown) {
       const words = zbBridgeRuleWords(f.rule), dealable = l.dealt && l.dealt.some(d => d.rule === f.rule && d.upperMatches === f.upperMatches);
       const accepts = `The ${f.upperMatches ? 'upper' : 'lower'} bridge accepts Zoombinis with ${words}`;
       const link = complete ? ` <a href="#solve=BRIDGE${l.level === 1 ? '' : `&level=${l.level}`}&band=${zbBandCode(band)}&set=${encodeURIComponent(JSON.stringify(shotBridgeForm(l.level, f)))}">Take it apart</a>` : '';
-      html += `<li>${esc(accepts)}.${l.dealt ? (dealable ? '' : ' <span class="note">The program would not deal it for this band, so either the screenshot leaves out some of the band or the level is another.</span>') : ''}${link}</li>`;
+      html += `<li>${esc(accepts)}.${l.dealt && !noneDealt ? (dealable ? '' : ' <span class="note">The program would not deal it for this band, so either the screenshot leaves out some of the band or the level is another.</span>') : ''}${link}</li>`;
     }
     if (l.fitting.length > shown.length) html += `<li class="note">and ${l.fitting.length - shown.length} more</li>`;
     html += '</ul>';
@@ -312,9 +315,9 @@ function shotTunnelsHtml(r) {
   for (const l of fitting) {
     html += `<p><b>Level ${l.level}, ${esc(ZB_LEVELS[l.level - 1])}.</b> `;
     if (l.level === 1) {
-      html += `The two ${l.closed} tunnels are closed. ${l.side.length === 1 ? 'One rule fits.' : `${l.side.length} rules fit.`}</p>` + list(l.side, ['left', 'right'], 'leftMatches');
+      html += `The two ${l.closed} tunnels are closed. ${l.side.length === 1 ? '1 rule fits.' : `${l.side.length} rules fit.`}</p>` + list(l.side, ['left', 'right'], 'leftMatches');
     } else {
-      html += `${l.side.length === 1 ? 'One rule fits' : `${l.side.length} rules fit`} the left and right guardians, and ${l.upper.length === 1 ? 'one fits' : `${l.upper.length} fit`} the upper and lower.</p>`
+      html += `${l.side.length === 1 ? '1 rule fits' : `${l.side.length} rules fit`} the left and right guardians, and ${l.upper.length === 1 ? '1 fits' : `${l.upper.length} fit`} the upper and lower.</p>`
         + list(l.side, ['left', 'right'], 'leftMatches') + list(l.upper, ['upper', 'lower'], 'upperMatches');
     }
     if (l.dealt && !l.dealt.length) html += '<p class="note">The program would not deal these rules for this band, so either the screenshot leaves out some of the band or the level is another.</p>';
