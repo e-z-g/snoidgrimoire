@@ -1,6 +1,8 @@
 """What UnityPy reads from the 2015 remake's files, for remake_check.mjs.
 Run with the venv in zoombini-reference/remake/.venv (UnityPy).
-  python remake_oracle.py <Data folder>
+  python remake_oracle.py <Data folder> [<folder for the Vorbis sounds>]
+With the second argument it writes each Vorbis sound as FMOD decodes it,
+as <file>-<path id>.wav.
 Prints JSON: each file's object counts by class id, every text asset's
 name and SHA-1, every sound's name, frequency, channels and length, and
 every texture in a plain, ASTC or PVRTC format with the SHA-1 of its RGBA pixels, top
@@ -25,6 +27,9 @@ for o in env.objects:
     elif cid == 83:
         d = o.read()
         f['sounds'][o.path_id] = [d.m_Name, d.m_Frequency, d.m_Channels, round(d.m_Length, 3)]
+        if len(sys.argv) > 2 and int(d.m_CompressionFormat) == 1:
+            with open(os.path.join(sys.argv[2], f"{name}-{o.path_id}.wav"), 'wb') as wav_file:
+                wav_file.write(list(d.samples.values())[0])
     elif cid == 28:
         d = o.read()
         if int(d.m_TextureFormat) in PLAIN:

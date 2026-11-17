@@ -137,7 +137,11 @@ function remakeSideHtml(h) {
   return html;
 }
 
+/* Each render's number: a render that finishes after a later one began
+   leaves the view to the later one. */
+let REMAKE_SEQ = 0;
 async function renderRemake() {
+  const seq = ++REMAKE_SEQ;
   const h = remakeHashParts(), view = $('view');
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><a href="#remake">2015 remake</a>'
     + (h.file ? `<span class="sep">›</span><a href="${remakeLink(h.file)}">${esc(h.file)}</a>` : '')
@@ -149,8 +153,8 @@ async function renderRemake() {
   const entry = h.file && REMAKE_FILES.get(h.file);
   try {
     if (!entry) view.innerHTML = remakeHomeHtml();
-    else if (h.id == null) await renderRemakeFile(entry, view);
-    else await renderRemakeObject(entry, h.id, view);
+    else if (h.id == null) await renderRemakeFile(entry, view, seq);
+    else await renderRemakeObject(entry, h.id, view, seq);
   } catch (e) {
     view.innerHTML += `<p class="bad">This could not be shown (${esc(e.message)}).</p>`;
     console.error(e);
@@ -177,9 +181,10 @@ function remakeHomeHtml() {
   return html + '</table>';
 }
 
-async function renderRemakeFile(entry, view) {
+async function renderRemakeFile(entry, view, seq) {
   view.innerHTML = `<h1>${esc(entry.name)}</h1><p class="note">Reading the names…</p>`;
   const names = await remakeNames(entry);
+  if (seq !== REMAKE_SEQ) return;
   const groups = new Map();
   for (const o of entry.sf.objects) {
     if (!groups.has(o.classId)) groups.set(o.classId, []);
@@ -232,7 +237,7 @@ function remakeLocal(entry, pptr) {
   return entry.sf.objects.find(o => o.pathId === pptr.m_PathID) || null;
 }
 
-async function renderRemakeObject(entry, id, view) {
+async function renderRemakeObject(entry, id, view, seq) {
   const obj = entry.sf.objects.find(o => o.pathId === id);
   if (!obj) { view.innerHTML = `<p class="bad">${esc(entry.name)} has no object ${id}.</p>`; return; }
   const v = await remakeObject(entry, obj);
@@ -247,6 +252,7 @@ async function renderRemakeObject(entry, id, view) {
       catch (e) { note = `Its fields after the header could not be read (${e.message}).`; }
     } else note = 'Its script is in a file that is not open, so only its header is read.';
   }
+  if (seq !== REMAKE_SEQ) return;
   view.innerHTML = `<h1>${esc(v && v.m_Name || (entry.names && entry.names.get(id)) || cls + ' ' + id)}</h1><p class="sub">${esc(cls)} ${id} in ${esc(entry.name)}, ${obj.size.toLocaleString()} bytes</p><div id="remakeBody"></div><h2 class="h">Fields</h2>${note ? `<p class="note">${esc(note)}</p>` : ''}<pre class="fields"></pre>`;
   const body = $('remakeBody');
   view.querySelector('pre.fields').textContent = v ? remakeFieldsText(v).trim() : 'This class is not read here.';
@@ -281,8 +287,33 @@ async function renderRemakeObject(entry, id, view) {
       a.src = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
       body.appendChild(a);
       remakeSaveButton(body, v.m_Name + '.wav', wav);
+    } else if (bank.codec === 15 && s) {
+      const setup = await remakeVorbisSetup(s.setupCrc);
+      if (!setup) {
+        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.binary ? 'The app’s UnityFramework has no Vorbis setup header with this sound’s CRC-32.' : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework. Open the app folder, which has Data and Frameworks, to play it.'}</p>`);
+        return;
+      }
+      const ogg = zbFsbOgg(s, setup);
+      const a = document.createElement('audio');
+      a.controls = true;
+      a.src = URL.createObjectURL(new Blob([ogg], { type: 'audio/ogg' }));
+      body.appendChild(a);
+      remakeSaveButton(body, v.m_Name + '.ogg', ogg);
     } else body.insertAdjacentHTML('beforeend', `<p class="note">The page does not decode ${esc(bank.codecName)} so far.</p>`);
   }
+}
+
+/* A Vorbis setup header by its CRC-32, found in the app's UnityFramework,
+   where FMOD's set of them is. The headers found are kept for later sounds. */
+const REMAKE_VORBIS = new Map();
+async function remakeVorbisSetup(crc) {
+  if (REMAKE_VORBIS.has(crc)) return REMAKE_VORBIS.get(crc);
+  const bin = REMAKE_IL2CPP.binary;
+  if (!bin) return null;
+  const bytes = new Uint8Array(await bin.arrayBuffer());
+  for (const [k, header] of zbVorbisSetups(bytes, [crc])) REMAKE_VORBIS.set(k, header);
+  if (!REMAKE_VORBIS.has(crc)) REMAKE_VORBIS.set(crc, null);
+  return REMAKE_VORBIS.get(crc);
 }
 
 function remakeSaveButton(body, name, bytes) {

@@ -25,7 +25,8 @@
    (36 at version 0). Each sample's header is a 64-bit word: bit 0 more
    chunks, bits 1-4 the rate's index, bit 5 stereo, bits 6-33 the data's
    offset in 16-byte units, bits 34-63 the sample count. Each chunk is a
-   word: bit 0 more, bits 1-24 size, bits 25-31 type (1 channels, 2 rate).
+   word: bit 0 more, bits 1-24 size, bits 25-31 type (1 channels, 2 rate,
+   11 Vorbis, whose first word is the CRC-32 of the sound's setup header).
    Codecs: 1 PCM 8-bit, 2 PCM 16-bit, 15 Vorbis.
    WHERE IT CAME FROM
    UnityPy (SerializedFile.py, ObjectReader.py, TypeTreeHelper.py), and
@@ -289,7 +290,7 @@ function zbFsbRead(bytes) {
   for (let i = 0; i < count; i++) {
     const lo = r.u32(), hi = r.u32();
     const word = BigInt(lo) | (BigInt(hi) << 32n);
-    let more = Number(word & 1n), rate = ZB_FSB_RATES[Number((word >> 1n) & 15n)], channels = Number((word >> 5n) & 1n) + 1;
+    let setupCrc = null, more = Number(word & 1n), rate = ZB_FSB_RATES[Number((word >> 1n) & 15n)], channels = Number((word >> 5n) & 1n) + 1;
     const offset = Number((word >> 6n) & 0xfffffffn) * 16, samplesCount = Number(word >> 34n);
     while (more) {
       const c = r.u32();
@@ -297,9 +298,10 @@ function zbFsbRead(bytes) {
       const size = (c >>> 1) & 0xffffff, type = c >>> 25, at = r.p;
       if (type === 1) channels = r.u8();
       else if (type === 2) rate = r.u32();
+      else if (type === 11) setupCrc = r.u32();
       r.p = at + size;
     }
-    samples.push({ rate, channels, count: samplesCount, offset, name: '' });
+    samples.push({ rate, channels, count: samplesCount, offset, name: '', setupCrc });
   }
   const names = base + headerSize, data = names + nameSize;
   if (nameSize) {

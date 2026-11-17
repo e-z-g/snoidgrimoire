@@ -32,12 +32,15 @@ const METADATA = path.join(DATA, 'Managed', 'Metadata', 'global-metadata.dat');
 const BINARY = path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
 const LAYOUTS = process.env.ZB_REMAKE_LAYOUTS || path.join(ROOT, '..', 'zoombini-reference', 'remake', 'layouts.json');
 for (const p of [METADATA, BINARY, LAYOUTS]) if (!fs.existsSync(p)) { console.log(`SKIP: needs ${p}`); process.exit(0); }
+const vorbis = [];
 const S = site();
 const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
-const oracle = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_oracle.py'), DATA], { encoding: 'utf8', maxBuffer: 1 << 28 }).stdout);
+const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', 'vorbis-oracle');
+fs.mkdirSync(VORBIS_DIR, { recursive: true });
+const oracle = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_oracle.py'), DATA, VORBIS_DIR], { encoding: 'utf8', maxBuffer: 1 << 28 }).stdout);
 const fileBytes = new Map();
 const bytesOf = name => { if (!fileBytes.has(name)) fileBytes.set(name, new Uint8Array(fs.readFileSync(path.join(DATA, name)))); return fileBytes.get(name); };
 const side = (p, offset, size) => bytesOf(S.zbUnitySideName(p)).subarray(offset, offset + size);
@@ -75,6 +78,7 @@ for (const name of fs.readdirSync(DATA).sort()) {
       if (n !== got[0] || rate !== got[1] || channels !== got[2] || Math.abs(length - got[3]) > 0.002)
         fail(`${name} AudioClip ${id}: ${JSON.stringify(got)} against ${JSON.stringify(want.sounds[id])}`);
       if (bank.codec === 2 && !S.zbFsbWav(bank, s)) fail(`${name} AudioClip ${id}: no WAV`);
+      if (bank.codec === 15) vorbis.push({ name, id, clip: v.m_Name, s });
     } else if (o.classId === 28 && want.textures[id]) {
       textures++;
       let data = v['image data'];
@@ -84,6 +88,32 @@ for (const name of fs.readdirSync(DATA).sort()) {
       if (!img || sha1(img.rgba) !== want.textures[id][1]) fail(`${name} Texture2D ${id} ${v.m_Name}: pixels differ`);
     }
   }
+}
+// The Vorbis sounds: each one's setup header found in the binary, made
+// into an Ogg file, decoded by ffmpeg and held to FMOD's decoding (written
+// by the oracle as WAV), over the samples the sound has.
+{
+  const setups = S.zbVorbisSetups(new Uint8Array(fs.readFileSync(BINARY)), vorbis.map(v => v.s.setupCrc));
+  const ffmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
+  let matched = 0;
+  for (const v of vorbis) {
+    const setup = setups.get(v.s.setupCrc);
+    if (!setup) { fail(`${v.name} AudioClip ${v.id} ${v.clip}: no setup header with CRC ${v.s.setupCrc}`); continue; }
+    const ogg = S.zbFsbOgg(v.s, setup);
+    if (!ffmpeg) continue;
+    const dec = spawnSync('ffmpeg', ['-v', 'error', '-i', 'pipe:0', '-f', 's16le', '-acodec', 'pcm_s16le', 'pipe:1'], { input: Buffer.from(ogg), maxBuffer: 1 << 28 });
+    const wav = fs.readFileSync(path.join(VORBIS_DIR, `${v.name}-${v.id}.wav`));
+    const expected = new Int16Array(wav.buffer.slice(wav.byteOffset + 44, wav.byteOffset + wav.length - (wav.length - 44) % 2));
+    const actual = new Int16Array(dec.stdout.buffer.slice(dec.stdout.byteOffset, dec.stdout.byteOffset + dec.stdout.length - dec.stdout.length % 2));
+    const n = v.s.count * v.s.channels;
+    if (dec.status || actual.length < n || expected.length < n) { fail(`${v.clip}: ffmpeg gave ${actual.length} samples of ${n} (${String(dec.stderr).slice(0, 80)})`); continue; }
+    let err = 0, peak = 1;
+    for (let i = 0; i < n; i++) { err += (expected[i] - actual[i]) ** 2; peak = Math.max(peak, Math.abs(expected[i])); }
+    const rms = Math.sqrt(err / n) / peak;
+    if (rms > 0.001) fail(`${v.clip}: differs from FMOD's decoding by ${rms.toFixed(5)} of its peak`);
+    else matched++;
+  }
+  console.log(`${vorbis.length} Vorbis sounds, ${setups.size} setup headers found in the binary, ${ffmpeg ? matched + ' matching FMOD\'s decoding' : 'not decoded (no ffmpeg)'}`);
 }
 const plainWanted = Object.entries(oracle).filter(([n]) => fileBytes.has(n)).map(([, f]) => f).reduce((n, f) => n + Object.keys(f.textures).length, 0);
 if (textures !== plainWanted) fail(`${textures} textures read, UnityPy has ${plainWanted}`);
@@ -151,7 +181,9 @@ const pick = (cls, pred) => {
 const views = [
   pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)]),
   pick(49), pick(83), pick(213), pick(1), pick(114),
+  vorbis.length ? [vorbis[0].name, +vorbis[0].id] : null,
 ].filter(Boolean);
+const vorbisView = vorbis.length ? `${vorbis[0].name}/${vorbis[0].id}` : null;
 // The page receives the views' files and the side files beside them, not the
 // whole folder, since a headless page has limited room for blobs.
 // The MonoBehaviour's scripts are in globalgamemanagers.assets, and its
@@ -178,6 +210,7 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
         await evaluate(`location.hash = ${JSON.stringify('#remake/' + encodeURIComponent(file) + '/' + id)}`);
         if (!await wait(`!!document.querySelector('#view pre.fields') && !/could not be shown/.test(document.getElementById('view').textContent)`)) out.push(`${file} ${id} did not show`);
         else if (await evaluate(`/could not be read|not open|Only its header/.test(document.getElementById('view').textContent)`)) out.push(`${file} ${id}: its script's fields were not read`);
+        else if (`${file}/${id}` === vorbisView && !await wait(`!!document.querySelector('#view audio')`, 90000)) out.push(`${file} ${id}: the Vorbis sound did not play`);
       }
       out.push({ layoutMs: await evaluate('(async () => { await remakeLayouts(); return REMAKE_IL2CPP.ms; })()') });
       const shown = await evaluate(`[!!document.querySelector('#view canvas, #view audio, #view pre')]`);
