@@ -67,7 +67,7 @@ function renderTab(t) {
 }
 /* The side list's figure beside a pane: the number of things in it. */
 function tabCount(tab, sub) {
-  if (tab === 'scenario') return { places: ZB_PLACES.length, puzzles: ZB_PUZZLES.size, snoids: Object.keys(ZB_SNOID_KINDS).length, town: '', screenshot: '' }[sub];
+  if (tab === 'scenario') return { places: ZB_PLACES.length, puzzles: ZB_PUZZLES.size, snoids: Object.keys(ZB_SNOID_KINDS).length, town: '', screenshot: '' }[sub] ?? '';
   const g = ZB_GALLERY_TAGS[sub];
   if (!g) return '';
   let n = 0;

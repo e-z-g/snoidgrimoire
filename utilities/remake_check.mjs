@@ -248,7 +248,7 @@ const vorbisView = vorbis.length ? views[views.length - 1].join('/') : null;
 // globalgamemanagers.assets, and its fields need the metadata and the
 // binary, as from the app folder.
 const pixelFiles = [textureView, spriteView].filter(Boolean).map(([f]) => f + '.resS');
-const handed = names.filter(n => views.some(([f]) => n === f || n === f + '.resource') || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers\.assets)$/.test(n))
+const handed = names.filter(n => views.some(([f]) => n === f || n === f + '.resource') || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers|globalgamemanagers\.assets)$/.test(n))
   .concat([...new Set(['global-metadata.dat', path.basename(BINARY), path.basename(FMOD)])]);
 fileBytes.clear();
 console.log(`the page is handed ${handed.length} files, ${Math.round(handed.reduce((t, n) => t + fs.statSync(handedPath(n)).size, 0) / 1e6)} MB (${handed.join(', ')})`);
@@ -276,6 +276,18 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
       out.push({ layoutMs: await evaluate('(async () => { await remakeLayouts(); return REMAKE_IL2CPP.ms; })()') });
       const shown = await evaluate(`[!!document.querySelector('#view canvas, #view audio, #view pre')]`);
       out.push(...(shown[0] ? [] : ['the last view shows nothing']));
+      // The remake in Scenario, Components and the Resources list, from the
+      // catalog in globalgamemanagers.
+      const shows = async (hash, test, what) => {
+        await evaluate(`location.hash = ${JSON.stringify(hash)}`);
+        if (!await wait(test)) out.push(`${hash}: ${what}`);
+      };
+      await shows('#scenario/remake', `/AllergicCliffs/.test(document.getElementById('view').textContent) && document.querySelectorAll('#view tr').length >= 24`, 'the scenes are not listed by name');
+      await shows('#remake/@resources', `document.querySelectorAll('#view .ids a').length >= 1000`, 'the Resources paths are not listed');
+      await shows('#components/text', `/The 2015 remake/.test(document.getElementById('view').textContent) && document.querySelectorAll('#view section a').length >= 1`, 'the text assets are not in the gallery');
+      await shows('#components/sounds', `document.querySelectorAll('#view section button.play').length >= 1`, 'the sounds are not in the gallery');
+      await evaluate(`(() => { window.Audio = function () { return { play() {} }; }; document.querySelector('#view section button.play').click(); })()`);
+      if (!await wait(`/Hz/.test(document.querySelector('#view section td.note').textContent)`)) out.push('a sound in the gallery did not play');
       return out;
     },
   });

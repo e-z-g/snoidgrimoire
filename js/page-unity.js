@@ -45,6 +45,7 @@ async function remakeSlice(file, start, end) { return new Uint8Array(await file.
    the .resS and .resource files are side files. */
 async function remakeTake(files) {
   let took = 0;
+  REMAKE_CATALOG = null;
   const apks = files.filter(f => /\.apk$/i.test(f.name));
   if (apks.length) files = files.filter(f => !apks.includes(f)).concat(await zbApkFiles(apks));
   for (const f of files) {
@@ -67,6 +68,36 @@ async function remakeTake(files) {
     took++;
   }
   return took;
+}
+
+/* The remake's catalog, read once from globalgamemanagers: the scenes'
+   paths in build order (BuildSettings), where scene n is the file level<n>,
+   and each Resources path by the file and object it names
+   (ResourceManager's container). In the Android build each Resources
+   asset is a separate file, named by a hex id. */
+let REMAKE_CATALOG = null;
+async function remakeCatalog() {
+  if (REMAKE_CATALOG) return REMAKE_CATALOG;
+  const cat = { scenes: [], byObject: new Map(), byFile: new Map() };
+  const gg = REMAKE_FILES.get('globalgamemanagers');
+  if (gg && gg.sf) for (const o of gg.sf.objects) {
+    if (o.classId !== 141 && o.classId !== 147) continue;
+    let v;
+    try { v = await remakeObject(gg, o); } catch (e) { continue; }
+    if (o.classId === 141) cat.scenes = v.scenes || [];
+    else for (const [p, ptr] of v.m_Container || []) {
+      const file = ptr.m_FileID ? zbUnitySideName(gg.sf.externals[ptr.m_FileID - 1]) : gg.name;
+      cat.byObject.set(file + '/' + ptr.m_PathID, p);
+      if (!cat.byFile.has(file)) cat.byFile.set(file, p);
+    }
+  }
+  return (REMAKE_CATALOG = cat);
+}
+const isRemakeIdFile = name => /^[0-9a-f]{32}$/.test(name);
+/* A level file's scene name ("AllergicCliffs"), or null. */
+function remakeSceneName(name) {
+  const m = /^level(\d+)$/.exec(name), p = m && REMAKE_CATALOG && REMAKE_CATALOG.scenes[+m[1]];
+  return p ? p.split('/').pop().replace(/\.unity$/, '') : null;
 }
 
 /* The scripts' field layouts, built once from the metadata and the
@@ -144,8 +175,34 @@ async function remakeNames(entry) {
 
 function remakeSideHtml(h) {
   let html = '';
-  for (const e of [...REMAKE_FILES.values()].filter(e => e.sf).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }))) {
-    html += `<div class="arc${h.file === e.name ? ' on' : ''}" data-arc="${esc(remakeLink(e.name).slice(1))}"><span class="name">${esc(e.name)}</span><span class="place">${plural(e.sf.objects.length, 'object')}</span></div>`;
+  const files = [...REMAKE_FILES.values()].filter(e => e.sf).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+  const ids = files.filter(e => isRemakeIdFile(e.name)).length, cat = REMAKE_CATALOG;
+  if (cat && cat.byObject.size) html += `<div class="arc${h.file === '@resources' || (h.file && isRemakeIdFile(h.file)) ? ' on' : ''}" data-arc="remake/@resources"><span class="name">Resources</span><span class="place">${plural(cat.byObject.size, 'asset')}${ids ? ` in ${plural(ids, 'file')}` : ''}</span></div>`;
+  for (const e of files) {
+    if (isRemakeIdFile(e.name)) continue;
+    const scene = remakeSceneName(e.name);
+    html += `<div class="arc${h.file === e.name ? ' on' : ''}" data-arc="${esc(remakeLink(e.name).slice(1))}"><span class="name">${esc(e.name)}</span><span class="place">${scene ? esc(scene) + ' · ' : ''}${plural(e.sf.objects.length, 'object')}</span></div>`;
+  }
+  return html;
+}
+
+/* The Resources folder's assets by path, grouped by folder, each a link
+   to its object. */
+function remakeResourcesHtml() {
+  const groups = new Map();
+  for (const [key, p] of REMAKE_CATALOG.byObject) {
+    const cut = p.lastIndexOf('/'), dir = cut < 0 ? '(top)' : p.slice(0, cut);
+    if (!groups.has(dir)) groups.set(dir, []);
+    groups.get(dir).push([p.slice(cut + 1), key]);
+  }
+  let html = `<h1>Resources</h1><p class="sub">${plural(REMAKE_CATALOG.byObject.size, 'asset')} that the remake loads by path, from its Resources folder, grouped by folder.</p>`;
+  for (const [dir, list] of [...groups].sort((a, b) => a[0].localeCompare(b[0]))) {
+    html += `<details class="type"${list.length <= 40 ? ' open' : ''}><summary><span>${esc(dir)}</span><span class="n">${list.length}</span></summary><div class="ids">`;
+    for (const [name, key] of list.sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))) {
+      const cut = key.lastIndexOf('/');
+      html += `<a href="${remakeLink(key.slice(0, cut), +key.slice(cut + 1))}">${esc(name)}</a>`;
+    }
+    html += '</div></details>';
   }
   return html;
 }
@@ -156,8 +213,11 @@ let REMAKE_SEQ = 0;
 async function renderRemake() {
   const seq = ++REMAKE_SEQ;
   const h = remakeHashParts(), view = $('view');
+  await remakeCatalog();
+  if (seq !== REMAKE_SEQ) return;
+  const fileLabel = h.file === '@resources' ? 'Resources' : h.file && REMAKE_CATALOG.byFile.get(h.file) || h.file;
   $('crumbs').innerHTML = '<span>Data</span><span class="sep">›</span><a href="#remake">2015 remake</a>'
-    + (h.file ? `<span class="sep">›</span><a href="${remakeLink(h.file)}">${esc(h.file)}</a>` : '')
+    + (h.file ? `<span class="sep">›</span><a href="${remakeLink(h.file)}">${esc(fileLabel)}</a>` : '')
     + (h.id != null ? `<span class="sep">›</span><span>${h.id}</span>` : '');
   renderSide({ name: '#remake' }, { archive: null, tag: null, id: null });
   const side = $('side');
@@ -165,7 +225,8 @@ async function renderRemake() {
   for (const el of side.querySelectorAll('.arc[data-arc^="remake/"]')) el.addEventListener('click', () => { location.hash = '#' + el.dataset.arc; });
   const entry = h.file && REMAKE_FILES.get(h.file);
   try {
-    if (!entry) view.innerHTML = remakeHomeHtml();
+    if (h.file === '@resources') view.innerHTML = remakeResourcesHtml();
+    else if (!entry) view.innerHTML = remakeHomeHtml();
     else if (h.id == null) await renderRemakeFile(entry, view, seq);
     else await renderRemakeObject(entry, h.id, view, seq);
   } catch (e) {
@@ -184,7 +245,7 @@ async function renderRemake() {
 function remakeHomeHtml() {
   const files = [...REMAKE_FILES.values()].filter(e => e.sf);
   let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open or drop its <code>Zoombinis.app</code>. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app</code>. Steam\'s Mac copy is in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The Android app opens as its three APKs, copied off the phone with <code>adb</code>. The command <code>adb shell pm path edu.terc.zoombinis.f2p</code> prints their paths. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
-    + '<div class="tools"><label class="btn">App folder…<input type="file" id="remakePick" webkitdirectory hidden></label></div>';
+    + '<div class="tools"><label class="btn">Folder…<input type="file" id="remakePick" webkitdirectory hidden></label></div>';
   if (!files.length) return html + '<p class="note">No remake files are open.</p>';
   const byClass = new Map();
   for (const e of files) for (const o of e.sf.objects) byClass.set(o.classId, (byClass.get(o.classId) || 0) + 1);
@@ -203,7 +264,9 @@ async function renderRemakeFile(entry, view, seq) {
     if (!groups.has(o.classId)) groups.set(o.classId, []);
     groups.get(o.classId).push(o);
   }
-  let html = `<h1>${esc(entry.name)}</h1><p class="sub">${plural(entry.sf.objects.length, 'object')}, Unity ${esc(entry.sf.unityVersion)}</p>`;
+  const scene = remakeSceneName(entry.name), resource = REMAKE_CATALOG && REMAKE_CATALOG.byFile.get(entry.name);
+  const what = scene ? `The scene ${esc(scene)}, ` : isRemakeIdFile(entry.name) && resource ? `The Resources asset <code>${esc(resource)}</code>, ` : '';
+  let html = `<h1>${esc(entry.name)}</h1><p class="sub">${what}${plural(entry.sf.objects.length, 'object')}, Unity ${esc(entry.sf.unityVersion)}</p>`;
   for (const [id, list] of [...groups].sort((a, b) => zbUnityClassName(a[0]).localeCompare(zbUnityClassName(b[0])))) {
     html += `<details class="type"${list.length <= 60 ? ' open' : ''}><summary><span>${esc(zbUnityClassName(id))}</span><span class="n">${list.length}</span></summary><div class="ids">`;
     for (const o of list) html += `<a href="${remakeLink(entry.name, o.pathId)}">${esc(names.get(o.pathId) || o.pathId)}</a>`;
@@ -266,7 +329,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     } else note = 'Its script is in a file that is not open, so only its header is read.';
   }
   if (seq !== REMAKE_SEQ) return;
-  view.innerHTML = `<h1>${esc(v && v.m_Name || (entry.names && entry.names.get(id)) || cls + ' ' + id)}</h1><p class="sub">${esc(cls)} ${id} in ${esc(entry.name)}, ${obj.size.toLocaleString()} bytes</p><div id="remakeBody"></div><h2 class="h">Fields</h2>${note ? `<p class="note">${esc(note)}</p>` : ''}<pre class="fields"></pre>`;
+  view.innerHTML = `<h1>${esc(v && v.m_Name || (entry.names && entry.names.get(id)) || cls + ' ' + id)}</h1><p class="sub">${esc(cls)} ${id} in ${esc(entry.name)}, ${obj.size.toLocaleString()} bytes${REMAKE_CATALOG && REMAKE_CATALOG.byObject.has(entry.name + '/' + id) ? `, Resources path <code>${esc(REMAKE_CATALOG.byObject.get(entry.name + '/' + id))}</code>` : ''}</p><div id="remakeBody"></div><h2 class="h">Fields</h2>${note ? `<p class="note">${esc(note)}</p>` : ''}<pre class="fields"></pre>`;
   const body = $('remakeBody');
   view.querySelector('pre.fields').textContent = v ? remakeFieldsText(v).trim() : 'This class is not read here.';
   if (obj.classId === 28) {
@@ -291,30 +354,31 @@ async function renderRemakeObject(entry, id, view, seq) {
     if (printable) body.querySelector('pre').textContent = text.length > 200000 ? text.slice(0, 200000) + '\n…' : text;
     remakeSaveButton(body, v.m_Name + (printable ? '.txt' : '.bytes'), s);
   } else if (obj.classId === 83) {
-    const res = v.m_Resource;
-    const bank = zbFsbRead(await remakeSide(res.m_Source, res.m_Offset, res.m_Size));
-    const s = bank.samples[0], wav = s && zbFsbWav(bank, s);
-    body.innerHTML = `<p>${esc(bank.codecName)}, ${s ? `${s.rate.toLocaleString()} Hz, ${s.channels === 1 ? 'mono' : s.channels + ' channels'}, ${(s.count / s.rate).toFixed(2)} s` : 'no samples'}.</p>`;
-    if (wav) {
+    const snd = await remakeSound(v);
+    body.innerHTML = `<p>${esc(snd.about)}.</p>`;
+    if (snd.bytes) {
       const a = document.createElement('audio');
       a.controls = true;
-      a.src = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+      a.src = URL.createObjectURL(new Blob([snd.bytes], { type: snd.type }));
       body.appendChild(a);
-      remakeSaveButton(body, v.m_Name + '.wav', wav);
-    } else if (bank.codec === 15 && s) {
-      const setup = await remakeVorbisSetup(s.setupCrc);
-      if (!setup) {
-        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.fmod ? `The app’s ${esc(REMAKE_IL2CPP.fmod.name)} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, in UnityPlayer.dylib in Steam’s copy, or in libunity.so in the Android APKs. Open the whole Zoombinis.app or the APKs to play it.'}</p>`);
-        return;
-      }
-      const ogg = zbFsbOgg(s, setup);
-      const a = document.createElement('audio');
-      a.controls = true;
-      a.src = URL.createObjectURL(new Blob([ogg], { type: 'audio/ogg' }));
-      body.appendChild(a);
-      remakeSaveButton(body, v.m_Name + '.ogg', ogg);
-    } else body.insertAdjacentHTML('beforeend', `<p class="note">The page does not decode ${esc(bank.codecName)} so far.</p>`);
+      remakeSaveButton(body, v.m_Name + snd.ext, snd.bytes);
+    } else body.insertAdjacentHTML('beforeend', `<p class="note">${esc(snd.note)}</p>`);
   }
+}
+
+/* An AudioClip's sound from its FSB5 bank: { about, bytes, type, ext } to
+   play and save, as WAV where it is PCM and as Ogg where it is Vorbis, or
+   { about, note } where it does not play. */
+async function remakeSound(v) {
+  const res = v.m_Resource;
+  const bank = zbFsbRead(await remakeSide(res.m_Source, res.m_Offset, res.m_Size));
+  const s = bank.samples[0], wav = s && zbFsbWav(bank, s);
+  const about = `${bank.codecName}, ${s ? `${s.rate.toLocaleString()} Hz, ${s.channels === 1 ? 'mono' : s.channels + ' channels'}, ${(s.count / s.rate).toFixed(2)} s` : 'no samples'}`;
+  if (wav) return { about, bytes: wav, type: 'audio/wav', ext: '.wav' };
+  if (bank.codec !== 15 || !s) return { about, note: `The page does not decode ${bank.codecName} so far.` };
+  const setup = await remakeVorbisSetup(s.setupCrc);
+  if (!setup) return { about, note: REMAKE_IL2CPP.fmod ? `The app’s ${REMAKE_IL2CPP.fmod.name} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, in UnityPlayer.dylib in Steam’s copy, or in libunity.so in the Android APKs. Open the whole Zoombinis.app or the APKs to play it.' };
+  return { about, bytes: zbFsbOgg(s, setup), type: 'audio/ogg', ext: '.ogg' };
 }
 
 /* A Vorbis setup header by its CRC-32, found in the binary where FMOD is
@@ -353,18 +417,125 @@ function isRemakeDrop(files) {
   return files.some(f => /\.apk$/i.test(f.name) || f.name === 'globalgamemanagers' || f.name === 'global-metadata.dat');
 }
 
-/* The remake's files taken and its list shown, or the reason none were. */
+/* The remake's files taken and its list shown, or the reason none were.
+   A Mac's file picker can choose an app, which is a folder, and what the
+   browser gives for it is tried: a file the page cannot read is reported
+   with its size, so that the visitor can drop the app instead. */
 async function remakeOpen(files) {
+  const app = files.find(f => /\.app$/i.test(f.name));
+  if (app) {
+    let readable = true;
+    try { await app.slice(0, 4).arrayBuffer(); } catch (e) { readable = false; }
+    setStatus(`The browser gave ${app.name} as one file of ${app.size.toLocaleString()} bytes${readable ? '' : ' that cannot be read'}, and not as its folder. Drop ${app.name} on the page instead.`, true);
+    return;
+  }
   let n = 0;
   try { n = await remakeTake(files); }
   catch (err) { setStatus(err.message, true); return; }
-  if (!n) { setStatus('No Unity files of the remake were among those.', true); return; }
+  if (!n) {
+    // What the browser gave, so that a picker's odd result can be seen.
+    const got = files.slice(0, 4).map(f => `${f.name || '(no name)'} (${f.size.toLocaleString()} bytes${f.type ? ', ' + f.type : ''})`).join(', ');
+    setStatus(`No Unity files of the remake were among those. The browser gave ${plural(files.length, 'file')}${files.length ? ': ' + got + (files.length > 4 ? ', …' : '') : ''}.`, true);
+    return;
+  }
   SOURCE = SOURCE || 'the 2015 remake';
   $('start').hidden = true;
   $('views').hidden = false;
   $('find').hidden = false;
   if (location.hash === '#remake') route(); else location.hash = '#remake';
 }
+
+/* ---- The remake in Components and Scenario ------------------------------- */
+
+/* Every object of a class in the open files, each with its Resources path
+   where it has one, grouped by that path's folder, or by the file. */
+function remakeGroups(classId) {
+  const groups = new Map();
+  for (const entry of REMAKE_FILES.values()) {
+    if (!entry.sf) continue;
+    for (const o of entry.sf.objects) {
+      if (o.classId !== classId) continue;
+      const p = REMAKE_CATALOG && REMAKE_CATALOG.byObject.get(entry.name + '/' + o.pathId);
+      const cut = p ? p.lastIndexOf('/') : -1;
+      const group = p ? (cut < 0 ? 'Resources' : 'Resources/' + p.slice(0, cut)) : (remakeSceneName(entry.name) ? `${entry.name}, the scene ${remakeSceneName(entry.name)}` : entry.name);
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push({ entry, obj: o, name: p ? p.slice(cut + 1) : null });
+    }
+  }
+  return [...groups].sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }));
+}
+
+/* A gallery's part for the remake, after the 1996 archives' part. */
+async function remakeGallery(view, kind) {
+  if (![...REMAKE_FILES.values()].some(e => e.sf)) return;
+  await remakeCatalog();
+  const classId = { pictures: 28, sounds: 83, text: 49 }[kind];
+  const groups = remakeGroups(classId), n = groups.reduce((t, g) => t + g[1].length, 0);
+  const sec = document.createElement('section');
+  sec.innerHTML = `<h2 class="h">The 2015 remake</h2><p class="sub">${plural(n, { pictures: 'texture', sounds: 'sound', text: 'text asset' }[kind])} in the remake’s files, grouped by their folder in Resources, or by the file that has them.</p>`;
+  view.appendChild(sec);
+  for (const [group, list] of groups) {
+    const d = document.createElement('details');
+    d.className = 'sec';
+    d.open = groups.length === 1;
+    d.innerHTML = `<summary><b>${esc(group)}</b> <span class="note">${list.length}</span></summary>`;
+    sec.appendChild(d);
+    if (kind === 'pictures') {
+      galleryCards(d, list.map(it => ({ ...it, href: remakeLink(it.entry.name, it.obj.pathId), cap: esc(it.name || String(it.obj.pathId)) })), async (c, pic) => {
+        const v = await remakeObject(c.entry, c.obj);
+        const img = v.m_Width && v.m_Height ? await remakeTextureImage(v) : null;
+        if (!c.name) pic.nextSibling.innerHTML = esc(v.m_Name || String(c.obj.pathId));
+        pic.nextSibling.innerHTML += ` <span class="note">${v.m_Width} × ${v.m_Height}</span>`;
+        if (!img) { pic.textContent = v.m_Width && v.m_Height ? 'not decoded' : 'no pixels'; return; }
+        const cv = remakeCanvas(img), k = Math.min(1, 160 / Math.max(1, img.width), 120 / Math.max(1, img.height));
+        cv.style.width = Math.max(1, Math.round(img.width * k)) + 'px';
+        cv.style.height = Math.max(1, Math.round(img.height * k)) + 'px';
+        pic.appendChild(cv);
+      });
+    } else {
+      let html = '<table class="plain">';
+      list.forEach((it, i) => {
+        html += `<tr>${kind === 'sounds' ? `<td><button class="play" data-remake="${esc(group)}" data-i="${i}" title="Play">▶</button></td>` : ''}<td><a href="${remakeLink(it.entry.name, it.obj.pathId)}">${esc(it.name || String(it.obj.pathId))}</a></td><td class="note"></td></tr>`;
+      });
+      d.insertAdjacentHTML('beforeend', html + '</table>');
+      d._list = list;
+    }
+  }
+  if (kind !== 'sounds') return;
+  sec.addEventListener('click', async e => {
+    const b = e.target.closest('button.play');
+    if (!b) return;
+    const it = b.closest('details')._list[+b.dataset.i], note = b.closest('tr').querySelector('td.note');
+    try {
+      const snd = await remakeSound(await remakeObject(it.entry, it.obj));
+      note.textContent = snd.about + (snd.note ? '. ' + snd.note : '');
+      if (snd.bytes) new Audio(URL.createObjectURL(new Blob([snd.bytes], { type: snd.type }))).play();
+    } catch (err) { note.textContent = err.message; }
+  });
+}
+for (const kind of ['pictures', 'sounds', 'text']) {
+  const base = ZB_GALLERIES[kind];
+  ZB_GALLERIES[kind] = function (view, ...rest) { const r = base.call(this, view, ...rest); remakeGallery(view, kind); return r; };
+}
+
+/* Scenario's pane for the remake: its scenes in build order. */
+ZB_TABS.scenario.subs.push(['remake', '2015 remake']);
+SCENARIO_PANES.remake = async function remakePane(view) {
+  view.innerHTML = '<h1>The 2015 remake</h1>';
+  if (![...REMAKE_FILES.values()].some(e => e.sf)) {
+    view.insertAdjacentHTML('beforeend', '<p class="note">No remake files are open. Drop the remake’s Zoombinis.app or its Android APKs on the page, or open them from the start page.</p>');
+    return;
+  }
+  const cat = await remakeCatalog();
+  let html = `<p class="sub">The remake’s ${plural(cat.scenes.length, 'scene')}, in the order of its build settings. Scene n is the file level<i>n</i>. Its <a href="#remake/@resources">Resources</a> have ${plural(cat.byObject.size, 'asset')} that the scenes load by path.</p>`
+    + '<table class="plain"><tr><th></th><th>scene</th><th>file</th><th>objects</th><th>scripts</th></tr>';
+  cat.scenes.forEach((p, i) => {
+    const e = REMAKE_FILES.get('level' + i), name = p.split('/').pop().replace(/\.unity$/, '');
+    const monos = e && e.sf ? e.sf.objects.filter(o => o.classId === 114).length : 0;
+    html += `<tr><td class="num">${i}</td><td>${esc(name)}</td><td>${e && e.sf ? `<a href="${remakeLink(e.name)}">level${i}</a>` : `level${i} <span class="note">not open</span>`}</td><td class="num">${e && e.sf ? e.sf.objects.length.toLocaleString() : ''}</td><td class="num">${e && e.sf ? monos.toLocaleString() : ''}</td></tr>`;
+  });
+  view.insertAdjacentHTML('beforeend', html + '</table>');
+};
 
 /* The start page's pickers for the remake's app and its APKs. */
 function wireRemakeStart() {

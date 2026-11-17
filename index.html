@@ -331,13 +331,14 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       <div class="row">
         <label class="btn">Files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
         <label class="btn">DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
-        <label class="btn">2015 remake’s Zoombinis.app…<input id="pickRemake" type="file" webkitdirectory hidden></label>
-        <label class="btn">2015 remake’s Android APKs…<input id="pickApk" type="file" multiple accept=".apk" hidden></label>
+        <label class="btn">2015 remake’s app or APKs…<input id="pickApk" type="file" multiple hidden></label>
+        <label class="btn">2015 remake’s folder…<input id="pickRemake" type="file" webkitdirectory hidden></label>
       </div>
     </div>
     <ul>
       <li>The game’s CD has 22 archives in its <code>DATA</code> folder, from <code>BASECAMP.MHK</code> to <code>ZOOMBINI.MHK</code>.</li>
       <li>A CD image (<code>.iso</code>) works as it is. The page reads the archives from its <code>DATA</code> folder.</li>
+      <li>The 2015 remake opens from its <code>Zoombinis.app</code> dropped on the page. A Mac’s folder picker shows an app as one file, but in it ⌘⇧G and the app’s path, such as <code>/Applications/Zoombinis.app/</code>, goes inside the app, and the picker then accepts it as a folder.</li>
       <li>Nothing leaves your browser. What you open is remembered there, so it is already open on your next visit.</li>
       <li>Pictures show the colors the Windows game shows, which brightens every color of a palette. The art was made on Macs, and the Mac game shows the colors as stored, a little darker on a screen of today. “Colors”, beside a picture’s palette, switches between the two. Saved pictures keep the stored colors.</li>
     </ul>
