@@ -43,7 +43,7 @@ const ZB_UNITY_CLASSES = {
   222: 'CanvasRenderer', 223: 'Canvas', 224: 'RectTransform', 225: 'CanvasGroup',
 };
 const ZB_UNITY_TEXTURE_FORMATS = {
-  1: 'Alpha8', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32',
+  1: 'Alpha8', 2: 'ARGB4444', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32', 10: 'DXT1', 12: 'DXT5', 13: 'RGBA4444',
   30: 'PVRTC RGB2', 31: 'PVRTC RGBA2', 32: 'PVRTC RGB4', 33: 'PVRTC RGBA4',
   48: 'ASTC RGB 4×4', 49: 'ASTC RGB 5×5', 50: 'ASTC RGB 6×6', 51: 'ASTC RGB 8×8', 52: 'ASTC RGB 10×10', 53: 'ASTC RGB 12×12',
   54: 'ASTC RGBA 4×4', 55: 'ASTC RGBA 5×5', 56: 'ASTC RGBA 6×6', 57: 'ASTC RGBA 8×8', 58: 'ASTC RGBA 10×10', 59: 'ASTC RGBA 12×12',
@@ -244,8 +244,9 @@ function zbUnityField(r, type, depth) {
 /* The last part of a side file's path ("archive:/x/sharedassets0.assets.resS"). */
 function zbUnitySideName(path) { return String(path || '').split('/').pop(); }
 
-/* A texture's pixels as top-down RGBA, for the plain formats, or null.
-   Alpha8 is black with its alpha, as UnityPy gives it. */
+/* A texture's pixels as top-down RGBA, for the plain formats, ASTC, PVRTC
+   and DXT, or null. Alpha8 is black with its alpha, as UnityPy gives it,
+   and a 4-bit component c is 17c. */
 function zbUnityTexturePixels(format, width, height, data) {
   const n = width * height, rgba = new Uint8ClampedArray(n * 4);
   let decoded = null;
@@ -255,12 +256,15 @@ function zbUnityTexturePixels(format, width, height, data) {
     decoded = zbAstcDecode(data, width, height, b, b);
   } else if (format >= 30 && format <= 33) {
     decoded = zbPvrtcDecode(data, width, height, format < 32);
+  } else if (format === 10 || format === 12) {
+    decoded = zbDxtDecode(data, width, height, format === 12);
+    if (!decoded) return null;
   }
   if (decoded) {
     for (let y = 0; y < height; y++) rgba.set(decoded.subarray((height - 1 - y) * width * 4, (height - y) * width * 4), y * width * 4);
     return { width, height, rgba };
   }
-  const bpp = { 1: 1, 3: 3, 4: 4, 5: 4 }[format];
+  const bpp = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 13: 2 }[format];
   if (!bpp || data.length < n * bpp) return null;
   for (let y = 0; y < height; y++) {
     const from = (height - 1 - y) * width, to = y * width;
@@ -269,6 +273,12 @@ function zbUnityTexturePixels(format, width, height, data) {
       if (format === 1) rgba[d + 3] = data[s];
       else if (format === 3) { rgba[d] = data[s]; rgba[d + 1] = data[s + 1]; rgba[d + 2] = data[s + 2]; rgba[d + 3] = 255; }
       else if (format === 4) { rgba[d] = data[s]; rgba[d + 1] = data[s + 1]; rgba[d + 2] = data[s + 2]; rgba[d + 3] = data[s + 3]; }
+      else if (format === 2 || format === 13) {
+        // A 16-bit word, little endian, of four nibbles: A R G B or R G B A from the top.
+        const w = data[s] | (data[s + 1] << 8), n = k => ((w >> (4 * k)) & 15) * 17;
+        if (format === 2) { rgba[d] = n(2); rgba[d + 1] = n(1); rgba[d + 2] = n(0); rgba[d + 3] = n(3); }
+        else { rgba[d] = n(3); rgba[d + 1] = n(2); rgba[d + 2] = n(1); rgba[d + 3] = n(0); }
+      }
       else { rgba[d] = data[s + 1]; rgba[d + 1] = data[s + 2]; rgba[d + 2] = data[s + 3]; rgba[d + 3] = data[s]; }
     }
   }

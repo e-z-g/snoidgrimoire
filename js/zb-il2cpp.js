@@ -1,6 +1,9 @@
 /* zb-il2cpp.js -- the serialized field layouts of the 2015 remake's script
    classes, built from its IL2CPP build: global-metadata.dat and the
-   UnityFramework binary (arm64 Mach-O). zbUnityScriptFields (zb-unity.js)
+   binary with the game's code, an arm64 Mach-O. That is UnityFramework in
+   the iPhone build and GameAssembly.dylib in Steam's Mac build, which is
+   a universal binary holding an x86_64 and an arm64 Mach-O, and the arm64
+   one is read. zbUnityScriptFields (zb-unity.js)
    reads a MonoBehaviour's fields by the table built here.
    Read:
    global-metadata.dat (version 31) starts with the magic 0xFAB11BAF and the
@@ -34,8 +37,13 @@
    32-bit word: the field's attributes (bits 0-15), the element type (bits
    16-23) and byref (bit 29). A generic class is the generic type's pointer
    then its class inst, an inst a count and a pointer to its arguments.
-   Pointers are LC_DYLD_CHAINED_FIXUPS rebases (formats 2 and 6): the target
-   is in the low 36 bits, with an image base of 0 here.
+   Pointers are LC_DYLD_CHAINED_FIXUPS rebases (formats 2 and 6) in the
+   iPhone build, with the target in the low 36 bits. Steam's build has
+   LC_DYLD_INFO_ONLY instead, and its pointers are the plain addresses. The
+   image base is 0 in both. A universal binary starts with 0xCAFEBABE (big
+   endian), a count, and for each Mach-O in it 20 bytes: the CPU type, its
+   subtype, the offset, the size and the alignment. Arm64 is CPU type
+   0x0100000C.
    The layout table, by Unity's serialization rules:
      name: [base, "field type", ...]
    where a type is bool, u8, i8, u16, i16, i32, u32, i64, u64, f32, f64,
@@ -55,8 +63,8 @@
    readers), Apple's dyld fixup-chains.h, and Unity's script serialization
    rules. Checked by utilities/remake_check.mjs: the layouts against the
    table zoombini-workbench tools/remake/layouts.py writes from Cpp2IL's
-   dump, and every MonoBehaviour of the iPhone build read by them to exactly
-   its size.
+   dump, and every MonoBehaviour of the iPhone and Steam Mac builds read by
+   them to exactly its size.
    =========================================================================
    Pure: bytes in, data out. Used by page-unity.js. */
 
@@ -157,10 +165,25 @@ function zbIl2cppMetadata(bytes) {
   return { typeDefs, fields, genericParams, nested, images, imageOf, attrs };
 }
 
+/* `read` for the arm64 Mach-O: the file itself, or the arm64 one inside
+   a universal binary. */
+async function zbIl2cppArm64(read) {
+  const head = await read(0, 8), v = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if (v.getUint32(0) !== 0xcafebabe) return read;
+  const count = v.getUint32(4), table = await read(8, count * 20), t = new DataView(table.buffer, table.byteOffset, table.byteLength);
+  for (let i = 0; i < count; i++) {
+    if (t.getUint32(i * 20) !== 0x0100000c) continue;
+    const offset = t.getUint32(i * 20 + 8);
+    return (at, n) => read(offset + at, n);
+  }
+  throw new Error('This universal binary has no arm64 Mach-O.');
+}
+
 /* The binary's registration and type table. `read(offset, length)`
    resolves to the bytes at a file offset. Only the load commands, the
    fixup header and the __DATA_CONST and __DATA segments are read. */
-async function zbIl2cppBinary(read, typeDefCount) {
+async function zbIl2cppBinary(readFile, typeDefCount) {
+  const read = await zbIl2cppArm64(readFile);
   let head = await read(0, 32);
   let v = new DataView(head.buffer, head.byteOffset, head.byteLength);
   if (v.getUint32(0, true) !== 0xfeedfacf || v.getUint32(4, true) !== 0x0100000c) throw new Error('This is not an arm64 Mach-O binary.');

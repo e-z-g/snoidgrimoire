@@ -3,17 +3,21 @@
 //
 //   ZB_REMAKE=<the Data folder> node utilities/remake_check.mjs
 //
-// ZB_REMAKE defaults to the iPhone app's folder on a Mac where it is
-// installed, and ZB_REMAKE_PY to the venv in zoombini-reference/remake.
-// Without either, the check skips. It compares every file's object counts
+// Without ZB_REMAKE the check runs once for each build installed on this
+// Mac: the iPhone app's Data folder and Steam's Mac build's. ZB_REMAKE_PY
+// defaults to the venv in zoombini-reference/remake. Without a build or
+// UnityPy, the check skips. It compares every file's object counts
 // by class, every text asset's bytes, every sound's rate, channels and
 // length, and every texture (plain, ASTC or PVRTC) pixel for pixel. It
 // builds the scripts' field layouts from the build's global-metadata.dat and
-// UnityFramework (zb-il2cpp.js), compares them class by class with the table
-// that zoombini-workbench tools/remake/layouts.py writes from Cpp2IL's dump
-// (zoombini-reference/remake/layouts.json, ZB_REMAKE_LAYOUTS), and reads
-// every MonoBehaviour's fields by them, each to exactly its size.
+// its binary (zb-il2cpp.js), UnityFramework or Steam's GameAssembly.dylib.
+// For the iPhone build it compares them class by class with the table that
+// zoombini-workbench tools/remake/layouts.py writes from Cpp2IL's dump
+// (zoombini-reference/remake/layouts.json, ZB_REMAKE_LAYOUTS), which is
+// that build's. For both it reads every MonoBehaviour's fields by them,
+// each to exactly its size.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import http from 'node:http';
@@ -21,24 +25,42 @@ import { spawnSync } from 'node:child_process';
 import { ROOT, site } from './load.mjs';
 import { serve, loadPage, pageErrors } from './browser.mjs';
 
-const DATA = process.env.ZB_REMAKE || '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data';
+const BUILDS = [
+  '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data',
+  path.join(os.homedir(), 'Library', 'Application Support', 'Steam', 'steamapps', 'common', 'Zoombinis', 'Zoombinis.app', 'Contents', 'Resources', 'Data'),
+];
+if (!process.env.ZB_REMAKE) {
+  const found = BUILDS.filter(b => fs.existsSync(b));
+  if (!found.length) { console.log(`SKIP: needs the remake's Data folder (${BUILDS.join(' or ')})`); process.exit(0); }
+  let status = 0;
+  for (const b of found) {
+    console.log(`${b}:`);
+    status = spawnSync(process.execPath, [process.argv[1]], { env: { ...process.env, ZB_REMAKE: b }, stdio: 'inherit' }).status || status;
+  }
+  process.exit(status);
+}
+const DATA = process.env.ZB_REMAKE;
 const PY = process.env.ZB_REMAKE_PY || path.join(ROOT, '..', 'zoombini-reference', 'remake', '.venv', 'bin', 'python');
 if (!fs.existsSync(DATA) || !fs.existsSync(PY)) {
   console.log(`SKIP: needs the remake's Data folder (${DATA}) and UnityPy (${PY})`);
   process.exit(0);
 }
-const APP = path.dirname(DATA);
-const METADATA = path.join(DATA, 'Managed', 'Metadata', 'global-metadata.dat');
-const BINARY = path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
-const LAYOUTS = process.env.ZB_REMAKE_LAYOUTS || path.join(ROOT, '..', 'zoombini-reference', 'remake', 'layouts.json');
-for (const p of [METADATA, BINARY, LAYOUTS]) if (!fs.existsSync(p)) { console.log(`SKIP: needs ${p}`); process.exit(0); }
+// The iPhone build's app folder has Data and Frameworks. Steam's Mac build
+// has Contents, with Resources/Data and Frameworks.
+const STEAM = path.basename(path.dirname(DATA)) === 'Resources';
+const APP = STEAM ? path.dirname(path.dirname(DATA)) : path.dirname(DATA);
+const METADATA = STEAM ? path.join(DATA, 'il2cpp_data', 'Metadata', 'global-metadata.dat') : path.join(DATA, 'Managed', 'Metadata', 'global-metadata.dat');
+const BINARY = STEAM ? path.join(APP, 'Frameworks', 'GameAssembly.dylib') : path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
+const FMOD = STEAM ? path.join(APP, 'Frameworks', 'UnityPlayer.dylib') : BINARY;
+const LAYOUTS = process.env.ZB_REMAKE_LAYOUTS || (STEAM ? null : path.join(ROOT, '..', 'zoombini-reference', 'remake', 'layouts.json'));
+for (const p of [METADATA, BINARY, FMOD, LAYOUTS].filter(Boolean)) if (!fs.existsSync(p)) { console.log(`SKIP: needs ${p}`); process.exit(0); }
 const vorbis = [];
 const S = site();
 const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
-const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', 'vorbis-oracle');
+const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : 'vorbis-oracle');
 fs.mkdirSync(VORBIS_DIR, { recursive: true });
 const oracle = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_oracle.py'), DATA, VORBIS_DIR], { encoding: 'utf8', maxBuffer: 1 << 28 }).stdout);
 const fileBytes = new Map();
@@ -89,11 +111,11 @@ for (const name of fs.readdirSync(DATA).sort()) {
     }
   }
 }
-// The Vorbis sounds: each one's setup header found in the binary, made
+// The Vorbis sounds: each one's setup header found in FMOD's binary, made
 // into an Ogg file, decoded by ffmpeg and held to FMOD's decoding (written
 // by the oracle as WAV), over the samples the sound has.
 {
-  const setups = S.zbVorbisSetups(new Uint8Array(fs.readFileSync(BINARY)), vorbis.map(v => v.s.setupCrc));
+  const setups = S.zbVorbisSetups(new Uint8Array(fs.readFileSync(FMOD)), vorbis.map(v => v.s.setupCrc));
   const ffmpeg = spawnSync('ffmpeg', ['-version']).status === 0;
   let matched = 0;
   for (const v of vorbis) {
@@ -113,7 +135,7 @@ for (const name of fs.readdirSync(DATA).sort()) {
     if (rms > 0.001) fail(`${v.clip}: differs from FMOD's decoding by ${rms.toFixed(5)} of its peak`);
     else matched++;
   }
-  console.log(`${vorbis.length} Vorbis sounds, ${setups.size} setup headers found in the binary, ${ffmpeg ? matched + ' matching FMOD\'s decoding' : 'not decoded (no ffmpeg)'}`);
+  console.log(`${vorbis.length} Vorbis sounds, ${setups.size} setup headers found in ${path.basename(FMOD)}, ${ffmpeg ? matched + ' matching FMOD\'s decoding' : 'not decoded (no ffmpeg)'}`);
 }
 const plainWanted = Object.entries(oracle).filter(([n]) => fileBytes.has(n)).map(([, f]) => f).reduce((n, f) => n + Object.keys(f.textures).length, 0);
 if (textures !== plainWanted) fail(`${textures} textures read, UnityPy has ${plainWanted}`);
@@ -125,13 +147,13 @@ const t0 = performance.now();
 const built = await S.zbIl2cppLayouts(new Uint8Array(fs.readFileSync(METADATA)), readBinary);
 const buildMs = performance.now() - t0;
 fs.closeSync(binaryFd);
-const layouts = built.layouts, expectedLayouts = JSON.parse(fs.readFileSync(LAYOUTS, 'utf8'));
+const layouts = built.layouts, expectedLayouts = LAYOUTS ? JSON.parse(fs.readFileSync(LAYOUTS, 'utf8')) : {};
 let layoutsSame = 0;
 for (const [cls, expected] of Object.entries(expectedLayouts)) {
   if (JSON.stringify(layouts[cls]) === JSON.stringify(expected)) layoutsSame++;
   else fail(`layout ${cls}: ${JSON.stringify(layouts[cls])} against layouts.py's ${JSON.stringify(expected)}`);
 }
-console.log(`${layoutsSame} of ${Object.keys(expectedLayouts).length} layouts as layouts.py has them, of ${Object.keys(layouts).length} built in ${Math.round(buildMs)} ms (registration at 0x${built.registration.toString(16)}, ${built.typeCount.toLocaleString()} types)`);
+console.log(`${LAYOUTS ? `${layoutsSame} of ${Object.keys(expectedLayouts).length} layouts as layouts.py has them, of ` : ''}${Object.keys(layouts).length} built in ${Math.round(buildMs)} ms (registration at 0x${built.registration.toString(16)}, ${built.typeCount.toLocaleString()} types)`);
 
 // Each MonoBehaviour by its script's class, whose MonoScript may be in another file.
 const scriptOf = (name, p) => {
@@ -159,9 +181,10 @@ console.log(`${monoRead.toLocaleString()} of ${monos.length.toLocaleString()} Mo
 console.log(`${objects.toLocaleString()} objects read, ${texts} text assets, ${sounds} sounds and ${textures} textures as UnityPy has them (decoded in ${(decodeMs / 1000).toFixed(1)} s)`);
 
 // The page: the files handed to it, then a view of each kind.
+const handedPath = n => n === 'global-metadata.dat' ? METADATA : n === path.basename(BINARY) ? BINARY : n === path.basename(FMOD) ? FMOD : path.join(DATA, n);
 const files = http.createServer((req, res) => {
   const name = decodeURIComponent(req.url.slice(1));
-  const p = name === 'global-metadata.dat' ? METADATA : name === 'UnityFramework' ? BINARY : path.join(DATA, name);
+  const p = handedPath(name);
   if (!p.startsWith(APP) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Length': fs.statSync(p).size });
   fs.createReadStream(p).on("error", e => console.log("serve", name, e.message)).pipe(res).on("error", e => console.log("send", name, e.message));
@@ -169,8 +192,12 @@ const files = http.createServer((req, res) => {
 await new Promise(r => files.listen(0, '127.0.0.1', r));
 const filesBase = `http://127.0.0.1:${files.address().port}/`;
 const names = fs.readdirSync(DATA).filter(n => fs.statSync(path.join(DATA, n)).isFile());
+// Each view comes from the smallest file that has one, counted with its
+// side files, so that the page is handed as little as it can be.
+const weight = n => names.filter(m => m === n || m.startsWith(n + '.')).reduce((t, m) => t + fs.statSync(path.join(DATA, m)).size, 0);
+const byWeight = [...names].sort((a, b) => weight(a) - weight(b));
 const pick = (cls, pred) => {
-  for (const name of names) {
+  for (const name of byWeight) {
     const b = bytesOf(name), hs = S.zbUnityHeaderSize(b.subarray(0, 48));
     if (!hs) continue;
     const sf = S.zbUnityParse(b.subarray(0, hs));
@@ -178,19 +205,23 @@ const pick = (cls, pred) => {
   }
   return null;
 };
+const textureView = pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)]), spriteView = pick(213);
 const views = [
-  pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)]),
-  pick(49), pick(83), pick(213), pick(1), pick(114),
-  vorbis.length ? [vorbis[0].name, +vorbis[0].id] : null,
+  textureView, pick(49), pick(83), spriteView, pick(1), pick(114),
+  vorbis.length ? pick(83, (n, o) => vorbis.some(v => v.name === n && v.id === String(o.pathId))) : null,
 ].filter(Boolean);
-const vorbisView = vorbis.length ? `${vorbis[0].name}/${vorbis[0].id}` : null;
-// The page receives the views' files and the side files beside them, not the
-// whole folder, since a headless page has limited room for blobs.
-// The MonoBehaviour's scripts are in globalgamemanagers.assets, and its
-// fields need the metadata and the binary, as from the app folder.
-const handed = names.filter(n => views.some(([f]) => n === f || n.startsWith(f + '.')) || /^(resources\.resource|globalgamemanagers\.assets)$/.test(n))
-  .concat(['global-metadata.dat', 'UnityFramework']);
+const vorbisView = vorbis.length ? views[views.length - 1].join('/') : null;
+// The page receives the views' files, not the whole folder, since a
+// headless page has limited room for blobs. The texture and the sprite
+// read their pixels from the .resS beside their file, and the sounds from
+// resources.resource. The MonoBehaviour's scripts are in
+// globalgamemanagers.assets, and its fields need the metadata and the
+// binary, as from the app folder.
+const pixelFiles = [textureView, spriteView].filter(Boolean).map(([f]) => f + '.resS');
+const handed = names.filter(n => views.some(([f]) => n === f) || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers\.assets)$/.test(n))
+  .concat([...new Set(['global-metadata.dat', path.basename(BINARY), path.basename(FMOD)])]);
 fileBytes.clear();
+console.log(`the page is handed ${handed.length} files, ${Math.round(handed.reduce((t, n) => t + fs.statSync(handedPath(n)).size, 0) / 1e6)} MB (${handed.join(', ')})`);
 const srv = await serve();
 for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]) {
   const r = await loadPage(srv.base + 'index.html', 'typeof remakeTake === "function" && document.readyState === "complete"', 240000, {

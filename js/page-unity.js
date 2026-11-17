@@ -11,17 +11,22 @@
    script's class and fields, and anything else as
    its fields. A MonoBehaviour with an empty name is listed by its
    GameObject's name and its script's class.
-   The visitor opens the app folder (Zoombinis.app/Wrapper/Zoombinis.app),
-   or its Data folder alone. From the app folder the page also reads
-   Data/Managed/Metadata/global-metadata.dat and
-   Frameworks/UnityFramework.framework/UnityFramework, and builds the
-   scripts' field layouts from them (zb-il2cpp.js) on the first
-   MonoBehaviour shown. Without them a MonoBehaviour shows its header only.
+   The visitor opens the app folder, or its Data folder alone. The iPhone
+   build's app folder is Zoombinis.app/Wrapper/Zoombinis.app, and Steam's
+   Mac build's is Zoombinis.app/Contents. From the app folder the page
+   also reads global-metadata.dat (Data/Managed/Metadata in the iPhone
+   build, Resources/Data/il2cpp_data/Metadata in Steam's) and the binary
+   with the game's code (Frameworks/UnityFramework.framework/UnityFramework,
+   or Frameworks/GameAssembly.dylib), and builds the scripts' field layouts
+   from them (zb-il2cpp.js) on the first MonoBehaviour shown. Without them
+   a MonoBehaviour shows its header only. FMOD's Vorbis setup headers are
+   in UnityFramework in the iPhone build and in
+   Frameworks/UnityPlayer.dylib in Steam's.
    =========================================================================
    The page's script: DOM here. LOAD ORDER: after page-saves.js. */
 
 const REMAKE_FILES = new Map();   // name -> { name, file (a Blob), sf, names: Map pathId -> name }
-const REMAKE_IL2CPP = { metadata: null, binary: null, layouts: null, ms: 0 };
+const REMAKE_IL2CPP = { metadata: null, binary: null, fmod: null, layouts: null, ms: 0 };
 
 function isRemakeHash() { return /^#remake(\/|$)/.test(location.hash); }
 function remakeHashParts() {
@@ -39,7 +44,9 @@ async function remakeTake(files) {
   for (const f of files) {
     if (/^\./.test(f.name)) continue;
     if (f.name === 'global-metadata.dat') { REMAKE_IL2CPP.metadata = f; REMAKE_IL2CPP.layouts = null; continue; }
-    if (f.name === 'UnityFramework') { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; continue; }
+    if (f.name === 'UnityFramework' || f.name === 'GameAssembly.dylib') { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
+    if (f.name === 'UnityFramework' || f.name === 'UnityPlayer.dylib') { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
+    if (/^(UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib)$/.test(f.name)) continue;
     // From a picked folder, only the files directly in Data are Unity's files.
     const parts = (f.webkitRelativePath || '').split('/');
     if (parts.length > 1 && parts[parts.length - 2] !== 'Data') continue;
@@ -170,7 +177,7 @@ async function renderRemake() {
 
 function remakeHomeHtml() {
   const files = [...REMAKE_FILES.values()].filter(e => e.sf);
-  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open its app folder, which has <code>Data</code> and <code>Frameworks</code>. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app/Wrapper/Zoombinis.app</code>. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
+  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open its app folder. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app/Wrapper/Zoombinis.app</code>. Steam\'s Mac copy is <code>Zoombinis.app/Contents</code>, in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
     + '<div class="tools"><label class="btn">App folder…<input type="file" id="remakePick" webkitdirectory hidden></label></div>';
   if (!files.length) return html + '<p class="note">No remake files are open.</p>';
   const byClass = new Map();
@@ -246,7 +253,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     const script = await remakeScriptClass(entry, v.m_Script);
     const layouts = await remakeLayouts();
     if (script) cls += ' ' + script;
-    if (script && !layouts) note = 'Only its header is read here. Open the app folder, which has Data and Frameworks, for its script\'s fields.';
+    if (script && !layouts) note = 'Only its header is read here. Open the app folder, which has Frameworks, for its script\'s fields.';
     else if (script) {
       try { Object.assign(v, zbUnityScriptFields(layouts, script, v.rest, entry.sf.little)); delete v.rest; }
       catch (e) { note = `Its fields after the header could not be read (${e.message}).`; }
@@ -290,7 +297,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     } else if (bank.codec === 15 && s) {
       const setup = await remakeVorbisSetup(s.setupCrc);
       if (!setup) {
-        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.binary ? 'The app’s UnityFramework has no Vorbis setup header with this sound’s CRC-32.' : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework. Open the app folder, which has Data and Frameworks, to play it.'}</p>`);
+        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.fmod ? `The app’s ${esc(REMAKE_IL2CPP.fmod.name)} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, or UnityPlayer.dylib in Steam’s copy. Open the app folder, which has Frameworks, to play it.'}</p>`);
         return;
       }
       const ogg = zbFsbOgg(s, setup);
@@ -303,12 +310,13 @@ async function renderRemakeObject(entry, id, view, seq) {
   }
 }
 
-/* A Vorbis setup header by its CRC-32, found in the app's UnityFramework,
-   where FMOD's set of them is. The headers found are kept for later sounds. */
+/* A Vorbis setup header by its CRC-32, found in the binary where FMOD is
+   linked, with FMOD's set of them: UnityFramework, or UnityPlayer.dylib in
+   Steam's Mac build. The headers found are kept for later sounds. */
 const REMAKE_VORBIS = new Map();
 async function remakeVorbisSetup(crc) {
   if (REMAKE_VORBIS.has(crc)) return REMAKE_VORBIS.get(crc);
-  const bin = REMAKE_IL2CPP.binary;
+  const bin = REMAKE_IL2CPP.fmod;
   if (!bin) return null;
   const bytes = new Uint8Array(await bin.arrayBuffer());
   for (const [k, header] of zbVorbisSetups(bytes, [crc])) REMAKE_VORBIS.set(k, header);
