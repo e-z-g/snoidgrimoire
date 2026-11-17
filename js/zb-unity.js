@@ -43,7 +43,7 @@ const ZB_UNITY_CLASSES = {
   222: 'CanvasRenderer', 223: 'Canvas', 224: 'RectTransform', 225: 'CanvasGroup',
 };
 const ZB_UNITY_TEXTURE_FORMATS = {
-  1: 'Alpha8', 2: 'ARGB4444', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32', 10: 'DXT1', 12: 'DXT5', 13: 'RGBA4444',
+  1: 'Alpha8', 2: 'ARGB4444', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32', 10: 'DXT1', 12: 'DXT5', 13: 'RGBA4444', 47: 'ETC2 RGBA8',
   30: 'PVRTC RGB2', 31: 'PVRTC RGBA2', 32: 'PVRTC RGB4', 33: 'PVRTC RGBA4',
   48: 'ASTC RGB 4×4', 49: 'ASTC RGB 5×5', 50: 'ASTC RGB 6×6', 51: 'ASTC RGB 8×8', 52: 'ASTC RGB 10×10', 53: 'ASTC RGB 12×12',
   54: 'ASTC RGBA 4×4', 55: 'ASTC RGBA 5×5', 56: 'ASTC RGBA 6×6', 57: 'ASTC RGBA 8×8', 58: 'ASTC RGBA 10×10', 59: 'ASTC RGBA 12×12',
@@ -244,8 +244,8 @@ function zbUnityField(r, type, depth) {
 /* The last part of a side file's path ("archive:/x/sharedassets0.assets.resS"). */
 function zbUnitySideName(path) { return String(path || '').split('/').pop(); }
 
-/* A texture's pixels as top-down RGBA, for the plain formats, ASTC, PVRTC
-   and DXT, or null. Alpha8 is black with its alpha, as UnityPy gives it,
+/* A texture's pixels as top-down RGBA, for the plain formats, ASTC, PVRTC,
+   DXT and ETC2 RGBA8, or null. Alpha8 is black with its alpha, as UnityPy gives it,
    and a 4-bit component c is 17c. */
 function zbUnityTexturePixels(format, width, height, data) {
   const n = width * height, rgba = new Uint8ClampedArray(n * 4);
@@ -256,6 +256,9 @@ function zbUnityTexturePixels(format, width, height, data) {
     decoded = zbAstcDecode(data, width, height, b, b);
   } else if (format >= 30 && format <= 33) {
     decoded = zbPvrtcDecode(data, width, height, format < 32);
+  } else if (format === 47) {
+    decoded = zbEtc2Decode(data, width, height);
+    if (!decoded) return null;
   } else if (format === 10 || format === 12) {
     decoded = zbDxtDecode(data, width, height, format === 12);
     if (!decoded) return null;

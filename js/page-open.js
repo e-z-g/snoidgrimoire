@@ -265,7 +265,11 @@ function wireOpening() {
     drop.classList.remove('over');
     const files = [];
     const walk = async entry => {
-      if (entry.isFile) files.push(await new Promise((res, rej) => entry.file(res, rej)));
+      if (entry.isFile) {
+        const f = await new Promise((res, rej) => entry.file(res, rej));
+        f.remakePath = entry.fullPath;
+        files.push(f);
+      }
       else if (entry.isDirectory) {
         const reader = entry.createReader();
         for (;;) {
@@ -278,6 +282,8 @@ function wireOpening() {
     const items = [...(e.dataTransfer.items || [])].map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
     if (items.length) for (const it of items) await walk(it);
     else files.push(...e.dataTransfer.files);
+    // The 2015 remake's app or APKs go to page-unity.js, which reads a piece at a time.
+    if (isRemakeDrop(files)) { await remakeOpen(files); return; }
     const picked = await readPicked(files);
     await takeFiles(picked, picked.length === 1 ? picked[0].name : `${picked.length} files`);
   });

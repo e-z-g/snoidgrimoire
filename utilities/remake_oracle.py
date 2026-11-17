@@ -5,13 +5,13 @@ With the second argument it writes each Vorbis sound as FMOD decodes it,
 as <file>-<path id>.wav.
 Prints JSON: each file's object counts by class id, every text asset's
 name and SHA-1, every sound's name, frequency, channels and length, and
-every texture in a plain, 4444, ASTC, PVRTC or DXT format with the SHA-1 of its RGBA pixels, top
+every texture in a plain, 4444, ASTC, PVRTC, DXT or ETC2 RGBA8 format with the SHA-1 of its RGBA pixels, top
 row first."""
 import hashlib, json, os, sys
 import UnityPy
 from UnityPy.export.Texture2DConverter import parse_image_data
 
-PLAIN = {1, 2, 3, 4, 5, 10, 12, 13, 30, 31, 32, 33} | set(range(48, 60))
+PLAIN = {1, 2, 3, 4, 5, 10, 12, 13, 30, 31, 32, 33, 47} | set(range(48, 60))
 folder = sys.argv[1]
 out = {}
 env = UnityPy.load(folder)

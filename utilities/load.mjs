@@ -28,7 +28,7 @@ export function site(opts = {}) {
     console, TextDecoder, TextEncoder, Uint8Array, Uint8ClampedArray, Uint16Array, Int16Array, Uint32Array,
     Int32Array, Float32Array, Float64Array, DataView, ArrayBuffer, Math, Error, Map, Set, JSON, Date, Number,
     String, Array, Object, RegExp, Symbol, Promise, parseInt, parseFloat, isFinite, isNaN, Infinity, NaN, BigInt,
-    Response, CompressionStream, Blob,
+    Response, CompressionStream, DecompressionStream, Blob, File,
   };
   vm.createContext(ctx);
   const lexical = [];

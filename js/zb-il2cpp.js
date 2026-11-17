@@ -179,14 +179,11 @@ async function zbIl2cppArm64(read) {
   throw new Error('This universal binary has no arm64 Mach-O.');
 }
 
-/* The binary's registration and type table. `read(offset, length)`
-   resolves to the bytes at a file offset. Only the load commands, the
-   fixup header and the __DATA_CONST and __DATA segments are read. */
-async function zbIl2cppBinary(readFile, typeDefCount) {
-  const read = await zbIl2cppArm64(readFile);
+/* The data segments of an arm64 Mach-O: __DATA_CONST and __DATA. */
+async function zbIl2cppMachO(read) {
   let head = await read(0, 32);
   let v = new DataView(head.buffer, head.byteOffset, head.byteLength);
-  if (v.getUint32(0, true) !== 0xfeedfacf || v.getUint32(4, true) !== 0x0100000c) throw new Error('This is not an arm64 Mach-O binary.');
+  if (v.getUint32(4, true) !== 0x0100000c) throw new Error('This is not an arm64 Mach-O binary.');
   const ncmds = v.getUint32(16, true), cmdSize = v.getUint32(20, true);
   head = await read(0, 32 + cmdSize);
   v = new DataView(head.buffer, head.byteOffset, head.byteLength);
@@ -211,9 +208,62 @@ async function zbIl2cppBinary(readFile, typeDefCount) {
       if (format !== 2 && format !== 6) throw new Error(`Chained pointer format ${format} is not read here.`);
     }
   }
+  return segments.filter(s => s.name === '__DATA_CONST' || s.name === '__DATA');
+}
+
+/* The writable segments of an arm64 ELF shared object, and the targets of
+   its relative relocations by the address they fill. */
+async function zbIl2cppElf(read) {
+  const head = await read(0, 64), v = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if (head[4] !== 2 || head[5] !== 1 || v.getUint16(18, true) !== 183) throw new Error('This is not a 64-bit arm64 ELF file.');
+  const phoff = Number(v.getBigUint64(32, true)), phentsize = v.getUint16(54, true), phnum = v.getUint16(56, true);
+  const ph = await read(phoff, phentsize * phnum), pv = new DataView(ph.buffer, ph.byteOffset, ph.byteLength);
+  const loads = [];
+  let dynamic = null;
+  for (let i = 0; i < phnum; i++) {
+    const p = i * phentsize, type = pv.getUint32(p, true), flags = pv.getUint32(p + 4, true);
+    const seg = { fileoff: Number(pv.getBigUint64(p + 8, true)), vmaddr: Number(pv.getBigUint64(p + 16, true)), filesize: Number(pv.getBigUint64(p + 32, true)) };
+    if (type === 1) loads.push({ ...seg, name: flags & 2 ? 'RW' : 'R', writable: !!(flags & 2) });
+    else if (type === 2) dynamic = seg;
+  }
+  if (!dynamic) throw new Error('This ELF file has no dynamic segment.');
+  const fileOf = addr => {
+    const s = loads.find(l => addr >= l.vmaddr && addr < l.vmaddr + l.filesize);
+    if (!s) throw new Error(`The address 0x${addr.toString(16)} is not in the file.`);
+    return s.fileoff + addr - s.vmaddr;
+  };
+  const dyn = await read(dynamic.fileoff, dynamic.filesize), dv = new DataView(dyn.buffer, dyn.byteOffset, dyn.byteLength);
+  const tags = new Map();
+  for (let p = 0; p + 16 <= dyn.length; p += 16) {
+    const tag = Number(dv.getBigInt64(p, true));
+    if (tag === 0) break;
+    tags.set(tag, Number(dv.getBigUint64(p + 8, true)));
+  }
+  // Packed relocations (Android's APS2, and RELR) are not read here.
+  if (tags.has(0x60000011) || tags.has(0x24)) throw new Error('This ELF file packs its relocations, which is not read here.');
+  const relocated = new Map();
+  if (tags.has(7)) {
+    const size = tags.get(8), ent = tags.get(9) || 24;
+    const r = await read(fileOf(tags.get(7)), size), rv = new DataView(r.buffer, r.byteOffset, r.byteLength);
+    // R_AARCH64_RELATIVE (1027): the image base, 0 here, plus the addend.
+    for (let p = 0; p + 24 <= size; p += ent)
+      if (rv.getUint32(p + 8, true) === 1027) relocated.set(Number(rv.getBigUint64(p, true)), Number(rv.getBigInt64(p + 16, true)));
+  }
+  return { segments: loads.filter(l => l.writable), relocated };
+}
+
+/* The binary's registration and type table. `readFile(offset, length)`
+   resolves to the bytes at a file offset. Only the headers, the
+   relocations and the data segments are read. */
+async function zbIl2cppBinary(readFile, typeDefCount) {
+  const read = await zbIl2cppArm64(readFile);
+  const magic = await read(0, 4);
+  let segments, relocated = null;
+  if (magic[0] === 0x7f && magic[1] === 0x45 && magic[2] === 0x4c && magic[3] === 0x46) ({ segments, relocated } = await zbIl2cppElf(read));
+  else if (new DataView(magic.buffer, magic.byteOffset, 4).getUint32(0, true) === 0xfeedfacf) segments = await zbIl2cppMachO(read);
+  else throw new Error('This is neither a Mach-O nor an ELF binary.');
   const data = [];
   for (const s of segments) {
-    if (s.name !== '__DATA_CONST' && s.name !== '__DATA') continue;
     const bytes = await read(s.fileoff, s.filesize);
     data.push({ ...s, bytes, view: new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength) });
   }
@@ -223,7 +273,9 @@ async function zbIl2cppBinary(readFile, typeDefCount) {
   };
   const u64 = addr => { const [dv, o] = at(addr); return dv.getBigUint64(o, true); };
   const u32 = addr => { const [dv, o] = at(addr); return dv.getUint32(o, true); };
-  const ptr = addr => Number(u64(addr) & 0xfffffffffn);
+  const ptr = relocated
+    ? addr => { const t = relocated.get(addr); return t !== undefined ? t : Number(u64(addr)); }
+    : addr => Number(u64(addr) & 0xfffffffffn);
   // The registration: the type definition count at words 10 and 12.
   let reg = -1;
   const count = BigInt(typeDefCount);

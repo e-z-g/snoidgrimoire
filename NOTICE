@@ -8,8 +8,8 @@ version 3 or (at your option) any later version. `LICENSE` holds the full text.
 the same licence, and are kept identical to it by `utilities/copies_check.mjs`;
 its NOTICE says what in them came from elsewhere.
 
-`js/zb-astc.js` and `js/zb-pvrtc.js` are ported from texture2ddecoder
-(`K0lb3/texture2ddecoder`, `astc.cpp` and `pvrtc.cpp`), MIT License,
+`js/zb-astc.js`, `js/zb-pvrtc.js` and `js/zb-etc2.js` are ported from texture2ddecoder
+(`K0lb3/texture2ddecoder`, `astc.cpp`, `pvrtc.cpp` and `etc.cpp`), MIT License,
 Copyright (c) 2020 K0lb3. The MIT License allows its code in a GPL-3.0
 work with its notice kept: "Permission is hereby granted, free of charge,
 to any person obtaining a copy of this software and associated

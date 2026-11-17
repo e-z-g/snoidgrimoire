@@ -3,19 +3,25 @@
 //
 //   ZB_REMAKE=<the Data folder> node utilities/remake_check.mjs
 //
-// Without ZB_REMAKE the check runs once for each build installed on this
-// Mac: the iPhone app's Data folder and Steam's Mac build's. ZB_REMAKE_PY
+// Without ZB_REMAKE the check runs once for each build on this Mac: the
+// iPhone app's Data folder, Steam's Mac build's, and the Android build's
+// in zoombini-reference/remake-android. That folder has the APKs in apk/,
+// and their files unzipped and joined by zoombini-workbench
+// tools/remake/android.sh (Data/, and the libraries in unzipped/lib). The
+// check also opens the APKs with zb-apk.js and compares every file out of
+// them with the files joined there. ZB_REMAKE_PY
 // defaults to the venv in zoombini-reference/remake. Without a build or
 // UnityPy, the check skips. It compares every file's object counts
 // by class, every text asset's bytes, every sound's rate, channels and
 // length, and every texture (plain, ASTC or PVRTC) pixel for pixel. It
 // builds the scripts' field layouts from the build's global-metadata.dat and
-// its binary (zb-il2cpp.js), UnityFramework or Steam's GameAssembly.dylib.
-// For the iPhone build it compares them class by class with the table that
-// zoombini-workbench tools/remake/layouts.py writes from Cpp2IL's dump
-// (zoombini-reference/remake/layouts.json, ZB_REMAKE_LAYOUTS), which is
-// that build's. For both it reads every MonoBehaviour's fields by them,
-// each to exactly its size.
+// its binary (zb-il2cpp.js): UnityFramework, Steam's GameAssembly.dylib or
+// Android's libil2cpp.so file. For the iPhone and Android builds, both 2.4.8, it
+// compares them class by class with the table that zoombini-workbench
+// tools/remake/layouts.py writes from Cpp2IL's dump of the iPhone build
+// (zoombini-reference/remake/layouts.json, ZB_REMAKE_LAYOUTS). For every
+// build it reads every MonoBehaviour's fields by them, each to exactly its
+// size.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,6 +34,7 @@ import { serve, loadPage, pageErrors } from './browser.mjs';
 const BUILDS = [
   '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data',
   path.join(os.homedir(), 'Library', 'Application Support', 'Steam', 'steamapps', 'common', 'Zoombinis', 'Zoombinis.app', 'Contents', 'Resources', 'Data'),
+  path.join(ROOT, '..', 'zoombini-reference', 'remake-android', 'Data'),
 ];
 if (!process.env.ZB_REMAKE) {
   const found = BUILDS.filter(b => fs.existsSync(b));
@@ -46,12 +53,15 @@ if (!fs.existsSync(DATA) || !fs.existsSync(PY)) {
   process.exit(0);
 }
 // The iPhone build's app folder has Data and Frameworks. Steam's Mac build
-// has Contents, with Resources/Data and Frameworks.
+// has Contents, with Resources/Data and Frameworks. The Android build's
+// folder has apk/, Data/ and unzipped/lib.
 const STEAM = path.basename(path.dirname(DATA)) === 'Resources';
+const ANDROID = fs.existsSync(path.join(path.dirname(DATA), 'apk'));
 const APP = STEAM ? path.dirname(path.dirname(DATA)) : path.dirname(DATA);
+const LIB = path.join(APP, 'unzipped', 'lib', 'arm64-v8a');
 const METADATA = STEAM ? path.join(DATA, 'il2cpp_data', 'Metadata', 'global-metadata.dat') : path.join(DATA, 'Managed', 'Metadata', 'global-metadata.dat');
-const BINARY = STEAM ? path.join(APP, 'Frameworks', 'GameAssembly.dylib') : path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
-const FMOD = STEAM ? path.join(APP, 'Frameworks', 'UnityPlayer.dylib') : BINARY;
+const BINARY = STEAM ? path.join(APP, 'Frameworks', 'GameAssembly.dylib') : ANDROID ? path.join(LIB, 'libil2cpp.so') : path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
+const FMOD = STEAM ? path.join(APP, 'Frameworks', 'UnityPlayer.dylib') : ANDROID ? path.join(LIB, 'libunity.so') : BINARY;
 const LAYOUTS = process.env.ZB_REMAKE_LAYOUTS || (STEAM ? null : path.join(ROOT, '..', 'zoombini-reference', 'remake', 'layouts.json'));
 for (const p of [METADATA, BINARY, FMOD, LAYOUTS].filter(Boolean)) if (!fs.existsSync(p)) { console.log(`SKIP: needs ${p}`); process.exit(0); }
 const vorbis = [];
@@ -60,7 +70,25 @@ const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
-const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : 'vorbis-oracle');
+const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : ANDROID ? 'vorbis-oracle-android' : 'vorbis-oracle');
+
+// The Android build's APKs: every file zb-apk.js reads out of them, against
+// the same file unzipped and joined.
+if (ANDROID) {
+  const apkDir = path.join(APP, 'apk');
+  const apks = await Promise.all(fs.readdirSync(apkDir).filter(n => n.endsWith('.apk')).map(async n => new File([await fs.openAsBlob(path.join(apkDir, n))], n)));
+  const t0 = performance.now(), out = await S.zbApkFiles(apks), ms = performance.now() - t0;
+  const where = n => n === 'global-metadata.dat' ? METADATA : n === path.basename(BINARY) ? BINARY : n === path.basename(FMOD) ? FMOD : path.join(DATA, n);
+  let same = 0;
+  for (const f of out) {
+    if (!fs.existsSync(where(f.name))) { fail(`${f.name}, out of the APKs, is not among the files joined`); continue; }
+    if (sha1(new Uint8Array(await f.arrayBuffer())) === sha1(fs.readFileSync(where(f.name)))) same++;
+    else fail(`${f.name}: out of the APKs it differs from the file joined`);
+  }
+  const joined = fs.readdirSync(DATA).filter(n => fs.statSync(path.join(DATA, n)).isFile()).length + 3;
+  if (out.length !== joined) fail(`${out.length} files out of the APKs, against ${joined} joined`);
+  console.log(`${same.toLocaleString()} of ${out.length.toLocaleString()} files out of ${apks.length} APKs the same as those joined, read in ${Math.round(ms)} ms`);
+}
 fs.mkdirSync(VORBIS_DIR, { recursive: true });
 const oracle = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_oracle.py'), DATA, VORBIS_DIR], { encoding: 'utf8', maxBuffer: 1 << 28 }).stdout);
 const fileBytes = new Map();
@@ -205,7 +233,8 @@ const pick = (cls, pred) => {
   }
   return null;
 };
-const textureView = pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)]), spriteView = pick(213);
+// The texture is one with pixels: an empty one's SHA-1 is that of no bytes.
+const textureView = pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)] && oracle[n].textures[String(o.pathId)][1] !== sha1(new Uint8Array(0))), spriteView = pick(213);
 const views = [
   textureView, pick(49), pick(83), spriteView, pick(1), pick(114),
   vorbis.length ? pick(83, (n, o) => vorbis.some(v => v.name === n && v.id === String(o.pathId))) : null,
@@ -214,11 +243,12 @@ const vorbisView = vorbis.length ? views[views.length - 1].join('/') : null;
 // The page receives the views' files, not the whole folder, since a
 // headless page has limited room for blobs. The texture and the sprite
 // read their pixels from the .resS beside their file, and the sounds from
-// resources.resource. The MonoBehaviour's scripts are in
+// resources.resource. In the Android build each file named by a hex id
+// has its pixels and sounds in the .resource beside it. The MonoBehaviour's scripts are in
 // globalgamemanagers.assets, and its fields need the metadata and the
 // binary, as from the app folder.
 const pixelFiles = [textureView, spriteView].filter(Boolean).map(([f]) => f + '.resS');
-const handed = names.filter(n => views.some(([f]) => n === f) || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers\.assets)$/.test(n))
+const handed = names.filter(n => views.some(([f]) => n === f || n === f + '.resource') || pixelFiles.includes(n) || /^(resources\.resource|globalgamemanagers\.assets)$/.test(n))
   .concat([...new Set(['global-metadata.dat', path.basename(BINARY), path.basename(FMOD)])]);
 fileBytes.clear();
 console.log(`the page is handed ${handed.length} files, ${Math.round(handed.reduce((t, n) => t + fs.statSync(handedPath(n)).size, 0) / 1e6)} MB (${handed.join(', ')})`);
@@ -255,6 +285,51 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
     if (m && m.layoutMs !== undefined) console.log(`the page built the layouts in ${Math.round(m.layoutMs)} ms${device ? ' (phone)' : ''}`);
     else fail(`page${device ? ' (phone)' : ''}: ${m}`);
   }
+}
+// The Android build's APKs opened in the page as a visitor picks them:
+// base.apk and the CPU's split, without the 1 GB asset pack, which is too
+// large for a headless page. Their files are inflated in the browser,
+// and a MonoBehaviour of level0 shows its script's fields.
+if (ANDROID) {
+  const apkDir = path.join(APP, 'apk'), small = ['base.apk', 'split_config.arm64_v8a.apk'];
+  const apkServer = http.createServer((req, res) => {
+    const name = decodeURIComponent(req.url.slice(1));
+    if (!small.includes(name)) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Length': fs.statSync(path.join(apkDir, name)).size });
+    fs.createReadStream(path.join(apkDir, name)).pipe(res);
+  });
+  await new Promise(r => apkServer.listen(0, '127.0.0.1', r));
+  const apkBase = `http://127.0.0.1:${apkServer.address().port}/`;
+  const level0 = parsed.get('level0'), mono = level0 && level0.objects.find(o => o.classId === 114);
+  const r = await loadPage(srv.base + 'index.html', 'typeof remakeTake === "function" && document.readyState === "complete"', 240000, {
+    then: async ({ evaluate }) => {
+      const out = [];
+      const took = await evaluate(`(async () => {
+        const files = [];
+        for (const n of ${JSON.stringify(small)}) files.push(new File([await (await fetch(${JSON.stringify(apkBase)} + n)).blob()], n));
+        await remakeOpen(files);
+        return [REMAKE_FILES.size, !!REMAKE_IL2CPP.binary, !!REMAKE_IL2CPP.fmod, !!REMAKE_IL2CPP.metadata];
+      })()`);
+      out.push({ took });
+      if (mono) {
+        await evaluate(`location.hash = ${JSON.stringify('#remake/level0/' + mono.pathId)}`);
+        const t = Date.now();
+        while (Date.now() - t < 30000 && !await evaluate(`!!document.querySelector('#view pre.fields')`)) await new Promise(res => setTimeout(res, 200));
+        if (await evaluate(`!document.querySelector('#view pre.fields') || /could not be read|not open|Only its header/.test(document.getElementById('view').textContent)`)) out.push('the MonoBehaviour of level0 did not show its fields');
+      }
+      return out;
+    },
+  });
+  for (const e of pageErrors(r.console)) fail(`page (APKs): ${e.text}`);
+  if (!r.met) fail('the page did not load (APKs)');
+  for (const m of r.more || []) {
+    if (m && m.took) {
+      const [n, binary, fmod, metadata] = m.took;
+      if (!n || !binary || !fmod || !metadata) fail(`page (APKs): ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
+      else console.log(`the page opened base.apk and the CPU's split, ${n} Unity files with the metadata and both libraries`);
+    } else fail(`page (APKs): ${m}`);
+  }
+  apkServer.close();
 }
 srv.close();
 files.close();

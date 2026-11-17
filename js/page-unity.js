@@ -11,9 +11,11 @@
    script's class and fields, and anything else as
    its fields. A MonoBehaviour with an empty name is listed by its
    GameObject's name and its script's class.
-   The visitor opens the app folder, or its Data folder alone. The iPhone
-   build's app folder is Zoombinis.app/Wrapper/Zoombinis.app, and Steam's
-   Mac build's is Zoombinis.app/Contents. From the app folder the page
+   The visitor opens or drops Zoombinis.app, or any folder inside it that
+   has Data, or the Data folder alone. The Unity files are the files
+   directly in a folder named Data, at any depth: Wrapper/Zoombinis.app/Data
+   in the iPhone build and Contents/Resources/Data in Steam's Mac build.
+   From the app the page
    also reads global-metadata.dat (Data/Managed/Metadata in the iPhone
    build, Resources/Data/il2cpp_data/Metadata in Steam's) and the binary
    with the game's code (Frameworks/UnityFramework.framework/UnityFramework,
@@ -21,7 +23,9 @@
    from them (zb-il2cpp.js) on the first MonoBehaviour shown. Without them
    a MonoBehaviour shows its header only. FMOD's Vorbis setup headers are
    in UnityFramework in the iPhone build and in
-   Frameworks/UnityPlayer.dylib in Steam's.
+   Frameworks/UnityPlayer.dylib in Steam's. The Android build comes as its
+   APKs, and zb-apk.js reads the Unity files, the metadata, the game's code
+   (libil2cpp.so) and FMOD (libunity.so) out of them.
    =========================================================================
    The page's script: DOM here. LOAD ORDER: after page-saves.js. */
 
@@ -41,14 +45,16 @@ async function remakeSlice(file, start, end) { return new Uint8Array(await file.
    the .resS and .resource files are side files. */
 async function remakeTake(files) {
   let took = 0;
+  const apks = files.filter(f => /\.apk$/i.test(f.name));
+  if (apks.length) files = files.filter(f => !apks.includes(f)).concat(await zbApkFiles(apks));
   for (const f of files) {
     if (/^\./.test(f.name)) continue;
     if (f.name === 'global-metadata.dat') { REMAKE_IL2CPP.metadata = f; REMAKE_IL2CPP.layouts = null; continue; }
-    if (f.name === 'UnityFramework' || f.name === 'GameAssembly.dylib') { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
-    if (f.name === 'UnityFramework' || f.name === 'UnityPlayer.dylib') { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
-    if (/^(UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib)$/.test(f.name)) continue;
-    // From a picked folder, only the files directly in Data are Unity's files.
-    const parts = (f.webkitRelativePath || '').split('/');
+    if (/^(UnityFramework|GameAssembly\.dylib|libil2cpp\.so)$/.test(f.name)) { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
+    if (/^(UnityFramework|UnityPlayer\.dylib|libunity\.so)$/.test(f.name)) { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
+    if (/^(UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib|libil2cpp\.so|libunity\.so)$/.test(f.name)) continue;
+    // From a picked or dropped folder, only the files directly in Data are Unity's files.
+    const parts = (f.remakePath || f.webkitRelativePath || '').split('/');
     if (parts.length > 1 && parts[parts.length - 2] !== 'Data') continue;
     const head = await remakeSlice(f, 0, 48);
     const size = zbUnityHeaderSize(head);
@@ -177,7 +183,7 @@ async function renderRemake() {
 
 function remakeHomeHtml() {
   const files = [...REMAKE_FILES.values()].filter(e => e.sf);
-  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open its app folder. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app/Wrapper/Zoombinis.app</code>. Steam\'s Mac copy is <code>Zoombinis.app/Contents</code>, in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
+  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open or drop its <code>Zoombinis.app</code>. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app</code>. Steam\'s Mac copy is in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The Android app opens as its three APKs, copied off the phone with <code>adb</code>. The command <code>adb shell pm path edu.terc.zoombinis.f2p</code> prints their paths. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
     + '<div class="tools"><label class="btn">App folder…<input type="file" id="remakePick" webkitdirectory hidden></label></div>';
   if (!files.length) return html + '<p class="note">No remake files are open.</p>';
   const byClass = new Map();
@@ -253,7 +259,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     const script = await remakeScriptClass(entry, v.m_Script);
     const layouts = await remakeLayouts();
     if (script) cls += ' ' + script;
-    if (script && !layouts) note = 'Only its header is read here. Open the app folder, which has Frameworks, for its script\'s fields.';
+    if (script && !layouts) note = 'Only its header is read here. Open the whole Zoombinis.app for its script\'s fields.';
     else if (script) {
       try { Object.assign(v, zbUnityScriptFields(layouts, script, v.rest, entry.sf.little)); delete v.rest; }
       catch (e) { note = `Its fields after the header could not be read (${e.message}).`; }
@@ -267,7 +273,8 @@ async function renderRemakeObject(entry, id, view, seq) {
     const fmt = ZB_UNITY_TEXTURE_FORMATS[v.m_TextureFormat] || `format ${v.m_TextureFormat}`;
     const img = await remakeTextureImage(v);
     body.innerHTML = `<p>${v.m_Width} × ${v.m_Height}, ${esc(fmt)}.</p>`;
-    if (img) body.appendChild(remakeCanvas(img));
+    if (!v.m_Width || !v.m_Height) body.insertAdjacentHTML('beforeend', '<p class="note">The texture has no pixels.</p>');
+    else if (img) body.appendChild(remakeCanvas(img));
     else body.insertAdjacentHTML('beforeend', `<p class="note">The page does not decode ${esc(fmt)} so far.</p>`);
   } else if (obj.classId === 213) {
     const r = v.m_RD.textureRect, texObj = remakeLocal(entry, v.m_RD.texture);
@@ -297,7 +304,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     } else if (bank.codec === 15 && s) {
       const setup = await remakeVorbisSetup(s.setupCrc);
       if (!setup) {
-        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.fmod ? `The app’s ${esc(REMAKE_IL2CPP.fmod.name)} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, or UnityPlayer.dylib in Steam’s copy. Open the app folder, which has Frameworks, to play it.'}</p>`);
+        body.insertAdjacentHTML('beforeend', `<p class="note">${REMAKE_IL2CPP.fmod ? `The app’s ${esc(REMAKE_IL2CPP.fmod.name)} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, in UnityPlayer.dylib in Steam’s copy, or in libunity.so in the Android APKs. Open the whole Zoombinis.app or the APKs to play it.'}</p>`);
         return;
       }
       const ogg = zbFsbOgg(s, setup);
@@ -311,8 +318,9 @@ async function renderRemakeObject(entry, id, view, seq) {
 }
 
 /* A Vorbis setup header by its CRC-32, found in the binary where FMOD is
-   linked, with FMOD's set of them: UnityFramework, or UnityPlayer.dylib in
-   Steam's Mac build. The headers found are kept for later sounds. */
+   linked, with FMOD's set of them: UnityFramework, UnityPlayer.dylib in
+   Steam's Mac build, or libunity.so in the Android build. The headers
+   found are kept for later sounds. */
 const REMAKE_VORBIS = new Map();
 async function remakeVorbisSetup(crc) {
   if (REMAKE_VORBIS.has(crc)) return REMAKE_VORBIS.get(crc);
@@ -339,19 +347,31 @@ function remakeSaveButton(body, name, bytes) {
   body.appendChild(div);
 }
 
-/* The start page's picker for the remake's folder. */
+/* Whether files picked or dropped are the remake's: its APKs, or an app
+   with a Data folder of Unity files. */
+function isRemakeDrop(files) {
+  return files.some(f => /\.apk$/i.test(f.name) || f.name === 'globalgamemanagers' || f.name === 'global-metadata.dat');
+}
+
+/* The remake's files taken and its list shown, or the reason none were. */
+async function remakeOpen(files) {
+  let n = 0;
+  try { n = await remakeTake(files); }
+  catch (err) { setStatus(err.message, true); return; }
+  if (!n) { setStatus('No Unity files of the remake were among those.', true); return; }
+  SOURCE = SOURCE || 'the 2015 remake';
+  $('start').hidden = true;
+  $('views').hidden = false;
+  $('find').hidden = false;
+  if (location.hash === '#remake') route(); else location.hash = '#remake';
+}
+
+/* The start page's pickers for the remake's app and its APKs. */
 function wireRemakeStart() {
-  const pick = $('pickRemake');
-  if (!pick) return;
-  pick.addEventListener('change', async e => {
-    const n = await remakeTake([...e.target.files]);
+  for (const id of ['pickRemake', 'pickApk']) $(id) && $(id).addEventListener('change', async e => {
+    const files = [...e.target.files];
     e.target.value = '';
-    if (!n) { setStatus('No Unity files were in that folder.', true); return; }
-    SOURCE = SOURCE || 'the 2015 remake';
-    $('start').hidden = true;
-    $('views').hidden = false;
-    $('find').hidden = false;
-    if (location.hash === '#remake') route(); else location.hash = '#remake';
+    await remakeOpen(files);
   });
 }
 wireRemakeStart();

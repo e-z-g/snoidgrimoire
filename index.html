@@ -327,11 +327,12 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       picture, sprite sheet, sound, tune, palette, cursor, string, walk and animation script in
       the game’s Mohawk archives.</p>
     <div id="drop">
-      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here</div>
+      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here, or the 2015 remake's <code>Zoombinis.app</code> or Android APKs</div>
       <div class="row">
         <label class="btn">Files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
         <label class="btn">DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
-        <label class="btn">2015 remake’s app folder…<input id="pickRemake" type="file" webkitdirectory hidden></label>
+        <label class="btn">2015 remake’s Zoombinis.app…<input id="pickRemake" type="file" webkitdirectory hidden></label>
+        <label class="btn">2015 remake’s Android APKs…<input id="pickApk" type="file" multiple accept=".apk" hidden></label>
       </div>
     </div>
     <ul>
@@ -468,6 +469,8 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-astc.js"></script>
 <script src="js/zb-pvrtc.js"></script>
 <script src="js/zb-dxt.js"></script>
+<script src="js/zb-etc2.js"></script>
+<script src="js/zb-apk.js"></script>
 <script src="js/zb-unity.js"></script>
 <script src="js/zb-vorbis.js"></script>
 <script src="js/page-unity.js"></script>
