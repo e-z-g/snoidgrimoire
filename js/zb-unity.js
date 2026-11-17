@@ -42,9 +42,12 @@ const ZB_UNITY_CLASSES = {
   222: 'CanvasRenderer', 223: 'Canvas', 224: 'RectTransform', 225: 'CanvasGroup',
 };
 const ZB_UNITY_TEXTURE_FORMATS = {
-  1: 'Alpha8', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32', 33: 'PVRTC RGBA4', 48: 'ASTC 4×4',
-  49: 'ASTC 5×5', 50: 'ASTC 6×6', 51: 'ASTC 8×8', 52: 'ASTC 10×10', 53: 'ASTC 12×12',
+  1: 'Alpha8', 3: 'RGB24', 4: 'RGBA32', 5: 'ARGB32',
+  30: 'PVRTC RGB2', 31: 'PVRTC RGBA2', 32: 'PVRTC RGB4', 33: 'PVRTC RGBA4',
+  48: 'ASTC RGB 4×4', 49: 'ASTC RGB 5×5', 50: 'ASTC RGB 6×6', 51: 'ASTC RGB 8×8', 52: 'ASTC RGB 10×10', 53: 'ASTC RGB 12×12',
+  54: 'ASTC RGBA 4×4', 55: 'ASTC RGBA 5×5', 56: 'ASTC RGBA 6×6', 57: 'ASTC RGBA 8×8', 58: 'ASTC RGBA 10×10', 59: 'ASTC RGBA 12×12',
 };
+const ZB_UNITY_ASTC_BLOCKS = [4, 5, 6, 8, 10, 12];
 
 function zbUnityClassName(id) { return ZB_UNITY_CLASSES[id] || `class ${id}`; }
 
@@ -188,6 +191,18 @@ function zbUnitySideName(path) { return String(path || '').split('/').pop(); }
    Alpha8 is black with its alpha, as UnityPy gives it. */
 function zbUnityTexturePixels(format, width, height, data) {
   const n = width * height, rgba = new Uint8ClampedArray(n * 4);
+  let decoded = null;
+  if (format >= 48 && format <= 59) {
+    const b = ZB_UNITY_ASTC_BLOCKS[(format - 48) % 6];
+    if (data.length < Math.ceil(width / b) * Math.ceil(height / b) * 16) return null;
+    decoded = zbAstcDecode(data, width, height, b, b);
+  } else if (format >= 30 && format <= 33) {
+    decoded = zbPvrtcDecode(data, width, height, format < 32);
+  }
+  if (decoded) {
+    for (let y = 0; y < height; y++) rgba.set(decoded.subarray((height - 1 - y) * width * 4, (height - y) * width * 4), y * width * 4);
+    return { width, height, rgba };
+  }
   const bpp = { 1: 1, 3: 3, 4: 4, 5: 4 }[format];
   if (!bpp || data.length < n * bpp) return null;
   for (let y = 0; y < height; y++) {

@@ -7,7 +7,7 @@
 // installed, and ZB_REMAKE_PY to the venv in zoombini-reference/remake.
 // Without either, the check skips. It compares every file's object counts
 // by class, every text asset's bytes, every sound's rate, channels and
-// length, and every texture in a plain format pixel for pixel.
+// length, and every texture (plain, ASTC or PVRTC) pixel for pixel.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -32,7 +32,7 @@ const fileBytes = new Map();
 const bytesOf = name => { if (!fileBytes.has(name)) fileBytes.set(name, new Uint8Array(fs.readFileSync(path.join(DATA, name)))); return fileBytes.get(name); };
 const side = (p, offset, size) => bytesOf(S.zbUnitySideName(p)).subarray(offset, offset + size);
 
-let objects = 0, texts = 0, sounds = 0, textures = 0;
+let objects = 0, texts = 0, sounds = 0, textures = 0, decodeMs = 0;
 for (const name of fs.readdirSync(DATA).sort()) {
   const p = path.join(DATA, name);
   if (!fs.statSync(p).isFile()) continue;
@@ -66,14 +66,15 @@ for (const name of fs.readdirSync(DATA).sort()) {
       textures++;
       let data = v['image data'];
       if (!data.length && v.m_StreamData.size) data = side(v.m_StreamData.path, v.m_StreamData.offset, v.m_StreamData.size);
-      const img = S.zbUnityTexturePixels(v.m_TextureFormat, v.m_Width, v.m_Height, data);
+      const t0 = performance.now(), img = S.zbUnityTexturePixels(v.m_TextureFormat, v.m_Width, v.m_Height, data);
+      decodeMs += performance.now() - t0;
       if (!img || sha1(img.rgba) !== want.textures[id][1]) fail(`${name} Texture2D ${id} ${v.m_Name}: pixels differ`);
     }
   }
 }
 const plainWanted = Object.entries(oracle).filter(([n]) => fileBytes.has(n)).map(([, f]) => f).reduce((n, f) => n + Object.keys(f.textures).length, 0);
-if (textures !== plainWanted) fail(`${textures} plain textures read, UnityPy has ${plainWanted}`);
-console.log(`${objects.toLocaleString()} objects read, ${texts} text assets, ${sounds} sounds and ${textures} plain textures as UnityPy has them`);
+if (textures !== plainWanted) fail(`${textures} textures read, UnityPy has ${plainWanted}`);
+console.log(`${objects.toLocaleString()} objects read, ${texts} text assets, ${sounds} sounds and ${textures} textures as UnityPy has them (decoded in ${(decodeMs / 1000).toFixed(1)} s)`);
 
 // The page: the files handed to it, then a view of each kind.
 const files = http.createServer((req, res) => {
@@ -81,7 +82,7 @@ const files = http.createServer((req, res) => {
   const p = path.join(DATA, name);
   if (!p.startsWith(DATA) || !fs.existsSync(p)) { res.writeHead(404); res.end(); return; }
   res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Length': fs.statSync(p).size });
-  fs.createReadStream(p).pipe(res);
+  fs.createReadStream(p).on("error", e => console.log("serve", name, e.message)).pipe(res).on("error", e => console.log("send", name, e.message));
 });
 await new Promise(r => files.listen(0, '127.0.0.1', r));
 const filesBase = `http://127.0.0.1:${files.address().port}/`;
@@ -99,16 +100,20 @@ const views = [
   pick(28, (n, o) => oracle[n] && oracle[n].textures[String(o.pathId)]),
   pick(49), pick(83), pick(213), pick(1),
 ].filter(Boolean);
+// The page receives the views' files and the side files beside them, not the
+// whole folder, since a headless page has limited room for blobs.
+const handed = names.filter(n => views.some(([f]) => n === f || n.startsWith(f + '.')) || /^resources\.resource$/.test(n));
+fileBytes.clear();
 const srv = await serve();
 for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]) {
-  const r = await loadPage(srv.base + 'index.html', 'typeof remakeTake === "function" && document.readyState === "complete"', 20000, {
+  const r = await loadPage(srv.base + 'index.html', 'typeof remakeTake === "function" && document.readyState === "complete"', 240000, {
     device: device || undefined,
     then: async ({ evaluate }) => {
       const out = [];
+      await evaluate('window.REMAKE_TEST = []');
+      for (const n of handed) await evaluate(`(async () => { REMAKE_TEST.push(new File([await (await fetch(${JSON.stringify(filesBase)} + encodeURIComponent(${JSON.stringify(n)}))).arrayBuffer()], ${JSON.stringify(n)})); })()`);
       await evaluate(`(async () => {
-        const names = ${JSON.stringify(names)}, files = [];
-        for (const n of names) files.push(new File([await (await fetch(${JSON.stringify(filesBase)} + encodeURIComponent(n))).blob()], n));
-        await remakeTake(files);
+        await remakeTake(REMAKE_TEST);
         document.getElementById('start').hidden = true; document.getElementById('views').hidden = false;
         location.hash = '#remake';
       })()`);

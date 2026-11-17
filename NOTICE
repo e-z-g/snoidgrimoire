@@ -8,6 +8,20 @@ version 3 or (at your option) any later version. `LICENSE` holds the full text.
 the same licence, and are kept identical to it by `utilities/copies_check.mjs`;
 its NOTICE says what in them came from elsewhere.
 
+`js/zb-astc.js` and `js/zb-pvrtc.js` are ported from texture2ddecoder
+(`K0lb3/texture2ddecoder`, `astc.cpp` and `pvrtc.cpp`), MIT License,
+Copyright (c) 2020 K0lb3. The MIT License allows its code in a GPL-3.0
+work with its notice kept: "Permission is hereby granted, free of charge,
+to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions: The above copyright notice and
+this permission notice shall be included in all copies or substantial
+portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT
+WARRANTY OF ANY KIND, EXPRESS OR IMPLIED."
+
 ## Not covered
 
 **The Logical Journey of the Zoombinis itself.** The game is copyright
