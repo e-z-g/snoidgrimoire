@@ -184,6 +184,62 @@ function zbUnityRead(sf, obj, bytes) {
   return out;
 }
 
+/* A MonoBehaviour's fields after its header (`rest`), read by its script
+   class's layout in `layouts`, the table zbIl2cppLayouts (zb-il2cpp.js)
+   builds. Throws when the class has no layout or the read does not end at
+   the end of `rest`. */
+function zbUnityScriptFields(layouts, className, rest, little = true) {
+  if (!layouts[className]) throw new Error(`no layout for ${className}`);
+  const r = zbUnityReader(rest, little);
+  r.layouts = layouts;
+  const out = zbUnityLayout(r, className, 1);
+  if (r.p !== rest.length) throw new Error(`${className}: read ${r.p} of ${rest.length} bytes`);
+  return out;
+}
+
+/* One class's fields by its layout, its base's first. Unity serializes
+   classes at most ZB_UNITY_DEPTH deep, so a deeper one is left out. */
+const ZB_UNITY_DEPTH = 10;
+function zbUnityLayout(r, key, depth) {
+  const [base, ...fields] = r.layouts[key];
+  const out = base ? zbUnityLayout(r, base, depth) : {};
+  for (const f of fields) {
+    const at = f.indexOf(' '), v = zbUnityField(r, f.slice(at + 1), depth);
+    if (v !== undefined) out[f.slice(0, at)] = v;
+  }
+  return out;
+}
+
+function zbUnityField(r, type, depth) {
+  if (type.endsWith('[]')) {
+    const item = type.slice(0, -2);
+    if (r.layouts[item] && depth >= ZB_UNITY_DEPTH) return undefined;
+    const n = r.i32();
+    if (n < 0 || n > r.bytes.length - r.p) throw new Error(`an array of ${n} at ${r.p - 4}`);
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(zbUnityField(r, item, depth + 1));
+    r.align();
+    return out;
+  }
+  switch (type) {
+    case 'bool': { const x = !!r.u8(); r.align(); return x; }
+    case 'u8': { const x = r.u8(); r.align(); return x; }
+    case 'i8': { const x = (r.u8() << 24) >> 24; r.align(); return x; }
+    case 'u16': { const x = r.u16(); r.align(); return x; }
+    case 'i16': { const x = r.i16(); r.align(); return x; }
+    case 'i32': return r.i32();
+    case 'u32': return r.u32();
+    case 'i64': return r.i64();
+    case 'u64': return r.u64();
+    case 'f32': return r.f32();
+    case 'f64': return r.f64();
+    case 'str': { const x = new TextDecoder().decode(r.take(r.i32())); r.align(); return x; }
+    case 'ptr': return { m_FileID: r.i32(), m_PathID: r.i64() };
+  }
+  if (depth >= ZB_UNITY_DEPTH) return undefined;
+  return zbUnityLayout(r, type, depth + 1);
+}
+
 /* The last part of a side file's path ("archive:/x/sharedassets0.assets.resS"). */
 function zbUnitySideName(path) { return String(path || '').split('/').pop(); }
 
@@ -274,4 +330,4 @@ function zbFsbWav(bank, s) {
   return out;
 }
 
-if (typeof module !== 'undefined') module.exports = { zbUnityHeaderSize, zbUnityParse, zbUnityRead, zbUnityValue, zbUnitySideName, zbUnityTexturePixels, zbUnityClassName, zbFsbRead, zbFsbWav, ZB_UNITY_TEXTURE_FORMATS };
+if (typeof module !== 'undefined') module.exports = { zbUnityScriptFields, zbUnityHeaderSize, zbUnityParse, zbUnityRead, zbUnityValue, zbUnitySideName, zbUnityTexturePixels, zbUnityClassName, zbFsbRead, zbFsbWav, ZB_UNITY_TEXTURE_FORMATS };
