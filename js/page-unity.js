@@ -13,17 +13,20 @@
    GameObject's name and its script's class.
    The visitor opens or drops Zoombinis.app, or any folder inside it that
    has Data, or the Data folder alone. The Unity files are the files
-   directly in a folder named Data, at any depth: Wrapper/Zoombinis.app/Data
-   in the iPhone build and Contents/Resources/Data in Steam's Mac build.
+   directly in a folder named Data or <name>_Data, at any depth:
+   Wrapper/Zoombinis.app/Data in the iPhone build, Contents/Resources/Data
+   in Steam's Mac build and Zoombinis_Data in Steam's Windows build.
    From the app the page
    also reads global-metadata.dat (Data/Managed/Metadata in the iPhone
    build, Resources/Data/il2cpp_data/Metadata in Steam's) and the binary
    with the game's code (Frameworks/UnityFramework.framework/UnityFramework,
    or Frameworks/GameAssembly.dylib), and builds the scripts' field layouts
-   from them (zb-il2cpp.js) on the first MonoBehaviour shown. Without them
-   a MonoBehaviour shows its header only. FMOD's Vorbis setup headers are
-   in UnityFramework in the iPhone build and in
-   Frameworks/UnityPlayer.dylib in Steam's. The Android build comes as its
+   from them (zb-il2cpp.js) on the first MonoBehaviour shown. In Steam's
+   Windows build they are Zoombinis_Data/il2cpp_data/Metadata and
+   GameAssembly.dll. Without them a MonoBehaviour shows its header only.
+   FMOD's Vorbis setup headers are in UnityFramework in the iPhone build,
+   in Frameworks/UnityPlayer.dylib in Steam's Mac build and in
+   UnityPlayer.dll in its Windows build. The Android build comes as its
    APKs, and zb-apk.js reads the Unity files, the metadata, the game's code
    (libil2cpp.so) and FMOD (libunity.so) out of them.
    =========================================================================
@@ -51,8 +54,8 @@ async function remakeTake(files, heads = null) {
   if (apks.length) files = files.filter(f => !apks.includes(f)).concat(await zbApkFiles(apks));
   // Only the files directly in Data are Unity's, from a picked or dropped
   // folder. A .resS or .resource file has no header.
-  const inData = f => { const parts = (f.remakePath || f.webkitRelativePath || '').split('/'); return parts.length < 2 || parts[parts.length - 2] === 'Data'; };
-  const code = /^(global-metadata\.dat|UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib|libil2cpp\.so|libunity\.so)$/;
+  const inData = f => { const parts = (f.remakePath || f.webkitRelativePath || '').split('/'); return parts.length < 2 || /^(.+_)?Data$/.test(parts[parts.length - 2]); };
+  const code = /^(global-metadata\.dat|UnityFramework|GameAssembly\.(dylib|dll)|UnityPlayer\.(dylib|dll)|libil2cpp\.so|libunity\.so)$/;
   // Every file's header is read together, since each read of a file at an
   // address is a request.
   // An index of a folder at an address has the headers already (zb-range.js).
@@ -68,8 +71,8 @@ async function remakeTake(files, heads = null) {
   for (const [i, f] of files.entries()) {
     if (/^\./.test(f.name)) continue;
     if (f.name === 'global-metadata.dat') { REMAKE_IL2CPP.metadata = f; REMAKE_IL2CPP.layouts = null; continue; }
-    if (/^(UnityFramework|GameAssembly\.dylib|libil2cpp\.so)$/.test(f.name)) { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
-    if (/^(UnityFramework|UnityPlayer\.dylib|libunity\.so)$/.test(f.name)) { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
+    if (/^(UnityFramework|GameAssembly\.(dylib|dll)|libil2cpp\.so)$/.test(f.name)) { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
+    if (/^(UnityFramework|UnityPlayer\.(dylib|dll)|libunity\.so)$/.test(f.name)) { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
     if (code.test(f.name) || !inData(f)) continue;
     const sf = sfs[i];
     if (!sf && !/\.(resS|resource)$/i.test(f.name)) continue;
@@ -396,13 +399,14 @@ async function remakeSound(v) {
   if (wav) return { about, bytes: wav, type: 'audio/wav', ext: '.wav' };
   if (bank.codec !== 15 || !s) return { about, note: `The page does not decode ${bank.codecName} so far.` };
   const setup = await remakeVorbisSetup(s.setupCrc);
-  if (!setup) return { about, note: REMAKE_IL2CPP.fmod ? `The app’s ${REMAKE_IL2CPP.fmod.name} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, in UnityPlayer.dylib in Steam’s copy, or in libunity.so in the Android APKs. Open the whole Zoombinis.app or the APKs to play it.' };
+  if (!setup) return { about, note: REMAKE_IL2CPP.fmod ? `The app’s ${REMAKE_IL2CPP.fmod.name} has no Vorbis setup header with this sound’s CRC-32.` : 'A Vorbis sound needs its setup header, which is in the app’s UnityFramework, in UnityPlayer.dylib or UnityPlayer.dll in Steam’s copies, or in libunity.so in the Android APKs. Open the whole app folder or the APKs to play it.' };
   return { about, bytes: zbFsbOgg(s, setup), type: 'audio/ogg', ext: '.ogg' };
 }
 
 /* A Vorbis setup header by its CRC-32, found in the binary where FMOD is
    linked, with FMOD's set of them: UnityFramework, UnityPlayer.dylib in
-   Steam's Mac build, or libunity.so in the Android build. The headers
+   Steam's Mac build, UnityPlayer.dll in its Windows build, or libunity.so
+   in the Android build. The headers
    found are kept for later sounds. */
 const REMAKE_VORBIS = new Map();
 async function remakeVorbisSetup(crc) {

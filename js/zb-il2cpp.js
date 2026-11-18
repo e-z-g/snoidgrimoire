@@ -1,9 +1,10 @@
 /* zb-il2cpp.js -- the serialized field layouts of the 2015 remake's script
    classes, built from its IL2CPP build: global-metadata.dat and the
-   binary with the game's code, an arm64 Mach-O. That is UnityFramework in
-   the iPhone build and GameAssembly.dylib in Steam's Mac build, which is
-   a universal binary holding an x86_64 and an arm64 Mach-O, and the arm64
-   one is read. zbUnityScriptFields (zb-unity.js)
+   binary with the game's code. That is an arm64 Mach-O, UnityFramework, in
+   the iPhone build, and GameAssembly.dylib in Steam's Mac build, which is
+   a universal binary with an x86_64 and an arm64 Mach-O, of which the arm64
+   one is read. It is an arm64 ELF file, libil2cpp.so, in the Android build
+   and an x86-64 DLL, GameAssembly.dll, in Steam's Windows build. zbUnityScriptFields (zb-unity.js)
    reads a MonoBehaviour's fields by the table built here.
    Read:
    global-metadata.dat (version 31) starts with the magic 0xFAB11BAF and the
@@ -43,7 +44,13 @@
    image base is 0 in both. A universal binary starts with 0xCAFEBABE (big
    endian), a count, and for each Mach-O in it 20 bytes: the CPU type, its
    subtype, the offset, the size and the alignment. Arm64 is CPU type
-   0x0100000C.
+   0x0100000C. Steam's Windows build has GameAssembly.dll, an x86-64 PE32+
+   file: "MZ", the PE header's offset at 0x3C, "PE\0\0", the machine
+   (0x8664), the section count, the optional header's size at +20, then the
+   optional header (magic 0x20B, the image base at +24) and 40 bytes a
+   section (name, virtual size, address, raw size, file offset). Its
+   pointers are addresses for the image base, 0x180000000, so they fit the
+   36 bits that the Mach-O reading uses.
    The layout table, by Unity's serialization rules:
      name: [base, "field type", ...]
    where a type is bool, u8, i8, u16, i16, i32, u32, i64, u64, f32, f64,
@@ -61,9 +68,9 @@
    Il2CppDumper (Il2Cpp/MetadataClass.cs, Il2CppClass.cs, the registration
    search in its Mach-O plugins), LibCpp2IL (Cpp2IL's metadata and Mach-O
    readers), Apple's dyld fixup-chains.h, and Unity's script serialization
-   rules. Checked by utilities/remake_check.mjs: the layouts against the
-   table zoombini-workbench tools/remake/layouts.py writes from Cpp2IL's
-   dump, and every MonoBehaviour of the iPhone and Steam Mac builds read by
+   rules, and Microsoft's PE format. Checked by utilities/remake_check.mjs:
+   the layouts against the table zoombini-workbench tools/remake/layouts.py
+   writes from Cpp2IL's dump, and every MonoBehaviour of each build read by
    them to exactly its size.
    =========================================================================
    Pure: bytes in, data out. Used by page-unity.js. */
@@ -252,6 +259,27 @@ async function zbIl2cppElf(read) {
   return { segments: loads.filter(l => l.writable), relocated };
 }
 
+/* The sections of an x86-64 Windows DLL (PE32+) that hold data: .data
+   and .rdata, at their addresses with the image base added, since the
+   DLL's pointers are addresses for that base. */
+async function zbIl2cppPe(read) {
+  const dos = await read(0, 64), dv = new DataView(dos.buffer, dos.byteOffset, dos.byteLength);
+  const pe = dv.getUint32(0x3c, true), head = await read(pe, 24), hv = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if (hv.getUint32(0, true) !== 0x4550 || hv.getUint16(4, true) !== 0x8664) throw new Error('This is not an x86-64 Windows DLL.');
+  const count = hv.getUint16(6, true), optSize = hv.getUint16(20, true);
+  const opt = await read(pe + 24, optSize), ov = new DataView(opt.buffer, opt.byteOffset, opt.byteLength);
+  if (ov.getUint16(0, true) !== 0x20b) throw new Error('This DLL is not in the 64-bit form.');
+  const base = Number(ov.getBigUint64(24, true));
+  const table = await read(pe + 24 + optSize, count * 40), tv = new DataView(table.buffer, table.byteOffset, table.byteLength);
+  const sections = [];
+  for (let i = 0; i < count; i++) {
+    const p = i * 40, name = new TextDecoder().decode(table.subarray(p, p + 8)).replace(/\0.*$/s, '');
+    const virtualSize = tv.getUint32(p + 8, true), rva = tv.getUint32(p + 12, true), rawSize = tv.getUint32(p + 16, true), raw = tv.getUint32(p + 20, true);
+    sections.push({ name, vmaddr: base + rva, fileoff: raw, filesize: Math.min(virtualSize, rawSize) });
+  }
+  return sections.filter(s => s.name === '.data' || s.name === '.rdata');
+}
+
 /* The binary's registration and type table. `readFile(offset, length)`
    resolves to the bytes at a file offset. Only the headers, the
    relocations and the data segments are read. */
@@ -261,7 +289,8 @@ async function zbIl2cppBinary(readFile, typeDefCount) {
   let segments, relocated = null;
   if (magic[0] === 0x7f && magic[1] === 0x45 && magic[2] === 0x4c && magic[3] === 0x46) ({ segments, relocated } = await zbIl2cppElf(read));
   else if (new DataView(magic.buffer, magic.byteOffset, 4).getUint32(0, true) === 0xfeedfacf) segments = await zbIl2cppMachO(read);
-  else throw new Error('This is neither a Mach-O nor an ELF binary.');
+  else if (magic[0] === 0x4d && magic[1] === 0x5a) segments = await zbIl2cppPe(read);
+  else throw new Error('This is neither a Mach-O, an ELF nor a Windows binary.');
   const data = [];
   for (const s of segments) {
     const bytes = await read(s.fileoff, s.filesize);

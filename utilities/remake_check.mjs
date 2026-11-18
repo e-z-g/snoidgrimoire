@@ -36,6 +36,7 @@ const BUILDS = [
   '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data',
   path.join(os.homedir(), 'Library', 'Application Support', 'Steam', 'steamapps', 'common', 'Zoombinis', 'Zoombinis.app', 'Contents', 'Resources', 'Data'),
   path.join(ROOT, '..', 'zoombini-reference', 'remake-android', 'Data'),
+  path.join(ROOT, '..', 'zoombini-reference', 'remake-windows', 'Zoombinis', 'Zoombinis_Data'),
 ];
 if (!process.env.ZB_REMAKE) {
   const found = BUILDS.filter(b => fs.existsSync(b));
@@ -55,14 +56,17 @@ if (!fs.existsSync(DATA) || !fs.existsSync(PY)) {
 }
 // The iPhone build's app folder has Data and Frameworks. Steam's Mac build
 // has Contents, with Resources/Data and Frameworks. The Android build's
-// folder has apk/, Data/ and unzipped/lib.
-const STEAM = path.basename(path.dirname(DATA)) === 'Resources';
+// folder has apk/, Data/ and unzipped/lib. Steam's Windows build, copied
+// off the PC into zoombini-reference/remake-windows, has Zoombinis_Data
+// beside GameAssembly.dll and UnityPlayer.dll.
+const WINDOWS = /_Data$/.test(path.basename(DATA));
+const STEAM = WINDOWS || path.basename(path.dirname(DATA)) === 'Resources';
 const ANDROID = fs.existsSync(path.join(path.dirname(DATA), 'apk'));
-const APP = STEAM ? path.dirname(path.dirname(DATA)) : path.dirname(DATA);
+const APP = STEAM && !WINDOWS ? path.dirname(path.dirname(DATA)) : path.dirname(DATA);
 const LIB = path.join(APP, 'unzipped', 'lib', 'arm64-v8a');
 const METADATA = STEAM ? path.join(DATA, 'il2cpp_data', 'Metadata', 'global-metadata.dat') : path.join(DATA, 'Managed', 'Metadata', 'global-metadata.dat');
-const BINARY = STEAM ? path.join(APP, 'Frameworks', 'GameAssembly.dylib') : ANDROID ? path.join(LIB, 'libil2cpp.so') : path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
-const FMOD = STEAM ? path.join(APP, 'Frameworks', 'UnityPlayer.dylib') : ANDROID ? path.join(LIB, 'libunity.so') : BINARY;
+const BINARY = WINDOWS ? path.join(APP, 'GameAssembly.dll') : STEAM ? path.join(APP, 'Frameworks', 'GameAssembly.dylib') : ANDROID ? path.join(LIB, 'libil2cpp.so') : path.join(APP, 'Frameworks', 'UnityFramework.framework', 'UnityFramework');
+const FMOD = WINDOWS ? path.join(APP, 'UnityPlayer.dll') : STEAM ? path.join(APP, 'Frameworks', 'UnityPlayer.dylib') : ANDROID ? path.join(LIB, 'libunity.so') : BINARY;
 const LAYOUTS = process.env.ZB_REMAKE_LAYOUTS || (STEAM ? null : path.join(ROOT, '..', 'zoombini-reference', 'remake', 'layouts.json'));
 for (const p of [METADATA, BINARY, FMOD, LAYOUTS].filter(Boolean)) if (!fs.existsSync(p)) { console.log(`SKIP: needs ${p}`); process.exit(0); }
 const vorbis = [];
@@ -102,7 +106,7 @@ const servedPaths = (function walk(dir, rel = '') {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(path.join(dir, d.name), rel + d.name + '/') : S.zbAddressIndexWants(rel + d.name) ? [rel + d.name] : []);
 })(SERVED);
 
-const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : ANDROID ? 'vorbis-oracle-android' : 'vorbis-oracle');
+const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', WINDOWS ? 'vorbis-oracle-windows' : STEAM ? 'vorbis-oracle-steam-mac' : ANDROID ? 'vorbis-oracle-android' : 'vorbis-oracle');
 
 // The Android build's APKs: every file zb-apk.js reads out of them, against
 // the same file unzipped and joined.

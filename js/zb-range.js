@@ -160,19 +160,21 @@ function zbAddressIndexRead(bytes) {
 }
 
 /* Whether a file of a build's folder goes in its index: an APK, a file
-   directly in a folder named Data, the metadata, or the code. */
+   directly in a folder named Data or <name>_Data, the metadata, or the
+   code. */
 function zbAddressIndexWants(path) {
   if (/(^|\/)\./.test(path)) return false;
-  return /\.apk$/i.test(path) || /(^|\/)Data\/[^/]+$/.test(path) || /(^|\/)(global-metadata\.dat|UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib)$/.test(path);
+  return /\.apk$/i.test(path) || /(^|\/)([^/]+_)?Data\/[^/]+$/.test(path) || /(^|\/)(global-metadata\.dat|UnityFramework|GameAssembly\.(dylib|dll)|UnityPlayer\.(dylib|dll))$/.test(path);
 }
 
 /* The index of a folder's files, given as [{ path, file }]: the APKs, or
-   an app's Unity files (those directly in a folder named Data), its
+   an app's Unity files (those directly in a folder named Data or
+   <name>_Data), its
    metadata and its code. The heads are those of the Unity files, out of
    the APKs where the folder has APKs. */
 async function zbAddressIndexBuild(entries) {
   const apks = entries.filter(e => /\.apk$/i.test(e.path));
-  const unity = apks.length ? await zbApkFiles(apks.map(e => e.file)) : entries.filter(e => /(^|\/)Data\/[^/]+$/.test(e.path)).map(e => e.file);
+  const unity = apks.length ? await zbApkFiles(apks.map(e => e.file)) : entries.filter(e => /(^|\/)([^/]+_)?Data\/[^/]+$/.test(e.path)).map(e => e.file);
   const heads = [];
   for (const f of unity) {
     if (/\.(resS|resource)$/i.test(f.name)) continue;
