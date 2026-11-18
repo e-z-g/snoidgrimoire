@@ -530,7 +530,7 @@ const isRemakeSwf = it => /\.swf$/i.test(it.path || '');
 
 /* Sound rows, each played from its button. */
 function remakeSoundRows(d, list) {
-  d.insertAdjacentHTML('beforeend', '<table class="plain">' + list.map((it, i) => `<tr><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${remakeLink(it.entry.name, it.obj.pathId)}">${esc(it.name || String(it.obj.pathId))}</a></td><td class="note"></td></tr>`).join('') + '</table>');
+  d.insertAdjacentHTML('beforeend', '<table class="plain">' + list.map((it, i) => `<tr data-tune="${esc(it.name || '')}"><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${remakeLink(it.entry.name, it.obj.pathId)}">${esc(it.name || String(it.obj.pathId))}</a></td><td class="track"></td><td class="note"></td></tr>`).join('') + '</table>');
   d.addEventListener('click', async e => {
     const b = e.target.closest('button.play');
     if (!b) return;
@@ -542,6 +542,61 @@ function remakeSoundRows(d, list) {
     } catch (err) { note.textContent = err.message; }
   });
 }
+/* The tunes named after the soundtrack that comes with Steam's copies
+   (zb-tunes.js): each tune's track and where in it the tune starts. The
+   names found are saved in the browser by the tune's name, so they show
+   with any build once one build with the soundtrack has been open. */
+const REMAKE_TUNES_KEY = 'snoidgrimoire-remake-tunes';
+let REMAKE_TRACKS = null;
+async function remakeSamples(bytes) {
+  const ctx = new OfflineAudioContext(1, 1, ZB_TUNE_RATE);
+  const buf = await ctx.decodeAudioData(bytes.buffer ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) : bytes);
+  const out = new Float32Array(buf.length);
+  for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) out[i] += d[i] / buf.numberOfChannels; }
+  return out;
+}
+async function remakeNameTunes(view, list) {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(REMAKE_TUNES_KEY) || '{}'); } catch (e) { saved = {}; }
+  const show = () => {
+    for (const tr of view.querySelectorAll('tr[data-tune]')) {
+      const r = saved[tr.dataset.tune];
+      if (r === undefined) continue;
+      const at = r && `${Math.floor(r[1] / 60)}:${String(Math.round(r[1] % 60)).padStart(2, '0')}`;
+      tr.querySelector('td.track').textContent = r ? `${r[0]}, from ${at}` : 'not in the soundtrack';
+    }
+  };
+  show();
+  const head = document.createElement('p');
+  head.className = 'note';
+  view.querySelector('details').before(head);
+  const todo = list.filter(it => it.name && saved[it.name] === undefined);
+  if (!todo.length) { head.textContent = 'The tunes are named after the soundtrack that comes with Steam’s copies, by the track each is found in.'; return; }
+  const tracks = REMAKE_SOUNDTRACK.filter(f => /\.mp3$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+  if (!tracks.length) { head.textContent = 'The soundtrack that comes with Steam’s copies, as MP3 files, names these tunes. Open Steam’s whole Zoombinis folder, or an address with the soundtrack, and the page finds each tune in it.'; return; }
+  try {
+    if (!REMAKE_TRACKS || REMAKE_TRACKS.files !== tracks.length) {
+      const chroma = [];
+      for (const [i, f] of tracks.entries()) {
+        head.textContent = `Reading the soundtrack, ${i + 1} of ${tracks.length} (${zbTrackTitle(f.name)})…`;
+        chroma.push(zbChroma(await remakeSamples(new Uint8Array(await f.arrayBuffer()))));
+      }
+      REMAKE_TRACKS = { files: tracks.length, chroma, titles: tracks.map(f => zbTrackTitle(f.name)) };
+    }
+    for (const [i, it] of todo.entries()) {
+      head.textContent = `Finding the tunes in the soundtrack, ${i + 1} of ${todo.length}…`;
+      const snd = await remakeSound(await remakeObject(it.entry, it.obj));
+      if (!snd.bytes) continue;
+      const r = zbTuneFind(zbChroma(await remakeSamples(snd.bytes)), REMAKE_TRACKS.chroma);
+      saved[it.name] = r ? [REMAKE_TRACKS.titles[r.track], Math.round(r.at * 10) / 10] : null;
+      show();
+      await new Promise(res => setTimeout(res, 0));
+    }
+    try { localStorage.setItem(REMAKE_TUNES_KEY, JSON.stringify(saved)); } catch (e) { /* kept for this visit only */ }
+    head.textContent = 'The tunes are named after the soundtrack that comes with Steam’s copies, by the track each is found in.';
+  } catch (err) { head.textContent = `The soundtrack could not be read. ${err.message}`; }
+}
+
 /* Texture or sprite cards. */
 function remakeCards(d, items, draw) {
   galleryCards(d, items.map(it => ({ ...it, href: remakeLink(it.entry.name, it.obj.pathId), cap: esc(it.name || String(it.obj.pathId)) })), async (c, pic) => {
@@ -601,6 +656,7 @@ const REMAKE_GALLERIES = {
     const list = remakeAll(83).filter(isRemakeMusic);
     remakeGalleryHead(view, 'Music', `${plural(list.length, 'tune')} in the remake’s Resources/audio/music. The remake plays recordings, where the 1996 game played MIDI.`);
     remakeFolds(view, remakeGrouped(list), remakeSoundRows);
+    await remakeNameTunes(view, list);
   },
 
   async text(view) {

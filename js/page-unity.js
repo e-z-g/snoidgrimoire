@@ -34,6 +34,9 @@
 
 const REMAKE_FILES = new Map();   // name -> { name, file (a Blob), sf, names: Map pathId -> name }
 const REMAKE_IL2CPP = { metadata: null, binary: null, fmod: null, layouts: null, ms: 0 };
+// The MP3 files of the soundtrack that comes with Steam's copies, which
+// name the tunes (zb-tunes.js).
+const REMAKE_SOUNDTRACK = [];
 
 function isRemakeHash() { return /^#remake(\/|$)/.test(location.hash); }
 function remakeHashParts() {
@@ -70,6 +73,7 @@ async function remakeTake(files, heads = null) {
   }));
   for (const [i, f] of files.entries()) {
     if (/^\./.test(f.name)) continue;
+    if (ZB_SOUNDTRACK_FILE.test(f.remakePath || f.webkitRelativePath || '')) { REMAKE_SOUNDTRACK.push(f); continue; }
     if (f.name === 'global-metadata.dat') { REMAKE_IL2CPP.metadata = f; REMAKE_IL2CPP.layouts = null; continue; }
     if (/^(UnityFramework|GameAssembly\.(dylib|dll)|libil2cpp\.so)$/.test(f.name)) { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
     if (/^(UnityFramework|UnityPlayer\.(dylib|dll)|libunity\.so)$/.test(f.name)) { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
@@ -187,6 +191,7 @@ async function remakeNames(entry) {
 
 function remakeSideHtml(h) {
   let html = REMAKE_ADDRESS ? `<p class="remembered">Read from an address saved in this browser. <a data-clear-address>Clear</a></p>` : '';
+  if (REMAKE_BUILDS.list.length > 1) html += `<p class="remembered">${REMAKE_BUILDS.list.map(([name, path]) => path === REMAKE_BUILDS.open ? `<b>${esc(name)}</b>` : `<a data-build="${esc(path)}">${esc(name)}</a>`).join(' · ')}</p>`;
   const files = [...REMAKE_FILES.values()].filter(e => e.sf).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
   const ids = files.filter(e => isRemakeIdFile(e.name)).length, cat = REMAKE_CATALOG;
   if (cat && cat.byObject.size) html += `<div class="arc${h.file === '@resources' || (h.file && isRemakeIdFile(h.file)) ? ' on' : ''}" data-arc="remake/@resources"><span class="name">Resources</span><span class="place">${plural(cat.byObject.size, 'asset')}${ids ? ` in ${plural(ids, 'file')}` : ''}</span></div>`;
@@ -235,9 +240,10 @@ async function renderRemake() {
   const side = $('side');
   side.insertAdjacentHTML('beforeend', remakeSideHtml(h));
   for (const el of side.querySelectorAll('.arc[data-arc^="remake/"]')) el.addEventListener('click', () => { location.hash = '#' + el.dataset.arc; });
+  for (const el of side.querySelectorAll('[data-build]')) el.addEventListener('click', () => remakeOpenAddress(REMAKE_ADDRESS, true, el.dataset.build));
   const clear = side.querySelector('[data-clear-address]');
   if (clear) clear.addEventListener('click', () => {
-    try { localStorage.removeItem(REMAKE_ADDRESS_KEY); } catch (e) { /* nothing saved */ }
+    try { localStorage.removeItem(REMAKE_ADDRESS_KEY); localStorage.removeItem(REMAKE_BUILD_KEY); } catch (e) { /* nothing saved */ }
     REMAKE_ADDRESS = null;
     clear.parentNode.remove();
     setStatus(`The address is cleared, and the next visit opens the remake only from files you choose.`);
@@ -476,30 +482,65 @@ async function remakeOpen(files, stay = false, heads = null) {
    The folder there has an index of its files (snoidgrimoire-index.bin),
    or else the Android build's three APKs. The address is saved in the
    browser, and the next visit opens it again. */
-const REMAKE_ADDRESS_KEY = 'snoidgrimoire-remake-address';
+const REMAKE_ADDRESS_KEY = 'snoidgrimoire-remake-address', REMAKE_BUILD_KEY = 'snoidgrimoire-remake-build';
 let REMAKE_ADDRESS = null;
-async function remakeOpenAddress(base, stay = false) {
+// The builds that an address's index has, as [name, path], and the one open.
+let REMAKE_BUILDS = { list: [], open: '' };
+async function remakeOpenAddress(base, stay = false, build = null) {
   base = base.trim();
   if (!base) return;
   if (!base.endsWith('/')) base += '/';
   setStatus(`Opening the remake at ${base}…`);
-  let files, heads = null;
+  const indexAt = async folder => {
+    const bytes = await fetch(folder + ZB_ADDRESS_INDEX).then(r => r.ok ? r.arrayBuffer() : null, () => null);
+    return bytes && zbAddressIndexRead(new Uint8Array(bytes));
+  };
+  const filesOf = (folder, index) => index.files.map(([p, size]) => zbRangeFileAt(folder + p.split('/').map(encodeURIComponent).join('/'), size, p.split('/').pop(), p));
+  let files, heads = null, builds = [], folder = base;
   try {
-    const index = await fetch(base + ZB_ADDRESS_INDEX).then(r => r.ok ? r.arrayBuffer() : null, () => null);
+    let index = await indexAt(base), shared = [];
+    // An index of several builds: the one picked, or the one picked on an
+    // earlier visit, or the first, with the files they share.
+    if (index && index.builds.length) {
+      builds = index.builds;
+      let saved = null;
+      try { saved = localStorage.getItem(REMAKE_BUILD_KEY); } catch (e) { saved = null; }
+      const path = [build, saved].find(p => p && builds.some(b => b[1] === p)) || builds[0][1];
+      shared = filesOf(base, index);
+      folder = base + path;
+      index = await indexAt(folder);
+      if (!index) throw new Error(`The build at ${folder} has no index.`);
+      try { localStorage.setItem(REMAKE_BUILD_KEY, path); } catch (e) { /* kept for this visit only */ }
+    }
     if (index) {
-      const read = zbAddressIndexRead(new Uint8Array(index));
-      heads = read.heads;
-      files = read.files.map(([p, size]) => zbRangeFileAt(base + p.split('/').map(encodeURIComponent).join('/'), size, p.split('/').pop(), p));
-    } else files = await Promise.all(ZB_APK_NAMES.map(n => zbRangeOpen(base + n, n)));
+      heads = index.heads;
+      files = filesOf(folder, index);
+      // A shared file that the build's index lists as well is not read twice.
+      const urls = new Set(files.map(f => f.source.url));
+      files = files.concat(shared.filter(f => !urls.has(f.source.url)));
+    }
+    else files = await Promise.all(ZB_APK_NAMES.map(n => zbRangeOpen(base + n, n)));
   } catch (err) {
     const why = err instanceof TypeError ? 'The server sent nothing this page can read. Its CORS rules may leave this site out.' : err.message;
     setStatus(`The remake at ${base} could not be read. ${why}`, true);
     return;
   }
+  remakeClose();
   REMAKE_ADDRESS = base;
+  REMAKE_BUILDS = { list: builds, open: folder.slice(base.length) };
   try { localStorage.setItem(REMAKE_ADDRESS_KEY, base); } catch (e) { /* kept for this visit only */ }
   await remakeOpen(files, stay, heads);
   if (REMAKE_FILES.size) setStatus(`The remake is open from the address saved in this browser.`);
+}
+
+/* Every file of the remake closed, before another build opens. */
+function remakeClose() {
+  REMAKE_FILES.clear();
+  REMAKE_SOUNDTRACK.length = 0;
+  Object.assign(REMAKE_IL2CPP, { metadata: null, binary: null, fmod: null, layouts: null });
+  REMAKE_VORBIS.clear();
+  REMAKE_CATALOG = null;
+  if (typeof remakeForget === 'function') remakeForget();
 }
 
 /* The address saved on an earlier visit, opened where the visit goes. */

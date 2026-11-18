@@ -79,22 +79,29 @@ const fail = m => { if (problems.length < 30) problems.push(m); };
 // R2 does, and counts the requests and bytes sent. It serves the files
 // the index lists, and the index (snoidgrimoire-index.bin) where given.
 const APK_NAMES = ['base.apk', 'split_config.arm64_v8a.apk', 'split_UnityDataAssetPack.apk'];
-function rangeServer(dir, paths, index = null) {
+function rangeServer(dir, paths, index = null, top = null) {
   const sent = { requests: 0, bytes: 0 };
   const server = http.createServer((req, res) => {
-    const name = decodeURIComponent(req.url.slice(1).split('?')[0]);
+    let name = decodeURIComponent(req.url.slice(1).split('?')[0]);
+    // With `top`, the build is the folder top.path under an index of builds.
+    let topIndex = false;
+    if (top) {
+      if (name === S.ZB_ADDRESS_INDEX) topIndex = true;
+      else if (name.startsWith(top.path)) name = name.slice(top.path.length);
+      else name = '';
+    }
     const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Range', 'Access-Control-Expose-Headers': 'Content-Length, Content-Range', 'Accept-Ranges': 'bytes' };
     if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; }
-    const isIndex = index && name === S.ZB_ADDRESS_INDEX;
-    if (!isIndex && !paths.includes(name)) { res.writeHead(404, headers); res.end(); return; }
-    const size = isIndex ? index.length : fs.statSync(path.join(dir, name)).size;
+    const served = topIndex ? top.index : index && name === S.ZB_ADDRESS_INDEX ? index : null;
+    if (!served && !paths.includes(name)) { res.writeHead(404, headers); res.end(); return; }
+    const size = served ? served.length : fs.statSync(path.join(dir, name)).size;
     const m = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
     sent.requests++;
     if (req.method === 'HEAD') { res.writeHead(200, { ...headers, 'Content-Length': size }); res.end(); return; }
     const a = m ? +m[1] : 0, z = m ? Math.min(+m[2], size - 1) : size - 1;
     sent.bytes += z - a + 1;
     res.writeHead(m ? 206 : 200, { ...headers, 'Content-Length': z - a + 1, ...(m ? { 'Content-Range': `bytes ${a}-${z}/${size}` } : {}) });
-    if (isIndex) res.end(Buffer.from(index.subarray(a, z + 1)));
+    if (served) res.end(Buffer.from(served.subarray(a, z + 1)));
     else fs.createReadStream(path.join(dir, name), { start: a, end: z }).pipe(res);
   });
   return new Promise(r => server.listen(0, '127.0.0.1', () => r({ base: `http://127.0.0.1:${server.address().port}/`, sent, close: () => server.close() })));
@@ -363,6 +370,28 @@ if (JSON.stringify(traitNames) !== JSON.stringify(expectedNames)) fail(`the trai
 else console.log('the twenty trait names read from BubblewonderAbyssGrid as REMAKE.md has them');
 console.log(`${objects.toLocaleString()} objects read, ${texts} text assets, ${sounds} sounds and ${textures} textures as UnityPy has them (decoded in ${(decodeMs / 1000).toFixed(1)} s)`);
 
+// The tunes found in the soundtrack that comes with Steam's copies, by
+// zb-tunes.js against remake_tunes_oracle.py, both on the tunes as UnityPy
+// decodes them and the MP3 files as ffmpeg decodes them. Only the Windows
+// build's folder, as copied off the PC, has the soundtrack beside it.
+const SOUNDTRACK = path.join(APP, '_Zoombinis Original Soundtrack');
+let tunesExpected = null;
+if (WINDOWS && fs.existsSync(SOUNDTRACK)) {
+  const out = path.join(path.dirname(PY), '..', '..', 'tunes-oracle-windows');
+  tunesExpected = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_tunes_oracle.py'), DATA, SOUNDTRACK, out], { encoding: 'utf8', maxBuffer: 1 << 26 }).stdout);
+  const pcm = f => { const b = spawnSync('ffmpeg', ['-v', 'quiet', '-i', f, '-ac', '1', '-ar', '8000', '-f', 'f32le', '-'], { maxBuffer: 1 << 30 }).stdout; return new Float32Array(b.buffer, b.byteOffset, b.length / 4); };
+  const names = fs.readdirSync(SOUNDTRACK).filter(n => /\.mp3$/i.test(n)).sort();
+  const t0 = performance.now(), tracks = names.map(n => S.zbChroma(pcm(path.join(SOUNDTRACK, n))));
+  let found = 0;
+  for (const [tune, want] of Object.entries(tunesExpected)) {
+    const r = S.zbTuneFind(S.zbChroma(pcm(path.join(out, tune + '.wav'))), tracks);
+    const got = r && [names[r.track], r.at];
+    if (!want !== !got || (want && (want[0] !== got[0] || Math.abs(want[1] - got[1]) > 0.5))) fail(`tune ${tune}: ${JSON.stringify(got)} against ${JSON.stringify(want)}`);
+    if (got) found++;
+  }
+  console.log(`${found} of ${Object.keys(tunesExpected).length} tunes found in the ${names.length} tracks of the soundtrack as numpy finds them, in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+}
+
 // The page: the files handed to it, then a view of each kind.
 const handedPath = n => n === 'global-metadata.dat' ? METADATA : n === path.basename(BINARY) ? BINARY : n === path.basename(FMOD) ? FMOD : path.join(DATA, n);
 const files = http.createServer((req, res) => {
@@ -468,15 +497,22 @@ const indexBytes = await S.zbAddressIndexBuild(await Promise.all(servedPaths.map
 console.log(`the index of ${servedPaths.length} files, ${(indexBytes.length / 1e6).toFixed(2)} MB`);
 for (const withIndex of ANDROID ? [false, true] : [true]) {
   const how = withIndex ? 'with its index' : 'from the APKs alone';
-  const remote = await rangeServer(SERVED, servedPaths, withIndex ? indexBytes : null);
+  // The Windows build opens from an index of builds above it, which has
+  // its soundtrack as a shared file, as the bucket's top folder has it.
+  const top = WINDOWS && withIndex ? {
+    path: 'windows/',
+    index: S.zbAddressIndexWrite(servedPaths.filter(p => S.ZB_SOUNDTRACK_FILE.test(p)).map(p => ['windows/' + p, fs.statSync(path.join(SERVED, p)).size]), [], [['Another build', 'other/'], ['Windows', 'windows/']]),
+  } : null;
+  const remote = await rangeServer(SERVED, servedPaths, withIndex ? indexBytes : null, top);
   const level0 = parsed.get('level0'), mono = level0 && level0.objects.find(o => o.classId === 114);
   const r = await loadPage(srv.base + 'index.html', 'typeof remakeOpenAddress === "function" && document.readyState === "complete"', 240000, {
     then: async ({ evaluate }) => {
       const out = [];
       const wait = async (test, ms = 60000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await evaluate(test)) return true; await new Promise(res => setTimeout(res, 200)); } return false; };
       const took = await evaluate(`(async () => {
+        ${top ? `localStorage.setItem(REMAKE_BUILD_KEY, 'windows/');` : ''}
         await remakeOpenAddress(${JSON.stringify(remote.base)});
-        return [REMAKE_FILES.size, !!REMAKE_IL2CPP.binary, !!REMAKE_IL2CPP.fmod, !!REMAKE_IL2CPP.metadata, localStorage.getItem(REMAKE_ADDRESS_KEY)];
+        return [REMAKE_FILES.size, !!REMAKE_IL2CPP.binary, !!REMAKE_IL2CPP.fmod, !!REMAKE_IL2CPP.metadata, localStorage.getItem(REMAKE_ADDRESS_KEY), REMAKE_SOUNDTRACK.length, REMAKE_BUILDS.open];
       })()`);
       out.push({ took, opened: { ...remote.sent } });
       if (mono) {
@@ -489,6 +525,18 @@ for (const withIndex of ANDROID ? [false, true] : [true]) {
         if (!await wait(`(() => { const c = document.querySelector('#view canvas.scene'); if (!c) return false; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] !== 0x33 || d[i + 1] !== 0x33 || d[i + 2] !== 0x44) n++; return n > 1000; })()`, 120000)) out.push(`scene ${sceneShown} is not drawn`);
       }
       out.push({ after: { ...remote.sent } });
+      // The tunes named from the soundtrack, with the oracle's names.
+      if (tunesExpected) {
+        await evaluate(`localStorage.removeItem('snoidgrimoire-remake-tunes'); location.hash = '#components/music'`);
+        const done = await wait(`document.querySelectorAll('#view td.track').length > 0 && [...document.querySelectorAll('#view td.track')].every(td => td.textContent)`, 240000);
+        const rows = await evaluate(`[...document.querySelectorAll('#view tr[data-tune]')].map(tr => [tr.dataset.tune, tr.querySelector('td.track').textContent])`);
+        if (!done) out.push(`the tunes were not named, ${await evaluate(`(document.querySelector('#view p.note') || {}).textContent`)}`);
+        else for (const [tune, text] of rows) {
+          const want = tunesExpected[tune], title = want && S.zbTrackTitle(want[0]);
+          if (want ? !text.startsWith(title + ', from ') : text !== 'not in the soundtrack') out.push(`tune ${tune} named "${text}", against ${JSON.stringify(want)}`);
+        }
+        out.push({ tunes: rows.length });
+      }
       return out;
     },
   });
@@ -496,11 +544,13 @@ for (const withIndex of ANDROID ? [false, true] : [true]) {
   if (!r.met) fail(`the page did not load (at an address, ${how})`);
   for (const m of r.more || []) {
     if (m && m.took) {
-      const [n, binary, fmod, metadata, saved] = m.took;
+      const [n, binary, fmod, metadata, saved, soundtrack, build] = m.took;
+      if (top && (build !== top.path || soundtrack !== servedPaths.filter(p => S.ZB_SOUNDTRACK_FILE.test(p)).length)) fail(`page at an address ${how}, build ${build} with ${soundtrack} soundtrack files`);
       if (!n || !binary || !fmod || !metadata) fail(`page at an address ${how}, ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
       else if (saved !== remote.base) fail(`page at an address ${how}, the address saved is ${saved}`);
       else console.log(`the page opened the build at an address ${how}, ${n} Unity files with the metadata and the code, in ${m.opened.requests} requests and ${(m.opened.bytes / 1e6).toFixed(1)} MB`);
-    } else if (m && m.after) console.log(`  with level0's MonoBehaviour and scene ${sceneShown} shown, ${m.after.requests} requests and ${(m.after.bytes / 1e6).toFixed(1)} MB in all`);
+    } else if (m && m.tunes) console.log(`  the page named the ${m.tunes} tunes from the soundtrack at the address as the oracle does`);
+    else if (m && m.after) console.log(`  with level0's MonoBehaviour and scene ${sceneShown} shown, ${m.after.requests} requests and ${(m.after.bytes / 1e6).toFixed(1)} MB in all`);
     else fail(`page at an address ${how}, ${m}`);
   }
   remote.close();

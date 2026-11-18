@@ -137,10 +137,16 @@ function zbRangeFileAt(url, size, name, path) {
    build that is about 1,400 headers, under 1 MB, spread over the 1 GB
    asset pack. The layout: "ZBAX", the length of a JSON text as 4 bytes
    little-endian, the text, { files: [[path, size]], heads: [[name, file
-   size, length]] }, and then the heads' bytes in order. */
+   size, length]], builds: [[name, path]] }, and then the heads' bytes in
+   order. An index at the top of several builds has `builds`, each a
+   folder under it with an index, and its files are those the builds
+   share, such as the soundtrack. */
 const ZB_ADDRESS_INDEX = 'snoidgrimoire-index.bin';
-function zbAddressIndexWrite(files, heads) {
-  const text = new TextEncoder().encode(JSON.stringify({ files, heads: heads.map(([n, size, bytes]) => [n, size, bytes.length]) }));
+/* An MP3 of the soundtrack that comes with Steam's copies, in
+   "_Zoombinis Original Soundtrack". */
+const ZB_SOUNDTRACK_FILE = /Soundtrack\/[^/]+\.mp3$/i;
+function zbAddressIndexWrite(files, heads, builds = []) {
+  const text = new TextEncoder().encode(JSON.stringify({ files, heads: heads.map(([n, size, bytes]) => [n, size, bytes.length]), ...(builds.length ? { builds } : {}) }));
   const out = new Uint8Array(8 + text.length + heads.reduce((t, h) => t + h[2].length, 0));
   out.set([0x5a, 0x42, 0x41, 0x58]);
   new DataView(out.buffer).setUint32(4, text.length, true);
@@ -152,19 +158,19 @@ function zbAddressIndexWrite(files, heads) {
 function zbAddressIndexRead(bytes) {
   if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'ZBAX') throw new Error('This is not an index of SnoidGrimoire\'s.');
   const n = new DataView(bytes.buffer, bytes.byteOffset).getUint32(4, true);
-  const { files, heads } = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + n)));
+  const { files, heads, builds } = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + n)));
   const out = new Map();
   let at = 8 + n;
   for (const [name, size, length] of heads) { out.set(name, { size, bytes: bytes.slice(at, at + length) }); at += length; }
-  return { files, heads: out };
+  return { files, heads: out, builds: builds || [] };
 }
 
 /* Whether a file of a build's folder goes in its index: an APK, a file
-   directly in a folder named Data or <name>_Data, the metadata, or the
-   code. */
+   directly in a folder named Data or <name>_Data, the metadata, the code,
+   or an MP3 of a folder named for the soundtrack. */
 function zbAddressIndexWants(path) {
   if (/(^|\/)\./.test(path)) return false;
-  return /\.apk$/i.test(path) || /(^|\/)([^/]+_)?Data\/[^/]+$/.test(path) || /(^|\/)(global-metadata\.dat|UnityFramework|GameAssembly\.(dylib|dll)|UnityPlayer\.(dylib|dll))$/.test(path);
+  return /\.apk$/i.test(path) || /(^|\/)([^/]+_)?Data\/[^/]+$/.test(path) || ZB_SOUNDTRACK_FILE.test(path) || /(^|\/)(global-metadata\.dat|UnityFramework|GameAssembly\.(dylib|dll)|UnityPlayer\.(dylib|dll))$/.test(path);
 }
 
 /* The index of a folder's files, given as [{ path, file }]: the APKs, or
@@ -227,4 +233,4 @@ function zbFileOf(parts, name) {
   return parts.every(p => typeof Blob !== 'undefined' && p instanceof Blob) ? new File(parts, name) : new ZbJoinedFile(parts, name);
 }
 
-if (typeof module !== 'undefined') module.exports = { ZbRangeFile, ZbJoinedFile, ZbLazyFile, zbRangeOpen, zbRangeFileAt, zbFileOf, zbSliceBounds, zbAddressIndexWrite, zbAddressIndexRead, zbAddressIndexBuild, zbAddressIndexWants, ZB_RANGE_BLOCK, ZB_ADDRESS_INDEX };
+if (typeof module !== 'undefined') module.exports = { ZbRangeFile, ZbJoinedFile, ZbLazyFile, zbRangeOpen, zbRangeFileAt, zbFileOf, zbSliceBounds, zbAddressIndexWrite, zbAddressIndexRead, zbAddressIndexBuild, zbAddressIndexWants, ZB_RANGE_BLOCK, ZB_ADDRESS_INDEX, ZB_SOUNDTRACK_FILE };
