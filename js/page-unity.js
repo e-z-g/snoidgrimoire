@@ -49,21 +49,26 @@ async function remakeTake(files) {
   if (typeof remakeForget === 'function') remakeForget();
   const apks = files.filter(f => /\.apk$/i.test(f.name));
   if (apks.length) files = files.filter(f => !apks.includes(f)).concat(await zbApkFiles(apks));
-  for (const f of files) {
+  // Only the files directly in Data are Unity's, from a picked or dropped
+  // folder. A .resS or .resource file has no header.
+  const inData = f => { const parts = (f.remakePath || f.webkitRelativePath || '').split('/'); return parts.length < 2 || parts[parts.length - 2] === 'Data'; };
+  const code = /^(global-metadata\.dat|UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib|libil2cpp\.so|libunity\.so)$/;
+  // Every file's header is read together, since each read of a file at an
+  // address is a request.
+  const sfs = await Promise.all(files.map(async f => {
+    if (/^\./.test(f.name) || code.test(f.name) || /\.(resS|resource)$/i.test(f.name) || !inData(f)) return null;
+    const head = await remakeSlice(f, 0, 48).catch(() => null);
+    const size = head && zbUnityHeaderSize(head);
+    if (!size || size >= f.size) return null;
+    try { return zbUnityParse(await remakeSlice(f, 0, size)); } catch (e) { return null; }
+  }));
+  for (const [i, f] of files.entries()) {
     if (/^\./.test(f.name)) continue;
     if (f.name === 'global-metadata.dat') { REMAKE_IL2CPP.metadata = f; REMAKE_IL2CPP.layouts = null; continue; }
     if (/^(UnityFramework|GameAssembly\.dylib|libil2cpp\.so)$/.test(f.name)) { REMAKE_IL2CPP.binary = f; REMAKE_IL2CPP.layouts = null; }
     if (/^(UnityFramework|UnityPlayer\.dylib|libunity\.so)$/.test(f.name)) { REMAKE_IL2CPP.fmod = f; REMAKE_VORBIS.clear(); }
-    if (/^(UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib|libil2cpp\.so|libunity\.so)$/.test(f.name)) continue;
-    // From a picked or dropped folder, only the files directly in Data are Unity's files.
-    const parts = (f.remakePath || f.webkitRelativePath || '').split('/');
-    if (parts.length > 1 && parts[parts.length - 2] !== 'Data') continue;
-    const head = await remakeSlice(f, 0, 48);
-    const size = zbUnityHeaderSize(head);
-    let sf = null;
-    if (size && size < f.size) {
-      try { sf = zbUnityParse(await remakeSlice(f, 0, size)); } catch (e) { sf = null; }
-    }
+    if (code.test(f.name) || !inData(f)) continue;
+    const sf = sfs[i];
     if (!sf && !/\.(resS|resource)$/i.test(f.name)) continue;
     REMAKE_FILES.set(f.name, { name: f.name, file: f, sf, names: null });
     took++;
@@ -175,7 +180,7 @@ async function remakeNames(entry) {
 }
 
 function remakeSideHtml(h) {
-  let html = '';
+  let html = REMAKE_ADDRESS ? `<p class="remembered">Read from an address saved in this browser. <a data-clear-address>Clear</a></p>` : '';
   const files = [...REMAKE_FILES.values()].filter(e => e.sf).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
   const ids = files.filter(e => isRemakeIdFile(e.name)).length, cat = REMAKE_CATALOG;
   if (cat && cat.byObject.size) html += `<div class="arc${h.file === '@resources' || (h.file && isRemakeIdFile(h.file)) ? ' on' : ''}" data-arc="remake/@resources"><span class="name">Resources</span><span class="place">${plural(cat.byObject.size, 'asset')}${ids ? ` in ${plural(ids, 'file')}` : ''}</span></div>`;
@@ -224,6 +229,13 @@ async function renderRemake() {
   const side = $('side');
   side.insertAdjacentHTML('beforeend', remakeSideHtml(h));
   for (const el of side.querySelectorAll('.arc[data-arc^="remake/"]')) el.addEventListener('click', () => { location.hash = '#' + el.dataset.arc; });
+  const clear = side.querySelector('[data-clear-address]');
+  if (clear) clear.addEventListener('click', () => {
+    try { localStorage.removeItem(REMAKE_ADDRESS_KEY); } catch (e) { /* nothing saved */ }
+    REMAKE_ADDRESS = null;
+    clear.parentNode.remove();
+    setStatus(`The address is cleared, and the next visit opens the remake only from files you choose.`);
+  });
   const entry = h.file && REMAKE_FILES.get(h.file);
   try {
     if (h.file === '@resources') view.innerHTML = remakeResourcesHtml();
@@ -425,7 +437,7 @@ function isRemakeDrop(files) {
    A Mac's file picker can choose an app, which is a folder, and what the
    browser gives for it is tried: a file the page cannot read is reported
    with its size, so that the visitor can drop the app instead. */
-async function remakeOpen(files) {
+async function remakeOpen(files, stay = false) {
   const app = files.find(f => /\.app$/i.test(f.name));
   if (app) {
     let readable = true;
@@ -446,7 +458,43 @@ async function remakeOpen(files) {
   $('start').hidden = true;
   $('views').hidden = false;
   $('find').hidden = false;
-  if (location.hash === '#remake') route(); else location.hash = '#remake';
+  // Opened on arrival, the remake leaves the address as it is, and redraws
+  // a view that may show it.
+  if (location.hash === '#remake') route();
+  else if (stay && location.hash) { if (/^#(remake|scenario|components)/.test(location.hash)) route(); }
+  else if (!stay || !ARCHIVES.size) location.hash = '#remake';
+}
+
+/* The remake's Android APKs from a web address, read a piece at a time
+   (zb-range.js). The address is saved in the browser, and the next visit
+   opens it again. */
+const REMAKE_ADDRESS_KEY = 'snoidgrimoire-remake-address';
+let REMAKE_ADDRESS = null;
+async function remakeOpenAddress(base, stay = false) {
+  base = base.trim();
+  if (!base) return;
+  if (!base.endsWith('/')) base += '/';
+  setStatus(`Opening the remake's APKs at ${base}…`);
+  let files;
+  try { files = await Promise.all(ZB_APK_NAMES.map(n => zbRangeOpen(base + n, n))); }
+  catch (err) {
+    const why = err instanceof TypeError ? 'The server sent nothing this page can read. Its CORS rules may leave this site out.' : err.message;
+    setStatus(`The remake's APKs at ${base} could not be read. ${why}`, true);
+    return;
+  }
+  REMAKE_ADDRESS = base;
+  try { localStorage.setItem(REMAKE_ADDRESS_KEY, base); } catch (e) { /* kept for this visit only */ }
+  await remakeOpen(files, stay);
+  if (REMAKE_FILES.size) setStatus(`The remake's APKs are open from the address saved in this browser.`);
+}
+
+/* The address saved on an earlier visit, opened where the visit goes. */
+function remakeOpenSaved() {
+  let base = null;
+  try { base = localStorage.getItem(REMAKE_ADDRESS_KEY); } catch (e) { base = null; }
+  if (!base) return;
+  if ($('remakeAddress')) $('remakeAddress').value = base;
+  return remakeOpenAddress(base, true);
 }
 
 /* The start page's pickers for the remake's app and its APKs. */
@@ -456,5 +504,7 @@ function wireRemakeStart() {
     e.target.value = '';
     await remakeOpen(files);
   });
+  if ($('useRemakeAddress')) $('useRemakeAddress').addEventListener('click', () => remakeOpenAddress($('remakeAddress').value));
+  if ($('remakeAddress')) $('remakeAddress').addEventListener('keydown', e => { if (e.key === 'Enter') remakeOpenAddress(e.target.value); });
 }
 wireRemakeStart();

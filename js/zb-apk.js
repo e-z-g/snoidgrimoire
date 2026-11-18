@@ -23,7 +23,8 @@
    adb (17 November 2026). Checked by utilities/remake_check.mjs: every
    file out of the three APKs against the same files unzipped and joined.
    =========================================================================
-   Blobs in, Files out. Used by page-unity.js. */
+   Blobs in, Files out, or zb-range.js's file-likes in and out. Used by
+   page-unity.js. */
 
 /* A zip's entries: { name, method, packed, size, local }. */
 async function zbZipEntries(blob) {
@@ -61,6 +62,8 @@ async function zbZipBlob(blob, entry) {
   return new Response(packed.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
 }
 
+/* The three APKs as Google Play installs them. */
+const ZB_APK_NAMES = ['base.apk', 'split_config.arm64_v8a.apk', 'split_UnityDataAssetPack.apk'];
 const ZB_APK_DATA = 'assets/bin/Data/';
 const ZB_APK_KEEP = {
   'assets/bin/Data/Managed/Metadata/global-metadata.dat': 'global-metadata.dat',
@@ -84,11 +87,14 @@ async function zbApkFiles(apks) {
       pieces.get(m[1])[+m[2]] = [apk, e];
     }
   }
-  const out = await Promise.all(whole.map(async ([name, apk, e]) => new File([await zbZipBlob(apk, e)], name)));
+  // An APK at an address (zb-range.js) is read only where a view needs it,
+  // so its entries are found and inflated the first time they are read.
+  const entry = (apk, e) => apk instanceof Blob ? zbZipBlob(apk, e) : new ZbLazyFile(() => zbZipBlob(apk, e), e.size);
+  const out = await Promise.all(whole.map(async ([name, apk, e]) => zbFileOf([await entry(apk, e)], name)));
   for (const [name, list] of pieces) {
     const missing = [...list.keys()].find(i => !list[i]);
     if (missing !== undefined) throw new Error(`${name}: piece ${missing} is in none of the APKs given.`);
-    out.push(new File(await Promise.all(list.map(([apk, e]) => zbZipBlob(apk, e))), name));
+    out.push(zbFileOf(await Promise.all(list.map(([apk, e]) => entry(apk, e))), name));
   }
   return out;
 }

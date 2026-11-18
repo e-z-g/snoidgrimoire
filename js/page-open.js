@@ -300,6 +300,8 @@ function wireOpening() {
     if (src === 'archive.org') useRemote();
     else if (src) openFromUrls(src.split(','));
     else await openStoredArchives();
+    // The remake's APKs at an address saved on an earlier visit.
+    if (typeof remakeOpenSaved === 'function') await remakeOpenSaved();
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

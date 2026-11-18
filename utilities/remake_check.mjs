@@ -9,7 +9,8 @@
 // and their files unzipped and joined by zoombini-workbench
 // tools/remake/android.sh (Data/, and the libraries in unzipped/lib). The
 // check also opens the APKs with zb-apk.js and compares every file out of
-// them with the files joined there. ZB_REMAKE_PY
+// them with the files joined there, from the files and again from an
+// address, a piece at a time (zb-range.js). ZB_REMAKE_PY
 // defaults to the venv in zoombini-reference/remake. Without a build or
 // UnityPy, the check skips. It compares every file's object counts
 // by class, every text asset's bytes, every sound's rate, channels and
@@ -70,6 +71,28 @@ const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
+// A server of the APKs that answers range requests as Cloudflare R2 does,
+// and counts the requests and bytes sent.
+const APK_NAMES = ['base.apk', 'split_config.arm64_v8a.apk', 'split_UnityDataAssetPack.apk'];
+function rangeServer(dir) {
+  const sent = { requests: 0, bytes: 0 };
+  const server = http.createServer((req, res) => {
+    const name = decodeURIComponent(req.url.slice(1).split('?')[0]);
+    const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Range', 'Access-Control-Expose-Headers': 'Content-Length, Content-Range', 'Accept-Ranges': 'bytes' };
+    if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; }
+    if (!APK_NAMES.includes(name)) { res.writeHead(404, headers); res.end(); return; }
+    const p = path.join(dir, name), size = fs.statSync(p).size;
+    const m = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
+    sent.requests++;
+    if (req.method === 'HEAD') { res.writeHead(200, { ...headers, 'Content-Length': size }); res.end(); return; }
+    const a = m ? +m[1] : 0, z = m ? Math.min(+m[2], size - 1) : size - 1;
+    sent.bytes += z - a + 1;
+    res.writeHead(m ? 206 : 200, { ...headers, 'Content-Length': z - a + 1, ...(m ? { 'Content-Range': `bytes ${a}-${z}/${size}` } : {}) });
+    fs.createReadStream(p, { start: a, end: z }).pipe(res);
+  });
+  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ base: `http://127.0.0.1:${server.address().port}/`, sent, close: () => server.close() })));
+}
+
 const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : ANDROID ? 'vorbis-oracle-android' : 'vorbis-oracle');
 
 // The Android build's APKs: every file zb-apk.js reads out of them, against
@@ -88,6 +111,20 @@ if (ANDROID) {
   const joined = fs.readdirSync(DATA).filter(n => fs.statSync(path.join(DATA, n)).isFile()).length + 3;
   if (out.length !== joined) fail(`${out.length} files out of the APKs, against ${joined} joined`);
   console.log(`${same.toLocaleString()} of ${out.length.toLocaleString()} files out of ${apks.length} APKs the same as those joined, read in ${Math.round(ms)} ms`);
+
+  // The same APKs read from an address a piece at a time (zb-range.js).
+  const remote = await rangeServer(apkDir);
+  const far = await S.zbApkFiles(await Promise.all(APK_NAMES.map(n => S.zbRangeOpen(remote.base + n, n))));
+  const opened = { ...remote.sent };
+  let farSame = 0;
+  for (const f of far) {
+    if (!fs.existsSync(where(f.name))) { fail(`${f.name}, out of the APKs at an address, is not among the files joined`); continue; }
+    if (sha1(new Uint8Array(await f.arrayBuffer())) === sha1(fs.readFileSync(where(f.name)))) farSame++;
+    else fail(`${f.name}: out of the APKs at an address it differs from the file joined`);
+  }
+  if (far.length !== out.length) fail(`${far.length} files out of the APKs at an address, against ${out.length}`);
+  console.log(`${farSame.toLocaleString()} of ${far.length.toLocaleString()} files out of the APKs at an address the same as those joined. Opening took ${opened.requests} requests and ${(opened.bytes / 1e6).toFixed(1)} MB`);
+  remote.close();
 }
 fs.mkdirSync(VORBIS_DIR, { recursive: true });
 const oracle = JSON.parse(spawnSync(PY, [path.join(ROOT, 'utilities', 'remake_oracle.py'), DATA, VORBIS_DIR], { encoding: 'utf8', maxBuffer: 1 << 28 }).stdout);
@@ -409,50 +446,47 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
     else fail(`page${device ? ' (phone)' : ''}: ${m}`);
   }
 }
-// The Android build's APKs opened in the page as a visitor picks them:
-// base.apk and the CPU's split, without the 1 GB asset pack, which is too
-// large for a headless page. Their files are inflated in the browser,
-// and a MonoBehaviour of level0 shows its script's fields.
+// The Android build's APKs opened in the page from an address, as from
+// Cloudflare R2: all three, the 1 GB asset pack too, read a piece at a time
+// (zb-range.js). A MonoBehaviour of level0 shows its script's fields, and
+// a scene is drawn from the asset pack's pieces.
 if (ANDROID) {
-  const apkDir = path.join(APP, 'apk'), small = ['base.apk', 'split_config.arm64_v8a.apk'];
-  const apkServer = http.createServer((req, res) => {
-    const name = decodeURIComponent(req.url.slice(1));
-    if (!small.includes(name)) { res.writeHead(404); res.end(); return; }
-    res.writeHead(200, { 'Access-Control-Allow-Origin': '*', 'Content-Length': fs.statSync(path.join(apkDir, name)).size });
-    fs.createReadStream(path.join(apkDir, name)).pipe(res);
-  });
-  await new Promise(r => apkServer.listen(0, '127.0.0.1', r));
-  const apkBase = `http://127.0.0.1:${apkServer.address().port}/`;
+  const remote = await rangeServer(path.join(APP, 'apk'));
   const level0 = parsed.get('level0'), mono = level0 && level0.objects.find(o => o.classId === 114);
-  const r = await loadPage(srv.base + 'index.html', 'typeof remakeTake === "function" && document.readyState === "complete"', 240000, {
+  const r = await loadPage(srv.base + 'index.html', 'typeof remakeOpenAddress === "function" && document.readyState === "complete"', 240000, {
     then: async ({ evaluate }) => {
       const out = [];
+      const wait = async (test, ms = 60000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await evaluate(test)) return true; await new Promise(res => setTimeout(res, 200)); } return false; };
       const took = await evaluate(`(async () => {
-        const files = [];
-        for (const n of ${JSON.stringify(small)}) files.push(new File([await (await fetch(${JSON.stringify(apkBase)} + n)).blob()], n));
-        await remakeOpen(files);
-        return [REMAKE_FILES.size, !!REMAKE_IL2CPP.binary, !!REMAKE_IL2CPP.fmod, !!REMAKE_IL2CPP.metadata];
+        await remakeOpenAddress(${JSON.stringify(remote.base)});
+        return [REMAKE_FILES.size, !!REMAKE_IL2CPP.binary, !!REMAKE_IL2CPP.fmod, !!REMAKE_IL2CPP.metadata, localStorage.getItem(REMAKE_ADDRESS_KEY)];
       })()`);
-      out.push({ took });
+      out.push({ took, opened: { ...remote.sent } });
       if (mono) {
         await evaluate(`location.hash = ${JSON.stringify('#remake/level0/' + mono.pathId)}`);
-        const t = Date.now();
-        while (Date.now() - t < 30000 && !await evaluate(`!!document.querySelector('#view pre.fields')`)) await new Promise(res => setTimeout(res, 200));
-        if (await evaluate(`!document.querySelector('#view pre.fields') || /could not be read|not open|Only its header/.test(document.getElementById('view').textContent)`)) out.push('the MonoBehaviour of level0 did not show its fields');
+        if (!await wait(`!!document.querySelector('#view pre.fields')`)) out.push('the MonoBehaviour of level0 did not show');
+        else if (await evaluate(`/could not be read|not open|Only its header/.test(document.getElementById('view').textContent)`)) out.push('the MonoBehaviour of level0 did not show its fields');
       }
+      if (sceneShown != null) {
+        await evaluate(`location.hash = ${JSON.stringify('#scenario/places/' + sceneShown)}`);
+        if (!await wait(`(() => { const c = document.querySelector('#view canvas.scene'); if (!c) return false; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] !== 0x33 || d[i + 1] !== 0x33 || d[i + 2] !== 0x44) n++; return n > 1000; })()`, 120000)) out.push(`scene ${sceneShown} is not drawn`);
+      }
+      out.push({ after: { ...remote.sent } });
       return out;
     },
   });
-  for (const e of pageErrors(r.console)) fail(`page (APKs): ${e.text}`);
-  if (!r.met) fail('the page did not load (APKs)');
+  for (const e of pageErrors(r.console)) fail(`page (APKs at an address): ${e.text}`);
+  if (!r.met) fail('the page did not load (APKs at an address)');
   for (const m of r.more || []) {
     if (m && m.took) {
-      const [n, binary, fmod, metadata] = m.took;
-      if (!n || !binary || !fmod || !metadata) fail(`page (APKs): ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
-      else console.log(`the page opened base.apk and the CPU's split, ${n} Unity files with the metadata and both libraries`);
-    } else fail(`page (APKs): ${m}`);
+      const [n, binary, fmod, metadata, saved] = m.took;
+      if (!n || !binary || !fmod || !metadata) fail(`page (APKs at an address): ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
+      else if (saved !== remote.base) fail(`page (APKs at an address): the address saved is ${saved}`);
+      else console.log(`the page opened the three APKs at an address, ${n} Unity files with the metadata and both libraries, in ${m.opened.requests} requests and ${(m.opened.bytes / 1e6).toFixed(1)} MB`);
+    } else if (m && m.after) console.log(`with level0's MonoBehaviour and scene ${sceneShown} shown, ${m.after.requests} requests and ${(m.after.bytes / 1e6).toFixed(1)} MB in all`);
+    else fail(`page (APKs at an address): ${m}`);
   }
-  apkServer.close();
+  remote.close();
 }
 srv.close();
 files.close();

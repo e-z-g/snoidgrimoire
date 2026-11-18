@@ -58,7 +58,8 @@ code, .mono { font: 12.5px/1.35 var(--mono); }
 #drop .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
 #start ul { color: var(--dim); padding-left: 20px; margin: 6px 0; }
 #start li { margin: 3px 0; }
-#remote { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+#remote, #remakeRemote { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+#remakeAddress { width: min(100%, 420px); font: inherit; padding: 4px 6px; }
 
 /* ---- the browser ---- */
 #app { flex: 1; display: flex; min-height: 0; }
@@ -349,6 +350,15 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
         starting with the one you open. They are saved in your browser.</p>
       <button id="useRemote">Read archive.org's copy</button>
     </div>
+    <div id="remakeRemote">
+      <p>Or read the 2015 remake's Android APKs from a web address of yours, the folder that has
+        <code>base.apk</code>, <code>split_config.arm64_v8a.apk</code> and
+        <code>split_UnityDataAssetPack.apk</code>. Its server must answer range requests and list this
+        site in its CORS rules. The page fetches about 10 MB to open them, then the pieces each view
+        needs. The address is saved in your browser, and your next visit opens it again.</p>
+      <input id="remakeAddress" type="url" placeholder="https://…/" autocomplete="off" spellcheck="false">
+      <button id="useRemakeAddress">Read the remake from this address</button>
+    </div>
   </div>
 </div>
 
@@ -471,6 +481,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-pvrtc.js"></script>
 <script src="js/zb-dxt.js"></script>
 <script src="js/zb-etc2.js"></script>
+<script src="js/zb-range.js"></script>
 <script src="js/zb-apk.js"></script>
 <script src="js/zb-unity.js"></script>
 <script src="js/zb-uniswf.js"></script>
