@@ -7,7 +7,8 @@
    file's header and objects share requests. A run of blocks not yet read
    is one request. Opening the Android build reads about 1,400 headers
    spread over the asset pack, which is 21 MB in 1,300 requests at 16 kB,
-   and 115 MB in 440 at 256 kB.
+   and 115 MB in 440 at 256 kB. With an index beside the files
+   (zbAddressIndexRead), opening reads the index alone.
    ZbRangeFile, ZbJoinedFile and ZbLazyFile stand in for a File where
    the page reads one: size, name, slice(start, end), arrayBuffer() and
    stream(). A real Blob cannot be made from them, since its bytes would
@@ -22,10 +23,13 @@
    Access-Control-Expose-Headers with Content-Length for a page on
    another origin to read the size.
    =========================================================================
-   Addresses in, bytes out. Used by zb-apk.js and page-unity.js. */
+   Addresses in, bytes out. Used by zb-apk.js and page-unity.js, and by
+   zoombini-workbench's tools/remake/address_index.mjs for the index. */
 
 const ZB_RANGE_BLOCK = 1 << 14;
 const ZB_RANGE_KEEP = 4096;
+/* The blocks read, of every file, by address and number, the oldest used first. */
+const ZB_RANGE_BLOCKS = new Map();
 
 /* Start and end of a slice, as Blob.slice reads them. */
 function zbSliceBounds(size, start, end) {
@@ -48,7 +52,7 @@ function zbSliceStream(file) {
 }
 
 /* A file at an address. The source has the address, the whole size and
-   the blocks read so far. */
+   the blocks on their way. */
 class ZbRangeFile {
   constructor(source, start, end, name = '') { this.source = source; this.start = start; this.end = end; this.name = name; this.type = ''; }
   get size() { return this.end - this.start; }
@@ -76,14 +80,14 @@ class ZbRangeFile {
 async function zbRangeBlocks(source, first, last) {
   const runs = [];
   for (let b = first; b <= last; b++) {
-    if (source.blocks.has(b) || source.coming.has(b)) continue;
+    if (ZB_RANGE_BLOCKS.has(source.url + '#' + b) || source.coming.has(b)) continue;
     if (runs.length && runs[runs.length - 1][1] === b - 1) runs[runs.length - 1][1] = b;
     else runs.push([b, b]);
   }
   for (const [a, z] of runs) {
     const p = zbRangeFetch(source, a * ZB_RANGE_BLOCK, Math.min((z + 1) * ZB_RANGE_BLOCK, source.size)).then(bytes => {
       for (let b = a; b <= z; b++) {
-        source.blocks.set(b, bytes.subarray((b - a) * ZB_RANGE_BLOCK, (b - a + 1) * ZB_RANGE_BLOCK));
+        ZB_RANGE_BLOCKS.set(source.url + '#' + b, bytes.subarray((b - a) * ZB_RANGE_BLOCK, (b - a + 1) * ZB_RANGE_BLOCK));
         source.coming.delete(b);
       }
     }, err => { for (let b = a; b <= z; b++) source.coming.delete(b); throw err; });
@@ -92,8 +96,8 @@ async function zbRangeBlocks(source, first, last) {
   for (let b = first; b <= last; b++) if (source.coming.has(b)) await source.coming.get(b);
   // The blocks just used move to the back, and past the limit the oldest are dropped.
   const out = [];
-  for (let b = first; b <= last; b++) { const v = source.blocks.get(b); source.blocks.delete(b); source.blocks.set(b, v); out.push(v); }
-  while (source.blocks.size > ZB_RANGE_KEEP) source.blocks.delete(source.blocks.keys().next().value);
+  for (let b = first; b <= last; b++) { const k = source.url + '#' + b, v = ZB_RANGE_BLOCKS.get(k); ZB_RANGE_BLOCKS.delete(k); ZB_RANGE_BLOCKS.set(k, v); out.push(v); }
+  while (ZB_RANGE_BLOCKS.size > ZB_RANGE_KEEP) ZB_RANGE_BLOCKS.delete(ZB_RANGE_BLOCKS.keys().next().value);
   return out;
 }
 
@@ -113,7 +117,69 @@ async function zbRangeOpen(url, name) {
   if (!res.ok) throw new Error(`${url} answered ${res.status}.`);
   const size = +res.headers.get('Content-Length');
   if (!size) throw new Error(`${url} gave no size.`);
-  return new ZbRangeFile({ url, size, blocks: new Map(), coming: new Map() }, 0, size, name);
+  return zbRangeFileAt(url, size, name);
+}
+
+/* The file at an address whose size is known. Its path in the folder,
+   if given, is kept as remakePath, as a dropped folder's files have it. */
+function zbRangeFileAt(url, size, name, path) {
+  const f = new ZbRangeFile({ url, size, coming: new Map() }, 0, size, name);
+  if (path) f.remakePath = path;
+  return f;
+}
+
+/* An index of a folder at an address, beside its files as
+   snoidgrimoire-index.bin. A web server gives no list of a folder, so the
+   index has the files' paths and sizes. It also has the first
+   bytes of each Unity file, up to the end of its SerializedFile header,
+   cut out of the files as they are, so that opening reads one file and
+   not every Unity file's header, a request each. Of the remake's Android
+   build that is about 1,400 headers, under 1 MB, spread over the 1 GB
+   asset pack. The layout: "ZBAX", the length of a JSON text as 4 bytes
+   little-endian, the text, { files: [[path, size]], heads: [[name, file
+   size, length]] }, and then the heads' bytes in order. */
+const ZB_ADDRESS_INDEX = 'snoidgrimoire-index.bin';
+function zbAddressIndexWrite(files, heads) {
+  const text = new TextEncoder().encode(JSON.stringify({ files, heads: heads.map(([n, size, bytes]) => [n, size, bytes.length]) }));
+  const out = new Uint8Array(8 + text.length + heads.reduce((t, h) => t + h[2].length, 0));
+  out.set([0x5a, 0x42, 0x41, 0x58]);
+  new DataView(out.buffer).setUint32(4, text.length, true);
+  out.set(text, 8);
+  let at = 8 + text.length;
+  for (const [, , bytes] of heads) { out.set(bytes, at); at += bytes.length; }
+  return out;
+}
+function zbAddressIndexRead(bytes) {
+  if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'ZBAX') throw new Error('This is not an index of SnoidGrimoire\'s.');
+  const n = new DataView(bytes.buffer, bytes.byteOffset).getUint32(4, true);
+  const { files, heads } = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + n)));
+  const out = new Map();
+  let at = 8 + n;
+  for (const [name, size, length] of heads) { out.set(name, { size, bytes: bytes.slice(at, at + length) }); at += length; }
+  return { files, heads: out };
+}
+
+/* Whether a file of a build's folder goes in its index: an APK, a file
+   directly in a folder named Data, the metadata, or the code. */
+function zbAddressIndexWants(path) {
+  if (/(^|\/)\./.test(path)) return false;
+  return /\.apk$/i.test(path) || /(^|\/)Data\/[^/]+$/.test(path) || /(^|\/)(global-metadata\.dat|UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib)$/.test(path);
+}
+
+/* The index of a folder's files, given as [{ path, file }]: the APKs, or
+   an app's Unity files (those directly in a folder named Data), its
+   metadata and its code. The heads are those of the Unity files, out of
+   the APKs where the folder has APKs. */
+async function zbAddressIndexBuild(entries) {
+  const apks = entries.filter(e => /\.apk$/i.test(e.path));
+  const unity = apks.length ? await zbApkFiles(apks.map(e => e.file)) : entries.filter(e => /(^|\/)Data\/[^/]+$/.test(e.path)).map(e => e.file);
+  const heads = [];
+  for (const f of unity) {
+    if (/\.(resS|resource)$/i.test(f.name)) continue;
+    const n = zbUnityHeaderSize(new Uint8Array(await f.slice(0, 48).arrayBuffer()));
+    if (n && n < f.size) heads.push([f.name, f.size, new Uint8Array(await f.slice(0, n).arrayBuffer())]);
+  }
+  return zbAddressIndexWrite(entries.map(e => [e.path, e.file.size]), heads);
 }
 
 /* Parts read one after another. A part is a Blob or a file-like. */
@@ -159,4 +225,4 @@ function zbFileOf(parts, name) {
   return parts.every(p => typeof Blob !== 'undefined' && p instanceof Blob) ? new File(parts, name) : new ZbJoinedFile(parts, name);
 }
 
-if (typeof module !== 'undefined') module.exports = { ZbRangeFile, ZbJoinedFile, ZbLazyFile, zbRangeOpen, zbFileOf, zbSliceBounds, ZB_RANGE_BLOCK };
+if (typeof module !== 'undefined') module.exports = { ZbRangeFile, ZbJoinedFile, ZbLazyFile, zbRangeOpen, zbRangeFileAt, zbFileOf, zbSliceBounds, zbAddressIndexWrite, zbAddressIndexRead, zbAddressIndexBuild, zbAddressIndexWants, ZB_RANGE_BLOCK, ZB_ADDRESS_INDEX };

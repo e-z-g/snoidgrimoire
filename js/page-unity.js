@@ -43,7 +43,7 @@ async function remakeSlice(file, start, end) { return new Uint8Array(await file.
 
 /* Take the picked files: SerializedFiles are read for their metadata, and
    the .resS and .resource files are side files. */
-async function remakeTake(files) {
+async function remakeTake(files, heads = null) {
   let took = 0;
   REMAKE_CATALOG = null;
   if (typeof remakeForget === 'function') remakeForget();
@@ -55,8 +55,11 @@ async function remakeTake(files) {
   const code = /^(global-metadata\.dat|UnityFramework|GameAssembly\.dylib|UnityPlayer\.dylib|libil2cpp\.so|libunity\.so)$/;
   // Every file's header is read together, since each read of a file at an
   // address is a request.
+  // An index of a folder at an address has the headers already (zb-range.js).
   const sfs = await Promise.all(files.map(async f => {
     if (/^\./.test(f.name) || code.test(f.name) || /\.(resS|resource)$/i.test(f.name) || !inData(f)) return null;
+    const known = heads && heads.get(f.name);
+    if (known && known.size === f.size) { try { return zbUnityParse(known.bytes); } catch (e) { return null; } }
     const head = await remakeSlice(f, 0, 48).catch(() => null);
     const size = head && zbUnityHeaderSize(head);
     if (!size || size >= f.size) return null;
@@ -437,7 +440,7 @@ function isRemakeDrop(files) {
    A Mac's file picker can choose an app, which is a folder, and what the
    browser gives for it is tried: a file the page cannot read is reported
    with its size, so that the visitor can drop the app instead. */
-async function remakeOpen(files, stay = false) {
+async function remakeOpen(files, stay = false, heads = null) {
   const app = files.find(f => /\.app$/i.test(f.name));
   if (app) {
     let readable = true;
@@ -446,7 +449,7 @@ async function remakeOpen(files, stay = false) {
     return;
   }
   let n = 0;
-  try { n = await remakeTake(files); }
+  try { n = await remakeTake(files, heads); }
   catch (err) { setStatus(err.message, true); return; }
   if (!n) {
     // What the browser gave, so that a picker's odd result can be seen.
@@ -465,27 +468,34 @@ async function remakeOpen(files, stay = false) {
   else if (!stay || !ARCHIVES.size) location.hash = '#remake';
 }
 
-/* The remake's Android APKs from a web address, read a piece at a time
-   (zb-range.js). The address is saved in the browser, and the next visit
-   opens it again. */
+/* The remake from a web address, read a piece at a time (zb-range.js).
+   The folder there has an index of its files (snoidgrimoire-index.bin),
+   or else the Android build's three APKs. The address is saved in the
+   browser, and the next visit opens it again. */
 const REMAKE_ADDRESS_KEY = 'snoidgrimoire-remake-address';
 let REMAKE_ADDRESS = null;
 async function remakeOpenAddress(base, stay = false) {
   base = base.trim();
   if (!base) return;
   if (!base.endsWith('/')) base += '/';
-  setStatus(`Opening the remake's APKs at ${base}…`);
-  let files;
-  try { files = await Promise.all(ZB_APK_NAMES.map(n => zbRangeOpen(base + n, n))); }
-  catch (err) {
+  setStatus(`Opening the remake at ${base}…`);
+  let files, heads = null;
+  try {
+    const index = await fetch(base + ZB_ADDRESS_INDEX).then(r => r.ok ? r.arrayBuffer() : null, () => null);
+    if (index) {
+      const read = zbAddressIndexRead(new Uint8Array(index));
+      heads = read.heads;
+      files = read.files.map(([p, size]) => zbRangeFileAt(base + p.split('/').map(encodeURIComponent).join('/'), size, p.split('/').pop(), p));
+    } else files = await Promise.all(ZB_APK_NAMES.map(n => zbRangeOpen(base + n, n)));
+  } catch (err) {
     const why = err instanceof TypeError ? 'The server sent nothing this page can read. Its CORS rules may leave this site out.' : err.message;
-    setStatus(`The remake's APKs at ${base} could not be read. ${why}`, true);
+    setStatus(`The remake at ${base} could not be read. ${why}`, true);
     return;
   }
   REMAKE_ADDRESS = base;
   try { localStorage.setItem(REMAKE_ADDRESS_KEY, base); } catch (e) { /* kept for this visit only */ }
-  await remakeOpen(files, stay);
-  if (REMAKE_FILES.size) setStatus(`The remake's APKs are open from the address saved in this browser.`);
+  await remakeOpen(files, stay, heads);
+  if (REMAKE_FILES.size) setStatus(`The remake is open from the address saved in this browser.`);
 }
 
 /* The address saved on an earlier visit, opened where the visit goes. */

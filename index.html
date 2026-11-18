@@ -351,11 +351,12 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       <button id="useRemote">Read archive.org's copy</button>
     </div>
     <div id="remakeRemote">
-      <p>Or read the 2015 remake's Android APKs from a web address of yours, the folder that has
-        <code>base.apk</code>, <code>split_config.arm64_v8a.apk</code> and
-        <code>split_UnityDataAssetPack.apk</code>. Its server must answer range requests and list this
-        site in its CORS rules. The page fetches about 10 MB to open them, then the pieces each view
-        needs. The address is saved in your browser, and your next visit opens it again.</p>
+      <p>Or read the 2015 remake from a web address of yours. The folder there must have the Android
+        build's <code>base.apk</code>, <code>split_config.arm64_v8a.apk</code> and
+        <code>split_UnityDataAssetPack.apk</code>, or any build's files with an index of them,
+        <code>snoidgrimoire-index.bin</code>. Its server must answer range requests and list this
+        site in its CORS rules. The page fetches the pieces each view needs. The address is saved in
+        your browser, and your next visit opens it again.</p>
       <input id="remakeAddress" type="url" placeholder="https://…/" autocomplete="off" spellcheck="false">
       <button id="useRemakeAddress">Read the remake from this address</button>
     </div>

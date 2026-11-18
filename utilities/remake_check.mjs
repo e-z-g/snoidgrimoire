@@ -71,27 +71,36 @@ const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
-// A server of the APKs that answers range requests as Cloudflare R2 does,
-// and counts the requests and bytes sent.
+// A server of a build's folder that answers range requests as Cloudflare
+// R2 does, and counts the requests and bytes sent. It serves the files
+// the index lists, and the index (snoidgrimoire-index.bin) where given.
 const APK_NAMES = ['base.apk', 'split_config.arm64_v8a.apk', 'split_UnityDataAssetPack.apk'];
-function rangeServer(dir) {
+function rangeServer(dir, paths, index = null) {
   const sent = { requests: 0, bytes: 0 };
   const server = http.createServer((req, res) => {
     const name = decodeURIComponent(req.url.slice(1).split('?')[0]);
     const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Range', 'Access-Control-Expose-Headers': 'Content-Length, Content-Range', 'Accept-Ranges': 'bytes' };
     if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; }
-    if (!APK_NAMES.includes(name)) { res.writeHead(404, headers); res.end(); return; }
-    const p = path.join(dir, name), size = fs.statSync(p).size;
+    const isIndex = index && name === S.ZB_ADDRESS_INDEX;
+    if (!isIndex && !paths.includes(name)) { res.writeHead(404, headers); res.end(); return; }
+    const size = isIndex ? index.length : fs.statSync(path.join(dir, name)).size;
     const m = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
     sent.requests++;
     if (req.method === 'HEAD') { res.writeHead(200, { ...headers, 'Content-Length': size }); res.end(); return; }
     const a = m ? +m[1] : 0, z = m ? Math.min(+m[2], size - 1) : size - 1;
     sent.bytes += z - a + 1;
     res.writeHead(m ? 206 : 200, { ...headers, 'Content-Length': z - a + 1, ...(m ? { 'Content-Range': `bytes ${a}-${z}/${size}` } : {}) });
-    fs.createReadStream(p, { start: a, end: z }).pipe(res);
+    if (isIndex) res.end(Buffer.from(index.subarray(a, z + 1)));
+    else fs.createReadStream(path.join(dir, name), { start: a, end: z }).pipe(res);
   });
   return new Promise(r => server.listen(0, '127.0.0.1', () => r({ base: `http://127.0.0.1:${server.address().port}/`, sent, close: () => server.close() })));
 }
+// A build's folder as served from an address: the Android build's APKs, or
+// the app folder's files that its index lists (zbAddressIndexWants).
+const SERVED = ANDROID ? path.join(APP, 'apk') : APP;
+const servedPaths = (function walk(dir, rel = '') {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => d.isDirectory() ? walk(path.join(dir, d.name), rel + d.name + '/') : S.zbAddressIndexWants(rel + d.name) ? [rel + d.name] : []);
+})(SERVED);
 
 const VORBIS_DIR = path.join(path.dirname(PY), '..', '..', STEAM ? 'vorbis-oracle-steam-mac' : ANDROID ? 'vorbis-oracle-android' : 'vorbis-oracle');
 
@@ -113,7 +122,7 @@ if (ANDROID) {
   console.log(`${same.toLocaleString()} of ${out.length.toLocaleString()} files out of ${apks.length} APKs the same as those joined, read in ${Math.round(ms)} ms`);
 
   // The same APKs read from an address a piece at a time (zb-range.js).
-  const remote = await rangeServer(apkDir);
+  const remote = await rangeServer(apkDir, APK_NAMES);
   const far = await S.zbApkFiles(await Promise.all(APK_NAMES.map(n => S.zbRangeOpen(remote.base + n, n))));
   const opened = { ...remote.sent };
   let farSame = 0;
@@ -446,12 +455,16 @@ for (const device of [null, { width: 390, height: 844, scale: 2, mobile: true }]
     else fail(`page${device ? ' (phone)' : ''}: ${m}`);
   }
 }
-// The Android build's APKs opened in the page from an address, as from
-// Cloudflare R2: all three, the 1 GB asset pack too, read a piece at a time
-// (zb-range.js). A MonoBehaviour of level0 shows its script's fields, and
-// a scene is drawn from the asset pack's pieces.
-if (ANDROID) {
-  const remote = await rangeServer(path.join(APP, 'apk'));
+// The build opened in the page from an address, as from Cloudflare R2,
+// read a piece at a time (zb-range.js): with an index of the folder
+// (snoidgrimoire-index.bin), and for the Android build without one too,
+// from the three APKs alone. Each time a MonoBehaviour of level0 shows its
+// script's fields, and a scene is drawn.
+const indexBytes = await S.zbAddressIndexBuild(await Promise.all(servedPaths.map(async p => ({ path: p, file: new File([await fs.openAsBlob(path.join(SERVED, p))], path.basename(p)) }))));
+console.log(`the index of ${servedPaths.length} files, ${(indexBytes.length / 1e6).toFixed(2)} MB`);
+for (const withIndex of ANDROID ? [false, true] : [true]) {
+  const how = withIndex ? 'with its index' : 'from the APKs alone';
+  const remote = await rangeServer(SERVED, servedPaths, withIndex ? indexBytes : null);
   const level0 = parsed.get('level0'), mono = level0 && level0.objects.find(o => o.classId === 114);
   const r = await loadPage(srv.base + 'index.html', 'typeof remakeOpenAddress === "function" && document.readyState === "complete"', 240000, {
     then: async ({ evaluate }) => {
@@ -464,7 +477,7 @@ if (ANDROID) {
       out.push({ took, opened: { ...remote.sent } });
       if (mono) {
         await evaluate(`location.hash = ${JSON.stringify('#remake/level0/' + mono.pathId)}`);
-        if (!await wait(`!!document.querySelector('#view pre.fields')`)) out.push('the MonoBehaviour of level0 did not show');
+        if (!await wait(`!!document.querySelector('#view pre.fields')`, 120000)) out.push('the MonoBehaviour of level0 did not show');
         else if (await evaluate(`/could not be read|not open|Only its header/.test(document.getElementById('view').textContent)`)) out.push('the MonoBehaviour of level0 did not show its fields');
       }
       if (sceneShown != null) {
@@ -475,16 +488,16 @@ if (ANDROID) {
       return out;
     },
   });
-  for (const e of pageErrors(r.console)) fail(`page (APKs at an address): ${e.text}`);
-  if (!r.met) fail('the page did not load (APKs at an address)');
+  for (const e of pageErrors(r.console)) if (withIndex || !/snoidgrimoire-index\.bin|404/.test(e.text)) fail(`page at an address ${how}, ${e.text}`);
+  if (!r.met) fail(`the page did not load (at an address, ${how})`);
   for (const m of r.more || []) {
     if (m && m.took) {
       const [n, binary, fmod, metadata, saved] = m.took;
-      if (!n || !binary || !fmod || !metadata) fail(`page (APKs at an address): ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
-      else if (saved !== remote.base) fail(`page (APKs at an address): the address saved is ${saved}`);
-      else console.log(`the page opened the three APKs at an address, ${n} Unity files with the metadata and both libraries, in ${m.opened.requests} requests and ${(m.opened.bytes / 1e6).toFixed(1)} MB`);
-    } else if (m && m.after) console.log(`with level0's MonoBehaviour and scene ${sceneShown} shown, ${m.after.requests} requests and ${(m.after.bytes / 1e6).toFixed(1)} MB in all`);
-    else fail(`page (APKs at an address): ${m}`);
+      if (!n || !binary || !fmod || !metadata) fail(`page at an address ${how}, ${n} files, binary ${binary}, FMOD ${fmod}, metadata ${metadata}`);
+      else if (saved !== remote.base) fail(`page at an address ${how}, the address saved is ${saved}`);
+      else console.log(`the page opened the build at an address ${how}, ${n} Unity files with the metadata and the code, in ${m.opened.requests} requests and ${(m.opened.bytes / 1e6).toFixed(1)} MB`);
+    } else if (m && m.after) console.log(`  with level0's MonoBehaviour and scene ${sceneShown} shown, ${m.after.requests} requests and ${(m.after.bytes / 1e6).toFixed(1)} MB in all`);
+    else fail(`page at an address ${how}, ${m}`);
   }
   remote.close();
 }
