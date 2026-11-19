@@ -1573,7 +1573,7 @@ function zbShotSpriteTint(frame, bare, rgb) {
   const near = c => seen.filter(p => Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1]) + Math.abs(p[2] - c[2]) <= 30).length;
   if (near(shown) < 2 * near(skin)) return rgb;
   // Only a washed-out skin, less than 80% as saturated as the palette's: a
-  // darker shade of the same blue is the skin's own shading.
+  // darker shade of the same blue is shading in the skin.
   const chroma = c => Math.max(...c) - Math.min(...c);
   if (chroma(shown) >= 0.8 * chroma(skin)) return rgb;
   const line = [0, 1, 2].map(c => {
