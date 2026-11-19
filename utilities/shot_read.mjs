@@ -45,7 +45,7 @@ for (const file of files) {
   if (smooth) png = enlarge(png, smooth);
   const t = Date.now(), r = S.zbShotRead(png.rgba, png.width, png.height, archives);
   console.log(`${file}: ${png.width} x ${png.height}, ${r.place || 'no place'}${r.picture ? ` tBMP ${r.picture}` : ''}, fit ${(100 * r.fit).toFixed(1)}%,`
-    + ` ${r.shot.smoothed ? 'smoothed, ' : ''}${r.zoombinis.length} Zoombinis, ${Date.now() - t} ms`);
+    + ` ${r.shot.smoothed ? `smoothed at ${r.shot.scaleX.toFixed(3)} x ${r.shot.scaleY.toFixed(3)}, blur ${r.shot.blur.toFixed(3)}, ` : ''}${r.zoombinis.length} Zoombinis, ${Date.now() - t} ms`);
   if (flags.includes('-v')) {
     for (const z of r.zoombinis) {
       console.log(`  (${z.x}, ${z.y}) ${code(z.traits)}${z.where ? ' ' + (typeof z.where === 'string' ? z.where : JSON.stringify(z.where)) : ''}${Object.keys(z.inferred || {}).length ? ', inferred ' + Object.keys(z.inferred).join(' ') : ''}`);

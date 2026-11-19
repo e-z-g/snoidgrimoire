@@ -1415,7 +1415,10 @@ function zbShotSmoothRead(rgba, width, height, archives) {
   for (const t of [...tried.slice(0, 4), ...others.slice(0, 2)]) {
     const levels = { 1: zbShotLevel(t.pixels, t.rgb, 1), 4: t.quarter, 16: zbShotLevel(t.pixels, t.rgb, 16) };
     const a = zbShotSmoothAlign(rgba, sums, width, height, levels);
-    if (a && (!best || a.error < best.error)) best = { ...t, ...a };
+    // Two pictures alike (PICKER tBMP 1001 is the Fleens' forest with a map
+    // button): within 1%, the place with a puzzle's reader is chosen.
+    const puzzle = k => !!ZB_SHOT_PUZZLES[k];
+    if (a && (!best || (Math.abs(a.error - best.error) <= 0.01 * best.error ? puzzle(t.place) && !puzzle(best.place) : a.error < best.error))) best = { ...t, ...a };
   }
   if (!best) return null;
   /* a frame within 0.3% of the game's size is the game's size */
@@ -1424,7 +1427,7 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     best.dx = Math.round(best.dx);
     best.dy = Math.round(best.dy);
   }
-  let frame = zbShotSmoothFrame(rgba, width, height, best), rgb = best.rgb, display = null;
+  let frame = zbShotSmoothFrame(rgba, width, height, best), rgb = zbShotTint(frame, best.pixels, best.rgb), display = null;
   const compressed = zbShotCompressed(frame, best.pixels, rgb);
   if (compressed) {
     display = frame;
@@ -1461,6 +1464,87 @@ function zbShotSmoothRead(rgba, width, height, archives) {
     whole: compressed && best.sx === 1 && best.sy === 1 ? { colors: display, pixels: scene || best.pixels, rgb: best.rgb, dx: Math.round(best.dx), dy: Math.round(best.dy) } : null }, tolerance, compressed ? 10 : 4);
   out.tolerance = tolerance;
   return out;
+}
+
+/* The palette as a capture tinted it: a line a channel, frame = a * color +
+   b, fitted between the frame and the picture's colors over the pixels
+   shown, three times on the 60% that fit best, since what stands over the
+   picture fits worst. A capture brightened, darkened or tinted as a whole,
+   as some recorders and pictures on the web are, shows the Zoombinis' blue
+   as far from the palette's as the tolerance, though the picture still
+   fits. Unless the lines bring the middle error of the pixels shown
+   below 70% of what it is without them, the palette is given back as it
+   is, since what stands over a picture also moves the lines. */
+function zbShotTint(frame, pixels, rgb) {
+  const n = ZB_SHOT_W * ZB_SHOT_H, keep = new Uint8Array(n).fill(1), line = [[1, 0], [1, 0], [1, 0]];
+  for (let round = 0; round < 3; round++) {
+    for (let c = 0; c < 3; c++) {
+      let m = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+      for (let i = 0; i < n; i += 2) {
+        const y = frame[3 * i + c];
+        if (!keep[i] || y !== y) continue;
+        const x = rgb[pixels[i]][c];
+        m++; sx += x; sy += y; sxx += x * x; sxy += x * y;
+      }
+      const v = sxx - sx * sx / m, a = m && v > 1e-6 ? (sxy - sx * sy / m) / v : 1;
+      line[c] = [a, m ? (sy - a * sx) / m : 0];
+    }
+    const e = new Float32Array(n).fill(Infinity);
+    for (let i = 0; i < n; i += 2) {
+      if (frame[3 * i] !== frame[3 * i]) continue;
+      let d = 0;
+      for (let c = 0; c < 3; c++) d += Math.abs(frame[3 * i + c] - (line[c][0] * rgb[pixels[i]][c] + line[c][1]));
+      e[i] = d;
+    }
+    const shown = Array.from(e).filter(v => v < Infinity).sort((a, b) => a - b), cut = shown[Math.floor(shown.length * 0.6)];
+    for (let i = 0; i < n; i++) keep[i] = e[i] <= cut ? 1 : 0;
+  }
+  // The middle error over the pixels shown, with the lines and without.
+  const middle = f => {
+    const e = [];
+    for (let i = 0; i < n; i += 4) {
+      if (frame[3 * i] !== frame[3 * i]) continue;
+      let d = 0;
+      for (let c = 0; c < 3; c++) d += Math.abs(frame[3 * i + c] - f(rgb[pixels[i]][c], c, rgb[pixels[i]]));
+      e.push(d);
+    }
+    return e.sort((a, b) => a - b)[e.length >> 1];
+  };
+  const middleOf = map => middle((x, c, col) => map(col)[c]);
+  // A second model: brightness and saturation, frame = a + b * Y + s * (color - Y)
+  // with Y the color's brightness, fitted on the same pixels. It carries a
+  // change of saturation seen on the picture's greens and browns over to
+  // the Zoombinis' blue, where a line a channel leaves that blue as it is.
+  const Y = c => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], v = [0, 0, 0];
+  for (let i = 0; i < n; i += 2) {
+    if (!keep[i] || frame[3 * i] !== frame[3 * i]) continue;
+    const col = rgb[pixels[i]], y = Y(col);
+    for (let c = 0; c < 3; c++) {
+      const row = [1, y, col[c] - y];
+      for (let p = 0; p < 3; p++) { v[p] += row[p] * frame[3 * i + c]; for (let q = 0; q < 3; q++) M[p][q] += row[p] * row[q]; }
+    }
+  }
+  const sat = zbShotSolve3(M, v);
+  const models = [[(x, c) => line[c][0] * x + line[c][1], null]];
+  if (sat) models.push([null, col => { const y = Y(col); return col.map(x => sat[0] + sat[1] * y + sat[2] * (x - y)); }]);
+  const plainError = middle(x => x);
+  let chosen = null, least = 0.7 * plainError;
+  for (const [each, whole] of models) {
+    const map = whole ? col => whole(col) : col => col.map((x, c) => each(x, c));
+    const e = middleOf(map);
+    if (e < least) { least = e; chosen = map; }
+  }
+  if (!chosen) return rgb;
+  return rgb.map(col => chosen(col).map(x => Math.min(255, Math.max(0, x))));
+}
+
+/* The solution of a 3 x 3 system M x = v, or null where M is singular. */
+function zbShotSolve3(M, v) {
+  const d = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const D = d(M);
+  if (Math.abs(D) < 1e-9) return null;
+  return [0, 1, 2].map(k => d(M.map((row, r) => row.map((x, c) => c === k ? v[r] : x))) / D);
 }
 
 /* The other looks of a place. A place whose program draws over most of
