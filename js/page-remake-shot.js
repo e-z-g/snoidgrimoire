@@ -137,7 +137,7 @@ async function remakeShotTake(file) {
     const { parts, poses } = await remakeShotParts();
     await new Promise(r => setTimeout(r, 30));
     const zoombinis = zbRemakeShotZoombinis(shot, back, parts, poses);
-    REMAKE_SHOT_LAST = { name, width: img.width, height: img.height, read: { place, best, shot, back, zoombinis, parts }, seconds: (performance.now() - t) / 1000 };
+    REMAKE_SHOT_LAST = { name, width: img.width, height: img.height, read: { place, best, shot, back, zoombinis, parts, fit, sceneW: full.width, sceneH: full.height }, seconds: (performance.now() - t) / 1000 };
   } catch (e) {
     REMAKE_SHOT_LAST = { name, error: e.message };
     console.error(e);
@@ -205,4 +205,5 @@ async function remakeShotShow() {
   shotCanvas.width = r.shot.width; shotCanvas.height = r.shot.height;
   shotCanvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(r.shot.rgba), r.shot.width, r.shot.height), 0, 0);
   for (const c of [shotCanvas, drawing]) { c.style.maxWidth = '49%'; c.style.marginRight = '1%'; frame.appendChild(c); }
+  zbShotOtherButton(out, r, '2015');
 }

@@ -158,6 +158,12 @@ audio { width: min(420px, 100%); }
 #views { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; flex: none; }
 #views a { padding: 2px 10px; border-radius: 5px; color: var(--dim); text-decoration: none; }
 #views a.on { background: var(--raise); color: var(--text); }
+#views .editions { display: flex; gap: 2px; margin-left: 6px; padding-left: 6px; border-left: 1px solid var(--line); }
+#views .editions a { cursor: pointer; }
+.compare { display: flex; gap: 16px; align-items: flex-start; }
+.compare > section { flex: 1 1 0; min-width: 0; }
+.compare .edition-head { font-weight: bold; color: var(--dim); margin: 0 0 4px; }
+@media (max-width: 800px) { .compare { flex-direction: column; } }
 
 /* ---- the map ---- */
 #journey { flex: 1; display: flex; min-height: 0; }
@@ -499,5 +505,6 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/page-layout.js"></script>
 <script src="js/page-shot.js"></script>
 <script src="js/page-remake-shot.js"></script>
+<script src="js/page-compare.js"></script>
 </body>
 </html>

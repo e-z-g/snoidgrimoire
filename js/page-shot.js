@@ -141,6 +141,7 @@ function shotShow() {
   out.innerHTML = html;
   shotDrawFrame($('shotFrame'), r);
   shotDrawZoombinis(out, r);
+  zbShotOtherButton(out, r, '1996');
 }
 
 /* The frame as the screenshot shows it, at the game's size, with each
