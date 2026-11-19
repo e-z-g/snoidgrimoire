@@ -73,6 +73,7 @@ async function shotArchives() {
 }
 
 async function shotTake(file) {
+  if (typeof remakeShotTake === 'function' && zbEdition() === '2015') return remakeShotTake(file);
   if (SHOT_BUSY) return;
   SHOT_BUSY = true;
   const out = $('shotOut');

@@ -7,13 +7,14 @@
    town is Zoombiniville's scene and its four backdrops. Components'
    Pictures, Sprite sheets, Sounds, Music and Text gather the remake's
    textures, sprites and clips, sounds and text assets across every file
-   open. The 1996 panes without a counterpart (Screenshot, Palettes,
-   Cursors, Scripts and Walks) do not show for the remake.
+   open. Its Screenshot pane is page-remake-shot.js. The 1996 panes without a
+   counterpart (Palettes, Cursors, Scripts and Walks) do not show for the
+   remake.
    =========================================================================
    The page's script: DOM here. LOAD ORDER: after page-unity.js. */
 
 const ZB_REMAKE_TABS = {
-  scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles'], ['snoids', 'Snoids'], ['town', 'The town']] },
+  scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles'], ['snoids', 'Snoids'], ['town', 'The town'], ['screenshot', 'Screenshot']] },
   components: { name: 'Components', subs: [['pictures', 'Pictures'], ['sheets', 'Sprite sheets'], ['sounds', 'Sounds'], ['music', 'Music'], ['text', 'Text']] },
 };
 
@@ -670,7 +671,7 @@ const REMAKE_GALLERIES = {
 /* The side list's figure beside a remake pane. */
 function remakeTabCount(tab, sub) {
   if (!REMAKE_CATALOG) return '';
-  if (tab === 'scenario') return { places: REMAKE_CATALOG.scenes.length, puzzles: Object.keys(ZB_REMAKE_PUZZLES).length, snoids: REMAKE_SNOIDS.length, town: '' }[sub] ?? '';
+  if (tab === 'scenario') return { places: REMAKE_CATALOG.scenes.length, puzzles: Object.keys(ZB_REMAKE_PUZZLES).length, snoids: REMAKE_SNOIDS.length, town: '', screenshot: '' }[sub] ?? '';
   const n = {
     pictures: () => remakeAll(28).filter(it => !isRemakeAtlas(it)).length,
     sheets: () => remakeAll(49).filter(isRemakeSwf).length + remakeAll(213).length,
