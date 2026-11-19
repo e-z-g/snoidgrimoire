@@ -1442,6 +1442,10 @@ function zbShotSmoothRead(rgba, width, height, archives) {
   const { blur, spread } = zbShotBlurFit(frame, best.pixels, rgb);
   const tolerance = Math.min(60, Math.max(30, 6 * spread));
   const bare = zbShotBare(frame, best.pixels, rgb, blur, tolerance);
+  // The Zoombinis' colors as shown, for reading them only: a puzzle's
+  // reader draws its pieces in the same range in the palette's colors.
+  const zRgb = compressed ? rgb : zbShotSpriteTint(frame, bare, rgb);
+  const zBare = zRgb === rgb ? bare : zbShotBare(frame, best.pixels, zRgb, blur, tolerance);
   let shown = 0, same = 0;
   for (let i = 0; i < bare.length; i++) {
     if (frame[3 * i] !== frame[3 * i]) continue;
@@ -1460,7 +1464,7 @@ function zbShotSmoothRead(rgba, width, height, archives) {
   if (out.fit < 0.3) return { ...out, place: null };
   const sheet = zbSnoidSheet(archives.get('ZOOMBINI')), { poses, families, grids } = zbShotPoses(archives, best.place);
   const scene = compressed && ZB_SHOT_SCENES[best.place] ? ZB_SHOT_SCENES[best.place](zbShotEnv(out), best.pixels) : null;
-  out.zoombinis = zbShotSmoothZoombinis({ frame, bare, sheet, rgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place, best.arc), share: compressed ? 0.5 : 0.55,
+  out.zoombinis = zbShotSmoothZoombinis({ frame, bare: zBare, sheet, rgb: zRgb, palKeys, blur, poses, families, grids, stands: zbShotStands(best.place, best.arc), share: compressed ? 0.5 : 0.55,
     whole: compressed && best.sx === 1 && best.sy === 1 ? { colors: display, pixels: scene || best.pixels, rgb: best.rgb, dx: Math.round(best.dx), dy: Math.round(best.dy) } : null }, tolerance, compressed ? 10 : 4);
   out.tolerance = tolerance;
   return out;
@@ -1537,6 +1541,46 @@ function zbShotTint(frame, pixels, rgb) {
   }
   if (!chosen) return rgb;
   return rgb.map(col => chosen(col).map(x => Math.min(255, Math.max(0, x))));
+}
+
+/* The Zoombinis' colors as a capture shows them, read off the screenshot:
+   some pictures on the web wash out the Zoombinis' blue far more than the
+   place's greens and browns, so no change of the whole picture fits both.
+   The skin, ZOOMBINI's most drawn color (index 20, ZB_SHOT_SKIN), is
+   looked for among the pixels off the bare picture: bluish ones within 120
+   of it, the brighter half, and their middle color is the skin as shown.
+   Where that is more than 25 from the palette's and at least 150 pixels
+   show it, twice as many seen pixels are near it as near the palette's
+   skin, and it is less than 80% as saturated, the shared range 10-45 that ZOOMBINI's art is drawn in goes
+   through a line a channel from the outline's black (index 45) as it is to
+   the skin as shown. Otherwise the palette is given back as it is. */
+const ZB_SHOT_SKIN = 20, ZB_SHOT_OUTLINE = 45;
+function zbShotSpriteTint(frame, bare, rgb) {
+  const skin = rgb[ZB_SHOT_SKIN], ink = rgb[ZB_SHOT_OUTLINE], seen = [];
+  for (let i = 0; i < bare.length; i++) {
+    const o = 3 * i, r = frame[o], g = frame[o + 1], b = frame[o + 2];
+    if (bare[i] || r !== r || b < r + 10 || b < g - 10) continue;
+    if (Math.abs(r - skin[0]) + Math.abs(g - skin[1]) + Math.abs(b - skin[2]) > 120) continue;
+    seen.push([r, g, b]);
+  }
+  if (seen.length < 300) return rgb;
+  seen.sort((p, q) => (p[0] + p[1] + p[2]) - (q[0] + q[1] + q[2]));
+  const top = seen.slice(seen.length >> 1), shown = [0, 1, 2].map(c => top.map(p => p[c]).sort((a, b) => a - b)[top.length >> 1]);
+  if (Math.abs(shown[0] - skin[0]) + Math.abs(shown[1] - skin[1]) + Math.abs(shown[2] - skin[2]) <= 25) return rgb;
+  // A blurred frame mixes the skin with what is next to it, so the skin as
+  // shown is taken only where twice as many pixels are near it as near the
+  // palette's.
+  const near = c => seen.filter(p => Math.abs(p[0] - c[0]) + Math.abs(p[1] - c[1]) + Math.abs(p[2] - c[2]) <= 30).length;
+  if (near(shown) < 2 * near(skin)) return rgb;
+  // Only a washed-out skin, less than 80% as saturated as the palette's: a
+  // darker shade of the same blue is the skin's own shading.
+  const chroma = c => Math.max(...c) - Math.min(...c);
+  if (chroma(shown) >= 0.8 * chroma(skin)) return rgb;
+  const line = [0, 1, 2].map(c => {
+    const a = skin[c] - ink[c] > 8 ? (shown[c] - ink[c]) / (skin[c] - ink[c]) : 1;
+    return [a, ink[c] - a * ink[c]];
+  });
+  return rgb.map((col, i) => i < 10 || i > 45 ? col : col.map((x, c) => Math.min(255, Math.max(0, line[c][0] * x + line[c][1]))));
 }
 
 /* The solution of a 3 x 3 system M x = v, or null where M is singular. */
