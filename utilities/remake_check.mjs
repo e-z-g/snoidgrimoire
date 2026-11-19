@@ -31,6 +31,8 @@ import http from 'node:http';
 import { spawnSync } from 'node:child_process';
 import { ROOT, site } from './load.mjs';
 import { serve, loadPage, pageErrors } from './browser.mjs';
+import { rangeServer as rangeServerOf } from './range_server.mjs';
+const rangeServer = (...a) => rangeServerOf(S, ...a);
 
 const BUILDS = [
   '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data',
@@ -75,37 +77,7 @@ const sha1 = b => crypto.createHash('sha1').update(b).digest('hex');
 const problems = [];
 const fail = m => { if (problems.length < 30) problems.push(m); };
 
-// A server of a build's folder that answers range requests as Cloudflare
-// R2 does, and counts the requests and bytes sent. It serves the files
-// the index lists, and the index (snoidgrimoire-index.bin) where given.
 const APK_NAMES = ['base.apk', 'split_config.arm64_v8a.apk', 'split_UnityDataAssetPack.apk'];
-function rangeServer(dir, paths, index = null, top = null) {
-  const sent = { requests: 0, bytes: 0 };
-  const server = http.createServer((req, res) => {
-    let name = decodeURIComponent(req.url.slice(1).split('?')[0]);
-    // With `top`, the build is the folder top.path under an index of builds.
-    let topIndex = false;
-    if (top) {
-      if (name === S.ZB_ADDRESS_INDEX) topIndex = true;
-      else if (name.startsWith(top.path)) name = name.slice(top.path.length);
-      else name = '';
-    }
-    const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Range', 'Access-Control-Expose-Headers': 'Content-Length, Content-Range', 'Accept-Ranges': 'bytes' };
-    if (req.method === 'OPTIONS') { res.writeHead(204, headers); res.end(); return; }
-    const served = topIndex ? top.index : index && name === S.ZB_ADDRESS_INDEX ? index : null;
-    if (!served && !paths.includes(name)) { res.writeHead(404, headers); res.end(); return; }
-    const size = served ? served.length : fs.statSync(path.join(dir, name)).size;
-    const m = /^bytes=(\d+)-(\d+)$/.exec(req.headers.range || '');
-    sent.requests++;
-    if (req.method === 'HEAD') { res.writeHead(200, { ...headers, 'Content-Length': size }); res.end(); return; }
-    const a = m ? +m[1] : 0, z = m ? Math.min(+m[2], size - 1) : size - 1;
-    sent.bytes += z - a + 1;
-    res.writeHead(m ? 206 : 200, { ...headers, 'Content-Length': z - a + 1, ...(m ? { 'Content-Range': `bytes ${a}-${z}/${size}` } : {}) });
-    if (served) res.end(Buffer.from(served.subarray(a, z + 1)));
-    else fs.createReadStream(path.join(dir, name), { start: a, end: z }).pipe(res);
-  });
-  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ base: `http://127.0.0.1:${server.address().port}/`, sent, close: () => server.close() })));
-}
 // A build's folder as served from an address: the Android build's APKs, or
 // the app folder's files that its index lists (zbAddressIndexWants).
 const SERVED = ANDROID ? path.join(APP, 'apk') : APP;
