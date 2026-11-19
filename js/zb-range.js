@@ -3,7 +3,8 @@
    hundred kilobytes of it. So a file at an address is read with HTTP
    range requests (Range: bytes=a-b, answered 206 with those bytes). A
    read is rounded out to blocks of 16 kB, which stay in memory up to
-   64 MB, the oldest used going first, so the many small reads of a Unity
+   64 MB, the oldest used going first, and in IndexedDB between visits
+   (zbRangeKeptRead), so the many small reads of a Unity
    file's header and objects share requests. A run of blocks not yet read
    is one request. Opening the Android build reads about 1,400 headers
    spread over the asset pack, which is 21 MB in 1,300 requests at 16 kB,
@@ -85,11 +86,8 @@ async function zbRangeBlocks(source, first, last) {
     else runs.push([b, b]);
   }
   for (const [a, z] of runs) {
-    const p = zbRangeFetch(source, a * ZB_RANGE_BLOCK, Math.min((z + 1) * ZB_RANGE_BLOCK, source.size)).then(bytes => {
-      for (let b = a; b <= z; b++) {
-        ZB_RANGE_BLOCKS.set(source.url + '#' + b, bytes.subarray((b - a) * ZB_RANGE_BLOCK, (b - a + 1) * ZB_RANGE_BLOCK));
-        source.coming.delete(b);
-      }
+    const p = zbRangeRun(source, a, z).then(() => {
+      for (let b = a; b <= z; b++) source.coming.delete(b);
     }, err => { for (let b = a; b <= z; b++) source.coming.delete(b); throw err; });
     for (let b = a; b <= z; b++) source.coming.set(b, p);
   }
@@ -99,6 +97,72 @@ async function zbRangeBlocks(source, first, last) {
   for (let b = first; b <= last; b++) { const k = source.url + '#' + b, v = ZB_RANGE_BLOCKS.get(k); ZB_RANGE_BLOCKS.delete(k); ZB_RANGE_BLOCKS.set(k, v); out.push(v); }
   while (ZB_RANGE_BLOCKS.size > ZB_RANGE_KEEP) ZB_RANGE_BLOCKS.delete(ZB_RANGE_BLOCKS.keys().next().value);
   return out;
+}
+
+/* Blocks a to z of a source into ZB_RANGE_BLOCKS: those kept in the
+   browser from an earlier visit, and each run of the rest fetched in one
+   request and kept. */
+async function zbRangeRun(source, a, z) {
+  const kept = await zbRangeKeptRead(source.url, a, z);
+  for (const [b, bytes] of kept) ZB_RANGE_BLOCKS.set(source.url + '#' + b, bytes);
+  const runs = [];
+  for (let b = a; b <= z; b++) {
+    if (kept.has(b)) continue;
+    if (runs.length && runs[runs.length - 1][1] === b - 1) runs[runs.length - 1][1] = b;
+    else runs.push([b, b]);
+  }
+  await Promise.all(runs.map(async ([s, e]) => {
+    const bytes = await zbRangeFetch(source, s * ZB_RANGE_BLOCK, Math.min((e + 1) * ZB_RANGE_BLOCK, source.size));
+    const fetched = [];
+    for (let b = s; b <= e; b++) {
+      const block = bytes.slice((b - s) * ZB_RANGE_BLOCK, (b - s + 1) * ZB_RANGE_BLOCK);
+      ZB_RANGE_BLOCKS.set(source.url + '#' + b, block);
+      fetched.push({ url: source.url, b, bytes: block });
+    }
+    zbRangeKeptWrite(fetched);
+  }));
+}
+
+/* The blocks kept in the browser, in IndexedDB, so that a second visit
+   reads a scene without the network. A block is keyed by its address and
+   number. The files at an address never change, since a new build is a
+   new folder. Where IndexedDB is missing or full, nothing is kept and
+   every block is fetched. */
+let zbRangeKeptDb;
+function zbRangeKept() {
+  if (zbRangeKeptDb === undefined) {
+    zbRangeKeptDb = new Promise(done => {
+      if (typeof indexedDB === 'undefined') { done(null); return; }
+      const req = indexedDB.open('snoidgrimoire-blocks', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('blocks', { keyPath: ['url', 'b'] });
+      req.onsuccess = () => done(req.result);
+      req.onerror = () => done(null);
+    });
+  }
+  return zbRangeKeptDb;
+}
+
+/* Blocks a to z of an address kept in the browser, by number. */
+async function zbRangeKeptRead(url, a, z) {
+  const out = new Map(), db = await zbRangeKept();
+  if (!db) return out;
+  return new Promise(done => {
+    try {
+      const req = db.transaction('blocks').objectStore('blocks').getAll(IDBKeyRange.bound([url, a], [url, z]));
+      req.onsuccess = () => { for (const r of req.result) out.set(r.b, new Uint8Array(r.bytes)); done(out); };
+      req.onerror = () => done(out);
+    } catch { done(out); }
+  });
+}
+
+async function zbRangeKeptWrite(blocks) {
+  const db = await zbRangeKept();
+  if (!db || !blocks.length) return;
+  try {
+    const t = db.transaction('blocks', 'readwrite'), store = t.objectStore('blocks');
+    for (const r of blocks) store.put(r);
+    t.onerror = e => e.preventDefault();
+  } catch { /* full or closed: the blocks are fetched again next time */ }
 }
 
 async function zbRangeFetch(source, start, end) {
