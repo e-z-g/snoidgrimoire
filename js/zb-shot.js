@@ -1499,7 +1499,7 @@ function zbShotTint(frame, pixels, rgb) {
     const shown = Array.from(e).filter(v => v < Infinity).sort((a, b) => a - b), cut = shown[Math.floor(shown.length * 0.6)];
     for (let i = 0; i < n; i++) keep[i] = e[i] <= cut ? 1 : 0;
   }
-  // The middle error over the pixels shown, with the lines and without.
+  // The middle error over the pixels shown, for a map of the colors.
   const middle = f => {
     const e = [];
     for (let i = 0; i < n; i += 4) {
@@ -1512,8 +1512,8 @@ function zbShotTint(frame, pixels, rgb) {
   };
   const middleOf = map => middle((x, c, col) => map(col)[c]);
   // A second model: brightness and saturation, frame = a + b * Y + s * (color - Y)
-  // with Y the color's brightness, fitted on the same pixels. It carries a
-  // change of saturation seen on the picture's greens and browns over to
+  // with Y the color's brightness, fitted on the same pixels. It applies a
+  // change of saturation seen on the picture's greens and browns to
   // the Zoombinis' blue, where a line a channel leaves that blue as it is.
   const Y = c => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
   const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], v = [0, 0, 0];
