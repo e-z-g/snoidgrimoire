@@ -190,12 +190,22 @@ async function zbShotIn2015(r) {
   const k = (tall / ZB_SHOT_H) * H / box.height;
   const g = c.getContext('2d');
   const whole = z => ZB_TRAIT_KINDS.every(t => z.traits[t] != null);
-  const band = r.zoombinis.filter(whole).sort((a, b) => a.y - b.y);
-  for (const z of band) {
+  const scene = await remakeScene('level' + n), band = r.zoombinis.filter(whole);
+  // The band stands on the scene's arrival slots, in their order, as the
+  // remake fills them, through the camera's view as the scene is drawn.
+  // Without them, each Zoombini stands at its share of the frame.
+  const slots = scene.arrival && scene.camera && scene.arrival.length >= band.length ? scene.arrival : null;
+  const at = band.map((z, i) => {
+    if (!slots) return { z, x: z.x / ZB_SHOT_W * W, y: z.y / ZB_SHOT_H * H };
+    const cam = scene.camera, s = H / (2 * cam.size);
+    return { z, x: W / 2 + (slots[i][0] - cam.x) * s, y: H / 2 - (slots[i][1] - cam.y) * s };
+  }).sort((a, b) => a.y - b.y);
+  for (const { z, x, y } of at) {
     const v = Object.fromEntries(ZB_TRAIT_KINDS.map(t => [t, back[t][z.traits[t] - 1]]));
-    zbRemakeDrawZoombini(g, parts, pose, v, z.x / ZB_SHOT_W * W, z.y / ZB_SHOT_H * H, k, false);
+    zbRemakeDrawZoombini(g, parts, pose, v, x, y, k, false);
   }
-  return { canvas: c, title: remakeSceneTitle(n), link: `#scenario/places/${n}`, left: r.zoombinis.length - band.length };
+  return { canvas: c, title: remakeSceneTitle(n), link: `#scenario/places/${n}`, left: r.zoombinis.length - band.length,
+    waiting: slots ? 'The band stands on the slots the remake fills as a band comes in.' : null };
 }
 
 function zbRemakeDrawZoombini(g, parts, pose, t, x, y, k, flip) {
@@ -236,7 +246,8 @@ async function zbShotIn1996(r) {
     const im = zbZoombiniImage(sheet, w.z);
     g.drawImage(indexedCanvas(im, pal, true), Math.round(w.x - im.ox), Math.round(w.y - im.oy));
   }
-  return { canvas: c, title: place.name, link: `#scenario/places/${place.key}`, left: 0, waiting: !!waiting };
+  return { canvas: c, title: place.name, link: `#scenario/places/${place.key}`, left: 0,
+    waiting: waiting ? 'The band stands where the 1996 program puts a band coming here.' : null };
 }
 
 /* The button under a reading, where the other game is open too. */
@@ -251,7 +262,7 @@ function zbShotOtherButton(out, r, from) {
     box.innerHTML = '<p class="note">Drawing…</p>';
     try {
       const d = await (to === '2015' ? zbShotIn2015(r) : zbShotIn1996(r));
-      box.innerHTML = `<p>The Zoombinis as read, in <a href="${d.link}">${esc(d.title)}</a>${d.left ? `, without ${plural(d.left, 'Zoombini')} whose traits are not all read` : ''}. ${d.waiting ? 'The band stands where the 1996 program puts a band coming here.' : 'Each stands at its share of the frame, and the other game lays out its picture differently, so that is near the spot only.'}</p>`;
+      box.innerHTML = `<p>The Zoombinis as read, in <a href="${d.link}">${esc(d.title)}</a>${d.left ? `, without ${plural(d.left, 'Zoombini')} whose traits are not all read` : ''}. ${d.waiting || 'Each stands at its share of the frame, and the other game lays out its picture differently, so that is near the spot only.'}</p>`;
       d.canvas.style.maxWidth = '100%';
       d.canvas.className = 'scene';
       box.appendChild(d.canvas);

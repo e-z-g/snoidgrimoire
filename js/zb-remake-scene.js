@@ -145,7 +145,31 @@ async function zbRemakeScene(file, api, sortingLayers = [], root = null) {
   }
   // Unity's order is the layer, the order in layer, then the farther (larger z) first. Ties stay in the file's order.
   items.sort((p, q) => p.layer - q.layer || p.order - q.order || q.z - p.z);
-  return { camera, items };
+  return { camera, items, arrival: root == null ? await zbSceneArrival(gos, comps, transformOf, get, local, worldOf) : null };
+}
+
+/* Where a puzzle's band stands as it comes in: the slots of the scene's
+   DestinationGroup the band walks into, as [x, y] in the world. A
+   DestinationGroup's slots are its GameObject's children. In each
+   puzzle the group for Zoombinis coming in is
+   EntryZoombiniSlots, IntroDestinationGroup, ZMBIntroGroup or, at Shelter
+   Rock, GroundSpots. A group whose slots all stand on one spot is a door,
+   so the group with the most separate spots is taken. Null where no group
+   has two. */
+async function zbSceneArrival(gos, comps, transformOf, get, local, worldOf) {
+  let best = null;
+  for (const [g, go] of gos) {
+    if (!/^(EntryZoombiniSlots|IntroDestinationGroup|ZMBIntroGroup|GroundSpots)$/.test(go.m_Name)) continue;
+    if (!comps.get(g).some(c => c.classId === 114) || !transformOf.has(g)) continue;
+    const slots = [];
+    for (const child of (await get(transformOf.get(g))).m_Children || []) {
+      const ct = local(child);
+      if (ct != null) { const w = await worldOf(ct); slots.push([w.m[4], w.m[5]]); }
+    }
+    const spots = new Set(slots.map(([x, y]) => Math.round(x) + ',' + Math.round(y))).size;
+    if (spots > 1 && (!best || spots > best.spots)) best = { slots, spots, name: go.m_Name };
+  }
+  return best && best.slots;
 }
 
 /* A sprite's quad: { texture (a PPtr), src [x, y, w, h] from the texture's
