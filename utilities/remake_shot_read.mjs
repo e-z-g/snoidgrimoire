@@ -28,9 +28,9 @@ for (const p of shots) {
   const r = S.zbRemakeShotPlace(img.rgba, img.width, img.height, scenes);
   const top = r.ranked.slice(0, 3).map(x => `level${x.n} ${x.score != null ? x.score.toFixed(3) : '-'} (coarse ${x.coarse.toFixed(3)})${x.scale ? ` at ${Math.round(x.x0)},${Math.round(x.y0)} x${x.scale.toFixed(3)}` : ''}`);
   console.log(`${path.basename(p)}: ${img.width} x ${img.height}, trim ${r.trim.width} x ${r.trim.height}, ${Date.now() - t} ms\n  ${top.join('\n  ')}`);
-  const best = r.ranked[0], shot = { rgba: r.trim.rgba, width: r.trim.width, height: r.trim.height };
-  const back = S.zbRemakeShotBackdrop(shot, scenes.find(s => s.n === best.n).img, best);
-  const zs = S.zbRemakeShotZoombinis(shot, back, parts, poses);
+  const best = r.ranked[0], { img: shot, f } = S.zbRemakeShotSmaller({ rgba: r.trim.rgba, width: r.trim.width, height: r.trim.height });
+  const back = S.zbRemakeShotBackdrop(shot, scenes.find(s => s.n === best.n).img, { ...best, scale: best.scale * f });
+  const zs = S.zbRemakeShotZoombinis(shot, back, parts, poses, process.env.DEBUG ? { debug: process.env.DEBUG.split(',').map(Number) } : {});
   for (const z of zs) console.log(`  (${z.x}, ${z.y}) ${z.pose} ${z.flip ? 'left ' : 'right'} ${['hair', 'eyes', 'nose', 'feet'].map(t => `${NAMES[t][z.traits[t]]} (${z.margins[t]})`).join(', ')}, size ${z.k.toFixed(2)}, gain ${z.gain.toFixed(1)}`);
   console.log(`  ${zs.length} Zoombinis, ${Date.now() - t} ms`);
 }

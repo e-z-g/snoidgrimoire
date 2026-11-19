@@ -120,7 +120,7 @@ function zbRemakeShotPlace(rgba, width, height, scenes, opts = {}) {
 /* The fitted scene behind the screenshot: the scene's drawing sampled at
    each of the screenshot's pixels (bilinear), then brought to the
    screenshot's colors by a line a channel, shot = a * scene + b, fitted
-   three times on the 60% of pixels that agree best. `shot` is
+   three times on the 60% of pixels that match best. `shot` is
    { rgba, width, height } (the trimmed screenshot), `scene` the drawing,
    `fit` zbRemakeShotPlace's. Returns { bg, gain }, bg a Float32Array of
    RGB at the screenshot's size. */
@@ -180,7 +180,7 @@ function zbRemakeShotSkin(part) {
    zbRemakeShotBackdrop's, and `parts` a Map from "<pose>/<clip>" to
    { rgba, width, height, ox, oy }, the clip drawn at the pose's frame with
    its origin at (ox, oy), for the clips zmb_feet_<f>, zmb_feet_<f>_head and
-   zmb_feet_<f>_<eyes|nose|hair>_<v>. `poses` lists the poses, the first the
+   zmb_feet_<f>_<eyes|nose|hair>_<v>. `poses` has the poses, the first the
    standing one.
 
    A Zoombini's head is found by its skin where the screenshot differs from
@@ -198,18 +198,26 @@ function zbRemakeShotSkin(part) {
    the clips' pixels, a margin how far the next value of a trait fit worse,
    and gain how much the Zoombini explains a pixel. */
 function zbRemakeShotZoombinis(shot, back, parts, poses, opts = {}) {
-  const W = shot.width, H = shot.height, { bg, gain } = back;
+  const W = shot.width, H = shot.height, { bg } = back;
   const px = shot.rgba;
-  const tone = c => [0, 1, 2].map(i => gain[i][0] * c[i] + gain[i][1]);
   const head0 = parts.get(poses[0] + '/zmb_feet_0_head');
-  const skinRaw = zbRemakeShotSkin(head0), skin = tone(skinRaw);
+  const skinRaw = zbRemakeShotSkin(head0);
   const near = (r, g, b, c, t) => Math.abs(r - c[0]) + Math.abs(g - c[1]) + Math.abs(b - c[2]) < t;
-  const skinM = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) {
-    const r = px[4 * i], g = px[4 * i + 1], b = px[4 * i + 2];
-    const fg = Math.abs(r - bg[3 * i]) + Math.abs(g - bg[3 * i + 1]) + Math.abs(b - bg[3 * i + 2]);
-    skinM[i] = near(r, g, b, skin, 60) && fg > 30 ? 1 : 0;
-  }
+  // The sprites' colors: as the capture changed the scene's (a JPEG's or a
+  // filter's tint), or as drawn, where the game dims the scene and not the
+  // Zoombinis. Whichever finds more skin is used.
+  const skinMask = gain => {
+    const skin = [0, 1, 2].map(i => gain[i][0] * skinRaw[i] + gain[i][1]), m = new Uint8Array(W * H);
+    let n = 0;
+    for (let i = 0; i < W * H; i++) {
+      const r = px[4 * i], g = px[4 * i + 1], b = px[4 * i + 2];
+      const fg = Math.abs(r - bg[3 * i]) + Math.abs(g - bg[3 * i + 1]) + Math.abs(b - bg[3 * i + 2]);
+      if (near(r, g, b, skin, 60) && fg > 30) { m[i] = 1; n++; }
+    }
+    return { m, n, skin, gain };
+  };
+  const a = skinMask(back.gain), b = skinMask([[1, 0], [1, 0], [1, 0]]);
+  const { m: skinM, skin, gain } = b.n > a.n ? b : a;
   // The size: the larger patches of skin against the head's skin.
   const seen = new Uint8Array(W * H), areas = [];
   for (let i = 0; i < W * H; i++) if (skinM[i] && !seen[i]) {
@@ -338,13 +346,26 @@ function zbRemakeShotZoombinis(shot, back, parts, poses, opts = {}) {
       if (res[0][0] <= cur) { if (set in z.traits) z.traits[set] = res[0][1]; else z[set] = res[0][1]; z.y = res[0][2]; cur = res[0][0]; }
       return res;
     };
+    // The place first, coarsely, since a trait read from the wrong place can
+    // fit better than the right one.
+    const nudge = (step, reach) => {
+      let bx = z.x, by = z.y;
+      for (let dy = -reach; dy <= reach; dy += step) for (let dx = -reach; dx <= reach; dx += step) {
+        const ox = z.x, oy = z.y;
+        z.x = bx + dx; z.y = by + dy;
+        const s = sc();
+        if (s < cur) cur = s; else { z.x = ox; z.y = oy; }
+      }
+    };
+    if (!z0) nudge(2, Math.round(12 * z.k));
     for (let round = 0; round < 4; round++) {
       tryAll('flip', [false, true]);
       tryAll('k', [z.k, Math.round(z.k * 0.92 * 50) / 50, Math.round(z.k * 1.08 * 50) / 50]);
       if (round > 0) tryAll('pose', poses, [-8, -4, 0, 4, 8].map(d => Math.round(d * z.k)));
       for (const t of ['feet', 'hair', 'eyes', 'nose']) {
-        const res = tryAll(t, [0, 1, 2, 3, 4], t === 'feet' ? [-12, -8, -4, 0, 4, 8, 12].map(d => Math.round(d * z.k)) : [0]);
+        const res = tryAll(t, [0, 1, 2, 3, 4], t === 'feet' ? [-16, -12, -8, -4, 0, 4, 8, 12, 16, 24].map(d => Math.round(d * z.k)) : [0]);
         margins[t] = Math.round(res[1][0] - res[0][0]);
+        if (opts.debug && Math.hypot(z.x - opts.debug[0], z.y - opts.debug[1]) < 30) console.log('DEBUG', round, t, z.pose, JSON.stringify(res.map(r => [r[1], Math.round(r[0]), r[2]])));
       }
       for (let it = 0; it < 6; it++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         z.x += dx; z.y += dy;
@@ -379,5 +400,23 @@ function zbRemakeShotZoombinis(shot, back, parts, poses, opts = {}) {
       out[i] = fit(out[i].x, out[i].y, base, out[i]);
     }
   }
-  return out.sort((a, b) => a.y - b.y || a.x - b.x);
+  // Two fits that drifted onto one Zoombini: the one that explains more stays.
+  // A fit far larger than the band's middle size is something else of the
+  // skin's color, such as Mirror Machine's beam.
+  const sizes = out.map(z => z.k).sort((a, b) => a - b), middle = sizes[sizes.length >> 1];
+  const kept = [];
+  for (const z of [...out].filter(z => z.k <= 1.3 * middle).sort((a, b) => b.gain - a.gain))
+    if (!kept.some(q => Math.hypot(q.x - z.x, q.y - z.y) < 20 * Math.min(q.k, z.k))) kept.push(z);
+  return kept.sort((a, b) => a.y - b.y || a.x - b.x);
+}
+
+/* A screenshot over `most` pixels wide shrunk to that width by averaging,
+   since a Zoombini is read as well at that size. Returns { img, f }, f the
+   shrinking, so that a fit's scale becomes scale * f. */
+function zbRemakeShotSmaller(img, most = 1280) {
+  if (img.width <= most) return { img, f: 1 };
+  const w = most, h = Math.round(img.height * most / img.width), small = zbRemakeShotShrink(img, 0, 0, img.width, img.height, w, h);
+  const rgba = new Uint8ClampedArray(w * h * 4);
+  for (let i = 0; i < w * h; i++) { rgba[4 * i] = small.ch[0][i]; rgba[4 * i + 1] = small.ch[1][i]; rgba[4 * i + 2] = small.ch[2][i]; rgba[4 * i + 3] = 255; }
+  return { img: { rgba, width: w, height: h }, f: img.width / w };
 }

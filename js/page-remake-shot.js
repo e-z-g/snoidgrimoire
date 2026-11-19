@@ -130,8 +130,8 @@ async function remakeShotTake(file) {
     // The scene again at its full height, for the Zoombinis.
     const full = document.createElement('canvas');
     await remakeDrawScene(full, await remakeScene('level' + best.n));
-    const f = full.height / REMAKE_SHOT_SMALL, fit = { x0: best.x0 * f, y0: best.y0 * f, scale: best.scale * f };
-    const shot = { rgba: place.trim.rgba, width: place.trim.width, height: place.trim.height };
+    const { img: shot, f: shrunk } = zbRemakeShotSmaller({ rgba: place.trim.rgba, width: place.trim.width, height: place.trim.height });
+    const f = full.height / REMAKE_SHOT_SMALL, fit = { x0: best.x0 * f, y0: best.y0 * f, scale: best.scale * f * shrunk };
     const back = zbRemakeShotBackdrop(shot, remakeShotPixels(full), fit);
     note('Reading the Zoombinis…');
     const { parts, poses } = await remakeShotParts();
@@ -178,10 +178,10 @@ async function remakeShotShow() {
   if (L.error) { out.innerHTML = `<p class="bad">The page could not read ${esc(L.name)} (${esc(L.error)}).</p>`; return; }
   const r = L.read, b = r.best, next = r.place.ranked[1];
   const names = await remakeTraitNames();
-  const trimmed = r.shot.width !== L.width || r.shot.height !== L.height;
-  let html = `<h2>${esc(L.name)}</h2><p>The screenshot is ${L.width} × ${L.height}${trimmed ? `, ${r.shot.width} × ${r.shot.height} without its plain bars` : ''}.`
+  const T = r.place.trim, trimmed = T.width !== L.width || T.height !== L.height;
+  let html = `<h2>${esc(L.name)}</h2><p>The screenshot is ${L.width} × ${L.height}${trimmed ? `, ${T.width} × ${T.height} without its plain bars` : ''}.`
     + ` The scene is <a href="#scenario/places/${b.n}">${esc(remakeSceneTitle(b.n))}</a>, matched at ${b.score.toFixed(2)}${next && next.score != null ? `, where the next best, ${esc(remakeSceneTitle(next.n))}, matches at ${next.score.toFixed(2)}` : ''}.`
-    + ` The screenshot shows ${Math.round(100 * Math.min(1, r.shot.width * b.scale / (REMAKE_SHOT_SMALL * 16 / 9)))}% of the scene’s width.`
+    + ` The screenshot shows ${Math.round(100 * Math.min(1, T.width * b.scale / (REMAKE_SHOT_SMALL * 16 / 9)))}% of the scene’s width.`
     + ` ${r.zoombinis.length ? `The page found ${plural(r.zoombinis.length, 'Zoombini')}.` : 'The page found no Zoombinis.'}`
     + ` <span class="note">${L.seconds.toFixed(1)} s</span></p>`;
   html += '<div class="wide" id="shotFrame"></div>';

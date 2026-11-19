@@ -4,7 +4,7 @@
 //
 //   node utilities/remake_parts.mjs APP OUT [frame|label]
 //
-// OUT gets <clip>.png and parts.json: { clip: { x, y, w, h } }, x and y the
+// OUT receives <clip>.png and parts.json: { clip: { x, y, w, h } }, x and y the
 // origin's pixel in the PNG, and the clips' stretches.
 import fs from 'node:fs';
 import path from 'node:path';
