@@ -73,7 +73,11 @@ async function shotArchives() {
 }
 
 async function shotTake(file) {
-  if (typeof remakeShotTake === 'function' && zbEdition() === '2015') return remakeShotTake(file);
+  // With both games open, the 1996 reader goes first, since it matches the
+  // program's pixels exactly, and a picture it finds no place in is read
+  // as the remake's. Each reading shows in the pane of the game it found.
+  const both = typeof zbBothOpen === 'function' && zbBothOpen();
+  if (typeof remakeShotTake === 'function' && zbEdition() === '2015' && !both) return remakeShotTake(file);
   if (SHOT_BUSY) return;
   SHOT_BUSY = true;
   const out = $('shotOut');
@@ -97,6 +101,14 @@ async function shotTake(file) {
     console.error(e);
   } finally {
     SHOT_BUSY = false;
+  }
+  if (both) {
+    const found = SHOT_LAST.read && SHOT_LAST.read.place, shown = zbEdition();
+    if (!found) {
+      if (shown !== '2015') { await zbEditionPick('2015'); await new Promise(r => setTimeout(r, 50)); }
+      return remakeShotTake(file);
+    }
+    if (shown !== '1996') { await zbEditionPick('1996'); await new Promise(r => setTimeout(r, 50)); }
   }
   shotShow();
 }

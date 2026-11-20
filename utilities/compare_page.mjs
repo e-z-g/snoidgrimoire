@@ -68,9 +68,11 @@ const r = await loadPage(srv.base + 'index.html?src=reference/disc/ZOOMBINI.ISO'
     await evaluate(`[...document.querySelectorAll('#shotOut button')].find(b => /Draw in/.test(b.textContent)).click()`);
     await wait(evaluate, `!/Drawing/.test(document.getElementById('shotOut').lastElementChild.textContent)`, 300000);
     await step('1996-in-2015', `document.getElementById('shotOut').lastElementChild.textContent`);
-    await evaluate(`document.querySelector('[data-edition="2015"]').click()`);
-    await wait(evaluate, `zbEdition() === '2015' && !!document.getElementById('shotOut')`, 60000);
+    // The remake's screenshot goes to the 1996 pane, which finds no place in it and hands it on.
+    await evaluate(`location.hash = '#scenario/screenshot'`);
     await give(SHOT15, 'REMAKE_SHOT_LAST');
+    await wait(evaluate, `zbEdition() === '2015'`, 300000);
+    await step('detected', `'shown as ' + zbEdition()`);
     await wait(evaluate, `!!REMAKE_SHOT_LAST && !SHOT_BUSY && !!document.querySelector('#shotOut h2, #shotOut p.bad')`, 900000);
     await evaluate(`[...document.querySelectorAll('#shotOut button')].find(b => /Draw in/.test(b.textContent)).click()`);
     await wait(evaluate, `!/Drawing/.test(document.getElementById('shotOut').lastElementChild.textContent)`, 300000);
