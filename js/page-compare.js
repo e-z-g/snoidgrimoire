@@ -52,8 +52,8 @@ function zbEditionShown() {
 }
 
 /* The address of the same thing in the other game, or the nearest.
-   Mountain Rescue has no place in common with the others, so going to or
-   from it keeps the pane and drops the place. */
+   Mountain Rescue shares no place with the others, so a move to or from
+   it stays on the same pane and leaves the place out. */
 function zbHashIn(e, h) {
   if (e === '2001' || zbEditionShown() === '2001') {
     const m = /^#(scenario|components)(?:\/(\w+))?/.exec(h);
