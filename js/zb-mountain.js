@@ -80,8 +80,9 @@ const MR_PUZZLES = {
     levels: ['Four Norfs, trays of a dish and a drink. Each right meal lets 2 Zoombinis go.', 'Four Norfs, trays of a dish, a drink and a dessert. Each right meal lets 2 Zoombinis go.', 'Six Norfs, trays of a dish, a drink and a dessert. The right meals let 2, 2, 1, 1, 1 and 1 Zoombinis go.'],
   },
   mystic_marsh: {
-    goal: 'A Zoombini set on a crater floats out in a bubble over the marsh, and arrows, diverters, event triggers, magnets and whirlpools move it, some by its traits. Two Zoombinis that meet anywhere but a magnet pop and go back to the rest stop. The order and the entrance settle who crosses.',
-    levels: ['The fewest entrances and symbols.', 'More entrances, and more kinds of symbol.', 'More entrances, and more kinds of symbol.'],
+    from: 'program',
+    goal: 'The program generates the marsh for the band from one of nine fixed grids. A Zoombini sent in at an entrance floats in a bubble, and the symbols turn it. Arrows turn every bubble. Trait diverters turn only Zoombinis with one value of one trait. One-time diverters turn one bubble and then let the rest pass, and cycling diverters turn bubbles each way by turns. A bubble on a spot waits until another bubble reaches the spot\'s trigger or comes in behind it. A bubble that falls into a whirlpool leaves the grid, and a bubble that reaches the end crosses.',
+    levels: ['One entrance and two routes, taken by turns. On each route one trait diverter sends one value into a whirlpool and another sends a second value across to the other route. The program tries up to 30 grids and uses the one that scores best, with every part in use and the routes even.', 'Three entrances and three trait diverters, one of four grids. The diverters\' values split the band into about a half, a quarter and an eighth.', 'Rotators and many trait diverters, one of two grids. The values come from two Zoombinis of the band that differ.'],
   },
   wall_of_fleens: {
     from: 'program',
