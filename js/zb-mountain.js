@@ -81,8 +81,9 @@ const MR_PUZZLES = {
     levels: ['The fewest entrances and symbols.', 'More entrances, and more kinds of symbol.', 'More entrances, and more kinds of symbol.'],
   },
   wall_of_fleens: {
-    goal: 'One mirror of a wall hides a real Fleen. A cannonball breaks a mirror, and the meter beside it shows how many traits the picture shares with the hidden Fleen. Once the cannonballs run out, the Zoombinis are fired at the mirrors instead.',
-    levels: ['12 cannonballs over several walls.', 'One Fleen in a larger wall, with 8 cannonballs.', 'A wall larger again, with 6 cannonballs.'],
+    from: 'program',
+    goal: 'One mirror of a wall hides the real Fleen. A cannonball breaks a mirror, and the meter beside it shows how many traits that Fleen shares with the real one. Once the cannonballs run out, the Zoombinis are fired at the mirrors instead.',
+    levels: ['Walls of 3 × 2 mirrors, each a design from a table of 123, with the traits and values shuffled. 12 cannonballs.', 'A wall of 9 × 6 Fleens drawn at random, no two alike. 8 cannonballs.', 'A wall of 12 × 6 Fleens drawn at random, no two alike. 6 cannonballs.'],
   },
   snowboard: {
     goal: 'Each trait sends a snowboarding Zoombini down one trail. A Zoombini on the wrong trail runs into a Norf, and too many bumps close the slopes.',
