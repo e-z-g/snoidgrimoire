@@ -48,13 +48,16 @@ const MR_PLACES = [
 ];
 const MR_PLACE_BY_KEY = new Map(MR_PLACES.map(p => [p.key, p]));
 
-/* The puzzles' levels as the user's guide on the disc gives them
-   (INSTALL/Data/Zoombinimr.pdf). The program's code is still to read. */
+/* The puzzles' goals and levels. Those marked from: 'program' are read
+   from the program (zoombini-workbench's doc/MOUNTAIN-RESCUE.md, "The
+   puzzles' rules", has the addresses), and the others are as the user's
+   guide on the disc gives them (INSTALL/Data/Zoombinimr.pdf). */
 const MR_LEVELS = ['Not So Easy', 'Oh So Hard', 'Very Hard'];
 const MR_PUZZLES = {
   crazy_turtle: {
-    goal: 'The Zoombinis cross the river on the backs of baby turtles, in one order only. Signs on a tree trunk give clues to the order. A Zoombini on the wrong turtle is flipped into the water and comes up in its right place, and a beam of the dock falls.',
-    levels: ['3 wrong placements before the dock falls.', 'Fewer signs on the tree, and 4 wrong placements.', '6 wrong placements.'],
+    from: 'program',
+    goal: 'The Zoombinis cross the river on the backs of baby turtles, in one order only. The program picks one trait at random and shuffles its five values into an order, and the band must cross in that order, sorted by the trait. At Very Hard it picks a second trait and shuffles its values too, and Zoombinis with the same value of the first trait go in the second trait\'s order. A Zoombini is right on a turtle when its values of those traits match the order there, so Zoombinis alike in them can swap. Signs on the tree give some places of the order. A wrong placement breaks a beam of the dock and sends the Zoombini to the last open turtle where it would be right.',
+    levels: ['All five signs, and 3 wrong placements.', 'One sign or two, each half the time, and 5 wrong placements with one sign or 4 with two.', 'One sign, with both traits\' values at that place, and 6 wrong placements.'],
   },
   waterslide: {
     goal: 'Pairs of Zoombinis that share a trait stand at the junctions of pipes labeled with that trait. A pipe whose pair matches fills with water. When the master valve opens, every Zoombini whose pipes reach it goes down the waterfall.',

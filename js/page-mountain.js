@@ -415,10 +415,10 @@ const MOUNTAIN_SCENARIO_PANES = {
     galleryCards(view, cards, async (c, pic) => { pic.appendChild(mountainThumb(await mountainPicture(c.key))); });
   },
   puzzles(view) {
-    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s goal and its three levels as the user\'s guide on the disc gives them (<code>INSTALL/Data/Zoombinimr.pdf</code>). Nobody has read them from the program\'s code yet, so the numbers are the guide\'s.</p>';
+    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s goal and its three levels. Some are read from the program, and nobody has checked them against play. The rest are as the user\'s guide on the disc gives them (<code>INSTALL/Data/Zoombinimr.pdf</code>). A note under each gives its source.</p>';
     for (const [key, z] of Object.entries(MR_PUZZLES)) {
       const p = MR_PLACE_BY_KEY.get(key);
-      view.insertAdjacentHTML('beforeend', `<h2 class="h"><a href="#scenario/places/${key}">${esc(p.name)}</a></h2><p>${esc(z.goal)}</p><table class="plain">`
+      view.insertAdjacentHTML('beforeend', `<h2 class="h"><a href="#scenario/places/${key}">${esc(p.name)}</a></h2><p>${esc(z.goal)}</p><p class="note">${z.from === 'program' ? 'Read from the program.' : 'As the user\'s guide gives it.'}</p><table class="plain">`
         + MR_LEVELS.map((l, i) => `<tr><td>${esc(l)}</td><td>${esc(z.levels[i])}</td></tr>`).join('') + '</table>');
     }
   },
@@ -443,7 +443,7 @@ async function mountainPlacePage(view, key) {
   if (MOUNTAIN.files.has('bmp/' + p.background)) {
     try { mountainPictureBlock(view, await mountainPicture('bmp/' + p.background), key + '.png'); } catch (e) { view.insertAdjacentHTML('beforeend', `<p class="bad">${esc(e.message)}</p>`); }
   }
-  if (z) view.insertAdjacentHTML('beforeend', `<h2 class="h">The puzzle</h2><p>${esc(z.goal)}</p><table class="plain">` + MR_LEVELS.map((l, i) => `<tr><td>${esc(l)}</td><td>${esc(z.levels[i])}</td></tr>`).join('') + '</table><p class="note">As the user\'s guide gives it.</p>');
+  if (z) view.insertAdjacentHTML('beforeend', `<h2 class="h">The puzzle</h2><p>${esc(z.goal)}</p><table class="plain">` + MR_LEVELS.map((l, i) => `<tr><td>${esc(l)}</td><td>${esc(z.levels[i])}</td></tr>`).join('') + `</table><p class="note">${z.from === 'program' ? 'Read from the program.' : 'As the user\'s guide gives it.'}</p>`);
   const inside = mountainKeys(k => k.startsWith(folder + '/'));
   const byKind = new Map();
   for (const k of inside) { const kind = mrKind(k); if (!byKind.has(kind)) byKind.set(kind, []); byKind.get(kind).push(k); }
