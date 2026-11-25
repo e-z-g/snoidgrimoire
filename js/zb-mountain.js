@@ -69,8 +69,9 @@ const MR_PUZZLES = {
     levels: ['A cube of 8 corners, 3 levers, 1 Fleen in the far corner, 6 moves. The light starts in the near corner.', 'The same cube with 6 moves and one warp. The light starts at one of the three corners next to the near corner.', 'A four-axis cube of 16 corners (the inner and outer cubes), 4 levers, 4 Fleens, 11 moves and two warps. The light starts in the near corner.'],
   },
   magic_wall: {
-    goal: 'Scarab beetles sit on colored markers. A tablet pressed etches its pattern between the markers, and the beetles swap places along it. When every beetle sits on the marker of its color, the lights over the four doors are on, and the lever lets four Zoombinis through. Solved twice, it lets all eight through. Moves are unlimited.',
-    levels: ['The fewest beetles and the simplest patterns.', 'More beetles and more complicated patterns.', 'More beetles and more complicated patterns.'],
+    from: 'program',
+    goal: 'Scarab beetles sit on colored markers, and each tablet swaps the beetles on pairs of markers or moves a beetle from one marker to another. The puzzles are designs in the disc\'s file bmp/magic_wall/DEFAULT.ZTL. The program picks a design for the level, as often as its weight, and puts up to five tablets on the wall from it. Each beetle starts on its own marker, and the program scrambles them with 4 to 6 random presses of the tablets. When every beetle is home the lights over the four doors are on, and the lever lets four Zoombinis through. Moves are unlimited.',
+    levels: ['One of six designs, with 5 to 8 markers.', 'One of six designs, with 5 to 8 markers.', 'One of four designs in use, with 5 to 9 markers.'],
   },
   chez_norf: {
     goal: 'Each Norf gives clues to the meal it orders, and the order pad is for noting them. A tray of food from the refrigerator goes in front of a Norf. Each right meal lets some Zoombinis stop working.',
