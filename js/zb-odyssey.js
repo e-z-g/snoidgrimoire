@@ -470,12 +470,25 @@ function ioCharacterKinds(exe) {
       }
       if (rows.length < 3 || new Set(rows.map(r => r[1])).size !== 1 || !rows.every(r => inData(r[0]))) continue;
       return rows.map(([va]) => {
-        const r = at(va), ta = at(ioU32(exe, r + 0x10)), da = at(ioU32(exe, r + 0x3c));
+        const r = at(va), ta = at(ioU32(exe, r + 0x10)), da = at(ioU32(exe, r + 0x3c)), nt = i32(r + 0xc);
+        const anims = (ptr, n) => Array.from({ length: n }, (_, k) => {
+          const o = at(ptr) + 12 * k, mask = ioU32(exe, o + 8);
+          return { base: i32(o), block: i32(o + 4), mask: mask ? Array.from({ length: nt }, (_, t) => i32(at(mask) + 4 * t)) : null };
+        });
+        const poses = Array.from({ length: i32(r + 0x24) }, (_, k) => {
+          const o = at(ioU32(exe, r + 0x28)) + 12 * k, list = ioU32(exe, o + 8);
+          const fidgets = Array.from({ length: i32(o + 4) }, (_, j) => {
+            const f = at(list) + 16 * j;
+            return { seconds: [i32(f), i32(f + 4)], anims: anims(ioU32(exe, f + 12), i32(f + 8)) };
+          });
+          return { base: i32(o), fidgets };
+        });
         return {
           kind: i32(r), point: [i32(r + 4), i32(r + 8)],
-          traits: Array.from({ length: i32(r + 0xc) }, (_, t) => [0, 4, 8].map(k => i32(ta + 12 * t + k))),
+          traits: Array.from({ length: nt }, (_, t) => [0, 4, 8].map(k => i32(ta + 12 * t + k))),
           block: i32(r + 0x2c), length: ioI16(exe, r + 0x46),
           facings: Array.from({ length: i32(r + 0x38) }, (_, f) => [i32(da + 8 * f), i32(da + 8 * f + 4)]),
+          poses,
         };
       }).sort((a, b) => a.kind - b.kind);
     }
@@ -490,6 +503,50 @@ function ioCharacterParts(kind, facing, values) {
   const base = kind.facings[facing][0], b = kind.block;
   return kind.traits.map(([, order, tbase], t) => [order, t === b ? base + tbase + values[t] * kind.length : base + tbase + values[t] + values[b] * kind.length])
     .sort((x, y) => x[0] - y[0]).map(x => x[1]);
+}
+/* A part of a fidget's animation for trait t (0x40d5e0), or null where its
+   mask leaves the trait out. */
+function ioAnimPart(kind, anim, values, t) {
+  if (anim.mask && !anim.mask[t]) return null;
+  const tbase = kind.traits[t][2], b = anim.block;
+  if (b < 0) return anim.base + tbase + values[t];
+  if (b === t) return anim.base + tbase + values[t] * kind.length;
+  return anim.base + tbase + values[t] + values[b] * kind.length;
+}
+/* A standing pose's parts in draw order, each [trait, id, from the fidget].
+   A pose's part is its base + the trait's base + the value (0x40d5b0). A
+   fidget's animation, given as [fidget, animation], replaces the pose's parts
+   for the traits it covers (0x40cab0, 0x40d3f0). One fidget of the Zerble has
+   two animations, and whether the program draws both or picks one is unread,
+   so an animation is drawn alone. */
+function ioPoseParts(kind, pose, values, fidget) {
+  const p = kind.poses[pose];
+  return kind.traits.map(([, order, tbase], t) => {
+    let id = p.base + tbase + values[t], own = false;
+    if (fidget) { const a = ioAnimPart(kind, p.fidgets[fidget[0]].anims[fidget[1]], values, t); if (a !== null) { id = a; own = true; } }
+    return [order, t, id, own];
+  }).sort((x, y) => x[0] - y[0]).map(x => x.slice(1));
+}
+/* The steps of a sequence that draw a frame. */
+const ioDrawnSteps = a => a.sequences[0].filter(s => s[2] >= 0);
+/* A pose drawn, or a fidget's step over it: a pose's part at its first step
+   that draws a frame, a fidget's part at its step-th such step. */
+function ioPoseDraw(bul, kind, parts, aos, step, mirror) {
+  const pieces = [];
+  for (const [, id, own] of parts) {
+    const a = aos.get(id);
+    if (!a) continue;
+    const s = ioDrawnSteps(a)[own ? step : 0];
+    if (!s) continue;
+    pieces.push([a.points[0][0] + s[0], a.points[0][1] + s[1], ioAoFrame(bul, a, s[2])]);
+  }
+  return ioCharacterPlace(kind, pieces, mirror);
+}
+/* The number of steps of a fidget, the longest of its parts'. */
+function ioFidgetSteps(parts, aos) {
+  let n = 0;
+  for (const [, id, own] of parts) if (own && aos.get(id)) n = Math.max(n, ioDrawnSteps(aos.get(id)).length);
+  return n;
 }
 /* One drawing over another as Pillow's Image.alpha_composite draws it, so the
    check can compare pixels with io_snoid.py (libImaging/AlphaComposite.c). */
@@ -530,6 +587,11 @@ function ioCharacterDraw(bul, kind, ids, aos, step, mirror) {
     if (!s || s[2] < 0) continue;
     pieces.push([a.points[0][0] + s[0], a.points[0][1] + s[1], ioAoFrame(bul, a, s[2])]);
   }
+  return ioCharacterPlace(kind, pieces, mirror);
+}
+/* Pieces [x, y, frame] put on one drawing in order, mirrored about the
+   character's x when mirror is set. */
+function ioCharacterPlace(kind, pieces, mirror) {
   if (!pieces.length) return null;
   const x0 = Math.min(...pieces.map(p => p[0])), y0 = Math.min(...pieces.map(p => p[1]));
   const x1 = Math.max(...pieces.map(p => p[0] + p[2].width)), y1 = Math.max(...pieces.map(p => p[1] + p[2].height));
@@ -617,4 +679,5 @@ if (typeof module !== 'undefined') module.exports = {
   ioPalette, ioAo2cFrame, ioRle8Frame, ioAoFrame, ioKind, ioGameFiles, ioLooksLike, ioPlaceXml,
   ioScript, ioScriptNames, ioScriptLists, ioScriptConstants, ioScriptSource,
   ioLips, ioCharacterKinds, ioCharacterParts, ioCharacterAos, ioCharacterSteps, ioCharacterDraw,
+  ioPoseParts, ioPoseDraw, ioFidgetSteps,
 };

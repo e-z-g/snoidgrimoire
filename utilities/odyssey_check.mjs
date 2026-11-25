@@ -86,9 +86,10 @@ for (const p of S.IO_PLACES) {
   helps += x.help.reduce((n, h) => n + h.length, 0);
 }
 // The characters, read from the program and drawn from z3common, against
-// tools/odyssey/io_snoid.py: the kinds, and every step of every facing,
-// mirrored too, with each trait at each value, pixel for pixel.
-let drawn = 0;
+// tools/odyssey/io_snoid.py: the kinds, every step of every facing, mirrored
+// too, with each trait at each value, and every pose with every step of its
+// fidgets, pixel for pixel.
+let drawn = 0, posed = 0;
 {
   const exe = game.get('win/zoombinis island odyssey.exe'), common = game.get('rsc/z3common.bul');
   const read = f => { const b = Buffer.alloc(f.size); fs.readSync(fd, b, 0, f.size, f.offset); return new Uint8Array(b); };
@@ -104,6 +105,13 @@ let drawn = 0;
       const got = d && crypto.createHash('sha1').update(Buffer.from(d.data.buffer, d.data.byteOffset, d.data.byteLength)).digest('hex');
       if (!d || got !== sha || d.left !== x || d.top !== y || d.width !== w || d.height !== h) fail(`kind ${k}, facing ${f}${m ? ' mirrored' : ''}, ${values}, step ${step} differs from io_snoid.py's`);
       drawn++;
+    }
+    for (const [k, p, m, values, fidget, step, x, y, w, h, sha] of expected.poses) {
+      const kind = kinds[k], parts = S.ioPoseParts(kind, p, values, fidget[0] < 0 ? null : fidget);
+      const d = S.ioPoseDraw(bul, kind, parts, S.ioCharacterAos(bul, byName, parts.map(q => q[1])), step, !!m);
+      const got = d && crypto.createHash('sha1').update(Buffer.from(d.data.buffer, d.data.byteOffset, d.data.byteLength)).digest('hex');
+      if (!d || got !== sha || d.left !== x || d.top !== y || d.width !== w || d.height !== h) fail(`kind ${k}, pose ${p}${m ? ' mirrored' : ''}, ${values}, fidget ${fidget}, step ${step} differs from io_snoid.py's`);
+      posed++;
     }
   }
 }
@@ -136,5 +144,5 @@ const page = spawnSync('node', [path.join(ROOT, 'utilities', 'odyssey_page.mjs')
 const pageOut = (page.stdout || '') + (page.stderr || '');
 if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
 const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
-console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries, ${frames} frames and ${lips} lip syncs, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them. ${drawn} steps of the characters, as io_snoid.py draws them.` + pageNote);
+console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries, ${frames} frames and ${lips} lip syncs, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them. ${drawn} steps of the characters walking and ${posed} standing, as io_snoid.py draws them.` + pageNote);
 process.exit(bad ? 1 : 0);

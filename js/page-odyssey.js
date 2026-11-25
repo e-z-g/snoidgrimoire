@@ -407,7 +407,7 @@ async function odysseyCharacterNames(kinds) {
 /* A character walking, put together from z3common's parts as the program
    does (ioCharacterDraw), with its kind, facing and traits to pick. */
 async function odysseySnoids(view) {
-  view.innerHTML = '<h1>Snoids</h1><p class="sub">The program puts each character together from its parts in <code>z3common</code>, one animation for each trait, drawn in the order its table gives. The kinds, their traits and the numbering of the parts are read from the program, <code>Zoombinis Island Odyssey.exe</code>, and the names from <code>main.mps</code>. A facing to the left is the facing to the right mirrored.</p>';
+  view.innerHTML = '<h1>Snoids</h1><p class="sub">The program puts each character together from its parts in <code>z3common</code>, one animation for each trait, drawn in the order its table gives. The kinds, their traits and the numbering of the parts are read from the program, <code>Zoombinis Island Odyssey.exe</code>, and the names from <code>main.mps</code>. A facing to the left is the facing to the right mirrored. A character stands in one of its poses, and now and then a fidget, such as a blink, plays over the parts it covers.</p>';
   if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
   const exeKey = 'win/zoombinis island odyssey.exe';
   if (!ODYSSEY.files.has(exeKey) || !ODYSSEY.files.has('rsc/z3common.bul')) { view.insertAdjacentHTML('beforeend', '<p class="note">This needs the program and z3common.bul, which the files opened lack.</p>'); return; }
@@ -423,17 +423,38 @@ async function odysseySnoids(view) {
   form.className = 'tools';
   const stage = document.createElement('div');
   view.append(form, stage);
-  const pick = { kind: 0, facing: 0, values: kinds.map(k => k.traits.map(() => 0)) };
+  const pick = { kind: 0, doing: 'walk', facing: 0, pose: 0, fidget: '', values: kinds.map(k => k.traits.map(() => 0)) };
   const facings = k => k.facings.flatMap(([, angle], f) => [[f, false, angle], [f, true, (540 - angle) % 360]]);
+  const poses = k => k.poses.flatMap((p, i) => [[i, false, p.base], [i, true, p.base]]);
+  const options = (key, list, now) => list.map(([v, label]) => `<option value="${v}"${String(v) === String(now) ? ' selected' : ''}>${esc(label)}</option>`).join('');
   const draw = () => {
-    const k = kinds[pick.kind], n = names[pick.kind], fs = facings(k);
-    form.innerHTML = `<label>Kind <select data-k="kind">${kinds.map((x, i) => `<option value="${i}"${i === pick.kind ? ' selected' : ''}>${esc(names[i].label)}</option>`).join('')}</select></label> `
-      + `<label>Facing <select data-k="facing">${fs.map(([, m, a], i) => `<option value="${i}"${i === pick.facing ? ' selected' : ''}>${a}°${m ? ', mirrored' : ''}</option>`).join('')}</select></label> `
-      + k.traits.map(([count], t) => count > 1 ? `<label>${esc(n.traits[t])} <select data-t="${t}">${Array.from({ length: count }, (_, v) => `<option value="${v}"${v === pick.values[pick.kind][t] ? ' selected' : ''}>${v + 1}</option>`).join('')}</select></label> ` : '').join('');
-    const [f, mirror] = fs[pick.facing] || fs[0];
-    const ids = ioCharacterParts(k, f, pick.values[pick.kind]), aos = ioCharacterAos(bundle.b, bundle.byName, ids), count = ioCharacterSteps(aos);
+    const k = kinds[pick.kind], n = names[pick.kind], fs = facings(k), ps = poses(k), values = pick.values[pick.kind];
+    const [pi, pmirror] = ps[pick.pose] || ps[0] || [];
+    const fidgets = pi === undefined ? [] : k.poses[pi].fidgets.flatMap((fg, j) => fg.anims.map((a, i) => [`${j}.${i}`, `fidget ${j + 1}${fg.anims.length > 1 ? `, animation ${i + 1} of ${fg.anims.length}` : ''}, every ${fg.seconds[0]} to ${fg.seconds[1] - 1} s`]));
+    if (!fidgets.some(([v]) => v === pick.fidget)) pick.fidget = '';
+    form.innerHTML = `<label>Kind <select data-k="kind">${options('kind', kinds.map((x, i) => [i, names[i].label]), pick.kind)}</select></label> `
+      + `<label>Doing <select data-k="doing">${options('doing', [['walk', 'walking'], ['stand', 'standing']], pick.doing)}</select></label> `
+      + (pick.doing === 'walk'
+        ? `<label>Facing <select data-k="facing">${options('facing', fs.map(([, m, a], i) => [i, `${a}°${m ? ', mirrored' : ''}`]), pick.facing)}</select></label> `
+        : `<label>Pose <select data-k="pose">${options('pose', ps.map(([i, m, base], j) => [j, `${i + 1} (${base})${m ? ', mirrored' : ''}`]), pick.pose)}</select></label> `
+          + `<label>Fidget <select data-k="fidget">${options('fidget', [['', 'none'], ...fidgets], pick.fidget)}</select></label> `)
+      + k.traits.map(([count], t) => count > 1 ? `<label>${esc(n.traits[t])} <select data-t="${t}">${options('t', Array.from({ length: count }, (_, v) => [v, String(v + 1)]), values[t])}</select></label> ` : '').join('');
+    let ids, aos;
     const frames = [];
-    for (let i = 0; i < count; i++) { const d = ioCharacterDraw(bundle.b, k, ids, aos, i, mirror); if (d) frames.push(d); }
+    if (pick.doing === 'walk') {
+      const [f, mirror] = fs[pick.facing] || fs[0];
+      ids = ioCharacterParts(k, f, values);
+      aos = ioCharacterAos(bundle.b, bundle.byName, ids);
+      const count = ioCharacterSteps(aos);
+      for (let i = 0; i < count; i++) { const d = ioCharacterDraw(bundle.b, k, ids, aos, i, mirror); if (d) frames.push(d); }
+    } else if (pi !== undefined) {
+      const fg = pick.fidget ? pick.fidget.split('.').map(Number) : null;
+      const parts = ioPoseParts(k, pi, values, fg);
+      ids = parts.map(p => p[1]);
+      aos = ioCharacterAos(bundle.b, bundle.byName, ids);
+      const count = fg ? ioFidgetSteps(parts, aos) : 1;
+      for (let i = 0; i < count; i++) { const d = ioPoseDraw(bundle.b, k, parts, aos, i, pmirror); if (d) frames.push(d); }
+    }
     stage.innerHTML = '';
     if (!frames.length) { stage.innerHTML = '<p class="note">No part draws.</p>'; return; }
     /* Every step on one canvas, placed where the program draws it. */
@@ -450,7 +471,8 @@ async function odysseySnoids(view) {
   };
   form.addEventListener('change', e => {
     const el = e.target;
-    if (el.dataset.k === 'kind') { pick.kind = +el.value; pick.facing = 0; } else if (el.dataset.k === 'facing') pick.facing = +el.value; else pick.values[pick.kind][+el.dataset.t] = +el.value;
+    const key = el.dataset.k;
+    if (key === 'kind') { pick.kind = +el.value; pick.facing = 0; pick.pose = 0; pick.fidget = ''; } else if (key === 'doing') pick.doing = el.value; else if (key === 'facing') pick.facing = +el.value; else if (key === 'pose') { pick.pose = +el.value; pick.fidget = ''; } else if (key === 'fidget') pick.fidget = el.value; else pick.values[pick.kind][+el.dataset.t] = +el.value;
     draw();
   });
   draw();
