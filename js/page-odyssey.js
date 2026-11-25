@@ -103,6 +103,7 @@ function odysseyTake(entries, source) {
   ODYSSEY_BYTES.clear();
   ODYSSEY_BUNDLES.clear();
   ODYSSEY_XML = null;
+  ODYSSEY_SCRIPTS = null;
   for (const [key, e] of game) ODYSSEY.files.set(key, { key, path: e.path, size: e.size, file: e.file, url: e.url });
   ODYSSEY.source = source;
   $('start').hidden = true;
@@ -305,7 +306,13 @@ async function odysseyFileView(view, key, seq) {
     const b = await odysseyBytes(key);
     if (seq !== ODYSSEY_SEQ) return;
     view.insertAdjacentHTML('beforeend', `<pre>${esc(new TextDecoder('windows-1252').decode(b))}</pre>`);
-  } else if (/\.mps$/.test(key)) view.insertAdjacentHTML('beforeend', '<p class="note">A place\'s script, compiled for the Trinket engine. Nobody has read its format.</p>');
+  } else if (/\.mps$/.test(key)) {
+    const b = await odysseyBytes(key);
+    if (seq !== ODYSSEY_SEQ) return;
+    let text;
+    try { text = ioScriptSource(ioScript(b)); } catch (e) { view.insertAdjacentHTML('beforeend', `<p class="note">This script does not read (${esc(e.message)}).</p>`); return; }
+    view.insertAdjacentHTML('beforeend', `<p class="note">A place's script, compiled for tcx.dll's interpreter and printed back as source. Each statement is its command and the source text of its words, with procedures, if, else and for rebuilt from the jumps, and the lists written name = [...] first.</p><pre>${esc(text)}</pre>`);
+  }
   else if (/\.bik$/.test(key)) view.insertAdjacentHTML('beforeend', '<p class="note">A Bink video. The page does not play Bink.</p>');
 }
 
@@ -322,6 +329,37 @@ function odysseyXml() {
   })).then(l => new Map(l));
   return ODYSSEY_XML;
 }
+/* Each puzzle's script read, once: Map(place key -> ioScript, or null). */
+let ODYSSEY_SCRIPTS = null;
+function odysseyScripts() {
+  if (!ODYSSEY_SCRIPTS) ODYSSEY_SCRIPTS = Promise.all(IO_PLACES.map(async p => {
+    const k = `scripts/${p.key}.mps`;
+    if (!ODYSSEY.files.has(k)) return [p.key, null];
+    try { return [p.key, ioScript(await odysseyBytes(k))]; } catch (e) { return [p.key, null]; }
+  })).then(l => new Map(l));
+  return ODYSSEY_SCRIPTS;
+}
+/* A puzzle's rules, and its settings by level from its script's lists. */
+function odysseyRulesHtml(key, script) {
+  const p = IO_PUZZLES[key];
+  if (!p) return '';
+  let html = p.rules.map(r => `<p>${esc(r)}</p>`).join('');
+  if (!p.settings.length) return html;
+  if (!script) return html + '<p class="note">The script does not read, so the settings are not shown.</p>';
+  const lists = ioScriptLists(script);
+  const cell = (v) => Array.isArray(v) ? v.join(', ') : esc(v);
+  html += `<div class="wide"><table class="plain"><tr><th>setting</th>${IO_LEVELS.map(l => `<th>${esc(l)}</th>`).join('')}<th>list</th></tr>`;
+  for (const [label, name] of p.settings) {
+    /* A list of lists may be written as name.1 = [...], name.2 = [...]. */
+    let items = lists.get(name);
+    if (!items && lists.has(name + '.1')) { items = []; for (let i = 1; lists.has(`${name}.${i}`); i++) items.push(lists.get(`${name}.${i}`)); }
+    if (!items) { html += `<tr><td>${esc(label)}</td><td colspan="${IO_LEVELS.length}" class="note">not in the script</td><td><code>${esc(name)}</code></td></tr>`; continue; }
+    /* A list of lists has a row for each inner list, its items by level. */
+    if (items.every(Array.isArray)) items.forEach((row, i) => { html += `<tr><td>${esc(label)}, ${i + 1}</td>${IO_LEVELS.map((l, j) => `<td>${cell(row[j] ?? '')}</td>`).join('')}<td><code>${esc(name)}.${i + 1}</code></td></tr>`; });
+    else html += `<tr><td>${esc(label)}</td>${IO_LEVELS.map((l, j) => `<td>${cell(items[j] ?? '')}</td>`).join('')}<td><code>${esc(name)}</code></td></tr>`;
+  }
+  return html + '</table></div>';
+}
 function odysseyHelpHtml(x) {
   return '<table class="plain">' + IO_LEVELS.map((l, i) => `<tr><td>${esc(l)}</td><td>${(x.help[i] || []).map(pg => `<p>${esc(pg.text)}</p>`).join('') || '<span class="note">no help</span>'}</td></tr>`).join('') + '</table>';
 }
@@ -335,12 +373,12 @@ const ODYSSEY_SCENARIO_PANES = {
       + IO_PLACES.map(p => `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td>${p.key}</td></tr>`).join('') + '</table></div>';
   },
   async puzzles(view) {
-    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s help at each of its three levels, as the game gives it in the place\'s XML. Nobody has read the rules from the program (<code>PuzzleEngine.dll</code>).</p>';
+    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s rules, read from the program\'s code (<code>Zoombinis Island Odyssey.exe</code>), its settings by level, read from the place\'s script on the disc, and its help at each level, from the place\'s XML. Nobody has checked the rules against play.</p>';
     if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
-    const xml = await odysseyXml();
+    const [xml, scripts] = await Promise.all([odysseyXml(), odysseyScripts()]);
     for (const p of IO_PLACES.filter(p => p.kind === 'puzzle')) {
       const x = xml.get(p.key);
-      view.insertAdjacentHTML('beforeend', `<h2 class="h"><a href="#scenario/places/${p.key}">${esc(p.name)}</a></h2>` + (x ? odysseyHelpHtml(x) : '<p class="note">No XML.</p>'));
+      view.insertAdjacentHTML('beforeend', `<h2 class="h"><a href="#scenario/places/${p.key}">${esc(p.name)}</a></h2>` + odysseyRulesHtml(p.key, scripts.get(p.key)) + '<h3>Help</h3>' + (x ? odysseyHelpHtml(x) : '<p class="note">No XML.</p>'));
     }
   },
 };

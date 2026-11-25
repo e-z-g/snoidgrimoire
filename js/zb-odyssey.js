@@ -279,7 +279,214 @@ function ioPlaceXml(text) {
   };
 }
 
+/* ---- Scripts ------------------------------------------------------------------
+
+   A place's script (.mps) is compiled for tcx.dll's YThread, which reads it in
+   YThread::load. A byte 2 (little-endian) or 1 (big-endian), then
+     u32 n, and n tokens of u8 command and u16 value;
+     u32 m, and m u16 words, lists of variable numbers each ending in 0xffff;
+     u32 v, and v - 3 variables (YVariable::read): u32, u32 type (3 an integer,
+     4 a number as u16 length and text), u32 count and u32 first item when the
+     variable is a list, two u32, then u32 length and the name, u32 length and
+     the text, u32 count and that many u16 words. A length of 0xffffffff is none.
+   A variable's name is the text written in the source, a literal's too, so a
+   statement prints back as its command and its list's names. */
+function ioScript(b) {
+  if (b[0] !== 1 && b[0] !== 2) throw new Error('not a compiled script');
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength), le = b[0] === 2;
+  let at = 1;
+  const u8 = () => b[at++];
+  const u16 = () => { const x = v.getUint16(at, le); at += 2; return x; };
+  const u32 = () => { const x = v.getUint32(at, le); at += 4; return x; };
+  const text = (n) => { const s = new TextDecoder('windows-1252').decode(b.subarray(at, at + n)); at += n; return s; };
+  const tokens = [];
+  for (let i = u32(); i > 0; i--) tokens.push([u8(), u16()]);
+  const words = [];
+  for (let i = u32(); i > 0; i--) words.push(u16());
+  const variables = [];
+  for (let i = u32() - 3; i > 0; i--) {
+    const x = { type: (u32(), u32()) };
+    if (x.type === 3) x.value = v.getInt32((at += 4) - 4, le);
+    else if (x.type === 4) x.value = Number(text(u16()));
+    x.count = u32(); x.first = u32(); u32(); u32();
+    for (const k of ['name', 'text']) { const n = u32(); x[k] = n === 0xffffffff ? null : text(n); }
+    const n = u32();
+    if (n !== 0xffffffff) at += 2 * n;
+    variables.push(x);
+  }
+  if (at !== b.length) throw new Error(`script read to ${at} of ${b.length}`);
+  return { tokens, words, variables };
+}
+/* The names in the list at a word offset. Variable i is variables[i - 3]. */
+function ioScriptNames(s, offset) {
+  const out = [];
+  for (let i = offset; i < s.words.length && s.words[i] !== 0xffff; i++) {
+    const x = s.variables[s.words[i] - 3];
+    out.push(x && x.name !== null ? x.name : '#' + s.words[i]);
+  }
+  return out;
+}
+/* A list written name = [a b c]: the compiler makes its items as variables
+   name.1, name.2 ... with their text set, and no statement (YThread::doClause).
+   Returns the items' texts, or nested arrays for a list of lists. */
+function ioScriptListItems(s, x) {
+  const out = [];
+  for (let i = x.first; i < x.first + x.count; i++) {
+    const item = s.variables[i - 3];
+    out.push(item.count && item.first ? ioScriptListItems(s, item) : item.text ?? '');
+  }
+  return out;
+}
+/* Every top-level list: Map(name -> items). */
+function ioScriptLists(s) {
+  const nested = new Set(), out = new Map();
+  for (const x of s.variables) if (x.count && x.first) for (let i = x.first; i < x.first + x.count; i++) nested.add(i);
+  s.variables.forEach((x, i) => { if (x.count && x.first && !nested.has(i + 3) && x.name) out.set(x.name, ioScriptListItems(s, x)); });
+  return out;
+}
+/* The first statement name = value for each name whose value is one literal
+   number: Map(name -> number). */
+function ioScriptConstants(s) {
+  const out = new Map();
+  for (const [kind, value] of s.tokens) {
+    if (kind !== 0x12) continue;
+    const n = ioScriptNames(s, value);
+    if (n.length === 2 && /^-?\d+$/.test(n[1]) && !out.has(n[0])) out.set(n[0], Number(n[1]));
+  }
+  return out;
+}
+/* The keywords of tcx.dll's table at 0x100332d0, by command. The compiler
+   turns if, else, for, break, continue and procedure into jumps. */
+const IO_SCRIPT_KEYWORDS = { 0x06: 'call', 0x0e: 'say', 0x13: 'drop', 0x16: 'wait', 0x17: 'idle', 0x18: 'schedule',
+  0x19: 'exit', 0x1a: 'suspend', 0x1b: 'resume', 0x1c: 'pause', 0x1d: 'debug', 0x23: 'set', 0x24: 'get',
+  0x25: 'yield', 0x28: 'play', 0x2d: 'relay', 0x2e: 'quit' };
+/* The script as source: its lists, then its statements, with procedures,
+   if, else and for rebuilt from the jumps. 0x12 is name = list, 0x15 a
+   statement with no keyword, 0x7 a procedure to its 0xf, 0xc a condition
+   with 0xa the jump past its block, 0x8 0x9 0xa a loop, 0xb a jump and 0xd
+   a label. */
+function ioScriptSource(s) {
+  const t = s.tokens, lines = [];
+  for (const [name, items] of ioScriptLists(s)) {
+    const show = (l) => '[' + l.map(x => Array.isArray(x) ? show(x) : x).join(' ') + ']';
+    lines.push(`${name} = ${show(items)}`);
+  }
+  const emit = (depth, text) => lines.push('    '.repeat(depth) + text);
+  const list = (value) => ioScriptNames(s, value).join(' ');
+  const block = (start, end, depth, loop) => {
+    let i = start;
+    while (i < end) {
+      const [kind, value] = t[i];
+      if (kind === 0x07) {
+        let close = i + 1;
+        while (close < t.length && t[close][0] !== 0x0f) close++;
+        emit(depth, `procedure ${list(value)} [`);
+        block(i + 1, close, depth + 1);
+        emit(depth, ']');
+        i = close + 1;
+        continue;
+      }
+      if (kind === 0x0c && i + 1 < end && t[i + 1][0] === 0x0a) {
+        const target = t[i + 1][1];
+        emit(depth, `if ${list(value)} [`);
+        if (t[target - 1][0] === 0x0b && target - 1 > i + 1 && t[target] && t[target][0] === 0x0d && t[target - 1][1] > target) {
+          const after = t[target - 1][1];
+          block(i + 2, target - 1, depth + 1, loop);
+          emit(depth, '] else [');
+          block(target + 1, after, depth + 1, loop);
+          i = after;
+        } else {
+          block(i + 2, target, depth + 1, loop);
+          i = target;
+        }
+        emit(depth, ']');
+        continue;
+      }
+      if (kind === 0x08 && i + 2 < end && t[i + 1][0] === 0x09 && t[i + 2][0] === 0x0a) {
+        const after = t[i + 2][1];
+        emit(depth, `for ${list(value)} [`);
+        block(i + 3, after - 1, depth + 1, [i + 1, after]);
+        emit(depth, ']');
+        i = after;
+        continue;
+      }
+      if (kind === 0x0b) emit(depth, loop && value === loop[0] ? 'continue' : loop && value === loop[1] ? 'break' : `jump ${value}`);
+      else if (kind === 0x12) { const n = ioScriptNames(s, value); emit(depth, `${n[0]} = ${n.slice(1).join(' ')}`); }
+      else if (kind === 0x15) emit(depth, list(value));
+      else if (IO_SCRIPT_KEYWORDS[kind]) emit(depth, `${IO_SCRIPT_KEYWORDS[kind]} ${list(value)}`.trimEnd());
+      else if (kind !== 0x0d) emit(depth, `?${kind.toString(16)} ${list(value)}`);
+      i++;
+    }
+  };
+  block(0, t.length, 0);
+  return lines.join('\n');
+}
+
+/* ---- Puzzles ------------------------------------------------------------------
+
+   Each puzzle is a class in the program, "Zoombinis Island Odyssey.exe"
+   (RCatapultGame, RGlyphGame, RPlanetariumGame, Greenhouse, RGardenGame,
+   RCorralGame, RBarnGame), which the place's script makes and sets up. The
+   rules below are read from the program's code, decompiled with Ghidra, with
+   the addresses in the workbench's doc/ISLAND-ODYSSEY.md, "The puzzles". The
+   settings by level are the lists in each place's script, which the page
+   reads from the disc (`settings`: a label and a list's name). */
+const IO_PUZZLES = {
+  z3a1: {
+    rules: [
+      'Each round is one of 13 machines, and the script deals one at random, more often one not played since all 13 were. Machines 1 to 5 have the first set of gears, 6 to 9 the second and 10 to 13 the third. The first round ever at Not So Hard is machine 9.',
+      'The big wheel has 2, 3 or 4 buckets by machine (2, 3, 3, 3, 4, 3, 3, 3, 4, 2, 3, 3, 4). On machines 3, 4, 7, 8, 11 and 12 the three buckets stand a quarter turn apart, as if for four, with one place empty.',
+      'At Not So Hard the catcher moves at one pace. At the higher levels its pace and timing come from the machine\'s row of the program\'s tables, and at Very Very Hard the timing is fixed where the lower levels count it back from the wheel\'s last frame.',
+      'There is one item for each Zoombini, 12 at most. A boulder that reaches the paddle launches the next Zoombini. A mudball that lands there, or anything that misses, uses its item up.',
+    ],
+    settings: [],
+  },
+  z3a2: {
+    rules: [
+      'The wall shows its glyphs in two rows. Each glyph stands for one of 10 values, and every value is on the wall at least once, the rest at random. The tiles show characters, and a pairing of the 10 characters with the 10 glyphs, dealt at random each time, links the two.',
+      'Each of the 12 tiles copies one stretch of the wall, as many glyphs long as the tile has characters. The glyphs left over are gaps between the stretches, placed at random. A tile in its place matches the wall, and a tile in the wrong place uses up one of the wrong tries.',
+    ],
+    settings: [['Characters on a tile', 'kGameCharCountPerTileList'], ['Glyphs on the wall', 'kGameGlyphCountList'], ['Grouped, with indentations', 'kGameDoClusterList'], ['Wrong tiles allowed', 'kGameWrongTriesList']],
+  },
+  z3a3: {
+    rules: [
+      'The target is an hour from 0 to 23 and, where the level has a date, a day of the moon\'s 28. Each exhibit starts at another hour, and the Sun exhibit at one of 12 hours, the daylight ones, except where the moon shows. With the moon, the Sun exhibit starts outside a stretch of hours set by the moon\'s day.',
+      'Each exhibit has hour coins of 4, 5, 5, 7, 10 and 10. Those make every gap from its start to the target, counting once around the clock, except 18 and 23 hours, and for those the exhibit has 4, 5, 7, 7, 10 and 10 instead. Not So Hard adds a 1 and a 2. With a date, each exhibit also has day bills of 1, 4, 5, 5, 7, 10 and 10, which make every gap of days.',
+      'Without a date, Oh So Hard shows the moon at one of its four main phases, day 0, 7, 14 or 21.',
+    ],
+    settings: [['A target date', 'kDoTargetDayList'], ['The moon shown', 'kShowMoonList'], ['Coins of 1 and 2 added', 'kAddHelperSetList']],
+  },
+  z3a4: {
+    rules: [
+      'The greenhouse is 12 rows of 12 plants. A plant has three traits, color with 3 values and two more with 4 and 5 values, or 6 and 6 at Very Very Hard. Each trait\'s layout is a template from the disc\'s z3a4data.xml, turned one of four ways at random. Where the template has a blank, the plant\'s value is random.',
+      'There are 12 moths, one for each value of the two traits besides color, 4 + 5 or 6 + 6, and each matches every plant with its value. How Oh So Hard breaks the paths, and how many swaps the wand has, are unread.',
+    ],
+    settings: [],
+  },
+  z3a5: {
+    rules: [
+      'The garden is 4 holes in a row at Not So Hard, 4 rows of 4 at Oh So Hard, and four plots of 4 rows of 4 at Very Very Hard. A plant has four traits (roots, stalks, leaves and flowers) of four values each.',
+      'One trait goes with the columns, from Oh So Hard another with the rows, and at Very Very Hard a third with the plots. The first plant set in a column fixes that trait\'s value for the column, and no other column may have it. Rows and plots work the same way. A plant that clashes with what is fixed bounces out.',
+    ],
+    settings: [],
+  },
+  z3a6: {
+    rules: [
+      'There are 12 berries, each a shape, a color and a leaf from 4 values, dealt at random and all different. The program compares two berries by the product of their three values plus one each, so two berries with the same values in another order also count as alike, and the deal draws again.',
+      'Each Zerble is dealt one of the berries at random as the one it eats. Which traits draw each Zerble into a beam is unread.',
+    ],
+    settings: [],
+  },
+  z3a7: {
+    rules: [
+      'The Zerbles come in pairs, one for every two Zoombinis. The target is one trait at the first two levels and two at Very Very Hard, and the x-ray stones show the genes at Not So Hard only. A Zerble\'s traits are dealt at random. How the young inherit is unread.',
+    ],
+    settings: [['Traits in the target', 'kTargetTrait'], ['Genes shown', 'kShowZerbleGenes'], ['Tries, by pairs (1 to 6)', 'kMaxTurnsList']],
+  },
+};
+
 if (typeof module !== 'undefined') module.exports = {
-  IO_PLACES, IO_PLACE_BY_KEY, IO_LEVELS, ioWavLength, ioJpegLength, ioAo2cEnd, ioRle8Length, ioAo, ioEntries,
+  IO_PLACES, IO_PLACE_BY_KEY, IO_LEVELS, IO_PUZZLES, ioWavLength, ioJpegLength, ioAo2cEnd, ioRle8Length, ioAo, ioEntries,
   ioPalette, ioAo2cFrame, ioRle8Frame, ioAoFrame, ioKind, ioGameFiles, ioLooksLike, ioPlaceXml,
+  ioScript, ioScriptNames, ioScriptLists, ioScriptConstants, ioScriptSource,
 };

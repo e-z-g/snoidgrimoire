@@ -79,6 +79,27 @@ for (const p of S.IO_PLACES) {
   if (p.kind === 'puzzle' && x.help.some(h => !h.length)) fail(`${p.name} lacks help at a level`);
   helps += x.help.reduce((n, h) => n + h.length, 0);
 }
+// Each compiled script, printed as source, against tools/odyssey/io_script.py.
+let scripts = 0, statements = 0;
+const scriptPy = path.join(tools, 'io_script.py');
+for (const [k, f] of game) {
+  if (!/^scripts\/.*\.mps$/.test(k)) continue;
+  const b = Buffer.alloc(f.size); fs.readSync(fd, b, 0, f.size, f.offset);
+  let js;
+  try { js = S.ioScriptSource(S.ioScript(new Uint8Array(b))); } catch (e) { fail(`${k} does not read (${e.message})`); continue; }
+  const r = spawnSync('python3', ['-I', scriptPy, '-', '--source'], { input: b, encoding: 'utf8', maxBuffer: 1 << 26 });
+  if (r.status !== 0) { fail(`io_script.py fails on ${k}`); continue; }
+  const py = r.stdout.split('\n').slice(1).join('\n').replace(/\n$/, '');
+  if (py !== js) { const a = js.split('\n'), c = py.split('\n'); const i = a.findIndex((l, j) => l !== c[j]); fail(`${k} differs from io_script.py's at line ${i + 1}: ${a[i]} | ${c[i]}`); }
+  scripts++; statements += js.split('\n').length;
+}
+// Every setting a puzzle shows is a list in its script.
+for (const [key, p] of Object.entries(S.IO_PUZZLES)) {
+  const f = game.get(`scripts/${key}.mps`);
+  const b = Buffer.alloc(f.size); fs.readSync(fd, b, 0, f.size, f.offset);
+  const lists = S.ioScriptLists(S.ioScript(new Uint8Array(b)));
+  for (const [, name] of p.settings) if (!lists.has(name) && !lists.has(name + '.1')) fail(`${key} has no list ${name}`);
+}
 fs.closeSync(fd);
 
 // The page, in headless Chrome (utilities/odyssey_page.mjs).
@@ -86,5 +107,5 @@ const page = spawnSync('node', [path.join(ROOT, 'utilities', 'odyssey_page.mjs')
 const pageOut = (page.stdout || '') + (page.stderr || '');
 if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
 const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
-console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries and ${frames} frames, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help.` + pageNote);
+console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries and ${frames} frames, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them.` + pageNote);
 process.exit(bad ? 1 : 0);
