@@ -13,6 +13,9 @@ from $ZB_TOOLS (a front's tools, before it lands), and never changes them.
                                            # the Fleen-parts mod's resources,
                                            # as SHA-1s, and its EXE bytes
     python3 utilities/oracle.py redshaggy  # mod_red_shaggy.py's archives, as SHA-1s
+    python3 utilities/oracle.py mountain DISC
+                                           # Mountain Rescue's pictures, as
+                                           # tools/mountain/mr_bitmap.py reads them
     python3 utilities/oracle.py write SPEC # an archive rewritten by
                                            # mohawk_write.py, as SHA-1s
 """
@@ -179,8 +182,41 @@ def redshaggy():
     return {f[:-4]: hashlib.sha1(open(os.path.join(out, f), 'rb').read()).hexdigest() for f in sorted(os.listdir(out))}
 
 
+def mountain(disc):
+    """Mountain Rescue's pictures as tools/mountain/mr_bitmap.py reads them,
+    each as the SHA-1 of its RGBA bytes, by path from the disc: one for a
+    .bb or .rb, a list for an .an's frames, and slot -> list for an .anm.
+    A .bmt is a BMP, as Pillow reads it."""
+    sys.path.insert(0, os.path.join(os.environ.get('ZB_TOOLS') or os.path.join(ROOT, 'reference', 'tools'), 'mountain'))
+    import mr_bitmap as R
+    sha = lambda im: hashlib.sha1(im.tobytes()).hexdigest()
+    out = {}
+    for root, _, files in os.walk(disc):
+        for f in files:
+            path = os.path.join(root, f)
+            rel = os.path.relpath(path, disc).replace(os.sep, '/')
+            ext = f.lower().rsplit('.', 1)[-1]
+            data = open(path, 'rb').read()
+            if ext == 'bb':
+                out[rel] = sha(R.read_bb(data))
+            elif ext == 'rb':
+                out[rel] = sha(R.read_rb(data)[0])
+            elif ext == 'an':
+                out[rel] = [sha(im) for im in R.read_an(data)]
+            elif ext == 'anm':
+                out[rel] = {str(i): [sha(im) for im in fr] for i, fr in enumerate(R.read_anm(data)) if fr}
+            elif ext == 'bmt':
+                import io
+                from PIL import Image
+                out[rel] = sha(Image.open(io.BytesIO(data)).convert('RGBA'))
+    return out
+
+
 if __name__ == '__main__':
     what = sys.argv[1]
+    if what == 'mountain':
+        json.dump(mountain(sys.argv[2]), sys.stdout)
+        sys.exit()
     if what == 'redshaggy':
         json.dump(redshaggy(), sys.stdout)
         sys.exit()
