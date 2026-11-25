@@ -79,6 +79,29 @@ for (const p of S.IO_PLACES) {
   if (p.kind === 'puzzle' && x.help.some(h => !h.length)) fail(`${p.name} lacks help at a level`);
   helps += x.help.reduce((n, h) => n + h.length, 0);
 }
+// The characters, read from the program and drawn from z3common, against
+// tools/odyssey/io_snoid.py: the kinds, and every step of every facing,
+// mirrored too, with each trait at each value, pixel for pixel.
+let drawn = 0;
+{
+  const exe = game.get('win/zoombinis island odyssey.exe'), common = game.get('rsc/z3common.bul');
+  const read = f => { const b = Buffer.alloc(f.size); fs.readSync(fd, b, 0, f.size, f.offset); return new Uint8Array(b); };
+  const r = spawnSync('python3', ['-I', path.join(tools, 'io_snoid.py'), path.join(DISC, exe.path), path.join(DISC, common.path), '--hashes'], { encoding: 'utf8', maxBuffer: 1 << 28 });
+  if (r.status !== 0) fail('io_snoid.py fails\n' + r.stderr);
+  else {
+    const expected = JSON.parse(r.stdout), bul = read(common);
+    const kinds = S.ioCharacterKinds(read(exe)), byName = new Map(S.ioEntries(bul).map(e => [e.name.toLowerCase(), e]));
+    if (JSON.stringify(kinds) !== JSON.stringify(expected.kinds)) fail('the kinds of character differ from io_snoid.py\'s');
+    for (const [k, f, m, values, step, x, y, w, h, sha] of expected.steps) {
+      const kind = kinds[k], ids = S.ioCharacterParts(kind, f, values);
+      const d = S.ioCharacterDraw(bul, kind, ids, S.ioCharacterAos(bul, byName, ids), step, !!m);
+      const got = d && crypto.createHash('sha1').update(Buffer.from(d.data.buffer, d.data.byteOffset, d.data.byteLength)).digest('hex');
+      if (!d || got !== sha || d.left !== x || d.top !== y || d.width !== w || d.height !== h) fail(`kind ${k}, facing ${f}${m ? ' mirrored' : ''}, ${values}, step ${step} differs from io_snoid.py's`);
+      drawn++;
+    }
+  }
+}
+
 // Each compiled script, printed as source, against tools/odyssey/io_script.py.
 let scripts = 0, statements = 0;
 const scriptPy = path.join(tools, 'io_script.py');
@@ -107,5 +130,5 @@ const page = spawnSync('node', [path.join(ROOT, 'utilities', 'odyssey_page.mjs')
 const pageOut = (page.stdout || '') + (page.stderr || '');
 if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
 const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
-console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries and ${frames} frames, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them.` + pageNote);
+console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries and ${frames} frames, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them. ${drawn} steps of the characters, as io_snoid.py draws them.` + pageNote);
 process.exit(bad ? 1 : 0);

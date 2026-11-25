@@ -30,6 +30,7 @@ const VIEWS = [
   ['#scenario/places', "document.querySelectorAll('#view tr').length === 11"],
   ['#scenario/places/z3a2', "!!document.querySelector('#view img') && /Tum-Tum/.test(document.getElementById('view').textContent)"],
   ['#odyssey/scripts/z3a2.mps', "/procedure pSetupPuzzle/.test(document.getElementById('view').textContent)"],
+  ['#scenario/snoids', "!!document.querySelector('#view canvas') && /picks a block of 60/.test(document.getElementById('view').textContent) && /hair/.test(document.querySelector('#view .tools').textContent)"],
   ['#scenario/puzzles', "document.querySelectorAll('#view h2').length === 7 && /kMaxTurnsList\\.6/.test(document.getElementById('view').textContent)"],
   ['#components/sheets', open1 + " && !!document.querySelector('#view .card canvas')"],
   ['#components/backgrounds', "!!document.querySelector('#view .card img')"],

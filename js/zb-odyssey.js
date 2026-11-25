@@ -422,6 +422,113 @@ function ioScriptSource(s) {
   return lines.join('\n');
 }
 
+/* ---- Characters -------------------------------------------------------------
+
+   The program, "Zoombinis Island Odyssey.exe", registers three kinds of
+   character (RAttributeCharacter) at start-up with three `push <record>; call`
+   in a row to one function (0x40c9a0, at 0x409610). A record has the kind at
+   +0x00 (0 a Zoombini, 1 a Zerble, 2 a Zoombini with a caterpillar), the
+   character's point at +0x04 and +0x08, the number of traits at +0x0c and the
+   traits at +0x10 (each u32 values, u32 draw order and u32 base), the trait
+   whose value picks a block of animations at +0x2c, the number of facings at
+   +0x38 and the facings at +0x3c (each u32 base and u32 angle), and the
+   block's length, an i16, at +0x46. The workbench's io_snoid.py reads the same. */
+function ioCharacterKinds(exe) {
+  const pe = ioU32(exe, 0x3c), count = ioU16(exe, pe + 6), optional = ioU16(exe, pe + 20), image = ioU32(exe, pe + 52);
+  const sections = [];
+  for (let i = 0; i < count; i++) {
+    const o = pe + 24 + optional + 40 * i;
+    sections.push({ va: image + ioU32(exe, o + 12), raw: ioU32(exe, o + 20), size: ioU32(exe, o + 16), code: (ioU32(exe, o + 36) & 0x20) !== 0 });
+  }
+  const at = va => { for (const s of sections) if (va >= s.va && va < s.va + s.size) return s.raw + va - s.va; return -1; };
+  const inData = va => sections.some(s => !s.code && va >= s.va && va < s.va + s.size);
+  const i32 = o => ioU32(exe, o) | 0;
+  for (const s of sections.filter(s => s.code)) {
+    for (let i = s.raw; i < s.raw + s.size - 30; i++) {
+      const rows = [];
+      for (let k = 0; k < 3; k++) {
+        const o = i + 10 * k;
+        if (exe[o] !== 0x68 || exe[o + 5] !== 0xe8) break;
+        rows.push([ioU32(exe, o + 1), (s.va + o - s.raw + 10 + i32(o + 6)) >>> 0]);
+      }
+      if (rows.length < 3 || new Set(rows.map(r => r[1])).size !== 1 || !rows.every(r => inData(r[0]))) continue;
+      return rows.map(([va]) => {
+        const r = at(va), ta = at(ioU32(exe, r + 0x10)), da = at(ioU32(exe, r + 0x3c));
+        return {
+          kind: i32(r), point: [i32(r + 4), i32(r + 8)],
+          traits: Array.from({ length: i32(r + 0xc) }, (_, t) => [0, 4, 8].map(k => i32(ta + 12 * t + k))),
+          block: i32(r + 0x2c), length: ioI16(exe, r + 0x46),
+          facings: Array.from({ length: i32(r + 0x38) }, (_, f) => [i32(da + 8 * f), i32(da + 8 * f + 4)]),
+        };
+      }).sort((a, b) => a.kind - b.kind);
+    }
+  }
+  throw new Error('no kinds of character in this program');
+}
+/* A character's parts, as z3common's animation ids, in draw order (0x40d5e0).
+   A part is the facing's base + the trait's base + its value + the block
+   trait's value × the block's length. For the block trait the part is the
+   facing's base + the trait's base + its value × the length. */
+function ioCharacterParts(kind, facing, values) {
+  const base = kind.facings[facing][0], b = kind.block;
+  return kind.traits.map(([, order, tbase], t) => [order, t === b ? base + tbase + values[t] * kind.length : base + tbase + values[t] + values[b] * kind.length])
+    .sort((x, y) => x[0] - y[0]).map(x => x[1]);
+}
+/* One drawing over another as Pillow's Image.alpha_composite draws it, so the
+   check can compare pixels with io_snoid.py (libImaging/AlphaComposite.c). */
+function ioAlphaOver(dst, dw, src, sw, sh, x0, y0) {
+  const div255 = a => (((a >> 8) + a) >> 8);
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    const s = 4 * (y * sw + x), d = 4 * ((y + y0) * dw + x + x0), sa = src[s + 3];
+    if (!sa) continue;
+    const outa255 = sa * 255 + dst[d + 3] * (255 - sa);
+    const coef1 = Math.floor(sa * 255 * 255 * 128 / outa255), coef2 = 255 * 128 - coef1;
+    for (let c = 0; c < 3; c++) dst[d + c] = div255(src[s + c] * coef1 + dst[d + c] * coef2 + (0x80 << 7)) >> 7;
+    dst[d + 3] = div255(outa255 + 0x80);
+  }
+}
+/* Each part's .ao: Map(id -> ioAo) from z3common's bytes and entries by name. */
+function ioCharacterAos(bul, byName, ids) {
+  const out = new Map();
+  for (const id of ids) { const e = byName.get(`${id}.ao`); if (e) out.set(id, ioAo(bul, e.start)); }
+  return out;
+}
+/* The number of steps in a character's walk, the longest part's sequence. */
+function ioCharacterSteps(aos) {
+  let n = 0;
+  for (const a of aos.values()) n = Math.max(n, a.sequences[0].length);
+  return n;
+}
+/* One step of a character drawn: each part's frame at its point plus the
+   step's x and y (OMAnimation::processFrame in tcx.dll), in draw order. A
+   step's frame counts from 0, and a negative frame is a command. Mirrored,
+   the drawing turns about the character's x (0x40e7f0). Returns { left, top,
+   width, height, data } in RGBA, or null when no part draws. */
+function ioCharacterDraw(bul, kind, ids, aos, step, mirror) {
+  const pieces = [];
+  for (const id of ids) {
+    const a = aos.get(id);
+    if (!a) continue;
+    const s = a.sequences[0][step];
+    if (!s || s[2] < 0) continue;
+    pieces.push([a.points[0][0] + s[0], a.points[0][1] + s[1], ioAoFrame(bul, a, s[2])]);
+  }
+  if (!pieces.length) return null;
+  const x0 = Math.min(...pieces.map(p => p[0])), y0 = Math.min(...pieces.map(p => p[1]));
+  const x1 = Math.max(...pieces.map(p => p[0] + p[2].width)), y1 = Math.max(...pieces.map(p => p[1] + p[2].height));
+  const width = x1 - x0, height = y1 - y0;
+  let data = new Uint8ClampedArray(4 * width * height);
+  for (const [x, y, f] of pieces) ioAlphaOver(data, width, f.data, f.width, f.height, x - x0, y - y0);
+  let left = x0;
+  if (mirror) {
+    const m = new Uint8ClampedArray(data.length);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) for (let c = 0; c < 4; c++) m[4 * (y * width + x) + c] = data[4 * (y * width + width - 1 - x) + c];
+    data = m;
+    left = 2 * kind.point[0] - x1;
+  }
+  return { left, top: y0, width, height, data };
+}
+
 /* ---- Puzzles ------------------------------------------------------------------
 
    Each puzzle is a class in the program, "Zoombinis Island Odyssey.exe"
@@ -492,4 +599,5 @@ if (typeof module !== 'undefined') module.exports = {
   IO_PLACES, IO_PLACE_BY_KEY, IO_LEVELS, IO_PUZZLES, ioWavLength, ioJpegLength, ioAo2cEnd, ioRle8Length, ioAo, ioEntries,
   ioPalette, ioAo2cFrame, ioRle8Frame, ioAoFrame, ioKind, ioGameFiles, ioLooksLike, ioPlaceXml,
   ioScript, ioScriptNames, ioScriptLists, ioScriptConstants, ioScriptSource,
+  ioCharacterKinds, ioCharacterParts, ioCharacterAos, ioCharacterSteps, ioCharacterDraw,
 };

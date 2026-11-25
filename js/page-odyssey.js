@@ -21,7 +21,7 @@ const ODYSSEY = { files: new Map(), source: '' };   // key (lower-case path, HD/
 const ODYSSEY_KEY = 'snoidgrimoire-odyssey';
 const ODYSSEY_REMOTE = { item: 'zoombinis-island-odyssey-cd-rom-iso', iso: 'ZoombinisIO.iso', label: "archive.org's copy of Island Odyssey" };
 const ODYSSEY_TABS = {
-  scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles']] },
+  scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles'], ['snoids', 'Snoids']] },
   components: { name: 'Components', subs: [['sheets', 'Animations'], ['backgrounds', 'Backgrounds'], ['sounds', 'Sounds'], ['music', 'Music'], ['text', 'Scripts']] },
 };
 
@@ -372,6 +372,7 @@ const ODYSSEY_SCENARIO_PANES = {
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>script</th></tr>'
       + IO_PLACES.map(p => `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td>${p.key}</td></tr>`).join('') + '</table></div>';
   },
+  snoids(view) { return odysseySnoids(view); },
   async puzzles(view) {
     view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s rules, read from the program\'s code (<code>Zoombinis Island Odyssey.exe</code>), its settings by level, read from the place\'s script on the disc, and its help at each level, from the place\'s XML. Nobody has checked the rules against play.</p>';
     if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
@@ -382,6 +383,75 @@ const ODYSSEY_SCENARIO_PANES = {
     }
   },
 };
+
+/* The kinds' and traits' names, from the constants in main.mps (kZoombini,
+   kZerble and kZoombiniCat, and kZmbBody, kZrbTail ... numbered from 1). */
+const ODYSSEY_KIND_PREFIX = { kZoombini: 'kZmb', kZerble: 'kZrb', kZoombiniCat: 'kZmbCat' };
+async function odysseyCharacterNames(kinds) {
+  let constants = new Map();
+  if (ODYSSEY.files.has('scripts/main.mps')) try { constants = ioScriptConstants(ioScript(await odysseyBytes('scripts/main.mps'))); } catch (e) { /* the names fall back to numbers */ }
+  return kinds.map(k => {
+    const kindName = Object.keys(ODYSSEY_KIND_PREFIX).find(n => constants.get(n) === k.kind);
+    const prefix = kindName && ODYSSEY_KIND_PREFIX[kindName];
+    const traits = k.traits.map((_, t) => {
+      const name = prefix && [...constants.keys()].find(n => n.startsWith(prefix) && constants.get(n) === t + 1 && /^[A-Z][a-z]+$/.test(n.slice(prefix.length)));
+      return name ? name.slice(prefix.length).toLowerCase() : `trait ${t + 1}`;
+    });
+    const label = { kZoombini: 'A Zoombini', kZerble: 'A Zerble', kZoombiniCat: 'A Zoombini with a caterpillar' }[kindName] || `Kind ${k.kind}`;
+    return { label, traits };
+  });
+}
+/* A character walking, put together from z3common's parts as the program
+   does (ioCharacterDraw), with its kind, facing and traits to pick. */
+async function odysseySnoids(view) {
+  view.innerHTML = '<h1>Snoids</h1><p class="sub">The program puts each character together from its parts in <code>z3common</code>, one animation for each trait, drawn in the order its table gives. The kinds, their traits and the numbering of the parts are read from the program, <code>Zoombinis Island Odyssey.exe</code>, and the names from <code>main.mps</code>. A facing to the left is the facing to the right mirrored.</p>';
+  if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
+  const exeKey = 'win/zoombinis island odyssey.exe';
+  if (!ODYSSEY.files.has(exeKey) || !ODYSSEY.files.has('rsc/z3common.bul')) { view.insertAdjacentHTML('beforeend', '<p class="note">This needs the program and z3common.bul, which the files opened lack.</p>'); return; }
+  const seq = ODYSSEY_SEQ;
+  view.insertAdjacentHTML('beforeend', '<p class="note">Reading the program and z3common…</p>');
+  let kinds, bundle;
+  try { [kinds, bundle] = await Promise.all([odysseyBytes(exeKey).then(ioCharacterKinds), odysseyBundle('rsc/z3common.bul')]); } catch (e) { view.querySelector('p.note').textContent = `The characters do not read (${e.message}).`; return; }
+  if (seq !== ODYSSEY_SEQ) return;
+  const names = await odysseyCharacterNames(kinds);
+  if (seq !== ODYSSEY_SEQ) return;
+  view.querySelector('p.note').remove();
+  const form = document.createElement('div');
+  form.className = 'tools';
+  const stage = document.createElement('div');
+  view.append(form, stage);
+  const pick = { kind: 0, facing: 0, values: kinds.map(k => k.traits.map(() => 0)) };
+  const facings = k => k.facings.flatMap(([, angle], f) => [[f, false, angle], [f, true, (540 - angle) % 360]]);
+  const draw = () => {
+    const k = kinds[pick.kind], n = names[pick.kind], fs = facings(k);
+    form.innerHTML = `<label>Kind <select data-k="kind">${kinds.map((x, i) => `<option value="${i}"${i === pick.kind ? ' selected' : ''}>${esc(names[i].label)}</option>`).join('')}</select></label> `
+      + `<label>Facing <select data-k="facing">${fs.map(([, m, a], i) => `<option value="${i}"${i === pick.facing ? ' selected' : ''}>${a}°${m ? ', mirrored' : ''}</option>`).join('')}</select></label> `
+      + k.traits.map(([count], t) => count > 1 ? `<label>${esc(n.traits[t])} <select data-t="${t}">${Array.from({ length: count }, (_, v) => `<option value="${v}"${v === pick.values[pick.kind][t] ? ' selected' : ''}>${v + 1}</option>`).join('')}</select></label> ` : '').join('');
+    const [f, mirror] = fs[pick.facing] || fs[0];
+    const ids = ioCharacterParts(k, f, pick.values[pick.kind]), aos = ioCharacterAos(bundle.b, bundle.byName, ids), count = ioCharacterSteps(aos);
+    const frames = [];
+    for (let i = 0; i < count; i++) { const d = ioCharacterDraw(bundle.b, k, ids, aos, i, mirror); if (d) frames.push(d); }
+    stage.innerHTML = '';
+    if (!frames.length) { stage.innerHTML = '<p class="note">No part draws.</p>'; return; }
+    /* Every step on one canvas, placed where the program draws it. */
+    const x0 = Math.min(...frames.map(d => d.left)), y0 = Math.min(...frames.map(d => d.top));
+    const w = Math.max(...frames.map(d => d.left + d.width)) - x0, h = Math.max(...frames.map(d => d.top + d.height)) - y0;
+    const frame = i => {
+      const d = frames[i], data = new Uint8ClampedArray(4 * w * h);
+      for (let y = 0; y < d.height; y++) data.set(d.data.subarray(4 * y * d.width, 4 * (y + 1) * d.width), 4 * ((y + d.top - y0) * w + d.left - x0));
+      return { width: w, height: h, data };
+    };
+    mountainPlayer(stage, frame, frames.length, 2);
+    const part = id => bundle.byName.has(`${id}.ao`) ? `<a href="${odysseyLink(`rsc/z3common.bul/${id}.ao`)}">${id}</a>` : `${id} (not in z3common)`;
+    stage.insertAdjacentHTML('beforeend', `<p class="note">The parts, in draw order, are ${ids.map(part).join(', ')}. ${esc(n.label)} has ${plural(k.facings.length, 'facing')} to the right and ${plural(k.traits.length, 'trait')}, and the value of its trait ${esc(n.traits[k.block])} picks a block of ${k.length} animations.</p>`);
+  };
+  form.addEventListener('change', e => {
+    const el = e.target;
+    if (el.dataset.k === 'kind') { pick.kind = +el.value; pick.facing = 0; } else if (el.dataset.k === 'facing') pick.facing = +el.value; else pick.values[pick.kind][+el.dataset.t] = +el.value;
+    draw();
+  });
+  draw();
+}
 
 async function odysseyPlacePage(view, key) {
   const p = IO_PLACE_BY_KEY.get(key);
@@ -483,7 +553,7 @@ const ODYSSEY_GALLERIES = {
 
 /* The side list's figure beside a pane. */
 function odysseyTabCount(tab, sub) {
-  if (tab === 'scenario') return { places: IO_PLACES.length, puzzles: IO_PLACES.filter(p => p.kind === 'puzzle').length }[sub] ?? '';
+  if (tab === 'scenario') return { places: IO_PLACES.length, puzzles: IO_PLACES.filter(p => p.kind === 'puzzle').length, snoids: 3 }[sub] ?? '';
   if (sub === 'text') return String(odysseyKeys(k => k.startsWith('scripts/')).length || '');
   return '';
 }
