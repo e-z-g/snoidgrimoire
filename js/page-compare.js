@@ -48,11 +48,19 @@ function zbEditionShown() {
   const top = topTabOfHash();
   if (top === 'scenario' && tabOfHash()) return zbEdition();
   if (top === 'components') return zbEdition();
-  return isRemakeHash() ? '2015' : '1996';
+  return isRemakeHash() ? '2015' : isMountainHash() ? '2001' : '1996';
 }
 
-/* The address of the same thing in the other game, or the nearest. */
+/* The address of the same thing in the other game, or the nearest.
+   Mountain Rescue has no place in common with the others, so going to or
+   from it keeps the pane and drops the place. */
 function zbHashIn(e, h) {
+  if (e === '2001' || zbEditionShown() === '2001') {
+    const m = /^#(scenario|components)(?:\/(\w+))?/.exec(h);
+    if (m) { const T = zbTabsOf(e)[m[1]]; return `#${m[1]}/${T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0]}`; }
+    if (e === '2001') return '#mountain';
+    return e === '2015' ? '#remake' : '#' + (DATA_LAST || 'RODMAP');
+  }
   const t = /^#(scenario|components)(?:\/(\w+))?(?:\/(\w+))?$/.exec(h);
   if (t) {
     const T = (e === '2015' ? ZB_REMAKE_TABS : ZB_TABS)[t[1]], sub = T.subs.some(s => s[0] === t[2]) ? t[2] : T.subs[0][0];
@@ -95,13 +103,16 @@ async function zbCompareToggle() {
   } else route();
 }
 
-/* The picker, after the bar's four tabs, where both games are open. */
+/* The picker, after the bar's four tabs, where more than one game is
+   open. Both is the 1996 game and the remake side by side. */
+const ZB_EDITION_TITLES = { 1996: 'The 1996 game', 2001: 'Mountain Rescue (2001)', 2015: 'The 2015 remake' };
 function zbEditionBar() {
-  if (!zbBothOpen()) return '';
-  const shown = zbEditionShown(), cmp = zbCompareOn();
+  const open = zbEditionsOpen();
+  if (open.length < 2) return '';
+  const shown = zbEditionShown(), cmp = zbCompareOn() && shown !== '2001';
   return '<span class="editions">'
-    + ['1996', '2015'].map(e => `<a data-edition="${e}"${!cmp && e === shown ? ' class="on"' : ''} title="${e === '1996' ? 'The 1996 game' : 'The 2015 remake'}">${e}</a>`).join('')
-    + `<a data-compare${cmp ? ' class="on"' : ''} title="Both games, side by side">Both</a></span>`;
+    + open.map(e => `<a data-edition="${e}"${!cmp && e === shown ? ' class="on"' : ''} title="${ZB_EDITION_TITLES[e]}">${e}</a>`).join('')
+    + (zbBothOpen() ? `<a data-compare${cmp ? ' class="on"' : ''} title="The 1996 game and the remake, side by side">Both</a>` : '') + '</span>';
 }
 function zbEditionWire(nav) {
   for (const a of nav.querySelectorAll('[data-edition]')) a.addEventListener('click', e => {

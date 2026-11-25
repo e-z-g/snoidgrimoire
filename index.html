@@ -58,7 +58,7 @@ code, .mono { font: 12.5px/1.35 var(--mono); }
 #drop .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
 #start ul { color: var(--dim); padding-left: 20px; margin: 6px 0; }
 #start li { margin: 3px 0; }
-#remote, #remakeRemote { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+#remote, #remakeRemote, #mountainRemoteStart { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 #remakeAddress { width: min(100%, 420px); font: inherit; padding: 4px 6px; }
 
 /* ---- the browser ---- */
@@ -334,7 +334,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       picture, sprite sheet, sound, tune, palette, cursor, string, walk and animation script in
       the game’s Mohawk archives.</p>
     <div id="drop">
-      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here, or the 2015 remake's <code>Zoombinis.app</code> or Android APKs</div>
+      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here, or the 2015 remake's <code>Zoombinis.app</code> or Android APKs, or <i>Mountain Rescue</i>'s CD image or folder</div>
       <div class="row">
         <label class="btn">Files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
         <label class="btn">DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
@@ -345,6 +345,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
     <ul>
       <li>The game’s CD has 22 archives in its <code>DATA</code> folder, from <code>BASECAMP.MHK</code> to <code>ZOOMBINI.MHK</code>.</li>
       <li>A CD image (<code>.iso</code>) works as it is. The page reads the archives from its <code>DATA</code> folder.</li>
+      <li><i>Zoombinis Mountain Rescue</i> (2001), the second game, opens from its CD image (<code>.iso</code>), with “Files…”, or from the disc's folder or its <code>Data</code> folder.</li>
       <li>The 2015 remake opens from its <code>Zoombinis.app</code> dropped on the page. A Mac’s folder picker shows an app as one file, but in it ⌘⇧G and the app’s path, such as <code>/Applications/Zoombinis.app/</code>, goes inside the app, and the picker then accepts it as a folder.</li>
       <li>Nothing leaves your browser. What you open is remembered there, so it is already open on your next visit.</li>
       <li>Pictures show the colors the Windows game shows, which brightens every color of a palette. The art was made on Macs, and the Mac game shows the colors as stored, a little darker on a screen of today. “Colors”, beside a picture’s palette, switches between the two. Saved pictures keep the stored colors.</li>
@@ -355,6 +356,12 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
         archive.org's 1996 disc. The page fetches every archive from archive.org, about 100 MB in all,
         starting with the one you open. They are saved in your browser.</p>
       <button id="useRemote">Read archive.org's copy</button>
+    </div>
+    <div id="mountainRemoteStart">
+      <p>Or read the Internet Archive’s copy of <i>Mountain Rescue</i>’s CD. The page reads the list of
+        its files and then fetches each file a view needs. The browser saves the choice, and the next
+        visit opens it again.</p>
+      <button id="useMountainRemote">Read archive.org's copy of Mountain Rescue</button>
     </div>
     <div id="remakeRemote">
       <p>Or read the 2015 remake from a web address of yours. The folder there must have the Android
@@ -497,8 +504,10 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
 <script src="js/zb-remake-scene.js"></script>
 <script src="js/zb-remake-puzzles.js"></script>
 <script src="js/zb-vorbis.js"></script>
+<script src="js/zb-mountain.js"></script>
 <script src="js/page-unity.js"></script>
 <script src="js/page-remake.js"></script>
+<script src="js/page-mountain.js"></script>
 <script src="js/page-map.js"></script>
 <script src="js/page-town.js"></script>
 <script src="js/page-solve.js"></script>

@@ -4,7 +4,7 @@
 // every picture against zoombini-workbench's tools/mountain/mr_bitmap.py,
 // and every .bmt against Pillow, pixel for pixel (utilities/oracle.py
 // mountain). Then every path, the slots of every .anm and the archive.org
-// listing's reader.
+// listing's reader, and last the page (utilities/mountain_page.mjs).
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -106,8 +106,13 @@ for (const p of unpacked) {
 }
 
 fs.closeSync(fd);
+// The page, in headless Chrome (utilities/mountain_page.mjs).
+const page = spawnSync('node', [path.join(ROOT, 'utilities', 'mountain_page.mjs')], { encoding: 'utf8', timeout: 600000 });
+const pageOut = (page.stdout || '') + (page.stderr || '');
+if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
+const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
 console.log(`${iso.length} files on the ISO in ${reads} reads (${sampled} compared byte for byte), ${game.size} of the game's. `
   + `${counts.bb} .bb, ${counts.rb} .rb, ${counts.an} .an and ${counts.anm} .anm, with ${counts.frames} frames, `
   + `${bad ? bad + ' wrong' : 'every one pixel for pixel as mr_bitmap.py'} (${counts.dropped} pixels past the width dropped). `
-  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.`);
+  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.` + pageNote);
 process.exit(bad ? 1 : 0);
