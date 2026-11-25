@@ -70,7 +70,7 @@ const MR_PUZZLES = {
   },
   magic_wall: {
     from: 'program',
-    goal: 'Scarab beetles sit on colored markers, and each tablet swaps the beetles on pairs of markers or moves a beetle from one marker to another. The puzzles are designs in the disc\'s file bmp/magic_wall/DEFAULT.ZTL. The program picks a design for the level, as often as its weight, and puts up to five tablets on the wall from it. Each beetle starts on its own marker, and the program scrambles them with 4 to 6 random presses of the tablets. When every beetle is home the lights over the four doors are on, and the lever lets four Zoombinis through. Moves are unlimited.',
+    goal: 'Scarab beetles sit on colored markers, and each tablet swaps the beetles on pairs of markers or moves a beetle from one marker to another. The puzzles are designs in the disc\'s file bmp/magic_wall/DEFAULT.ZTL. The program picks a design for the level, as often as its weight, and puts up to five tablets on the wall from it. Each beetle starts on the marker of its color, and the program scrambles them with 4 to 6 random presses of the tablets. When every beetle is home the lights over the four doors are on, and the lever lets four Zoombinis through. Moves are unlimited.',
     levels: ['One of six designs, with 5 to 8 markers.', 'One of six designs, with 5 to 8 markers.', 'One of four designs in use, with 5 to 9 markers.'],
   },
   chez_norf: {
