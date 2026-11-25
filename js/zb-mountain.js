@@ -61,33 +61,33 @@ const MR_PUZZLES = {
   },
   waterslide: {
     from: 'program',
-    goal: 'Zoombinis stand at the junctions of pipes, and each pipe is labeled with a trait. A pipe fills with water when the Zoombinis at its two ends have the same value of that trait. The program builds an answer from the band and labels the pipes from it, so every pipe but a dead one has a pair that fills it. When the master valve opens, the water reaches every Zoombini on a filled pipe that a chain of filled pipes links to the valve.',
-    levels: ['Pairs. Eight junctions, each for two Zoombinis that share the trait on its pipe. A Zoombini with no partner in the band stands alone.', 'One random Zoombini in the middle and five spokes of three junctions leading to it. Each Zoombini shares a trait with the one inward of it. A junction with no partner has a dead pipe, after up to 100 deals.', 'A network of 16 junctions grown out from the middle, the hardest Zoombini to pair first. Each Zoombini stands beside one that shares a trait. When no Zoombini left fits anywhere, the first one left stands at a dead pipe. The program deals again for fewer dead pipes.'],
+    goal: 'Zoombinis stand at the junctions of pipes, and each pipe is labeled with a trait. A pipe fills with water when the Zoombinis at its two ends have the same value of that trait. The program builds an answer from the band and labels the pipes from it, so every pipe but a dead one has a pair that fills it. When the master valve opens, the Zoombinis on the filled pipes go down the waterfall one at a time, and the rest stay.',
+    levels: ['Pairs. Eight junctions, each for two Zoombinis that share the trait on its pipe, and each pipe counts alone. A Zoombini with no partner in the band stands alone.', 'One random Zoombini in the middle and five spokes of three junctions leading to it. Each Zoombini shares a trait with the one inward of it. A junction with no partner has a dead pipe, after up to 100 deals, and any two Zoombinis fill it. An empty pipe drains the pipes outward of it on its spoke.', 'A network of 16 junctions grown out from the middle, the hardest Zoombini to pair first. Each Zoombini stands beside one that shares a trait. When no Zoombini left fits anywhere, the first one left stands at a dead pipe. The program deals again for fewer dead pipes. A filled pipe counts only while filled pipes link it to the middle.'],
   },
   aquacube: {
     from: 'program',
-    goal: 'The bubbles are the corners of a cube, and each lever moves a ball of light along one axis. Each visit the levers get their axes in a random order. Every Zoombini in a bubble the light reaches goes to the beach. A Fleen\'s bubble lets the Fleen out, and then every Zoombini already on the beach goes back into the cube. The light may go back over its path, but the corners there are empty. A warp marks a set of levers and then moves the light along each marked axis in turn.',
+    goal: 'The bubbles are the corners of a cube, and each lever moves a ball of light along one axis. Each visit the levers get their axes in a random order. Every Zoombini in a bubble the light reaches goes to the beach. A Fleen\'s bubble lets the Fleen out, and then every Zoombini already on the beach goes back into the cube. The light may go back over its path, but the corners there are empty. A warp marks a set of levers and then moves the light along each marked axis in turn. It uses one move, and only the corner where it stops counts, so it passes over Fleens and Zoombinis on the way.',
     levels: ['A cube of 8 corners, 3 levers, 1 Fleen in the far corner, 6 moves. The light starts in the near corner.', 'The same cube with 6 moves and one warp. The light starts at one of the three corners next to the near corner.', 'A four-axis cube of 16 corners (the inner and outer cubes), 4 levers, 4 Fleens, 11 moves and two warps. The light starts in the near corner.'],
   },
   magic_wall: {
     from: 'program',
-    goal: 'Scarab beetles sit on colored markers, and each tablet swaps the beetles on pairs of markers or moves a beetle from one marker to another. The puzzles are designs in the disc\'s file bmp/magic_wall/DEFAULT.ZTL. The program picks a design for the level, as often as its weight, and puts up to five tablets on the wall from it. Each beetle starts on the marker of its color, and the program scrambles them with 4 to 6 random presses of the tablets. When every beetle is home the lights over the four doors are on, and the lever lets four Zoombinis through. Moves are unlimited.',
+    goal: 'Scarab beetles sit on colored markers, and each tablet swaps the beetles on pairs of markers or moves a beetle from one marker to another. The puzzles are designs in the disc\'s file bmp/magic_wall/DEFAULT.ZTL. The program picks a design for the level, as often as its weight, and puts up to five tablets on the wall from it. Each beetle starts on the marker of its color, and the program scrambles them with 4 to 6 random presses of the tablets. It scrambles again, up to six times, until it finds a scramble that six presses cannot undo. When every beetle is home the lights over the four doors are on, and the lever lets four Zoombinis through. Then the program deals a new wall for the next four. Moves are unlimited.',
     levels: ['One of six designs, with 5 to 8 markers.', 'One of six designs, with 5 to 8 markers.', 'One of four designs in use, with 5 to 9 markers.'],
   },
   chez_norf: {
     from: 'program',
-    goal: 'Each Norf gives clues to the meal it orders, and a tray from the refrigerator goes in front of a Norf. The orders do not depend on the band. Each level has four scenarios, and the program picks one at random. A scenario fixes which Norfs share a food and which order nothing from a group, and the program shuffles which dishes, drinks and desserts fill it. Each right meal lets Zoombinis stop working.',
+    goal: 'Each Norf gives clues to the meal it orders, and a tray from the refrigerator goes in front of a Norf. The orders do not depend on the band. Each level has four scenarios, and the program picks one at random. A scenario fixes which Norfs share a food, which order nothing from a group, and the clue each Norf speaks, such as that it alone orders a sandwich or that both its neighbors order milk. The program shuffles which dishes, drinks and desserts fill the scenario, in the orders and the clues alike. Each right meal lets Zoombinis stop working.',
     levels: ['Four Norfs, trays of a dish and a drink. Each right meal lets 2 Zoombinis go.', 'Four Norfs, trays of a dish, a drink and a dessert. Each right meal lets 2 Zoombinis go.', 'Six Norfs, trays of a dish, a drink and a dessert. The right meals let 2, 2, 1, 1, 1 and 1 Zoombinis go.'],
   },
   mystic_marsh: {
     from: 'program',
-    goal: 'The program generates the marsh for the band from one of nine fixed grids. A Zoombini sent in at an entrance floats in a bubble, and the symbols turn it. Arrows turn every bubble. Trait diverters turn only Zoombinis with one value of one trait. One-time diverters turn one bubble and then let the rest pass, and cycling diverters turn bubbles each way by turns. A bubble on a spot waits until another bubble reaches the spot\'s trigger or comes in behind it. A bubble that falls into a whirlpool leaves the grid, and a bubble that reaches the end crosses.',
-    levels: ['One entrance and two routes, taken by turns. On each route one trait diverter sends one value into a whirlpool and another sends a second value across to the other route. The program tries up to 30 grids and uses the one that scores best, with every part in use and the routes even.', 'Three entrances and three trait diverters, one of four grids. The diverters\' values split the band into about a half, a quarter and an eighth.', 'Rotators and many trait diverters, one of two grids. The values come from two Zoombinis of the band that differ.'],
+    goal: 'The program generates the marsh for the band from one of nine fixed grids. A Zoombini sent in at an entrance floats in a bubble, and the symbols turn it. Arrows turn every bubble. Trait diverters turn only Zoombinis with one value of one trait. One-time diverters turn one bubble and then let the rest pass, and cycling diverters turn bubbles each way by turns. A bubble on a spot waits until another bubble reaches the spot\'s trigger or comes in behind it. Rotators turn bubbles a quarter turn and elbows bounce them. Two bubbles that meet in a cell or pass through each other pop, and a bubble that falls into a whirlpool leaves the grid. Either way the Zoombini goes back. A bubble that reaches the end crosses.',
+    levels: ['One entrance and two routes, taken by turns. On each route one trait diverter sends one value into a whirlpool and another sends a second value across to the other route. The program tries up to 30 grids and uses the one that scores best, with every part in use and the routes even.', 'Three entrances and three trait diverters, one of four grids. The diverters\' values split the band into about a half, a quarter and an eighth.', 'Four rings of rotators, one of two grids. Each ring has five trait diverters, one for each value of one trait, four traits in all, picked from two Zoombinis of the band that differ.'],
   },
   wall_of_fleens: {
     from: 'program',
     goal: 'One mirror of a wall hides the real Fleen. A cannonball breaks a mirror, and the meter beside it shows how many traits that Fleen shares with the real one. Once the cannonballs run out, the Zoombinis are fired at the mirrors instead.',
-    levels: ['Walls of 3 × 2 mirrors, each a design from a table of 123, with the traits and values shuffled. 12 cannonballs.', 'A wall of 9 × 6 Fleens drawn at random, no two alike. 8 cannonballs.', 'A wall of 12 × 6 Fleens drawn at random, no two alike. 6 cannonballs.'],
+    levels: ['Six walls of 3 × 2 mirrors, one after another, each a design from a table of 123 with the traits and values shuffled. A wall shows at most three values of a trait. 12 cannonballs over all six.', 'A wall of 9 × 6 Fleens drawn at random, no two alike. 8 cannonballs.', 'A wall of 12 × 6 Fleens drawn at random, no two alike. 6 cannonballs.'],
   },
   snowboard: {
     from: 'program',
@@ -96,8 +96,8 @@ const MR_PUZZLES = {
   },
   boolies: {
     from: 'program',
-    goal: 'Pinballs roll down a ramp into one of three groups of Boolies, which flip between happy and sad like an odometer counting in base 2. Each Boolie starts happy or sad at random, and no group starts all happy. Only a group left all happy boards a boat for Booliewood. The program deals the size of each cluster of pinballs at random.',
-    levels: ['Two Boolies in each group, and clusters of 1 to 3 pinballs.', 'Three Boolies in each group, and clusters of 1 to 4 pinballs, with the next cluster shown.', 'Four Boolies in each group, and clusters of 1 to 5 pinballs, with the next cluster shown.'],
+    goal: 'Pinballs roll down a ramp into one of three groups of Boolies. Each pinball starts at the group\'s first Boolie. A sad Boolie turns happy and the pinball stops, and a happy one turns sad and the pinball goes on to the next. So a group counts in base 2, with happy as 1, and a cluster of n pinballs adds n. Each Boolie starts happy or sad at random, and no group starts all happy. A group left all happy boards a boat for Booliewood with a Zoombini, and the waiting group comes on in its place. The program deals the size of each cluster at random, and the machine has a number of clusters for the band.',
+    levels: ['Two Boolies in each group, clusters of 1 to 3 pinballs, and 37 clusters for 16 Zoombinis.', 'Three Boolies in each group, clusters of 1 to 4 pinballs, with the next cluster shown, and 57 clusters for 16 Zoombinis.', 'Four Boolies in each group, clusters of 1 to 5 pinballs, with the next cluster shown, and 65 clusters for 16 Zoombinis.'],
   },
 };
 
@@ -325,6 +325,68 @@ function mrLooksLike(paths) {
   return anm || rb > 20;
 }
 
+/* Each .anm's time a frame, in milliseconds, out of zoombini2.exe. The
+   program loads an .anm with a call that pushes its name's address, and at
+   next gives its time a frame with a call whose first push is the
+   milliseconds
+   (FUN_0045c510 and FUN_0045cec0 in the 2001 Windows build). This finds every
+   push of a string ending .anm and the call after it, and reads the number
+   pushed right after that call. Of those, the pairs whose next call goes
+   where most go are the frame times. A time pushed from a register
+   (BigZomb.anm's) is left out. Returns Map(path in lower case, as
+   mrGameFiles keys it -> ms). */
+function mrAnmFrameTimes(exe) {
+  const pe = mrU32(exe, 0x3c), count = mrU16(exe, pe + 6), optional = mrU16(exe, pe + 20);
+  const base = mrU32(exe, pe + 24 + 28), sections = [];
+  for (let i = 0; i < count; i++) {
+    const o = pe + 24 + optional + 40 * i;
+    sections.push({ va: base + mrU32(exe, o + 12), size: Math.max(mrU32(exe, o + 8), mrU32(exe, o + 16)), raw: mrU32(exe, o + 20), rsize: mrU32(exe, o + 16), code: (mrU32(exe, o + 36) & 0x20) !== 0 });
+  }
+  const at = va => { for (const s of sections) if (va >= s.va && va < s.va + s.rsize) return s.raw + va - s.va; return -1; };
+  const text = va => {
+    const o = at(va);
+    if (o < 0) return '';
+    let t = '';
+    for (let i = o; i < exe.length && exe[i] && t.length < 120; i++) t += String.fromCharCode(exe[i]);
+    return t;
+  };
+  // A call within limit bytes of o whose target is code. An address byte of
+  // 0xe8 pushed before it fails the test.
+  const code = sections.filter(s => s.code);
+  const callAfter = (o, limit) => {
+    for (let i = o; i < o + limit && i + 5 <= exe.length; i++) {
+      if (exe[i] !== 0xe8) continue;
+      const s = code.find(s => o >= s.raw && o < s.raw + s.rsize);
+      const target = s ? (s.va + i - s.raw + 5 + (mrU32(exe, i + 1) | 0)) >>> 0 : 0;
+      if (code.some(c => target >= c.va && target < c.va + c.rsize)) return i;
+    }
+    return -1;
+  };
+  const found = [];
+  for (const s of code) {
+    for (let i = s.raw; i + 5 <= s.raw + s.rsize; i++) {
+      if (exe[i] !== 0x68) continue;
+      const name = text(mrU32(exe, i + 1));
+      if (!/\.anm$/i.test(name)) continue;
+      const first = callAfter(i + 5, 32);
+      if (first < 0) continue;
+      // push ms (6a ib or 68 id), push the set (68 id or a register), call
+      let j = first + 5;
+      const ms = exe[j] === 0x6a ? exe[j + 1] : exe[j] === 0x68 ? mrU32(exe, j + 1) : -1;
+      if (ms < 0) continue;
+      j += exe[j] === 0x6a ? 2 : 5;
+      if (exe[j] === 0x68) j += 5; else if (exe[j] >= 0x50 && exe[j] <= 0x57) j += 1; else continue;
+      if (exe[j] !== 0xe8) continue;
+      const target = (s.va + j - s.raw + 5 + (mrU32(exe, j + 1) | 0)) >>> 0;
+      found.push({ path: name.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase(), target, ms });
+    }
+  }
+  const votes = new Map();
+  for (const f of found) votes.set(f.target, (votes.get(f.target) || 0) + 1);
+  const best = [...votes].sort((a, b) => b[1] - a[1])[0];
+  return new Map(best ? found.filter(f => f.target === best[0]).map(f => [f.path, f.ms]) : []);
+}
+
 /* archive.org's listing of an ISO's files (view_archive.php), as
    [{ path, size }]. Folders have no link and are left out. */
 function mrArchiveListing(html, iso) {
@@ -339,6 +401,7 @@ function mrArchiveListing(html, iso) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
+  mrAnmFrameTimes,
   MR_PLACES, MR_PLACE_BY_KEY, MR_LEVELS, MR_PUZZLES, MR_PARTS, MR_ANM_SLOTS,
   mrReadBb, mrReadRb, mrReadAn, mrAnmSlots, mrAnmFrame, mrAnmSlot, mrAnmSlotName, mrAnmViews,
   mrReadBmp, mrReadPat, mrKind, mrIsoFiles, mrGameFiles, mrLooksLike, mrArchiveListing,

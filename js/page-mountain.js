@@ -89,9 +89,9 @@ function mountainThumb(pic, w = 160, h = 120) {
 }
 
 /* An .anm's view put together: the body, then each part's value in turn,
-   all at one origin. values[part] is a value from 1 to 5. The order in
-   which the program stacks the parts is unread, so this is the slots'
-   order. */
+   all at one origin. values[part] is a value from 1 to 5. The program
+   draws them in this order too, the body, feet, nose, hair and eyes, each
+   over the one before (FUN_0045d580). */
 function mountainFirstValues(parts) { return parts.map(v => v[0]); }
 function mountainParts(b, slots, view, values, frame) {
   let out = null;
@@ -122,6 +122,7 @@ function mountainTake(entries, source) {
   if (!game.size) return 0;
   MOUNTAIN.files.clear();
   MOUNTAIN_BYTES.clear();
+  MOUNTAIN_TIMES = null;
   for (const [key, e] of game) MOUNTAIN.files.set(key, { key, path: e.path, size: e.size, file: e.file, url: e.url });
   MOUNTAIN.source = source;
   $('start').hidden = true;
@@ -279,7 +280,7 @@ async function mountainFileView(view, key, seq) {
     frames.forEach((fr, i) => { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = `<div class="pic"></div><div class="cap">frame ${i}</div>`; d.firstChild.appendChild(mountainThumb(fr)); strip.appendChild(d); });
     view.appendChild(strip);
   } else if (kind === 'parts') {
-    mountainPartsView(view, b);
+    mountainPartsView(view, b, key);
   } else if (kind === 'sound') {
     const a = document.createElement('audio');
     a.controls = true;
@@ -315,16 +316,27 @@ function mountainPictureBlock(view, pic, name) {
   t.firstChild.addEventListener('click', () => c.toBlob(bl => mountainSave(bl, name)));
   view.appendChild(t);
 }
-/* A canvas that plays frame(i) for i = 0 to n - 1 over and over, at 12
-   frames a second, with a button to stop it. The rate is an estimate. */
-function mountainPlayer(view, frame, n, scale = 2) {
+/* Each .anm's time a frame from zoombini2.exe (mrAnmFrameTimes), once, or
+   an empty Map when the disc has no program. */
+let MOUNTAIN_TIMES = null;
+function mountainFrameTimes() {
+  if (!MOUNTAIN_TIMES) MOUNTAIN_TIMES = MOUNTAIN.files.has('zoombini2.exe')
+    ? mountainBytes('zoombini2.exe').then(mrAnmFrameTimes).catch(() => new Map())
+    : Promise.resolve(new Map());
+  return MOUNTAIN_TIMES;
+}
+/* A canvas that plays frame(i) for i = 0 to n - 1 over and over, with a
+   button to stop it. ms is the time a frame as the program gives it, and
+   without it the player shows 12 frames a second, an estimate. */
+function mountainPlayer(view, frame, n, scale = 2, ms = 0) {
   const first = frame(0), c = mountainCanvas(first);
   c.className = 'px';
   c.style.width = first.width * scale + 'px';
   c.style.height = first.height * scale + 'px';
   const box = document.createElement('div');
   box.className = 'tools';
-  box.innerHTML = '<button>Stop</button> <span class="note">12 frames a second, an estimate</span>';
+  box.innerHTML = '<button>Stop</button> <span class="note">' + (ms ? `${ms} ms a frame, as the game plays it` : '12 frames a second, an estimate') + '</span>';
+  const wait = ms || 1000 / 12;
   view.appendChild(c);
   view.appendChild(box);
   let i = 0, on = n > 1;
@@ -338,16 +350,16 @@ function mountainPlayer(view, frame, n, scale = 2) {
       if (p.width !== c.width || p.height !== c.height) { c.width = p.width; c.height = p.height; }
       c.getContext('2d').putImageData(new ImageData(p.data, p.width, p.height), 0, 0);
     }
-    setTimeout(tick, 1000 / 12);
+    setTimeout(tick, wait);
   };
-  if (n > 1) setTimeout(tick, 1000 / 12); else btn.hidden = true;
+  if (n > 1) setTimeout(tick, wait); else btn.hidden = true;
   return c;
 }
 
 /* An .anm: its views, each part's values, and the parts put together. */
-function mountainPartsView(view, b) {
+function mountainPartsView(view, b, key) {
   const slots = mrAnmSlots(b), views = mrAnmViews(slots), list = [...views.keys()];
-  view.insertAdjacentHTML('beforeend', `<p>${plural(list.length, 'view')} (${list.join(', ')}), each with ${MR_PARTS.slice(1).join(', ')} values over its body. A slot is view × 30 + part × 6 + value. The order in which the game stacks the parts is still to read, so they stack in the slots' order.</p>`);
+  view.insertAdjacentHTML('beforeend', `<p>${plural(list.length, 'view')} (${list.join(', ')}), each with ${MR_PARTS.slice(1).join(', ')} values over its body. A slot is view × 30 + part × 6 + value. The parts stack as the game stacks them, the body first and the eyes on top.</p>`);
   const form = document.createElement('div');
   form.className = 'tools';
   const sel = (name, opts) => `<label>${name} <select data-k="${name}">${opts.map(o => `<option value="${o}">${o}</option>`).join('')}</select></label> `;
@@ -364,7 +376,7 @@ function mountainPartsView(view, b) {
     });
     const n = Math.max(1, ...values.map((val, i) => val == null ? 1 : (slots[mrAnmSlot(v, i, val)] || []).length));
     stage.innerHTML = '';
-    mountainPlayer(stage, i => mountainParts(b, slots, v, values, i), n, 3);
+    mountainFrameTimes().then(times => { if (stage.isConnected) mountainPlayer(stage, i => mountainParts(b, slots, v, values, i), n, 3, times.get(key) || 0); });
   };
   for (const s of form.querySelectorAll('select')) {
     if (s.dataset.k !== 'view') s.value = '1';
@@ -432,7 +444,7 @@ const MOUNTAIN_SCENARIO_PANES = {
     view.insertAdjacentHTML('beforeend', `<h2 class="h">${esc(main)}</h2>`);
     const box = document.createElement('div');
     view.appendChild(box);
-    mountainBytes(main).then(b => mountainPartsView(box, b)).catch(e => { box.innerHTML = `<p class="bad">${esc(e.message)}</p>`; });
+    mountainBytes(main).then(b => mountainPartsView(box, b, main)).catch(e => { box.innerHTML = `<p class="bad">${esc(e.message)}</p>`; });
   },
 };
 

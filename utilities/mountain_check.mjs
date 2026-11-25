@@ -105,6 +105,27 @@ for (const p of unpacked) {
   if (JSON.stringify(actual.map(f => [f.path, f.size])) !== JSON.stringify(expected)) fail(`the listing reads ${JSON.stringify(actual)}`);
 }
 
+// Each .anm's time a frame, read from the program's machine code, against
+// zoombini-workbench's tools/mountain/mr_rates.py, which reads the decompile.
+// BigZomb.anm's time is pushed from a register, which the page leaves out.
+let timesNote = '';
+{
+  const exe = path.join(DISC, 'INSTALL', 'HD', 'zoombini2.exe');
+  const decompile = path.join(MR, 'ghidra', 'zoombini2-full.c');
+  const tools = path.join(process.env.ZB_TOOLS || path.join(ROOT, 'reference', 'tools'), 'mountain');
+  if (fs.existsSync(exe) && fs.existsSync(decompile) && fs.existsSync(path.join(tools, 'mr_rates.py'))) {
+    const r = spawnSync('python3', ['-I', path.join(tools, 'mr_rates.py'), decompile, exe], { encoding: 'utf8' });
+    if (r.status !== 0) fail('mr_rates.py\n' + r.stderr);
+    else {
+      const expected = Object.entries(JSON.parse(r.stdout)).filter(([, ms]) => ms > 0);
+      const actual = S.mrAnmFrameTimes(new Uint8Array(fs.readFileSync(exe)));
+      for (const [p, ms] of expected) if (actual.get(p) !== ms) fail(`${p} is ${actual.get(p)} ms a frame, expected ${ms}`);
+      if (actual.size !== expected.length) fail(`${actual.size} .anm frame times read, expected ${expected.length}`);
+      timesNote = ` The ${actual.size} .anm frame times as mr_rates.py reads them.`;
+    }
+  } else timesNote = ' The .anm frame times not compared (no decompile or mr_rates.py).';
+}
+
 fs.closeSync(fd);
 // The page, in headless Chrome (utilities/mountain_page.mjs).
 const page = spawnSync('node', [path.join(ROOT, 'utilities', 'mountain_page.mjs')], { encoding: 'utf8', timeout: 600000 });
@@ -114,5 +135,5 @@ const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut
 console.log(`${iso.length} files on the ISO in ${reads} reads (${sampled} compared byte for byte), ${game.size} of the game's. `
   + `${counts.bb} .bb, ${counts.rb} .rb, ${counts.an} .an and ${counts.anm} .anm, with ${counts.frames} frames, `
   + `${bad ? bad + ' wrong' : 'every one pixel for pixel as mr_bitmap.py'} (${counts.dropped} pixels past the width dropped). `
-  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.` + pageNote);
+  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.` + timesNote + pageNote);
 process.exit(bad ? 1 : 0);
