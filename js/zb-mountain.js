@@ -86,8 +86,9 @@ const MR_PUZZLES = {
     levels: ['Walls of 3 × 2 mirrors, each a design from a table of 123, with the traits and values shuffled. 12 cannonballs.', 'A wall of 9 × 6 Fleens drawn at random, no two alike. 8 cannonballs.', 'A wall of 12 × 6 Fleens drawn at random, no two alike. 6 cannonballs.'],
   },
   snowboard: {
-    goal: 'Each trait sends a snowboarding Zoombini down one trail. A Zoombini on the wrong trail runs into a Norf, and too many bumps close the slopes.',
-    levels: ['The sign at the right shows which traits go down which trail.', 'Clues on the sign are hidden.', 'Clues on the sign are hidden.'],
+    from: 'program',
+    goal: 'The slope forks three times into four trails. The first fork sends a Zoombini one way by one trait, and the two forks below it both test a second trait. So the trails take Zoombinis with both traits matched, the first only, the second only, and neither. Each value is one the band has, and the program deals again until the band spreads well over the trails. A Zoombini down a wrong trail bumps a Norf, and too many bumps close the slopes.',
+    levels: ['The sign shows the forks. Each fork matches one value, and the Norfs allow 2 bumps.', 'The sign is hidden. Each fork matches one value, and the Norfs allow 4 bumps.', 'The sign is hidden. Each fork matches either of two values, and the Norfs allow 4 bumps.'],
   },
   boolies: {
     goal: 'Pinballs roll down a ramp into a group of Boolies, which flip between happy and sad like an odometer counting in base 2. Only a group left all happy boards a boat for Booliewood.',
