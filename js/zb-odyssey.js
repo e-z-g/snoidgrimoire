@@ -459,21 +459,23 @@ const IO_PUZZLES = {
   z3a4: {
     rules: [
       'The greenhouse is 12 rows of 12 plants. A plant has three traits, color with 3 values and two more with 4 and 5 values, or 6 and 6 at Very Very Hard. Each trait\'s layout is a template from the disc\'s z3a4data.xml, turned one of four ways at random. Where the template has a blank, the plant\'s value is random.',
-      'There are 12 moths, one for each value of the two traits besides color, 4 + 5 or 6 + 6, and each matches every plant with its value. How Oh So Hard breaks the paths, and how many swaps the wand has, are unread.',
+      'There are 12 moths, one for each value of the two traits besides color, 4 + 5 or 6 + 6, and each matches every plant with its value.',
+      'Above Not So Hard the program breaks the paths with 20 random swaps of two plants, and at Very Very Hard only two plants of one color swap. The wand has 30 swaps. At Very Very Hard a beetle comes in 10 seconds after the start and then every 8 seconds, at one of the three columns the template lists, and follows the color of the plant there.',
     ],
     settings: [],
   },
   z3a5: {
     rules: [
       'The garden is 4 holes in a row at Not So Hard, 4 rows of 4 at Oh So Hard, and four plots of 4 rows of 4 at Very Very Hard. A plant has four traits (roots, stalks, leaves and flowers) of four values each.',
-      'One trait goes with the columns, from Oh So Hard another with the rows, and at Very Very Hard a third with the plots. The first plant set in a column fixes that trait\'s value for the column, and no other column may have it. Rows and plots work the same way. A plant that clashes with what is fixed bounces out.',
+      'One trait, picked at random, goes with the columns. From Oh So Hard another goes with the rows, and at Very Very Hard one of the last two with the plots. The first plant set in a column fixes that trait\'s value for the column, and no other column may have it. Rows and plots work the same way. A plant that clashes with what is fixed bounces out, and the traits tied to no line never matter.',
     ],
     settings: [],
   },
   z3a6: {
     rules: [
       'There are 12 berries, each a shape, a color and a leaf from 4 values, dealt at random and all different. The program compares two berries by the product of their three values plus one each, so two berries with the same values in another order also count as alike, and the deal draws again.',
-      'Each Zerble is dealt one of the berries at random as the one it eats. The projectors show the three traits in a random order, which matters at Very Very Hard, where they are unlabeled. Which traits draw each Zerble into a beam is unread.',
+      'Each Zerble is dealt one of the berries at random as the one it eats. The projectors show the three traits in a random order, which matters at Very Very Hard, where they are unlabeled.',
+      'A beam projects one trait\'s value from the berry set in its projector, and a Zerble stands in every beam whose value is in the berry dealt to the Zerble. So the overlaps sort the Zerbles by their berries. At Not So Hard a Zerble eats a berry that has the dealt berry\'s values in the two projected traits, and at the higher levels in all three.',
     ],
     settings: [],
   },
