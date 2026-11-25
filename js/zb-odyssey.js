@@ -473,13 +473,14 @@ const IO_PUZZLES = {
   z3a6: {
     rules: [
       'There are 12 berries, each a shape, a color and a leaf from 4 values, dealt at random and all different. The program compares two berries by the product of their three values plus one each, so two berries with the same values in another order also count as alike, and the deal draws again.',
-      'Each Zerble is dealt one of the berries at random as the one it eats. Which traits draw each Zerble into a beam is unread.',
+      'Each Zerble is dealt one of the berries at random as the one it eats. The projectors show the three traits in a random order, which matters at Very Very Hard, where they are unlabeled. Which traits draw each Zerble into a beam is unread.',
     ],
     settings: [],
   },
   z3a7: {
     rules: [
-      'The Zerbles come in pairs, one for every two Zoombinis. The target is one trait at the first two levels and two at Very Very Hard, and the x-ray stones show the genes at Not So Hard only. A Zerble\'s traits are dealt at random. How the young inherit is unread.',
+      'The Zerbles come in pairs, one for every two Zoombinis, and the answer is a random matching of the two pens. The machine\'s target is the young of the next pair in that matching. The target is one trait at the first two levels and two at Very Very Hard, and the x-ray stones show the genes at Not So Hard only. A Zerble\'s traits are dealt at random.',
+      'A Zerble has two genes for a trait, the one shown and a hidden one, and its four young are the four pairings of one gene from each parent. Two genes alike give that gene. Two that differ give the winner of a cycle, where 1 beats 2, 2 beats 3 and 3 beats 1, counting the values from 1.',
     ],
     settings: [['Traits in the target', 'kTargetTrait'], ['Genes shown', 'kShowZerbleGenes'], ['Tries, by pairs (1 to 6)', 'kMaxTurnsList']],
   },
