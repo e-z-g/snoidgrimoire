@@ -74,8 +74,9 @@ const MR_PUZZLES = {
     levels: ['One of six designs, with 5 to 8 markers.', 'One of six designs, with 5 to 8 markers.', 'One of four designs in use, with 5 to 9 markers.'],
   },
   chez_norf: {
-    goal: 'Each Norf gives clues to the meal it orders, and the order pad is for noting them. A tray of food from the refrigerator goes in front of a Norf. Each right meal lets some Zoombinis stop working.',
-    levels: ['Four Norfs, a main dish and a drink, and 4 extra trays.', 'A main dish, a drink and a dessert, and 3 extra trays.', 'Six Norfs, and 2 wrong meals before the Zoombinis are fired.'],
+    from: 'program',
+    goal: 'Each Norf gives clues to the meal it orders, and a tray from the refrigerator goes in front of a Norf. The orders do not depend on the band. Each level has four scenarios, and the program picks one at random. A scenario fixes which Norfs share a food and which order nothing from a group, and the program shuffles which dishes, drinks and desserts fill it. Each right meal lets Zoombinis stop working.',
+    levels: ['Four Norfs, trays of a dish and a drink. Each right meal lets 2 Zoombinis go.', 'Four Norfs, trays of a dish, a drink and a dessert. Each right meal lets 2 Zoombinis go.', 'Six Norfs, trays of a dish, a drink and a dessert. The right meals let 2, 2, 1, 1, 1 and 1 Zoombinis go.'],
   },
   mystic_marsh: {
     goal: 'A Zoombini set on a crater floats out in a bubble over the marsh, and arrows, diverters, event triggers, magnets and whirlpools move it, some by its traits. Two Zoombinis that meet anywhere but a magnet pop and go back to the rest stop. The order and the entrance settle who crosses.',
