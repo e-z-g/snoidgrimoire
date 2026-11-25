@@ -93,8 +93,9 @@ const MR_PUZZLES = {
     levels: ['The sign shows the forks. Each fork matches one value, and the Norfs allow 2 bumps.', 'The sign is hidden. Each fork matches one value, and the Norfs allow 4 bumps.', 'The sign is hidden. Each fork matches either of two values, and the Norfs allow 4 bumps.'],
   },
   boolies: {
-    goal: 'Pinballs roll down a ramp into a group of Boolies, which flip between happy and sad like an odometer counting in base 2. Only a group left all happy boards a boat for Booliewood.',
-    levels: ['Two Boolies in each group.', 'More Boolies in each group and more pinballs, with the next cluster of pinballs shown.', 'More Boolies in each group and more pinballs, with the next cluster of pinballs shown.'],
+    from: 'program',
+    goal: 'Pinballs roll down a ramp into one of three groups of Boolies, which flip between happy and sad like an odometer counting in base 2. Each Boolie starts happy or sad at random, and no group starts all happy. Only a group left all happy boards a boat for Booliewood. The program deals the size of each cluster of pinballs at random.',
+    levels: ['Two Boolies in each group, and clusters of 1 to 3 pinballs.', 'Three Boolies in each group, and clusters of 1 to 4 pinballs, with the next cluster shown.', 'Four Boolies in each group, and clusters of 1 to 5 pinballs, with the next cluster shown.'],
   },
 };
 
