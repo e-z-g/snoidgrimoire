@@ -60,8 +60,9 @@ const MR_PUZZLES = {
     levels: ['All five signs, and 3 wrong placements.', 'One sign or two, each half the time, and 5 wrong placements with one sign or 4 with two.', 'One sign, with both traits\' values at that place, and 6 wrong placements.'],
   },
   waterslide: {
-    goal: 'Pairs of Zoombinis that share a trait stand at the junctions of pipes labeled with that trait. A pipe whose pair matches fills with water. When the master valve opens, every Zoombini whose pipes reach it goes down the waterfall.',
-    levels: ['Eight junctions.', 'Five branches joined at a central basin, with every Zoombini linked toward the Zoombini in the middle.', 'A more complex system, still linked to the Zoombini in the middle.'],
+    from: 'program',
+    goal: 'Zoombinis stand at the junctions of pipes, and each pipe is labeled with a trait. A pipe fills with water when the Zoombinis at its two ends have the same value of that trait. The program builds an answer from the band and labels the pipes from it, so every pipe but a dead one has a pair that fills it. When the master valve opens, the water reaches every Zoombini on a filled pipe that a chain of filled pipes links to the valve.',
+    levels: ['Pairs. Eight junctions, each for two Zoombinis that share the trait on its pipe. A Zoombini with no partner in the band stands alone.', 'One random Zoombini in the middle and five spokes of three junctions leading to it. Each Zoombini shares a trait with the one inward of it. A junction with no partner has a dead pipe, after up to 100 deals.', 'A network of 16 junctions grown out from the middle, the hardest Zoombini to pair first. Each Zoombini stands beside one that shares a trait. When no Zoombini left fits anywhere, the first one left stands at a dead pipe. The program deals again for fewer dead pipes.'],
   },
   aquacube: {
     from: 'program',

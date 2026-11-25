@@ -4,7 +4,9 @@
 //   ZB_REMAKE=<the Data folder> node utilities/remake_check.mjs
 //
 // Without ZB_REMAKE the check runs once for each build on this Mac: the
-// iPhone app's Data folder, Steam's Mac build's, and the Android build's
+// iPhone app's Data folder (in /Applications, or the copy on ADDL6TB when
+// that drive is mounted), Steam's Mac build's, Steam's Windows build's in
+// zoombini-reference/remake-windows, and the Android build's
 // in zoombini-reference/remake-android. That folder has the APKs in apk/,
 // and their files unzipped and joined by zoombini-workbench
 // tools/remake/android.sh (Data/, and the libraries in unzipped/lib). The
@@ -36,6 +38,7 @@ const rangeServer = (...a) => rangeServerOf(S, ...a);
 
 const BUILDS = [
   '/Applications/Zoombinis.app/Wrapper/Zoombinis.app/Data',
+  '/Volumes/ADDL6TB/e-z-g-offload/Zoombinis.app/Wrapper/Zoombinis.app/Data',
   path.join(os.homedir(), 'Library', 'Application Support', 'Steam', 'steamapps', 'common', 'Zoombinis', 'Zoombinis.app', 'Contents', 'Resources', 'Data'),
   path.join(ROOT, '..', 'zoombini-reference', 'remake-android', 'Data'),
   path.join(ROOT, '..', 'zoombini-reference', 'remake-windows', 'Zoombinis', 'Zoombinis_Data'),
