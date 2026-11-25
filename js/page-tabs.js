@@ -30,12 +30,12 @@ function tabOfHash() {
   const any = typeof zbCompareOn === 'function' && zbCompareOn() ? ZB_TABS[m[1]].subs.concat(ZB_REMAKE_TABS[m[1]].subs) : T.subs;
   const sub = any.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0];
   const e = zbEdition();
-  const item = sub !== 'places' ? null : e === '2015' ? (/^\d+$/.test(m[3] || '') ? m[3] : null) : e === '2001' ? (MR_PLACE_BY_KEY.has(m[3]) ? m[3] : null) : ZB_PLACE_BY_KEY.has(m[3]) ? m[3] : null;
+  const item = sub !== 'places' ? null : e === '2015' ? (/^\d+$/.test(m[3] || '') ? m[3] : null) : e === '2001' ? (MR_PLACE_BY_KEY.has(m[3]) ? m[3] : null) : e === '2002' ? (IO_PLACE_BY_KEY.has(m[3]) ? m[3] : null) : ZB_PLACE_BY_KEY.has(m[3]) ? m[3] : null;
   return { tab: m[1], sub, item };
 }
 /* Which game Scenario and Components show: the 1996 game's archives,
-   Mountain Rescue's disc (2001) or the 2015 remake's files, whichever is
-   open. With more than one open, the visitor picks in the bar
+   Mountain Rescue's disc (2001), Island Odyssey's (2002) or the 2015
+   remake's files, whichever is open. With more than one open, the visitor picks in the bar
    (page-compare.js), and the browser stores the choice as
    snoidgrimoire-edition. */
 let ZB_EDITION_HELD = null;   // the game one column of Both draws (page-compare.js)
@@ -43,6 +43,7 @@ function zbEditionsOpen() {
   const open = [];
   if (ARCHIVES.size) open.push('1996');
   if (typeof mountainIsOpen === 'function' && mountainIsOpen()) open.push('2001');
+  if (typeof odysseyIsOpen === 'function' && odysseyIsOpen()) open.push('2002');
   if (typeof remakeIsOpen === 'function' && remakeIsOpen()) open.push('2015');
   return open;
 }
@@ -53,7 +54,7 @@ function zbEdition() {
   const picked = localStorage.getItem('snoidgrimoire-edition');
   return open.includes(picked) ? picked : open[0];
 }
-function zbTabsOf(e) { return e === '2015' ? ZB_REMAKE_TABS : e === '2001' ? MOUNTAIN_TABS : ZB_TABS; }
+function zbTabsOf(e) { return e === '2015' ? ZB_REMAKE_TABS : e === '2001' ? MOUNTAIN_TABS : e === '2002' ? ODYSSEY_TABS : ZB_TABS; }
 function tabsNow() { return zbTabsOf(zbEdition()); }
 /* Which of the four the address is under. */
 function topTabOfHash() {
@@ -68,7 +69,7 @@ function topTabOfHash() {
 function renderTopTabs() {
   const nav = $('views'), on = topTabOfHash();
   if (on === 'data') { const h = parseHash(); if (ARCHIVES.has(h.archive)) DATA_LAST = h.archive; }
-  const data = DATA_LAST || (ARCHIVES.has('RODMAP') ? 'RODMAP' : (sortedArchives()[0] || {}).name || ({ 2015: 'remake', 2001: 'mountain' }[zbEdition()] || ''));
+  const data = DATA_LAST || (ARCHIVES.has('RODMAP') ? 'RODMAP' : (sortedArchives()[0] || {}).name || ({ 2015: 'remake', 2001: 'mountain', 2002: 'odyssey' }[zbEdition()] || ''));
   const tabs = [['world', 'World', '#journey'], ['scenario', 'Scenario', '#scenario'], ['components', 'Components', '#components'], ['data', 'Data', '#' + data]]
     .filter(t => t[0] !== 'world' || journeyAvailable());
   nav.innerHTML = tabs.map(([k, n, h]) => `<a data-view="${k}" href="${h}"${k === on ? ' class="on"' : ''}>${n}</a>`).join('') + zbEditionBar();
@@ -78,9 +79,9 @@ function renderTopTabs() {
 /* A Scenario or Components pane, in the browser's frame: its list on the
    side, the pane in the view. */
 function renderTab(t) {
-  const e = zbEdition(), remake = e === '2015', mountain = e === '2001', T = tabsNow()[t.tab];
-  const sub = T.subs.concat(ZB_TABS[t.tab].subs, ZB_REMAKE_TABS[t.tab].subs, MOUNTAIN_TABS[t.tab].subs).find(s => s[0] === t.sub);
-  const itemName = t.item && (remake ? remakeSceneTitle(+t.item) : mountain ? MR_PLACE_BY_KEY.get(t.item).name : ZB_PLACE_BY_KEY.get(t.item).name);
+  const e = zbEdition(), remake = e === '2015', mountain = e === '2001', odyssey = e === '2002', T = tabsNow()[t.tab];
+  const sub = T.subs.concat(ZB_TABS[t.tab].subs, ZB_REMAKE_TABS[t.tab].subs, MOUNTAIN_TABS[t.tab].subs, ODYSSEY_TABS[t.tab].subs).find(s => s[0] === t.sub);
+  const itemName = t.item && (remake ? remakeSceneTitle(+t.item) : mountain ? MR_PLACE_BY_KEY.get(t.item).name : odyssey ? IO_PLACE_BY_KEY.get(t.item).name : ZB_PLACE_BY_KEY.get(t.item).name);
   $('crumbs').innerHTML = `<a href="#${t.tab}">${T.name}</a><span class="sep">›</span>`
     + (t.item ? `<a href="#${t.tab}/${t.sub}">${esc(sub[1])}</a><span class="sep">›</span><span>${esc(itemName)}</span>` : `<span>${esc(sub[1])}</span>`);
   const view = $('view');
@@ -88,9 +89,10 @@ function renderTab(t) {
   try {
     const panes = remake ? (t.tab === 'scenario' ? REMAKE_SCENARIO_PANES : REMAKE_GALLERIES)
       : mountain ? (t.tab === 'scenario' ? MOUNTAIN_SCENARIO_PANES : MOUNTAIN_GALLERIES)
+      : odyssey ? (t.tab === 'scenario' ? ODYSSEY_SCENARIO_PANES : ODYSSEY_GALLERIES)
       : (t.tab === 'scenario' ? SCENARIO_PANES : ZB_GALLERIES);
     // With Both on, every pane but the screenshot's shows the 1996 game and the remake each in a column.
-    const shown = zbCompareOn() && !mountain && t.sub !== 'screenshot' ? zbCompareTab(view, t) : panes[t.sub](view, t.item);
+    const shown = zbCompareOn() && !mountain && !odyssey && t.sub !== 'screenshot' ? zbCompareTab(view, t) : panes[t.sub](view, t.item);
     if (shown && shown.catch) shown.catch(e => { view.insertAdjacentHTML('beforeend', `<p class="bad">This could not be shown (${esc(e.message)}).</p>`); console.error(e); });
   } catch (e) {
     view.innerHTML += `<p class="bad">This could not be shown (${esc(e.message)}).</p>`;
@@ -98,7 +100,7 @@ function renderTab(t) {
   }
   // The side after the pane, since drawing a gallery may have just sorted its pictures from its sheets.
   $('side').innerHTML = `<h2>${T.name}</h2>`
-    + T.subs.map(([k, n]) => `<div class="arc${k === t.sub ? ' on' : ''}" data-href="#${t.tab}/${k}"><span class="name">${esc(n)}</span><span class="place">${esc(remake ? remakeTabCount(t.tab, k) : mountain ? mountainTabCount(t.tab, k) : tabCount(t.tab, k))}</span></div>`).join('');
+    + T.subs.map(([k, n]) => `<div class="arc${k === t.sub ? ' on' : ''}" data-href="#${t.tab}/${k}"><span class="name">${esc(n)}</span><span class="place">${esc(remake ? remakeTabCount(t.tab, k) : mountain ? mountainTabCount(t.tab, k) : odyssey ? odysseyTabCount(t.tab, k) : tabCount(t.tab, k))}</span></div>`).join('');
   for (const el of $('side').querySelectorAll('[data-href]')) el.addEventListener('click', () => { location.hash = el.dataset.href; });
 }
 /* The side list's figure beside a pane: the number of things in it. */

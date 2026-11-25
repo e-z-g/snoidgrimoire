@@ -30,6 +30,7 @@ const CHECKS = [
   ['shot', 'screenshots read back, made here at every waiting place and taken in the game, against what a person read'],
   ['remake', 'the 2015 remake\'s Unity files against UnityPy, every object, text asset, sound and texture, its scenes and uniSWF clips, and opened in the page'],
   ['mountain', 'Mountain Rescue\'s disc read a piece at a time, and every picture against mr_bitmap.py and Pillow, pixel for pixel'],
+  ['odyssey', 'Island Odyssey\'s disc read a piece at a time, and every bundle\'s entries and every frame against io_bundle.py, pixel for pixel'],
   ['page', 'index.html in headless Chrome, the map, zoomed into and out of, a view of every type, and the town in WebGL, desktop and phone'],
 ];
 const filters = process.argv.slice(2);

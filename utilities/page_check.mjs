@@ -222,7 +222,7 @@ const VIEWS = [
     return /“Test” \\(ZOOM0000.TXT\\)/.test(t) && /WaitingonZoombiniIsle16/.test(t.replace(/\\s+/g, '')) && /at the map/.test(t) && document.querySelectorAll('#view .szb img').length === 16 && (document.querySelector('[data-save-map]').click(), true);
   })()`],
   ['journey', "JSAVE && JSAVE.levels.get(17) === 1 && JSAVE.levels.get(18) === 1 && JSAVE.levels.get(19) === 0 && /in “Test”/.test(document.getElementById('jpanel').textContent) && (document.querySelector('#jpanel [data-nosave]').click(), !JSAVE)"],
-  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods]):not([data-arc=saves]):not([data-arc=remake]):not([data-arc=mountain])').length === 22"],
+  ['FLEENS', "document.querySelector('#room canvas') && document.querySelectorAll('#side .ids a').length === 209 && document.querySelectorAll('#side .arc:not([data-arc=changes]):not([data-arc=mods]):not([data-arc=saves]):not([data-arc=remake]):not([data-arc=mountain]):not([data-arc=odyssey])').length === 22"],
   ['FLEENS/tBMP/300', "document.querySelector('#pic canvas') && document.querySelector('#pic canvas').width === 640"],
   ['FLEENS/tBMP/4000', "document.querySelectorAll('#sheet .frame').length === 740 && /REGS 4000/.test(document.getElementById('view').textContent)"],
   ['ZOOMBINI/tBMP/3000', "document.querySelectorAll('#sheet .frame').length === 890"],

@@ -48,17 +48,18 @@ function zbEditionShown() {
   const top = topTabOfHash();
   if (top === 'scenario' && tabOfHash()) return zbEdition();
   if (top === 'components') return zbEdition();
-  return isRemakeHash() ? '2015' : isMountainHash() ? '2001' : '1996';
+  return isRemakeHash() ? '2015' : isMountainHash() ? '2001' : isOdysseyHash() ? '2002' : '1996';
 }
 
 /* The address of the same thing in the other game, or the nearest.
-   Mountain Rescue shares no place with the others, so a move to or from
-   it stays on the same pane and leaves the place out. */
+   Mountain Rescue and Island Odyssey share no place with the others, so a
+   move to or from either stays on the same pane and leaves the place out. */
 function zbHashIn(e, h) {
-  if (e === '2001' || zbEditionShown() === '2001') {
+  if (e === '2001' || e === '2002' || zbEditionShown() === '2001' || zbEditionShown() === '2002') {
     const m = /^#(scenario|components)(?:\/(\w+))?/.exec(h);
     if (m) { const T = zbTabsOf(e)[m[1]]; return `#${m[1]}/${T.subs.some(s => s[0] === m[2]) ? m[2] : T.subs[0][0]}`; }
     if (e === '2001') return '#mountain';
+    if (e === '2002') return '#odyssey';
     return e === '2015' ? '#remake' : '#' + (DATA_LAST || 'RODMAP');
   }
   const t = /^#(scenario|components)(?:\/(\w+))?(?:\/(\w+))?$/.exec(h);
@@ -105,11 +106,11 @@ async function zbCompareToggle() {
 
 /* The picker, after the bar's four tabs, where more than one game is
    open. Both is the 1996 game and the remake side by side. */
-const ZB_EDITION_TITLES = { 1996: 'The 1996 game', 2001: 'Mountain Rescue (2001)', 2015: 'The 2015 remake' };
+const ZB_EDITION_TITLES = { 1996: 'The 1996 game', 2001: 'Mountain Rescue (2001)', 2002: 'Island Odyssey (2002)', 2015: 'The 2015 remake' };
 function zbEditionBar() {
   const open = zbEditionsOpen();
   if (open.length < 2) return '';
-  const shown = zbEditionShown(), cmp = zbCompareOn() && shown !== '2001';
+  const shown = zbEditionShown(), cmp = zbCompareOn() && shown !== '2001' && shown !== '2002';
   return '<span class="editions">'
     + open.map(e => `<a data-edition="${e}"${!cmp && e === shown ? ' class="on"' : ''} title="${ZB_EDITION_TITLES[e]}">${e}</a>`).join('')
     + (zbBothOpen() ? `<a data-compare${cmp ? ' class="on"' : ''} title="The 1996 game and the remake, side by side">Both</a>` : '') + '</span>';

@@ -250,18 +250,22 @@ function wireOpening() {
   document.getElementById('pickFiles').addEventListener('change', async e => {
     // Mountain Rescue's image goes to page-mountain.js, which reads a piece at a time.
     if (await mountainTryFiles([...e.target.files])) { e.target.value = ''; return; }
+    // So does Island Odyssey's, to page-odyssey.js.
+    if (await odysseyTryFiles([...e.target.files])) { e.target.value = ''; return; }
     const picked = await readPicked(e.target.files);
     e.target.value = '';
     await takeFiles(picked, picked.length === 1 ? picked[0].name : `${picked.length} files`);
   });
   document.getElementById('pickFolder').addEventListener('change', async e => {
     if (await mountainTryFiles([...e.target.files])) { e.target.value = ''; return; }
+    if (await odysseyTryFiles([...e.target.files])) { e.target.value = ''; return; }
     const picked = await readPicked(e.target.files);
     e.target.value = '';
     await takeFiles(picked, 'the DATA folder');
   });
   document.getElementById('useRemote').addEventListener('click', useRemote);
   document.getElementById('useMountainRemote').addEventListener('click', () => mountainOpenRemote());
+  document.getElementById('useOdysseyRemote').addEventListener('click', () => odysseyOpenRemote());
   for (const ev of ['dragenter', 'dragover']) document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); });
   document.addEventListener('dragleave', e => { if (!e.relatedTarget) drop.classList.remove('over'); });
   document.addEventListener('drop', async e => {
@@ -290,6 +294,7 @@ function wireOpening() {
     if (isRemakeDrop(files)) { await remakeOpen(files); return; }
     // So do Mountain Rescue's image and folders, to page-mountain.js.
     if (await mountainTryFiles(files)) return;
+    if (await odysseyTryFiles(files)) return;
     const picked = await readPicked(files);
     await takeFiles(picked, picked.length === 1 ? picked[0].name : `${picked.length} files`);
   });
@@ -305,10 +310,13 @@ function wireOpening() {
     const src = new URLSearchParams(location.search).get('src');
     if (src === 'archive.org') useRemote();
     else if (src === 'mountain') await mountainOpenRemote(true);
+    else if (src === 'odyssey') await odysseyOpenRemote(true);
     else if (src) openFromUrls(src.split(','));
     else await openStoredArchives();
     // Mountain Rescue from archive.org, where an earlier visit opened it.
     if (src !== 'mountain') await mountainOpenSaved();
+    // Island Odyssey likewise.
+    if (src !== 'odyssey') await odysseyOpenSaved();
     // The remake's APKs at an address saved on an earlier visit.
     if (typeof remakeOpenSaved === 'function') await remakeOpenSaved();
   };
