@@ -610,6 +610,61 @@ function mrAnTimeline(timelines, key) {
   return null;
 }
 
+/* Which voice files of Data/Sounds the program names. Its voices play
+   through FUN_00468b40(name), which opens sounds/<name>.wav, so a voice
+   the code names has its name, or a printf pattern of it (blw22.%d,
+   7-N%1d-%2d), among the program's strings. This reads every string of the
+   data sections whose address the code or a table of the data refers to,
+   and matches a plain name to the file of that name and a pattern, which
+   must start with a letter or digit, to the files it starts. keys are the
+   voices as mrGameFiles keys them (sounds/<name>.wav). Returns Map(key ->
+   the program's string), without the keys no string names. */
+function mrVoicesNamed(exe, keys) {
+  const { sections, code } = mrPe(exe);
+  const data = sections.filter(s => !s.code);
+  const strings = new Map();
+  for (const s of data) {
+    let start = s.raw;
+    for (let i = s.raw; i < s.raw + s.rsize; i++) {
+      if (exe[i] !== 0) continue;
+      if (i - start >= 3 && i - start < 200) {
+        let t = '';
+        for (let j = start; j < i; j++) t += String.fromCharCode(exe[j]);
+        if (/^[\x20-\x7e]+$/.test(t)) strings.set(s.va + start - s.raw, t);
+      }
+      start = i + 1;
+    }
+  }
+  const referred = new Set();
+  for (const s of [...code, ...data]) for (let i = s.raw; i + 4 <= s.raw + s.rsize; i++) { const v = mrU32(exe, i); if (strings.has(v)) referred.add(v); }
+  const names = new Map(), patterns = [];
+  for (const a of referred) {
+    const t = strings.get(a), base = t.replace(/\\/g, '/').split('/').pop().replace(/\.wav$/i, '');
+    if (base.length < 2) continue;
+    if (base.includes('%')) {
+      if (!/^[A-Za-z0-9][^%]/.test(base)) continue;
+      const rx = new RegExp('^' + base.split(/(%-?\d*[ds])/).map(p => /^%-?\d*d$/.test(p) ? `\\s*\\d{1,${(/\d+/.exec(p) || ['3'])[0]}}` : /^%-?\d*s$/.test(p) ? '.+?' : p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(''), 'i');
+      patterns.push({ rx, t });
+    } else if (!names.has(base.toLowerCase())) names.set(base.toLowerCase(), t);
+  }
+  const out = new Map();
+  for (const k of keys) {
+    const n = k.split('/').pop().replace(/\.wav$/i, '');
+    if (names.has(n.toLowerCase())) { out.set(k, names.get(n.toLowerCase())); continue; }
+    const p = patterns.find(p => p.rx.test(n));
+    if (p) out.set(k, p.t);
+  }
+  return out;
+}
+/* The place a voice is about, by the letters its name starts with, the
+   designers' short names for the places, or undefined. */
+const MR_VOICE_LETTERS = [['7-n', 'chez_norf'], ['tur', 'crazy_turtle'], ['wsl', 'waterslide'], ['aqu', 'aquacube'], ['mgw', 'magic_wall'], ['czn', 'chez_norf'], ['mym', 'mystic_marsh'], ['wlf', 'wall_of_fleens'], ['swb', 'snowboard'], ['blp', 'boolies'], ['blw', 'booliewood'], ['bc1', 'rescue1'], ['bc2', 'rescue2'], ['zbv', 'zombiniville'], ['ope', 'zombiniville']];
+function mrVoicePlace(key) {
+  const n = key.split('/').pop().toLowerCase();
+  const m = MR_VOICE_LETTERS.find(([l]) => n.startsWith(l));
+  return m ? MR_PLACE_BY_KEY.get(m[1]) : undefined;
+}
+
 /* archive.org's listing of an ISO's files (view_archive.php), as
    [{ path, size }]. Folders have no link and are left out. */
 function mrArchiveListing(html, iso) {
@@ -624,6 +679,7 @@ function mrArchiveListing(html, iso) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
+  mrVoicesNamed, mrVoicePlace,
   mrAnTimelines, mrAnTimeline, mrX86, mrRegisters, mrRegistersAt, mrProgramPath, mrPe,
   mrSoundPlace,
   mrAnmFrameTimes,

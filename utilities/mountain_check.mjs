@@ -141,6 +141,25 @@ let timesNote = '';
       timesNote += ` The ${lines.length} .an timelines of ${expected.size} names as mr_an_times.py reads them, for ${anKeys.filter(k => S.mrAnTimeline(lines, k)).length} of the ${anKeys.length} .an files.`;
     }
   }
+  // The voices the program names, from its strings and their references,
+  // against mr_voices.py's reading of the decompile, place by place.
+  const split = path.join(MR, 'ghidra', 'split');
+  if (fs.existsSync(exe) && fs.existsSync(split) && fs.existsSync(path.join(tools, 'mr_voices.py'))) {
+    const r = spawnSync('python3', ['-I', path.join(tools, 'mr_voices.py'), split, exe, path.join(DISC, 'Data', 'Sounds'), '--json'], { encoding: 'utf8', maxBuffer: 1 << 26 });
+    if (r.status !== 0) fail('mr_voices.py\n' + r.stderr);
+    else {
+      const expected = Object.entries(JSON.parse(r.stdout));
+      const keys = expected.map(([f]) => 'sounds/' + f.toLowerCase());
+      const actual = S.mrVoicesNamed(new Uint8Array(fs.readFileSync(exe)), keys);
+      let named = 0;
+      for (const [f, where] of expected) {
+        const k = 'sounds/' + f.toLowerCase();
+        if (where.length) named++;
+        if (!!where.length !== actual.has(k)) fail(`${f} is ${actual.has(k) ? 'named' : 'not named'} by the page and ${where.length ? 'named' : 'not named'} by mr_voices.py`);
+      }
+      timesNote += ` ${named} of the ${expected.length} voices named by the program as mr_voices.py finds them.`;
+    }
+  }
 }
 
 fs.closeSync(fd);

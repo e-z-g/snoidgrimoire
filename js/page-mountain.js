@@ -123,6 +123,7 @@ function mountainTake(entries, source) {
   MOUNTAIN.files.clear();
   MOUNTAIN_BYTES.clear();
   MOUNTAIN_TIMES = null;
+  MOUNTAIN_VOICES = null;
   for (const [key, e] of game) MOUNTAIN.files.set(key, { key, path: e.path, size: e.size, file: e.file, url: e.url });
   MOUNTAIN.source = source;
   $('start').hidden = true;
@@ -334,6 +335,16 @@ function mountainProgramTimes() {
   return MOUNTAIN_TIMES;
 }
 const mountainFrameTimes = () => mountainProgramTimes().then(t => t.anm);
+/* The voices of Data/Sounds the program names (mrVoicesNamed), read once:
+   Map(key -> the program's string), or null when the disc has no program. */
+let MOUNTAIN_VOICES = null;
+const isMountainVoice = k => /^sounds\/[^/]+\.wav$/.test(k);
+function mountainVoices() {
+  if (!MOUNTAIN_VOICES) MOUNTAIN_VOICES = MOUNTAIN.files.has('zoombini2.exe')
+    ? mountainBytes('zoombini2.exe').then(exe => mrVoicesNamed(exe, mountainKeys(isMountainVoice))).catch(() => null)
+    : Promise.resolve(null);
+  return MOUNTAIN_VOICES;
+}
 /* A canvas that plays frame(i) for i = 0 to n - 1 over and over, with a
    button to stop it. ms is the time a frame as the program gives it, and
    without it the player shows 12 frames a second, an estimate. steps, when
@@ -515,7 +526,15 @@ function mountainGalleryHead(view, title, sub) {
   if (!mountainIsOpen()) view.insertAdjacentHTML('beforeend', MOUNTAIN_NOT_OPEN);
 }
 function mountainSoundRows(d, keys) {
-  d.insertAdjacentHTML('beforeend', '<table class="plain">' + keys.map((k, i) => `<tr><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${mountainLink(k)}">${esc(mountainName(MOUNTAIN.files.get(k).path))}</a></td><td class="note">${MOUNTAIN.files.get(k).size.toLocaleString()} bytes</td><td>${mrSoundPlace(k) ? `<a href="#scenario/places/${mrSoundPlace(k).key}">${esc(mrSoundPlace(k).name)}</a>` : ''}</td></tr>`).join('') + '</table>');
+  const placeOf = k => mrSoundPlace(k) || (isMountainVoice(k) ? mrVoicePlace(k) : undefined);
+  d.insertAdjacentHTML('beforeend', '<table class="plain">' + keys.map((k, i) => `<tr><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${mountainLink(k)}">${esc(mountainName(MOUNTAIN.files.get(k).path))}</a></td><td class="note">${MOUNTAIN.files.get(k).size.toLocaleString()} bytes</td><td>${placeOf(k) ? `<a href="#scenario/places/${placeOf(k).key}">${esc(placeOf(k).name)}</a>` : ''}</td>${isMountainVoice(k) ? `<td class="note" data-voice="${i}"></td>` : ''}</tr>`).join('') + '</table>');
+  if (keys.some(isMountainVoice)) mountainVoices().then(named => {
+    if (!named) return;
+    for (const td of d.querySelectorAll('td[data-voice]')) {
+      const t = named.get(keys[+td.dataset.voice]);
+      td.innerHTML = t ? `named <code>${esc(t)}</code>` : 'never named, so never played';
+    }
+  });
   d.addEventListener('click', async e => {
     const btn = e.target.closest('button.play');
     if (!btn) return;
@@ -537,7 +556,7 @@ const MOUNTAIN_GALLERIES = {
   },
   sounds(view) {
     const keys = mountainKeys(k => mrKind(k) === 'sound' && !isMountainMusic(k));
-    mountainGalleryHead(view, 'Sounds', `${plural(keys.length, 'sound')} on the disc, besides the music, by folder. Each is a plain WAV file. An effect's name in FX starts with its place's number, as a tune's does.`);
+    mountainGalleryHead(view, 'Sounds', `${plural(keys.length, 'sound')} on the disc, besides the music, by folder. Each is a plain WAV file. An effect's name in FX starts with its place's number, as a tune's does. A voice's name starts with letters for its place. The program plays a voice by its name, or by a pattern such as <code>blw22.%d</code>, so a voice it never names is never played.`);
     mountainFolds(view, keys, mountainSoundRows);
   },
   music(view) {
