@@ -64,8 +64,9 @@ const MR_PUZZLES = {
     levels: ['Eight junctions.', 'Five branches joined at a central basin, with every Zoombini linked toward the Zoombini in the middle.', 'A more complex system, still linked to the Zoombini in the middle.'],
   },
   aquacube: {
-    goal: 'Unlabeled levers move a ball of light through a cube of bubbles, up and down, back and forth, and left and right. The light picks up the Zoombinis in their bubbles and may not cross the path behind it. A bubble with a Fleen is to be avoided.',
-    levels: ['6 moves.', '6 moves and one warp, which plots several moves as one turn and can jump over a Fleen.', 'A fourth lever moves between the inner and outer cubes, with 11 moves and two warps.'],
+    from: 'program',
+    goal: 'The bubbles are the corners of a cube, and each lever moves a ball of light along one axis. Each visit the levers get their axes in a random order. Every Zoombini in a bubble the light reaches goes to the beach. A Fleen\'s bubble lets the Fleen out, and then every Zoombini already on the beach goes back into the cube. The light may go back over its path, but the corners there are empty. A warp marks a set of levers and then moves the light along each marked axis in turn.',
+    levels: ['A cube of 8 corners, 3 levers, 1 Fleen in the far corner, 6 moves. The light starts in the near corner.', 'The same cube with 6 moves and one warp. The light starts at one of the three corners next to the near corner.', 'A four-axis cube of 16 corners (the inner and outer cubes), 4 levers, 4 Fleens, 11 moves and two warps. The light starts in the near corner.'],
   },
   magic_wall: {
     goal: 'Scarab beetles sit on colored markers. A tablet pressed etches its pattern between the markers, and the beetles swap places along it. When every beetle sits on the marker of its color, the lights over the four doors are on, and the lever lets four Zoombinis through. Solved twice, it lets all eight through. Moves are unlimited.',
