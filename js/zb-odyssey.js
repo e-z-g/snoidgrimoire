@@ -551,7 +551,7 @@ const IO_PUZZLES = {
   z3a2: {
     rules: [
       'The wall shows its glyphs in two rows. Each glyph stands for one of 10 values, and every value is on the wall at least once, the rest at random. The tiles show characters, and a pairing of the 10 characters with the 10 glyphs, dealt at random each time, links the two.',
-      'Each of the 12 tiles copies one stretch of the wall, as many glyphs long as the tile has characters. The glyphs left over are gaps between the stretches, placed at random. A tile in its place matches the wall, and a tile in the wrong place uses up one of the wrong tries.',
+      'Each of the 12 tiles copies one stretch of the wall, as many glyphs long as the tile has characters. The glyphs left over are gaps between the stretches, placed at random. Where the gaps leave room, the stretches of 3 tiles picked at random are copied into them, so each of those tiles matches two places on the wall. A tile in its place matches the wall, and a tile in the wrong place uses up one of the wrong tries.',
     ],
     settings: [['Characters on a tile', 'kGameCharCountPerTileList'], ['Glyphs on the wall', 'kGameGlyphCountList'], ['Grouped, with indentations', 'kGameDoClusterList'], ['Wrong tiles allowed', 'kGameWrongTriesList']],
   },
