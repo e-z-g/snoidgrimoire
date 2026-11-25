@@ -232,6 +232,23 @@ function ioAoFrame(b, ao, i, colors) {
 }
 
 /* An entry's kind by its name. */
+/* A .LIPS, as RCharacter::playSpeechUsingParts in trinket.dll reads it: three
+   i16 (a word under 0x200 for little-endian, a word the program never reads,
+   and the count), then for each record an i16 mouth shape and a u32, high word
+   first, that grows by one step each record (16.16 fixed point). The program
+   uses the shapes only, each as step shape + 1 of the speaker's lips
+   animation, and a shape past its last frame as 0. */
+function ioLips(b, start, end) {
+  const order = ioI16(b, start), unread = ioI16(b, start + 2), n = ioI16(b, start + 4);
+  if (order >= 0x200 || end - start !== 6 + 6 * n) throw new Error('a .LIPS that does not fit');
+  const shapes = [], marks = [];
+  for (let i = 0; i < n; i++) {
+    const o = start + 6 + 6 * i;
+    shapes.push(ioI16(b, o));
+    marks.push(ioU16(b, o + 2) * 65536 + ioU16(b, o + 4));
+  }
+  return { unread, shapes, marks };
+}
 function ioKind(name) {
   return { ao: 'animation', wav: 'sound', jpg: 'background', rgb: 'palette', lips: 'lip sync' }[name.split('.').pop().toLowerCase()] || 'other';
 }
@@ -599,5 +616,5 @@ if (typeof module !== 'undefined') module.exports = {
   IO_PLACES, IO_PLACE_BY_KEY, IO_LEVELS, IO_PUZZLES, ioWavLength, ioJpegLength, ioAo2cEnd, ioRle8Length, ioAo, ioEntries,
   ioPalette, ioAo2cFrame, ioRle8Frame, ioAoFrame, ioKind, ioGameFiles, ioLooksLike, ioPlaceXml,
   ioScript, ioScriptNames, ioScriptLists, ioScriptConstants, ioScriptSource,
-  ioCharacterKinds, ioCharacterParts, ioCharacterAos, ioCharacterSteps, ioCharacterDraw,
+  ioLips, ioCharacterKinds, ioCharacterParts, ioCharacterAos, ioCharacterSteps, ioCharacterDraw,
 };

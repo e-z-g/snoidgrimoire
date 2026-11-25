@@ -25,6 +25,7 @@ const VIEWS = [
   ['#odyssey/rsc/z3a2.bul/12435.ao', "/13 frames of 16-bit/.test(document.getElementById('view').textContent) && !!document.querySelector('#view canvas')"],
   ['#odyssey/rsc/z3options.bul/436.ao', "/8-bit color with the palette/.test(document.getElementById('view').textContent) && !!document.querySelector('#view canvas')"],
   ['#odyssey/rsc/z3a2.bul/12434.wav', "!!document.querySelector('#view audio')"],
+  ['#odyssey/rsc/z3a5.bul/18502.LIPS', "/40 mouth shapes, for the voice/.test(document.getElementById('view').textContent)"],
   ['#odyssey/rsc/z3bkgd.bul/12000.jpg', "!!document.querySelector('#view img')"],
   ['#odyssey/scripts/z3a2.xml', "/Tum-Tum/.test(document.getElementById('view').textContent)"],
   ['#scenario/places', "document.querySelectorAll('#view tr').length === 11"],

@@ -43,7 +43,7 @@ const paths = bundles.map(k => path.join(DISC, game.get(k).path));
 const py = spawnSync('python3', ['-I', path.join(tools, 'io_oracle.py'), ...paths], { encoding: 'utf8', maxBuffer: 1 << 28 });
 if (py.status !== 0) { console.log('FAIL: io_oracle.py\n' + py.stderr); process.exit(1); }
 const oracle = JSON.parse(py.stdout);
-let entries = 0, frames = 0;
+let entries = 0, frames = 0, lips = 0;
 for (const k of bundles) {
   const f = game.get(k), b = Buffer.alloc(f.size);
   fs.readSync(fd, b, 0, f.size, f.offset);
@@ -55,6 +55,12 @@ for (const k of bundles) {
   if (JSON.stringify(es.map(e => [e.name, e.start, e.end])) !== JSON.stringify(expected.map(e => [e.name, e.start, e.end]))) { fail(`${k}'s entries differ from io_bundle.py's`); continue; }
   const colors = new Map(es.filter(e => /\.rgb$/i.test(e.name)).map(e => [e.name.slice(0, -4).toLowerCase(), S.ioPalette(bytes, e.start)]));
   for (const e of expected) {
+    if (e.lips) {
+      lips++;
+      let l;
+      try { l = S.ioLips(bytes, e.start, e.end); } catch (err) { fail(`${k} ${e.name}: ${err.message}`); continue; }
+      if (JSON.stringify(l) !== JSON.stringify(e.lips)) fail(`${k} ${e.name} differs from io_bundle.py's`);
+    }
     if (!e.frames) continue;
     const ao = S.ioAo(bytes, e.start);
     e.frames.forEach((h, i) => {
@@ -130,5 +136,5 @@ const page = spawnSync('node', [path.join(ROOT, 'utilities', 'odyssey_page.mjs')
 const pageOut = (page.stdout || '') + (page.stderr || '');
 if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
 const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
-console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries and ${frames} frames, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them. ${drawn} steps of the characters, as io_snoid.py draws them.` + pageNote);
+console.log(`${iso.length} files on the ISO in ${reads} reads, ${game.size} of the game's. ${bundles.length} bundles, ${entries} entries, ${frames} frames and ${lips} lip syncs, ${bad ? bad + ' wrong' : 'every one as io_bundle.py reads it, pixel for pixel'}. ${S.IO_PLACES.length} places' XML with ${helps} pages of help. ${scripts} scripts, ${statements} lines of source, as io_script.py prints them. ${drawn} steps of the characters, as io_snoid.py draws them.` + pageNote);
 process.exit(bad ? 1 : 0);

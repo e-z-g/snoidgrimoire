@@ -294,7 +294,10 @@ async function odysseyEntryView(view, key, name, seq) {
     const colors = ioPalette(bundle.b, e.start);
     view.insertAdjacentHTML('beforeend', '<div class="swatches">' + colors.map((c, i) => `<span title="${i}, ${c.join(', ')}" style="display:inline-block;width:14px;height:14px;background:rgb(${c.join(',')})"></span>`).join('') + '</div>');
   } else {
-    view.insertAdjacentHTML('beforeend', '<p class="note">Lip sync for a voice, whose format nobody has read.</p>');
+    let l;
+    try { l = ioLips(bundle.b, e.start, e.end); } catch (err) { view.insertAdjacentHTML('beforeend', `<p class="note">This lip sync does not read (${esc(err.message)}).</p>`); return; }
+    const voice = bundle.byName.get(e.name.toLowerCase().replace(/\.lips$/, '.wav'));
+    view.insertAdjacentHTML('beforeend', `<p>${plural(l.shapes.length, 'mouth shape')}${voice ? `, for the voice <a href="${odysseyLink(`${bundle.key}/${voice.name}`)}">${esc(voice.name)}</a>` : ''}. Each shape is a step of the speaker's lips animation, step shape + 1 (RCharacter::playSpeechUsingParts in trinket.dll).</p><p class="ids">${l.shapes.join(' ')}</p><p class="note">Each record also has a 16.16 number that grows by ${l.shapes.length > 1 ? (l.marks[1] - l.marks[0]).toLocaleString() : 'one step'} a record, and the header a word (${l.unread}). The program reads neither.</p>`);
   }
 }
 
