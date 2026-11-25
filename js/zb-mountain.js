@@ -33,20 +33,28 @@
    Data/Bmp and the names that the user's guide gives them. */
 const MR_PLACES = [
   { key: 'zombiniville', name: 'Zoombiniville', kind: 'the start', background: 'zombiniville/zoombiniville.bb' },
-  { key: 'crazy_turtle', name: 'Turtle Hurdle', kind: 'puzzle', background: 'crazy_turtle/background.bb' },
-  { key: 'waterslide', name: 'Pipes of Paloo', kind: 'puzzle', background: 'waterslide/waterslides.bb' },
-  { key: 'aquacube', name: 'Aqua Cube', kind: 'puzzle', background: 'aquacube/background.bb' },
-  { key: 'rescue1', name: 'Rescue Site I', kind: 'rest stop', background: 'rescue1/background.bb' },
-  { key: 'magic_wall', name: 'Beetle Bug Alley', kind: 'puzzle, left route', background: 'magic_wall/magic wall.bb' },
-  { key: 'chez_norf', name: 'Chez Norf', kind: 'puzzle, left route', background: 'chez_norf/baquegund.bb' },
-  { key: 'mystic_marsh', name: 'Bubble Bumpers', kind: 'puzzle, right route', background: 'mystic_marsh/background1.bb' },
-  { key: 'wall_of_fleens', name: 'Magic Mirrors', kind: 'puzzle, right route', background: 'wall_of_fleens/background.bb' },
-  { key: 'rescue2', name: 'Rescue Site II', kind: 'rest stop', background: 'rescue2/background.bb' },
-  { key: 'snowboard', name: 'Snowboard Gulch', kind: 'puzzle', background: 'snowboard/snowboard-easy.bb' },
-  { key: 'boolies', name: 'Boolie Boggle', kind: 'puzzle', background: 'boolies/background.bb' },
+  { key: 'crazy_turtle', name: 'Turtle Hurdle', kind: 'puzzle', background: 'crazy_turtle/background.bb' , sound: '08' },
+  { key: 'waterslide', name: 'Pipes of Paloo', kind: 'puzzle', background: 'waterslide/waterslides.bb' , sound: '02' },
+  { key: 'aquacube', name: 'Aqua Cube', kind: 'puzzle', background: 'aquacube/background.bb' , sound: '03' },
+  { key: 'rescue1', name: 'Rescue Site I', kind: 'rest stop', background: 'rescue1/background.bb' , sound: 'C1' },
+  { key: 'magic_wall', name: 'Beetle Bug Alley', kind: 'puzzle, left route', background: 'magic_wall/magic wall.bb' , sound: '06' },
+  { key: 'chez_norf', name: 'Chez Norf', kind: 'puzzle, left route', background: 'chez_norf/baquegund.bb' , sound: '07' },
+  { key: 'mystic_marsh', name: 'Bubble Bumpers', kind: 'puzzle, right route', background: 'mystic_marsh/background1.bb' , sound: '04' },
+  { key: 'wall_of_fleens', name: 'Magic Mirrors', kind: 'puzzle, right route', background: 'wall_of_fleens/background.bb' , sound: '05' },
+  { key: 'rescue2', name: 'Rescue Site II', kind: 'rest stop', background: 'rescue2/background.bb' , sound: 'C2' },
+  { key: 'snowboard', name: 'Snowboard Gulch', kind: 'puzzle', background: 'snowboard/snowboard-easy.bb' , sound: '01' },
+  { key: 'boolies', name: 'Boolie Boggle', kind: 'puzzle', background: 'boolies/background.bb' , sound: '09' },
   { key: 'booliewood', name: 'Booliewood', kind: 'the end', background: 'booliewood/background.bb' },
 ];
 const MR_PLACE_BY_KEY = new Map(MR_PLACES.map(p => [p.key, p]));
+/* The place whose number a sound's name starts with, or undefined. The
+   designers numbered the places in an order unlike the journey's (sound in MR_PLACES),
+   and the music and effects begin with it, as in music/02-BS01.wav for the
+   Pipes of Paloo, which the program loads there. */
+function mrSoundPlace(key) {
+  const m = /(?:^|\/)(\d\d|C\d)-[^/]*$/i.exec(key);
+  return m ? MR_PLACES.find(p => p.sound === m[1].toUpperCase()) : undefined;
+}
 
 /* The puzzles' goals and levels. Those marked from: 'program' are read
    from the program (zoombini-workbench's doc/MOUNTAIN-RESCUE.md, "The
@@ -401,6 +409,7 @@ function mrArchiveListing(html, iso) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
+  mrSoundPlace,
   mrAnmFrameTimes,
   MR_PLACES, MR_PLACE_BY_KEY, MR_LEVELS, MR_PUZZLES, MR_PARTS, MR_ANM_SLOTS,
   mrReadBb, mrReadRb, mrReadAn, mrAnmSlots, mrAnmFrame, mrAnmSlot, mrAnmSlotName, mrAnmViews,

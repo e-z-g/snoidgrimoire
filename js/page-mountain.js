@@ -498,7 +498,7 @@ function mountainGalleryHead(view, title, sub) {
   if (!mountainIsOpen()) view.insertAdjacentHTML('beforeend', MOUNTAIN_NOT_OPEN);
 }
 function mountainSoundRows(d, keys) {
-  d.insertAdjacentHTML('beforeend', '<table class="plain">' + keys.map((k, i) => `<tr><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${mountainLink(k)}">${esc(mountainName(MOUNTAIN.files.get(k).path))}</a></td><td class="note">${MOUNTAIN.files.get(k).size.toLocaleString()} bytes</td></tr>`).join('') + '</table>');
+  d.insertAdjacentHTML('beforeend', '<table class="plain">' + keys.map((k, i) => `<tr><td><button class="play" data-i="${i}" title="Play">▶</button></td><td><a href="${mountainLink(k)}">${esc(mountainName(MOUNTAIN.files.get(k).path))}</a></td><td class="note">${MOUNTAIN.files.get(k).size.toLocaleString()} bytes</td><td>${mrSoundPlace(k) ? `<a href="#scenario/places/${mrSoundPlace(k).key}">${esc(mrSoundPlace(k).name)}</a>` : ''}</td></tr>`).join('') + '</table>');
   d.addEventListener('click', async e => {
     const btn = e.target.closest('button.play');
     if (!btn) return;
@@ -520,12 +520,12 @@ const MOUNTAIN_GALLERIES = {
   },
   sounds(view) {
     const keys = mountainKeys(k => mrKind(k) === 'sound' && !isMountainMusic(k));
-    mountainGalleryHead(view, 'Sounds', `${plural(keys.length, 'sound')} on the disc, besides the music, by folder. Each is a plain WAV file.`);
+    mountainGalleryHead(view, 'Sounds', `${plural(keys.length, 'sound')} on the disc, besides the music, by folder. Each is a plain WAV file. An effect's name in FX starts with its place's number, as a tune's does.`);
     mountainFolds(view, keys, mountainSoundRows);
   },
   music(view) {
     const keys = mountainKeys(k => mrKind(k) === 'sound' && isMountainMusic(k));
-    mountainGalleryHead(view, 'Music', `${plural(keys.length, 'tune')}, recordings that the installer copies to the disk from <code>INSTALL/HD/sounds/music</code>.`);
+    mountainGalleryHead(view, 'Music', `${plural(keys.length, 'tune')}, recordings that the installer copies to the disk from <code>INSTALL/HD/sounds/music</code>. A tune's name starts with its place's number, in the designers' order, and the program plays it there.`);
     mountainFolds(view, keys, mountainSoundRows);
   },
   text(view) {
