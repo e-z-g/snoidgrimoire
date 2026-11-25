@@ -274,7 +274,14 @@ async function mountainFileView(view, key, seq) {
   } else if (kind === 'animation') {
     const frames = mrReadAn(b);
     view.insertAdjacentHTML('beforeend', `<p>${plural(frames.length, 'frame')} of ${frames[0].width} × ${frames[0].height}.</p>`);
-    mountainPlayer(view, i => frames[i % frames.length], frames.length);
+    const box = document.createElement('div');
+    view.appendChild(box);
+    mountainProgramTimes().then(t => {
+      if (!box.isConnected) return;
+      const line = mrAnTimeline(t.an, key);
+      const steps = line && line.frames.length && line.frames.every(f => f[0] == null || f[0] < frames.length) ? line.frames : null;
+      mountainPlayer(box, i => frames[i % frames.length], frames.length, 2, 0, steps);
+    });
     const strip = document.createElement('div');
     strip.className = 'cards';
     frames.forEach((fr, i) => { const d = document.createElement('div'); d.className = 'card'; d.innerHTML = `<div class="pic"></div><div class="cap">frame ${i}</div>`; d.firstChild.appendChild(mountainThumb(fr)); strip.appendChild(d); });
@@ -316,43 +323,53 @@ function mountainPictureBlock(view, pic, name) {
   t.firstChild.addEventListener('click', () => c.toBlob(bl => mountainSave(bl, name)));
   view.appendChild(t);
 }
-/* Each .anm's time a frame from zoombini2.exe (mrAnmFrameTimes), once, or
-   an empty Map when the disc has no program. */
+/* What the program on the disc gives for playing animations, read once:
+   each .anm's time a frame (mrAnmFrameTimes) and each .an's frames and times
+   (mrAnTimelines). Empty when the disc has no program. */
 let MOUNTAIN_TIMES = null;
-function mountainFrameTimes() {
+function mountainProgramTimes() {
   if (!MOUNTAIN_TIMES) MOUNTAIN_TIMES = MOUNTAIN.files.has('zoombini2.exe')
-    ? mountainBytes('zoombini2.exe').then(mrAnmFrameTimes).catch(() => new Map())
-    : Promise.resolve(new Map());
+    ? mountainBytes('zoombini2.exe').then(exe => ({ anm: mrAnmFrameTimes(exe), an: mrAnTimelines(exe) })).catch(() => ({ anm: new Map(), an: [] }))
+    : Promise.resolve({ anm: new Map(), an: [] });
   return MOUNTAIN_TIMES;
 }
+const mountainFrameTimes = () => mountainProgramTimes().then(t => t.anm);
 /* A canvas that plays frame(i) for i = 0 to n - 1 over and over, with a
    button to stop it. ms is the time a frame as the program gives it, and
-   without it the player shows 12 frames a second, an estimate. */
-function mountainPlayer(view, frame, n, scale = 2, ms = 0) {
+   without it the player shows 12 frames a second, an estimate. steps, when
+   given, is the program's timeline instead, [[frame, ms]] in order. */
+function mountainPlayer(view, frame, n, scale = 2, ms = 0, steps = null) {
   const first = frame(0), c = mountainCanvas(first);
   c.className = 'px';
   c.style.width = first.width * scale + 'px';
   c.style.height = first.height * scale + 'px';
   const box = document.createElement('div');
   box.className = 'tools';
-  box.innerHTML = '<button>Stop</button> <span class="note">' + (ms ? `${ms} ms a frame, as the game plays it` : '12 frames a second, an estimate') + '</span>';
+  const total = steps ? steps.reduce((a, s) => a + (s[1] || 0), 0) : 0;
+  box.innerHTML = '<button>Stop</button> <span class="note">' + (steps ? `${plural(steps.length, 'step')} over ${(total / 1000).toLocaleString()} s, as the game plays it` : ms ? `${ms} ms a frame, as the game plays it` : '12 frames a second, an estimate') + '</span>';
   const wait = ms || 1000 / 12;
+  if (steps) n = steps.length;
   view.appendChild(c);
   view.appendChild(box);
   let i = 0, on = n > 1;
   const btn = box.firstChild;
   btn.addEventListener('click', () => { on = !on; btn.textContent = on ? 'Stop' : 'Play'; });
+  const show = k => {
+    const p = frame(k);
+    if (p.width !== c.width || p.height !== c.height) { c.width = p.width; c.height = p.height; }
+    c.getContext('2d').putImageData(new ImageData(p.data, p.width, p.height), 0, 0);
+  };
+  const stepTime = k => (steps && steps[k][1] != null ? steps[k][1] : wait);
   const tick = () => {
     if (!c.isConnected) return;
     if (on) {
       i = (i + 1) % n;
-      const p = frame(i);
-      if (p.width !== c.width || p.height !== c.height) { c.width = p.width; c.height = p.height; }
-      c.getContext('2d').putImageData(new ImageData(p.data, p.width, p.height), 0, 0);
+      show(steps ? steps[i][0] ?? 0 : i);
     }
-    setTimeout(tick, wait);
+    setTimeout(tick, stepTime(i));
   };
-  if (n > 1) setTimeout(tick, wait); else btn.hidden = true;
+  if (steps) show(steps[0][0] ?? 0);
+  if (n > 1) setTimeout(tick, stepTime(0)); else btn.hidden = true;
   return c;
 }
 

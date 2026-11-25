@@ -343,7 +343,9 @@ function mrLooksLike(paths) {
    where most go are the frame times. A time pushed from a register
    (BigZomb.anm's) is left out. Returns Map(path in lower case, as
    mrGameFiles keys it -> ms). */
-function mrAnmFrameTimes(exe) {
+/* zoombini2.exe's sections, a string at an address, and calls: the bytes a
+   reader of its code needs. */
+function mrPe(exe) {
   const pe = mrU32(exe, 0x3c), count = mrU16(exe, pe + 6), optional = mrU16(exe, pe + 20);
   const base = mrU32(exe, pe + 24 + 28), sections = [];
   for (let i = 0; i < count; i++) {
@@ -355,21 +357,27 @@ function mrAnmFrameTimes(exe) {
     const o = at(va);
     if (o < 0) return '';
     let t = '';
-    for (let i = o; i < exe.length && exe[i] && t.length < 120; i++) t += String.fromCharCode(exe[i]);
+    for (let i = o; i < exe.length && exe[i] && t.length < 200; i++) t += String.fromCharCode(exe[i]);
     return t;
   };
+  const code = sections.filter(s => s.code);
+  const isCode = va => code.some(c => va >= c.va && va < c.va + c.rsize);
+  // The target of a call (e8 rel32) at file offset i.
+  const target = i => { const s = code.find(s => i >= s.raw && i < s.raw + s.rsize); return s ? (s.va + i - s.raw + 5 + (mrU32(exe, i + 1) | 0)) >>> 0 : 0; };
   // A call within limit bytes of o whose target is code. An address byte of
   // 0xe8 pushed before it fails the test.
-  const code = sections.filter(s => s.code);
   const callAfter = (o, limit) => {
-    for (let i = o; i < o + limit && i + 5 <= exe.length; i++) {
-      if (exe[i] !== 0xe8) continue;
-      const s = code.find(s => o >= s.raw && o < s.raw + s.rsize);
-      const target = s ? (s.va + i - s.raw + 5 + (mrU32(exe, i + 1) | 0)) >>> 0 : 0;
-      if (code.some(c => target >= c.va && target < c.va + c.rsize)) return i;
-    }
+    for (let i = o; i < o + limit && i + 5 <= exe.length; i++) if (exe[i] === 0xe8 && isCode(target(i))) return i;
     return -1;
   };
+  return { sections, code, at, text, target, isCode, callAfter };
+}
+/* A path as the program writes it, ./bmp/x.bmp or .\bmp\x.bmp, as
+   mrGameFiles keys it, in lower case. */
+const mrProgramPath = name => name.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+
+function mrAnmFrameTimes(exe) {
+  const { code, text, callAfter } = mrPe(exe);
   const found = [];
   for (const s of code) {
     for (let i = s.raw; i + 5 <= s.raw + s.rsize; i++) {
@@ -386,13 +394,220 @@ function mrAnmFrameTimes(exe) {
       if (exe[j] === 0x68) j += 5; else if (exe[j] >= 0x50 && exe[j] <= 0x57) j += 1; else continue;
       if (exe[j] !== 0xe8) continue;
       const target = (s.va + j - s.raw + 5 + (mrU32(exe, j + 1) | 0)) >>> 0;
-      found.push({ path: name.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase(), target, ms });
+      found.push({ path: mrProgramPath(name), target, ms });
     }
   }
   const votes = new Map();
   for (const f of found) votes.set(f.target, (votes.get(f.target) || 0) + 1);
   const best = [...votes].sort((a, b) => b[1] - a[1])[0];
   return new Map(best ? found.filter(f => f.target === best[0]).map(f => [f.path, f.ms]) : []);
+}
+
+/* The length of the 32-bit x86 instruction at b[pc], and what it does to
+   the eight general registers, as much as mrRegisters needs. Covers the
+   one-byte opcodes and the common 0F ones. Returns { len, op, modrm, imm }
+   or null for an opcode outside those. */
+const MR_MODRM = new Set([0x00, 0x01, 0x02, 0x03, 0x08, 0x09, 0x0a, 0x0b, 0x10, 0x11, 0x12, 0x13, 0x18, 0x19, 0x1a, 0x1b, 0x20, 0x21, 0x22, 0x23, 0x28, 0x29, 0x2a, 0x2b, 0x30, 0x31, 0x32, 0x33, 0x38, 0x39, 0x3a, 0x3b, 0x62, 0x63, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0xc4, 0xc5, 0xd0, 0xd1, 0xd2, 0xd3, 0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf, 0xfe, 0xff]);
+function mrX86(b, pc) {
+  const start = pc;
+  let wide = false;
+  while ([0x26, 0x2e, 0x36, 0x3e, 0x64, 0x65, 0x66, 0x67, 0xf0, 0xf2, 0xf3].includes(b[pc])) { if (b[pc] === 0x66) wide = true; pc++; }
+  const imm32 = wide ? 2 : 4;
+  let op = b[pc++], two = false, modrm = -1, imm = 0;
+  const readModrm = () => {
+    modrm = b[pc++];
+    const mod = modrm >> 6, rm = modrm & 7;
+    if (mod === 3) return;
+    if (rm === 4) { const sib = b[pc++]; if (mod === 0 && (sib & 7) === 5) pc += 4; }
+    else if (mod === 0 && rm === 5) pc += 4;
+    if (mod === 1) pc += 1; else if (mod === 2) pc += 4;
+  };
+  if (op === 0x0f) {
+    two = true;
+    op = b[pc++];
+    if (op >= 0x80 && op <= 0x8f) imm = 4;
+    else if ([0x31, 0xa2].includes(op) || (op >= 0xc8 && op <= 0xcf)) imm = 0;
+    else if ([0xa4, 0xac, 0xba].includes(op)) { readModrm(); imm = 1; }
+    else if ((op >= 0x40 && op <= 0x4f) || (op >= 0x90 && op <= 0x9f) || [0xa3, 0xa5, 0xab, 0xad, 0xaf, 0xb3, 0xb6, 0xb7, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0x1f, 0x10, 0x11, 0x28, 0x29, 0x2e, 0x2f, 0x54, 0x57, 0x58, 0x59, 0x5c, 0x5e].includes(op)) readModrm();
+    else return null;
+  } else if (MR_MODRM.has(op)) readModrm();
+  else if ([0x80, 0x82, 0x83, 0x6b, 0xc0, 0xc1, 0xc6].includes(op)) { readModrm(); imm = 1; }
+  else if ([0x81, 0x69, 0xc7].includes(op)) { readModrm(); imm = imm32; }
+  else if (op === 0xf6 || op === 0xf7) { readModrm(); if (((modrm >> 3) & 7) < 2) imm = op === 0xf6 ? 1 : imm32; }
+  else if ([0x04, 0x0c, 0x14, 0x1c, 0x24, 0x2c, 0x34, 0x3c, 0x6a, 0xa8, 0xcd, 0xeb, 0xd4, 0xd5].includes(op) || (op >= 0x70 && op <= 0x7f) || (op >= 0xb0 && op <= 0xb7) || (op >= 0xe0 && op <= 0xe7)) imm = 1;
+  else if ([0x05, 0x0d, 0x15, 0x1d, 0x25, 0x2d, 0x35, 0x3d, 0x68, 0xa9].includes(op) || (op >= 0xb8 && op <= 0xbf)) imm = imm32;
+  else if (op === 0xe8 || op === 0xe9) imm = 4;
+  else if (op >= 0xa0 && op <= 0xa3) imm = 4;
+  else if (op === 0xc2 || op === 0xca) imm = 2;
+  else if (op === 0xc8) imm = 3;
+  else if (op === 0x9a || op === 0xea) imm = 6;
+  else if ((op >= 0x40 && op <= 0x61) || (op >= 0x90 && op <= 0x99) || (op >= 0x9b && op <= 0x9f) || (op >= 0xa4 && op <= 0xa7) || (op >= 0xaa && op <= 0xaf) || [0x06, 0x07, 0x0e, 0x16, 0x17, 0x1e, 0x1f, 0x27, 0x2f, 0x37, 0x3f, 0x6c, 0x6d, 0x6e, 0x6f, 0xc3, 0xc9, 0xcb, 0xcc, 0xce, 0xcf, 0xd6, 0xd7, 0xf4, 0xf5, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd].includes(op)) imm = 0;
+  else return null;
+  const at = pc;
+  pc += imm;
+  return { len: pc - start, op, two, modrm, imm: imm === 4 ? mrU32(b, at) | 0 : imm === 1 ? (b[at] > 127 ? b[at] - 256 : b[at]) : 0 };
+}
+/* The eight registers after an instruction, from those before: known values
+   kept where the instruction cannot change them, set where it is xor r, r,
+   mov r, imm, mov r, r, inc or dec, and unknown (null) where it may write. */
+function mrRegisters(regs, x) {
+  const r = regs.slice(), lose = i => { r[i] = null; }, op = x.op, reg = (x.modrm >> 3) & 7, rm = x.modrm & 7, direct = x.modrm >> 6 === 3;
+  if (x.two) {
+    if ((op >= 0x40 && op <= 0x4f) || [0xaf, 0xb6, 0xb7, 0xbe, 0xbf, 0xbc, 0xbd].includes(op)) lose(reg);
+    else if (op >= 0x90 && op <= 0x9f && direct) lose(rm & 3);
+    else if (op === 0x31 || op === 0xa2) { lose(0); lose(1); lose(2); lose(3); }
+    else if (op >= 0xc8 && op <= 0xcf) lose(op - 0xc8);
+    else if ([0xa4, 0xac, 0xa5, 0xad, 0xab, 0xb3, 0xbb, 0xba].includes(op) && direct) lose(rm);
+    return r;
+  }
+  if ((op === 0x33 || op === 0x31 || op === 0x2b || op === 0x29) && direct && reg === rm) { r[reg] = 0; return r; }
+  if (op >= 0xb8 && op <= 0xbf) { r[op - 0xb8] = x.imm >>> 0; return r; }
+  if (op === 0x8b && direct) { r[reg] = r[rm]; return r; }
+  if (op === 0x89 && direct) { r[rm] = r[reg]; return r; }
+  if (op >= 0x40 && op <= 0x47) { if (r[op - 0x40] != null) r[op - 0x40]++; return r; }
+  if (op >= 0x48 && op <= 0x4f) { if (r[op - 0x48] != null) r[op - 0x48]--; return r; }
+  if (op === 0x83 && direct && reg === 0 && r[rm] != null) { r[rm] += x.imm; return r; }
+  if (op === 0x83 && direct && reg === 5 && r[rm] != null) { r[rm] -= x.imm; return r; }
+  if (op >= 0x58 && op <= 0x5f) { lose(op - 0x58); return r; }
+  if (op >= 0x91 && op <= 0x97) { lose(0); lose(op - 0x90); return r; }
+  if (op >= 0xb0 && op <= 0xb7) { lose((op - 0xb0) & 3); return r; }
+  if (op === 0xe8 || (op === 0xff && reg === 2)) { lose(0); lose(1); lose(2); return r; }
+  if (op === 0x99 || op === 0x98) { lose(0); lose(2); return r; }
+  if (op >= 0xa4 && op <= 0xaf) { lose(0); lose(1); lose(6); lose(7); return r; }
+  if (op === 0x61) { for (let i = 0; i < 8; i++) if (i !== 4) lose(i); return r; }
+  if (op === 0xa1) { lose(0); return r; }
+  const writesReg = [0x02, 0x03, 0x0a, 0x0b, 0x12, 0x13, 0x1a, 0x1b, 0x22, 0x23, 0x2a, 0x2b, 0x32, 0x33, 0x8a, 0x8b, 0x8d, 0x69, 0x6b, 0x86, 0x87, 0x62, 0x63, 0xc4, 0xc5];
+  const writesRm = [0x00, 0x01, 0x08, 0x09, 0x10, 0x11, 0x18, 0x19, 0x20, 0x21, 0x28, 0x29, 0x30, 0x31, 0x88, 0x89, 0xc6, 0xc7, 0x80, 0x81, 0x82, 0x83, 0xc0, 0xc1, 0xd0, 0xd1, 0xd2, 0xd3, 0xfe, 0xff, 0x8f, 0x86, 0x87];
+  const byte = [0x02, 0x0a, 0x12, 0x1a, 0x22, 0x2a, 0x32, 0x8a, 0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x88, 0xc6, 0x80, 0x82, 0xc0, 0xd0, 0xd2, 0xfe, 0x86].includes(op);
+  if (writesReg.includes(op)) lose(byte ? reg & 3 : reg);
+  if (writesRm.includes(op) && direct && !((op === 0x80 || op === 0x81 || op === 0x83) && reg === 7) && !(op === 0xff && reg >= 2)) lose(byte ? rm & 3 : rm);
+  if ((op === 0xf6 || op === 0xf7) && reg >= 4) { lose(0); lose(2); }
+  else if ((op === 0xf6 || op === 0xf7) && reg >= 2 && direct) lose(op === 0xf6 ? rm & 3 : rm);
+  return r;
+}
+/* The registers at file offset i, decoding from the start of the function
+   around it: the nearest offset before, on a 16-byte boundary after padding
+   or a return, that opens with a prologue (the SEH frame's mov eax, fs:[0],
+   push ebp; mov ebp, esp, or sub esp) and from which instructions run
+   exactly to i. Unknown registers
+   are null. A branch is not followed, so a value set on one path counts on
+   every path after it. */
+function mrRegistersAt(exe, i) {
+  for (let p = i - (i % 16); p > i - 40000 && p > 0; p -= 16) {
+    if (![0xcc, 0xc3, 0x90].includes(exe[p - 1]) && !(exe[p - 3] === 0xc2 && exe[p - 1] === 0)) continue;
+    const prologue = (exe[p] === 0x64 && exe[p + 1] === 0xa1 && mrU32(exe, p + 2) === 0) || (exe[p] === 0x55 && exe[p + 1] === 0x8b && exe[p + 2] === 0xec)
+      || (exe[p] === 0x83 && exe[p + 1] === 0xec) || (exe[p] === 0x81 && exe[p + 1] === 0xec) || (exe[p] === 0x6a && exe[p + 1] === 0xff && exe[p + 2] === 0x68);
+    if (!prologue) continue;
+    let pc = p, regs = new Array(8).fill(null), ok = true;
+    while (pc < i) {
+      const x = mrX86(exe, pc);
+      if (!x) { ok = false; break; }
+      regs = mrRegisters(regs, x);
+      pc += x.len;
+    }
+    if (ok && pc === i) return regs;
+  }
+  return new Array(8).fill(null);
+}
+
+/* Each .an animation's frames and times, out of zoombini2.exe. A scene makes
+   an animated sprite, loads its file with a call whose last push is the
+   name, and then adds the frames, each a call with mov ecx, [g], push ms,
+   push frame. The name is a .bmp string, whose frames are the .an of the
+   same name, or a printf format (f%dattend.bmp) when the scene builds it in
+   a buffer first. This runs the instructions after the load (pushes, jumps,
+   and cmp and jl for a loop over the frames, stepping over any other
+   instruction mrX86 decodes) up to a conditional branch, a return or another
+   call, with the registers as the function leaves them at the load
+   (mrRegistersAt). Returns [{ name, frames: [[frame, ms]] }], name as
+   mrGameFiles keys a file but with .an, and a frame or time it cannot work
+   out as null (FUN_00455f70 and FUN_00455f30 in the 2001 Windows build). */
+function mrAnTimelines(exe) {
+  const { code, text, target } = mrPe(exe);
+  const bmp = va => { const t = text(va); return /bmp/i.test(t) && /\.bmp$/i.test(t) ? t : ''; };
+  // The last push before a call at i, past mov [g], eax (a3 g), mov ecx,
+  // eax (8b c8) and mov ecx, [g] (8b 0d g): its offset, or -1.
+  const lastPush = i => {
+    let j = i;
+    if (exe[j - 5] === 0xa3) j -= 5;
+    if (exe[j - 2] === 0x8b && exe[j - 1] === 0xc8) j -= 2;
+    else if (exe[j - 6] === 0x8b && exe[j - 5] === 0x0d) j -= 6;
+    if (exe[j - 5] === 0x68) return j - 5;
+    if (exe[j - 1] >= 0x50 && exe[j - 1] <= 0x57) return j - 1;
+    return -1;
+  };
+  // The load function: the target most called with a .bmp string pushed last,
+  // with a frame call next.
+  const calls = [], votes = new Map();
+  for (const s of code) {
+    for (let i = s.raw + 12; i + 5 <= s.raw + s.rsize; i++) {
+      if (exe[i] !== 0xe8) continue;
+      const p = lastPush(i);
+      if (p < 0) continue;
+      const t = target(i);
+      calls.push({ i, t, p });
+      // the first frame comes right after a load: mov ecx, [g]; push; push
+      if (exe[p] === 0x68 && bmp(mrU32(exe, p + 1)) && exe[i + 5] === 0x8b && exe[i + 6] === 0x0d) votes.set(t, (votes.get(t) || 0) + 1);
+    }
+  }
+  const best = [...votes].sort((a, b) => b[1] - a[1])[0];
+  if (!best) return [];
+  const out = [];
+  let frameCall = null;
+  for (const { i, p } of calls.filter(c => c.t === best[0])) {
+    let name = exe[p] === 0x68 ? bmp(mrU32(exe, p + 1)) : '';
+    // a buffer: the nearest .bmp string, or format, pushed or moved into a
+    // register in the 300 bytes before, which the scene copies or prints there
+    for (let j = p - 1; !name && j > p - 300; j--) if (exe[j] === 0x68 || (exe[j] >= 0xb8 && exe[j] <= 0xbf)) name = bmp(mrU32(exe, j + 1));
+    if (!name) continue;
+    let regs = mrRegistersAt(exe, i);
+    const frames = [], stack = [];
+    regs[0] = regs[1] = regs[2] = null;   // the load call may change eax, ecx and edx
+    let pc = i + 5, flags = null, steps = 0;
+    const s8 = b => (b > 127 ? b - 256 : b);
+    while (steps++ < 4000) {
+      const op = exe[pc];
+      if (op === 0x8b && exe[pc + 1] === 0x0d) { pc += 6; continue; }               // mov ecx, [g]
+      if (op === 0xeb) { pc += 2 + s8(exe[pc + 1]); continue; }                     // jmp short
+      if (op === 0xe9) { pc += 5 + (mrU32(exe, pc + 1) | 0); continue; }            // jmp
+      if (op === 0x6a) { stack.push(s8(exe[pc + 1])); pc += 2; continue; }          // push imm8
+      if (op === 0x68) { stack.push(mrU32(exe, pc + 1)); pc += 5; continue; }       // push imm32
+      if (op >= 0x50 && op <= 0x57) { stack.push(regs[op - 0x50]); pc += 1; continue; }
+      if (op === 0x33 && (exe[pc + 1] & 0xc0) === 0xc0 && ((exe[pc + 1] >> 3) & 7) === (exe[pc + 1] & 7)) { regs[exe[pc + 1] & 7] = 0; pc += 2; continue; }
+      if (op >= 0xb8 && op <= 0xbf) { regs[op - 0xb8] = mrU32(exe, pc + 1); pc += 5; continue; }
+      if (op >= 0x40 && op <= 0x47) { const r = op - 0x40; if (regs[r] != null) regs[r]++; pc += 1; continue; }
+      if (op === 0x83 && (exe[pc + 1] & 0xf8) === 0xf8) { const r = exe[pc + 1] & 7; flags = regs[r] == null ? null : regs[r] - s8(exe[pc + 2]); pc += 3; continue; }
+      if (op === 0x81 && (exe[pc + 1] & 0xf8) === 0xf8) { const r = exe[pc + 1] & 7; flags = regs[r] == null ? null : regs[r] - (mrU32(exe, pc + 2) | 0); pc += 6; continue; }
+      if (op === 0x7c) { if (flags == null) break; pc = flags < 0 ? pc + 2 + s8(exe[pc + 1]) : pc + 2; continue; }
+      if (op === 0xe8 && stack.length >= 2) {
+        const t = target(pc);
+        if (frameCall == null) frameCall = t;
+        if (t !== frameCall) break;
+        const frame = stack.pop(), ms = stack.pop();
+        frames.push([frame, ms]);
+        stack.length = 0;
+        pc += 5;
+        continue;
+      }
+      // anything else mrX86 decodes, up to a branch, a return or a call
+      const x = mrX86(exe, pc);
+      if (!x || x.op === 0xe8 || x.op === 0xc3 || x.op === 0xc2 || (!x.two && x.op >= 0x70 && x.op <= 0x7f) || (x.two && x.op >= 0x80 && x.op <= 0x8f) || (x.op === 0xff && ((x.modrm >> 3) & 7) >= 2 && ((x.modrm >> 3) & 7) <= 5)) break;
+      if (x.op === 0xff && ((x.modrm >> 3) & 7) === 6) stack.push(null);
+      regs = mrRegisters(regs, x);
+      pc += x.len;
+    }
+    out.push({ name: mrProgramPath(name).replace(/\.bmp$/, '.an'), frames });
+  }
+  return out;
+}
+/* The timeline of the .an at key (a path as mrGameFiles keys it) among
+   mrAnTimelines' list, by its name or a format whose %d matches, or null. */
+function mrAnTimeline(timelines, key) {
+  for (const t of timelines) {
+    if (t.name === key) return t;
+    if (/%/.test(t.name) && new RegExp('^' + t.name.split(/%\d*d/).map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\d+') + '$').test(key)) return t;
+  }
+  return null;
 }
 
 /* archive.org's listing of an ISO's files (view_archive.php), as
@@ -409,6 +624,7 @@ function mrArchiveListing(html, iso) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
+  mrAnTimelines, mrAnTimeline, mrX86, mrRegisters, mrRegistersAt, mrProgramPath, mrPe,
   mrSoundPlace,
   mrAnmFrameTimes,
   MR_PLACES, MR_PLACE_BY_KEY, MR_LEVELS, MR_PUZZLES, MR_PARTS, MR_ANM_SLOTS,

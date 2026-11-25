@@ -105,8 +105,9 @@ for (const p of unpacked) {
   if (JSON.stringify(actual.map(f => [f.path, f.size])) !== JSON.stringify(expected)) fail(`the listing reads ${JSON.stringify(actual)}`);
 }
 
-// Each .anm's time a frame, read from the program's machine code, against
-// zoombini-workbench's tools/mountain/mr_rates.py, which reads the decompile.
+// Each .anm's time a frame and each .an's timelines, read from the program's
+// machine code, against zoombini-workbench's tools/mountain/mr_rates.py and
+// mr_an_times.py, which read the decompile.
 // BigZomb.anm's time is pushed from a register, which the page leaves out.
 let timesNote = '';
 {
@@ -124,6 +125,22 @@ let timesNote = '';
       timesNote = ` The ${actual.size} .anm frame times as mr_rates.py reads them.`;
     }
   } else timesNote = ' The .anm frame times not compared (no decompile or mr_rates.py).';
+  // Each .an's timelines, from the machine code, against mr_an_times.py's
+  // reading of the decompile, all of a name's timelines together.
+  if (fs.existsSync(exe) && fs.existsSync(decompile) && fs.existsSync(path.join(tools, 'mr_an_times.py'))) {
+    const r = spawnSync('python3', ['-I', path.join(tools, 'mr_an_times.py'), decompile, exe], { encoding: 'utf8', maxBuffer: 1 << 26 });
+    if (r.status !== 0) fail('mr_an_times.py\n' + r.stderr);
+    else {
+      const group = (list, key) => { const g = new Map(); for (const x of list) { const k = key(x); if (!g.has(k)) g.set(k, []); g.get(k).push(JSON.stringify(x.frames)); } for (const v of g.values()) v.sort(); return g; };
+      const lines = S.mrAnTimelines(new Uint8Array(fs.readFileSync(exe)));
+      const actual = group(lines, x => x.name);
+      const expected = group(JSON.parse(r.stdout), x => S.mrProgramPath(x.name).replace(/\.bmp$/, '.an'));
+      for (const [k, v] of expected) if (JSON.stringify(actual.get(k) || []) !== JSON.stringify(v)) fail(`${k}'s timelines read ${JSON.stringify(actual.get(k) || [])}, expected ${JSON.stringify(v)}`.slice(0, 300));
+      for (const k of actual.keys()) if (!expected.has(k)) fail(`${k} has a timeline mr_an_times.py does not`);
+      const anKeys = [...game.keys()].filter(k => /\.an$/.test(k));
+      timesNote += ` The ${lines.length} .an timelines of ${expected.size} names as mr_an_times.py reads them, for ${anKeys.filter(k => S.mrAnTimeline(lines, k)).length} of the ${anKeys.length} .an files.`;
+    }
+  }
 }
 
 fs.closeSync(fd);
