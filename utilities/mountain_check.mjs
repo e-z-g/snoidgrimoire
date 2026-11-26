@@ -243,6 +243,39 @@ let timesNote = '';
       if (!best || best.off > 25) fail(`cannon view ${v}: the nearest tumble pose's head is ${best ? best.off.toFixed(0) : '?'} degrees off`);
     }
     if (scripts < 40) fail(`only ${scripts} proposed scripts read`);
+    // the walk mod (js/zb-mountain-mod.js): five sets written and read
+    // back, each view's every frame the same size, with the 1996 walk's
+    // ticks and one more, and a frame written again the same; the program
+    // patched once, with a jump into the new section at each place
+    const zoom = arcs.ZOOMBINI, picker = Z.openMohawk(archiveBytes('PICKER'));
+    const pal = Z.zbWindowsPalette(Z.zbPalette(Z.parsePaletteResource(picker.get('SHPL', 4000), 'SHPL')));
+    const walk = bytesOf(game.get('bmp/zombis/littlezomb.anm').path);
+    const sets = Z.mrModWalkSets(walk, Z.zbSnoidSheet(zoom, 'zoombini'), pal, id => Z.parseScript(zoom.get('SCRS', id), 'SCRS'));
+    const alone = f => { const b = Z.mrAnmWrite(Array.from({ length: Z.MR_ANM_SLOTS }, (_, i) => (i ? null : [f]))); return Z.mrAnmFrame(b, Z.mrAnmSlots(b)[0][0]); };
+    for (const s of sets) {
+      const b = Z.mrAnmWrite(s.slots), slots = Z.mrAnmSlots(b), what = `the walk mod's feet ${s.feet}`;
+      if (s.limit !== s.ticks + 1 || s.ms !== 102) fail(`${what} has the limit ${s.limit} for ${s.ticks} ticks at ${s.ms} ms`);
+      slots.forEach((frames, i) => {
+        if (!frames) return;
+        const { name, part } = Z.mrAnmSlotName(i);
+        if (frames.length !== (part === 1 ? 1 : s.limit)) fail(`${what} has ${frames.length} frames in ${name}`);
+        if (frames.some(f => f.width !== s.width || f.height !== s.height)) fail(`${what} has a frame in ${name} not ${s.width}×${s.height}`);
+      });
+      if (Z.mrAnmViews(slots).size !== 16) fail(`${what} has ${Z.mrAnmViews(slots).size} views`);
+      const pic = Z.mrAnmFrame(b, slots[Z.mrAnmSlot(22, 3, 1)][2]), again = alone(Z.mrRbEncode(pic));
+      if (pic.data.some((v, j) => v !== again.data[j])) fail(`${what} has a frame that differs when written again`);
+    }
+    if (sets[2].dy < 20 || sets[4].dy < 20) fail(`the walk mod lifts the spring ${sets[2].dy} and the propeller ${sets[4].dy}, too little for their rise`);
+    const exe = bytesOf('INSTALL/hd/zoombini2.exe'), patched = Z.mrModExe(exe, sets, sets.map(s => `./bmp/zombis/zb96walk${s.feet}.anm`));
+    const P = Z.mrModPe(patched), zb = P.sections.find(s => s.name === '.zb96'), dvp = new DataView(patched.buffer);
+    if (P.sections.length !== Z.mrModPe(exe).sections.length + 1 || !zb) fail('the patched program has no new section');
+    for (const at of [Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at]) {
+      const o = Z.mrModFileOffset(P, at), to = at + 5 + dvp.getInt32(o + 1, true) - P.base;
+      if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x400) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
+    }
+    let twice = false;
+    try { Z.mrModExe(patched, sets, ['a', 'b', 'c', 'd', 'e']); } catch { twice = true; }
+    if (!twice) fail('the program was patched a second time');
   }
 }
 
