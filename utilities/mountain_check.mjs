@@ -224,9 +224,13 @@ let timesNote = '';
         if (kind !== 'zoombini' && kind !== 'tumble') { fail(`${m.archive} SCRS ${m.id} draws ${kind || 'no snoid'}`); continue; }
         const sheet = Z.zbSnoidSheet((arcs.ZOOMBINI ||= Z.openMohawk(archiveBytes('ZOOMBINI'))), kind), ticks = Z.zbSnoidTicks(s);
         if (!Z.zbSnoidFeetFor(sheet, ticks).includes(feet)) fail(`${m.archive} SCRS ${m.id}, proposed for feet ${feet}, does not fit them`);
-        const placed = Z.mrLookPlaced(sheet, { feet, nose: 1, hair: 1, eyes: 1 }, ticks);
-        const body = placed.flat().find(p => p.part === 'body');
-        if (body && (body.x + sheet.xs[body.frame + 1] !== 0 || body.y + sheet.ys[body.frame + 1] !== 0)) fail(`${m.archive} SCRS ${m.id}'s body is not held at the origin`);
+        // held still, or with `rise`, the first body at the origin and a hop
+        // rising from it
+        const placed = Z.mrLookPlaced(sheet, { feet, nose: 1, hair: 1, eyes: 1 }, ticks, !!set.rise);
+        const bodies = placed.map(t => t.find(p => p.part === 'body')).filter(Boolean).map(p => [p.x + sheet.xs[p.frame + 1], p.y + sheet.ys[p.frame + 1]]);
+        if (bodies.length && (bodies[0][0] || bodies[0][1])) fail(`${m.archive} SCRS ${m.id}'s first body is not at the origin`);
+        if (!set.rise && bodies.some(([x, y]) => x || y)) fail(`${m.archive} SCRS ${m.id}'s body is not held at the origin`);
+        if (set.rise && Math.min(...bodies.map(b => b[1])) > -10) fail(`${m.archive} SCRS ${m.id} rises ${-Math.min(...bodies.map(b => b[1]))} pixels, not a hop`);
         if (m.from >= ticks.length) fail(`${m.archive} SCRS ${m.id} loops from tick ${m.from} of ${ticks.length}`);
         scripts++;
       }

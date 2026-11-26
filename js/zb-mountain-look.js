@@ -137,7 +137,9 @@ function mrLookTickFrom(frame, frameMs, ticks, tickMs, from) {
 /* Mountain Rescue's Zoombini sets besides the walks, by the end of the
    file's key, each with what it shows and the 1996 match proposed: the
    scripts, each { archive, id, from } for the 1996 feet `feet`, or the
-   tumble's still poses (`tumble`), or the walks (`walk`). A file not here
+   tumble's still poses (`tumble`), or the walks (`walk`). A set with
+   `shrink` has its 1996 match drawn smaller with each frame, as much as
+   the Mountain Rescue frame beside it. A file not here
    is a walk of 16 views (mrLookWalk), as are the transition's PitiZomb
    files, the walk drawn smaller. Aqua Cube's sets are smaller copies of the ZOMBIS
    ones, and the 1996 game's far-off Zoombini (tBMP 3200) has no script, so
@@ -145,17 +147,24 @@ function mrLookTickFrom(frame, frameMs, ticks, tickMs, from) {
 const MR_LOOK_RANGE = (archive, first, last) => Array.from({ length: last - first + 1 }, (_, i) => ({ archive, id: first + i, from: 0 }));
 const MR_LOOK_SETS = [
   { file: 'zombis/pris/pris.anm', what: 'Carried by the pointer', scripts: feet => [{ archive: 'ZOOMBINI', id: 145 + feet, from: 2 }] },
-  { file: 'zombis/attente/attentezomb.anm', what: 'Waiting', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 130, 137) },
-  { file: 'zombis/attente2/attentezomb2.anm', what: 'Waiting and blinking', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131) },
+  // the 1996 celebration, one for each feet: the Allergic Cliffs' (ScummVM's
+  // kResScrs2019_CelebrationBase + feet), the same hops as FLEENS 7031-7035
+  // and CAVES 13000-13004. Mountain Rescue's celebration bounces inside its
+  // frame, so the hop is drawn rising (`rise`).
+  { file: 'zombis/attente/attentezomb.anm', what: 'Celebrating', rise: true, scripts: feet => [{ archive: 'BRIDGE', id: 2019 + feet, from: 0 }] },
+  { file: 'zombis/attente2/attentezomb2.anm', what: 'Blinking', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131) },
   { file: 'aquacube/smallest/smallest.anm', what: 'Walking in Aqua Cube', walk: true, note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
-  { file: 'aquacube/smallest/attente/attente.anm', what: 'Waiting in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 130, 137), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
-  { file: 'aquacube/smallest/attente2/attente2.anm', what: 'Waiting and blinking in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
+  { file: 'aquacube/smallest/attente/attente.anm', what: 'Blinking in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
+  { file: 'aquacube/smallest/attente2/attente2.anm', what: 'Blinking in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
   // ScummVM's ZoombiniPuzzleMaze: 15080 + feet, the ride down the screen
   { file: 'zombis/flotte/flotte.anm', what: 'Riding a bubble in Bubble Bumpers', scripts: feet => [{ archive: 'MAZE2', id: 15080 + feet, from: 0 }] },
   { file: 'zombis/tombe/tombe.anm', what: 'Flipped into the water in Turtle Hurdle', scripts: () => MR_LOOK_RANGE('BRIDGE', 1004, 1007) },
-  // FLEENS 7031-7035 are one for each feet (zbSnoidFeetOf)
-  { file: 'zombis/saut/saut.anm', what: 'Jumping into the cannon in Magic Mirrors', scripts: feet => [{ archive: 'FLEENS', id: 7030 + feet, from: 0 }, { archive: 'CAVES', id: 13004, from: 0 }] },
-  { file: 'zombis/aspiration/aspiration.anm', what: 'Sucked into the pipes in Pipes of Paloo', scripts: () => MR_LOOK_RANGE('MAZE2', 14000, 14007) },
+  { file: 'zombis/saut/saut.anm', what: 'Jumping into the cannon in Magic Mirrors', scripts: feet => [{ archive: 'BRIDGE', id: 2019 + feet, from: 0 }],
+    note: 'The 1996 game’s only jump is its celebration, here held in place, since the program moves the sprite for this one.' },
+  // waterslide FUN_00436ba0: once the master valve opens, each Zoombini of
+  // a pair placed right shrinks into the pipes, one at a time, and is across
+  { file: 'zombis/aspiration/aspiration.anm', what: 'Shrinking into the pipes in Pipes of Paloo, one Zoombini at a time once the master valve opens', shrink: true,
+    scripts: () => MR_LOOK_RANGE('ZOOMBINI', 100, 100), note: 'No 1996 script shrinks a Zoombini, so the standing one shrinks as Mountain Rescue’s does, held at its feet.' },
   { file: 'wall_of_fleens/cannon_zomb/cannon_zomb.anm', what: 'Shot from the cannon in Magic Mirrors', tumble: true },
   { file: 'zombiniville/bigzomb/bigzomb.anm', what: 'The big Zoombini in Zoombiniville', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 100, 100),
     note: 'The big Zoombini of the 1996 Zoombini Isle (PICKER tBMP 4300) would match it better, but a table in ZOOMBINI.EXE places that one’s parts, so the standing Zoombini is shown.' },
@@ -167,8 +176,9 @@ function mrLookSet(key) {
 /* A script's ticks placed with the body held still: for each tick the
    placements of the tick it shows (zbSnoidShown), moved so that the body's
    record is at the origin. A tick with no body is moved by the last
-   body's place. */
-function mrLookPlaced(sheet, traits, ticks) {
+   body's place. With `rise`, every tick is moved by the first body's
+   place, so a hop is drawn rising. */
+function mrLookPlaced(sheet, traits, ticks, rise = false) {
   const shown = zbSnoidShown(ticks, sheet.effects);
   let at = null;
   const anchors = ticks.map(t => {
@@ -178,7 +188,7 @@ function mrLookPlaced(sheet, traits, ticks) {
   });
   const first = anchors.find(a => a) || [0, 0];
   return ticks.map((t, i) => {
-    const k = Math.max(0, shown[i]), [ax, ay] = anchors[k] || first;
+    const k = Math.max(0, shown[i]), [ax, ay] = rise ? first : anchors[k] || first;
     return zbSnoidPlacements(sheet, traits, ticks[k]).map(p => ({ ...p, x: p.x - ax, y: p.y - ay }));
   });
 }

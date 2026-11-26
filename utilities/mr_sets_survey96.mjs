@@ -7,7 +7,7 @@ const arcs = {};
 const arc = n => (arcs[n] ||= S.openMohawk(archiveBytes(n)));
 const zoom = arc('ZOOMBINI');
 const ask = [['ZOOMBINI', [100, 130, 131, 132, 133, 134, 135, 136, 137, 146, 147, 148, 149, 150]], ['MAZE2', [15080, 15081, 15082, 15083, 15084, 15085, 15086, 15087, 15088, 15089, 14000, 14001, 14002, 14003, 14004, 14005, 14006, 14007]],
-  ['BRIDGE', [1004, 1005, 1006, 1007]], ['CAVES', [13004]], ['FLEENS', [7031, 7032, 7033, 7034, 7035]]];
+  ['BRIDGE', [1004, 1005, 1006, 1007]], ['CAVES', [13000, 13001, 13002, 13003, 13004, 13005]], ['FLEENS', [7031, 7032, 7033, 7034, 7035]], ['BRIDGE', [2019, 2020, 2021, 2022, 2023, 2024]]];
 for (const [name, ids] of ask) for (const id of ids) {
   let s;
   try { s = S.parseScript(arc(name).get('SCRS', id), 'SCRS'); } catch (e) { console.log(name, id, e.message); continue; }

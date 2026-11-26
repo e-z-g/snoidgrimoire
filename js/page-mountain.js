@@ -548,11 +548,15 @@ function mountainLookView(box, anms, first) {
         const right = Math.max(...imgs.map(m => m.width - m.ox)), bottom = Math.max(...imgs.map(m => m.height - m.oy));
         const old96 = imgs.map(m => { const c = document.createElement('canvas'); c.width = left + right; c.height = top + bottom; c.getContext('2d').putImageData(new ImageData(m.data, m.width, m.height), left - m.ox, top - m.oy); return c; });
         const first = mountainParts(b, slots, v, values, 0);
-        let opaque = 0;
-        for (let y = first.height - 1; y >= 0 && !opaque; y--) for (let x = 0; x < first.width; x++) if (first.data[4 * (y * first.width + x) + 3]) { opaque = y + 1; break; }
-        let topMr = 0;
-        for (let y = 0; y < first.height && !topMr; y++) for (let x = 0; x < first.width; x++) if (first.data[4 * (y * first.width + x) + 3]) { topMr = y + 1; break; }
-        const mrHeight = Math.max(1, opaque - topMr + 1), height = 120, kMr = height / mrHeight, k96 = height / Math.max(1, top + bottom);
+        // each Mountain Rescue frame's figure height, its opaque rows; each
+        // side is scaled by its tallest frame, the figure at full stretch
+        const tall = Array.from({ length: n }, (_, k) => {
+          const f = k ? mountainParts(b, slots, v, values, k) : first;
+          let y0 = -1, y1 = -1;
+          for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) if (f.data[4 * (y * f.width + x) + 3] > 128) { if (y0 < 0) y0 = y; y1 = y; break; }
+          return y0 < 0 ? 0 : y1 - y0 + 1;
+        });
+        const mrHeight = Math.max(1, ...tall), height = 120, kMr = height / mrHeight, k96 = height / Math.max(1, ...imgs.map(m => m.height));
         const cell = document.createElement('div');
         cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px';
         const row = document.createElement('div');
@@ -566,7 +570,9 @@ function mountainLookView(box, anms, first) {
         cell.append(row);
         cell.insertAdjacentHTML('beforeend', `<span class="note">${label}</span>`);
         grid.appendChild(cell);
-        cells.push({ v, values, n, cMr, c96, old96, from });
+        // a shrinking set: each Mountain Rescue frame's height over the tallest
+        const shrink = set && set.shrink ? tall.map(h => h / mrHeight) : null;
+        cells.push({ v, values, n, cMr, c96, old96, from, shrink });
       };
       const zSheet = kind => zbSnoidSheet(arc, kind);
       const facingOf = v => (Math.cos(mrLookAngle(v) * Math.PI / 180) < -1e-9 ? 1 : 0);
@@ -586,7 +592,7 @@ function mountainLookView(box, anms, first) {
           const script = parseScript(mArc.get('SCRS', m.id), 'SCRS'), kind = ZB_SNOID_KIND_OF_LAYOUT[script.layout];
           if (kind !== 'zoombini' && kind !== 'tumble') throw new Error(`${m.archive} SCRS ${m.id} draws no Zoombini`);
           const facing = m.facing ?? facingOf(v), sheet = zSheet(kind);
-          add(v, parts, sheet, mrLookPlaced(sheet, old, zbSnoidTicks(script, facing, m.archive)), m.from, label + (facing ? ', turned' : ''));
+          add(v, parts, sheet, mrLookPlaced(sheet, old, zbSnoidTicks(script, facing, m.archive), !!(set && set.rise)), m.from, label + (facing ? ', turned' : ''));
         }
       }
       let i = 0;
@@ -597,7 +603,13 @@ function mountainLookView(box, anms, first) {
           c.cMr.getContext('2d').putImageData(new ImageData(f.data, f.width, f.height), 0, 0);
           const g = c.c96.getContext('2d');
           g.clearRect(0, 0, c.c96.width, c.c96.height);
-          g.drawImage(c.old96[mrLookTickFrom(i, ms, c.old96.length, SNOID_TICK_MS, c.from)], 0, 0);
+          const pic = c.old96[mrLookTickFrom(i, ms, c.old96.length, SNOID_TICK_MS, c.from)];
+          if (c.shrink) {
+            // as small as the Mountain Rescue frame, held at its feet
+            const r = c.shrink[i % c.n], w = Math.round(pic.width * r), h = Math.round(pic.height * r);
+            g.imageSmoothingEnabled = false;
+            if (w && h) g.drawImage(pic, Math.round((pic.width - w) / 2), pic.height - h, w, h);
+          } else g.drawImage(pic, 0, 0);
         }
         i++;
         setTimeout(tick, ms);
