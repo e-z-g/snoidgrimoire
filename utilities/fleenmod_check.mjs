@@ -1,5 +1,6 @@
 // The Fleen-parts mod (js/zb-mod-fleen.js) against the extraction project's
-// tools/mod_fleen_parts.py, plain and green:
+// tools/mod_fleen_parts.py, plain and green, and the whole-Fleens mod
+// against tools/mod_fleens.py:
 //
 //   - every resource it rebuilds is the Python's to the byte, by SHA-1
 //     (utilities/oracle.py fleenmod): ZOOMBINI tBMP 3000, 3100 and 3200 and
@@ -25,15 +26,14 @@ const archives = new Map(archiveNames().map(n => [n, S.openMohawk(archiveBytes(n
 const exe = new Uint8Array(fs.readFileSync(exePath));
 
 const summary = [];
-for (const green of [false, true]) {
-  const label = green ? 'green' : 'plain';
-  const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'fleenmod', ...(green ? ['--green'] : [])],
+for (const [label, green, whole] of [['plain', false, false], ['green', true, false], ['whole', true, true]]) {
+  const r = spawnSync('python3', [path.join(ROOT, 'utilities', 'oracle.py'), 'fleenmod', ...(green ? ['--green'] : []), ...(whole ? ['--whole'] : [])],
     { encoding: 'utf8', maxBuffer: 1 << 26 });
   if (r.status !== 0) { console.log('SKIP: the oracle did not run, ' + (r.stderr || '').split('\n').slice(-2).join(' ')); process.exit(0); }
   const expected = JSON.parse(r.stdout);
 
   const t0 = performance.now();
-  const actual = S.zbFleenMod(archives, exe, green);
+  const actual = S.zbFleenMod(archives, exe, green, whole);
   const ms = performance.now() - t0;
 
   let n = 0;
@@ -53,7 +53,7 @@ for (const green of [false, true]) {
   if (JSON.stringify(actual.lift) !== JSON.stringify(expected.lift)) fail(`${label} lift ${JSON.stringify(actual.lift)}, the Python ${JSON.stringify(expected.lift)}`);
 
   // Without the EXE: the same, bar the big figure, which the EXE places.
-  const bare = S.zbFleenMod(archives, null, green);
+  const bare = S.zbFleenMod(archives, null, green, whole);
   if (bare.exe !== null) fail(`${label} without the EXE: an EXE came back`);
   const keys = ['ZOOMBINI', 'PICKER'].flatMap(name => bare[name].map(c => [name, `${c.tag}/${c.id}`, sha1(c.bytes)]));
   if (keys.some(([, k]) => k === 'tBMP/4300')) fail(`${label} without the EXE, PICKER tBMP 4300 came back`);
@@ -63,4 +63,4 @@ for (const green of [false, true]) {
 }
 
 if (fails) { console.log(`${fails} failures`); process.exit(1); }
-console.log(`the Fleen-parts mod is mod_fleen_parts.py's byte for byte (${summary.join('; ')})`);
+console.log(`the Fleen-parts mod is mod_fleen_parts.py's byte for byte, and the whole-Fleens mod mod_fleens.py's (${summary.join('; ')})`);

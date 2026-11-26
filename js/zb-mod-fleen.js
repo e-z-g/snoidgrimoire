@@ -9,6 +9,11 @@
    Needs mac-bytes.js, zb-mohawk.js, zb-bitmap.js, zb-script.js and
    zb-write.js.
 
+   zbFleenMod(archives, exeBytes, green, whole), with `whole`, makes the
+   whole-Fleens mod instead: every Zoombini drawn as a whole lemon-lime
+   Fleen (zbFleenModWholeFitter, a port of tools/mod_fleens.py), written to
+   the same resources, with the Fleen body as a fifth part.
+
    zbFleenMod(archives, exeBytes, green) needs every archive on the disc,
    opened (a Map of name, without .MHK, to openMohawk's), since the pairing
    of hair poses to body poses is counted over every snoid script in them,
@@ -522,7 +527,7 @@ function zbFleenModSheet(z, bmp) {
    the tumbling Zoombini's (layout 2), whose record 1 the Python counts as
    its "body" (mod_fleen_parts.pairings). */
 function zbFleenModPairings(archives) {
-  const bodies = new Map(), eyes = new Map(), tumble = new Map();
+  const bodies = new Map(), eyes = new Map(), tumble = new Map(), eyeBodies = new Map(), noseBodies = new Map();
   const add = (m, h, k) => { if (!m.has(h)) m.set(h, new Map()); zbFleenModCount(m.get(h), k); };
   const names = [...archives.keys()].filter(n => !n.toUpperCase().startsWith('MIDI'))
     .sort((a, b) => (a + '.MHK' < b + '.MHK' ? -1 : a + '.MHK' > b + '.MHK' ? 1 : 0));
@@ -534,12 +539,12 @@ function zbFleenModPairings(archives) {
       for (const recs of s.ticks) {
         if (recs.length !== 5) continue;
         if (s.layout === 2) { add(tumble, recs[4], recs[1]); continue; }
-        const [, b, , e, h] = zbFleenModZoombiniRecords(recs);
-        add(bodies, h, b); add(eyes, h, e);
+        const [, b, n, e, h] = zbFleenModZoombiniRecords(recs);
+        add(bodies, h, b); add(eyes, h, e); add(eyeBodies, e, b); add(noseBodies, n, b);
       }
     }
   }
-  return { bodies, eyes, tumble };
+  return { bodies, eyes, tumble, eyeBodies, noseBodies };
 }
 
 /* Counters, per feet pose, of the body poses that feet variant v's walks
@@ -583,7 +588,7 @@ function zbFleenModRide(f, v, phase, skip) {
 /* ---- the fitter --------------------------------------------------------- */
 
 /* mod_fleen_parts.Fitter, with what it calls of export_web. */
-function zbFleenModFitter(archives, green) {
+function zbFleenModFitter(archives, green, whole = false) {
   const C = ZB_FLEEN_MOD, W = ZB_FLEEN_MOD_WEB, R = zbFleenModRound;
   const REST = W.REST_POSE.zoombini;
   const z = archives.get('ZOOMBINI'), fl = archives.get('FLEENS');
@@ -953,11 +958,16 @@ function zbFleenModFitter(archives, green) {
     const [[w, h, px], [x, y]] = placedFrame;
     return [[w, h, near(px)], [-x, -y]];
   };
-  for (let v = 0; v < 5; v++) lift[v] = liftOf(v, REST);
+  for (let v = 0; v < 5; v++) lift[v] = whole ? 0 : liftOf(v, REST);    // mod_fleens.WholeFleen._lift
 
   return {
     green, chars, full, pairings, lift, nearest,
+    parts: C.PARTS, centered: ['hair'], bigScale: C.BIG_SCALE,
     frame,
+    /* The atlas point at the center of the big figure's enlarging. */
+    bigPivot: center => center,
+    /* What mod_fleens.WholeFleen reaches of the fitter. */
+    inner: { roles, rides, steps, landmark, nearFoot, common, fzLut, fzKey },
     /* A Zoombini body frame in the mod's skin (marked, if lime). */
     body: ([w, h, px]) => [w, h, Array.from(px, c => bodyLut[c])],
     /* As written: marked skin dithered to lime from the origin `reg`. */
@@ -978,6 +988,118 @@ function zbFleenModFitter(archives, green) {
       return [this.body(raw), reg];
     },
     restRaw,
+  };
+}
+
+/* ---- the whole Fleens --------------------------------------------------- */
+
+/* mod_fleens.WholeFleen: every Zoombini drawn as a whole Fleen, standing as
+   a Fleen does at rest, mirrored to face right, its feet on the Zoombini's
+   ground and its body over the Zoombini's center. Its body stretches or
+   squashes from the foot with the Zoombini's head top, each part follows
+   the body where it sits, and the feet step or ride as the Fleen-parts
+   mod's do. Always green. */
+function zbFleenModWholeFitter(archives) {
+  const W = ZB_FLEEN_MOD_WEB, C = ZB_FLEEN_MOD, R = zbFleenModRound;
+  const base = zbFleenModFitter(archives, true, true);
+  const { restRaw, full, nearest } = base;
+  const { roles, rides, steps, landmark, nearFoot, common, fzLut, fzKey } = base.inner;
+  const REST = W.REST_POSE.zoombini, FLEEN_REST = W.REST_POSE.fleen;
+  const partners = { hair: base.pairings.bodies, eyes: base.pairings.eyeBodies, nose: base.pairings.noseBodies };
+  const massX = ([w, , px], [rx]) => {
+    let s = 0, n = 0;
+    for (let i = 0; i < px.length; i++) if (px[i]) { s += i % w + 0.5 - rx; n++; }
+    return s / n;
+  };
+  // Fleen frame -> Zoombini frame: mirror (x -> -x), then move by (ox, oy)
+  const ox = R(massX(...restRaw('zoombini', 'body', 0)) + massX(...restRaw('fleen', 'body', 0)));
+  const oy = zbFleenModOpaqueBox(...restRaw('zoombini', 'feet', 0))[3] - zbFleenModOpaqueBox(...restRaw('fleen', 'feet', 0))[3];
+  const fleenBody = zbFleenModOpaqueBox(...restRaw('fleen', 'body', 0));
+  const top = fleenBody[1] + oy, bottom = fleenBody[3] + oy;
+  const head = landmark('zoombini', 'hair')[1];
+
+  const color = c => (fzKey[c] ? fzLut[c] : nearest[c]);
+  /* A Fleen frame placed in the Zoombini's frame, mirrored, moved `dy`
+     further down and recolored. */
+  const place = ([w, h, px], [rx, ry], dy = 0) => {
+    const x = ox + rx - w, y = -ry + oy + dy;
+    return [[w, h, zbFleenModMirror(w, h, px).map(color)], [-x, -y]];
+  };
+  /* Where the Fleen's legs meet its body at Fleen body pose `pose`. */
+  const joined = pose => landmark('fleen', 'feet', pose);
+  /* How far the Zoombini's head top is below where it is at rest. */
+  const dtop = body => landmark('zoombini', 'hair', body)[1] - head;
+  const bob = (part, pose) => {
+    let bodies = common(partners[part].get(pose));
+    if (!bodies.size) bodies = new Map([[REST, 1]]);
+    const y = part === 'hair' ? top : landmark('fleen', part)[1] + oy;
+    const share = (bottom - y) / (bottom - top);
+    let s = 0, n = 0;
+    for (const [b, k] of bodies) { s += dtop(b) * k; n += k; }
+    return R(share * s / n);
+  };
+
+  /* The standing Fleen body with its top moved by the Zoombini head's bob
+     and its foot kept: rows resampled nearest-first. */
+  const body = pose => {
+    const [[w, h, px], [rx, ry]] = restRaw('fleen', 'body', 0);
+    const rows = [];
+    for (let r = 0; r < h; r++) rows.push(Array.prototype.slice.call(px, r * w, (r + 1) * w));
+    const drawn = [];
+    rows.forEach((row, r) => { if (zbFleenModAny(row)) drawn.push(r); });
+    const t = drawn[0], b = drawn[drawn.length - 1] + 1, n = b - t - dtop(pose);
+    const stretched = [];
+    for (let j = 0; j < n; j++) stretched.push(rows[t + Math.floor((j + 0.5) * (b - t) / n)]);
+    const out = [...rows.slice(0, t), ...stretched, ...rows.slice(b)];
+    return place([w, out.length, out.flat()], [rx, ry + out.length - h]);
+  };
+
+  const feet = (v, pose) => {
+    if (C.DEVICES.includes(v) && pose > 3) {            // poses 1-3 stand; the rest move
+      const ride = rides[v], [f, b] = ride[zbFleenModMod(pose - 4, ride.length)];
+      const [[w, h, px], [rx, ry]] = restRaw('fleen', 'feet', v, f);
+      // a run frame faces right already: not mirrored, moved from its
+      // own body's foot to the standing body's
+      const [bx, by] = joined(b), [sx, sy] = joined(FLEEN_REST);
+      const x = -rx + R(ox - sx - bx), y = -ry + R(sy + oy - by);
+      return [[w, h, Array.from(px, color)], [-x, -y]];
+    }
+    const [raw, reg] = restRaw('fleen', 'feet', v);
+    const [[w, h, px], [rx, ry]] = place(raw, reg);
+    if (C.DEVICES.includes(v)) return [[w, h, px], [rx, ry]];
+    const near = zbFleenModMirror(w, h, nearFoot(raw, v));
+    const meanX = p => { let s = 0, n = 0; p[2].forEach((c, i) => { if (c) { s += i % w; n++; } }); return s / n; };
+    const pieces = [true, false].map(k => [w, h, px.map((c, i) => (near[i] === k ? c : 0))])
+      .filter(p => zbFleenModAny(p[2]))
+      .map(p => [meanX(p), p]).sort((a, b) => a[0] - b[0]).map(([, p]) => p);
+    let lifts = pieces.map(() => 0);
+    if (pieces.length === 2) lifts = steps(v, pose).map(([, lift]) => lift);   // lifted only: sideways would part leg from stalk
+    return zbFleenModPaste(pieces.map((p, k) => [p, [rx, ry + lifts[k]]]));
+  };
+
+  const makeFrame = (part, v, pose) => {
+    if (part === 'body') return body(pose);
+    if (part === 'feet') return feet(v, pose);
+    if (part !== 'hair' && full.hidden(part, pose)) return ZB_FLEEN_MOD_EMPTY();
+    const fleenPose = part === 'eyes' ? (roles.get(pose) || [undefined])[0] : undefined;
+    return place(...restRaw('fleen', part, v, fleenPose), bob(part, pose));
+  };
+  const cache = new Map();
+  const frame = (part, v, pose) => {
+    const key = `${part}/${v}/${pose}`;
+    if (!cache.has(key)) cache.set(key, makeFrame(part, v, pose));
+    return cache.get(key);
+  };
+
+  return {
+    ...base,
+    parts: ['body', ...C.PARTS],
+    centered: C.PARTS,                                   // too tall for the Zoombini's tile framing
+    bigScale: 1,                                         // at Fleen size it fills the big Zoombini's height
+    frame,
+    restBody: () => frame('body', 0, REST),
+    /* The big figure stands where the big Zoombini's feet do. */
+    bigPivot: center => [center[0], oy + zbFleenModOpaqueBox(...restRaw('fleen', 'feet', 0))[3]],
   };
 }
 
@@ -1071,8 +1193,8 @@ function zbFleenModBuild(fit, z) {
   const frames = { 3000: new Map(), 3100: new Map(), 3200: new Map() };
   const put = (bmp, part, v, pose, f) => frames[bmp].set(`${part}/${v}/${pose}`, [part, v, pose, f]);
   const variantsOf = part => (part === 'body' ? [0] : [0, 1, 2, 3, 4]);
-  const masks = new Map();
-  for (const part of C.PARTS) {
+  const masks = new Map(), drawsBody = fit.parts.includes('body');
+  for (const part of fit.parts) {
     for (const v of variantsOf(part)) {
       for (let pose = 1; pose <= zbFleenModPoseCount(full.parts[part], v); pose++) put(3000, part, v, pose, fit.frame(part, v, pose));
     }
@@ -1086,7 +1208,7 @@ function zbFleenModBuild(fit, z) {
       }
     }
   }
-  if (fit.green) {                                       // the Zoombini's original body, reskinned
+  if (fit.green && !drawsBody) {                         // the Zoombini's original body, reskinned
     for (const [bmp, atlas] of [[3000, full], [3100, tum], [3200, small]]) {
       for (let pose = 1; pose <= zbFleenModPoseCount(atlas.parts.body, 0); pose++) {
         const i = atlas.index('body', 0, pose);
@@ -1094,13 +1216,16 @@ function zbFleenModBuild(fit, z) {
       }
     }
   }
-  const [p1, p2, egg] = C.NOSELESS;                     // and without the original nose's socket
-  for (const [bmp, atlas] of [[3000, full], [3200, small]]) {
-    const i = atlas.index('body', 0, egg);
-    for (const pose of [p1, p2]) put(bmp, 'body', 0, pose, [fit.body(atlas.frames[i]), atlas.regs[i]]);
+  if (!drawsBody) {                                     // and without the original nose's socket
+    const [p1, p2, egg] = C.NOSELESS;
+    for (const [bmp, atlas] of [[3000, full], [3200, small]]) {
+      const i = atlas.index('body', 0, egg);
+      for (const pose of [p1, p2]) put(bmp, 'body', 0, pose, [fit.body(atlas.frames[i]), atlas.regs[i]]);
+    }
   }
   for (const [pose, [turn, b0, b, fling]] of zbFleenModTumbleMoves(fit, full, tum)) {
-    for (const part of C.PARTS) {
+    fling.body = [0, 0];                                 // a tumble body pose goes with the same hair pose
+    for (const part of fit.parts) {
       for (const v of variantsOf(part)) {
         put(3100, part, v, pose, fling[part] ? zbFleenModTurned(fit.frame(part, v, REST), turn, b0, b, fling[part]) : ZB_FLEEN_MOD_EMPTY());
       }
@@ -1163,7 +1288,7 @@ function zbFleenModTiles(fit, p) {
         const [w, h, idx0] = blank[selected], idx = Array.from(idx0);
         const [dx, dy] = selected ? W.SELECTED_SHIFT : [0, 0];
         let ax, ay;
-        if (part === 'hair') {
+        if (fit.centered.includes(part)) {                // the part's box centered
           ax = Math.floor(w / 2) - (-prx + Math.floor(pw / 2)) + dx;
           ay = Math.floor(h / 2) - (-pry + Math.floor(ph / 2)) + dy;
         } else {
@@ -1188,7 +1313,7 @@ function zbFleenModBigParts(fit, p, exeBytes) {
   const C = ZB_FLEEN_MOD, REST = ZB_FLEEN_MOD_WEB.REST_POSE.zoombini;
   const signed = b => (b > 127 ? b - 256 : b);
   const tbmp = p.get('tBMP', 4300), subs = [...zbSheetFrames(tbmp)];
-  if (fit.green) {
+  if (fit.green && !fit.parts.includes('body')) {
     const f = zbFleenModRaws(p, 4300)[0];
     const x0 = -signed(exeBytes[C.EXE_DX + 1]), y0 = -signed(exeBytes[C.EXE_DY + 1]);   // frame 0's top-left
     subs[0] = zbFleenModRawFrame(fit.final(fit.body(f), [-x0, -y0]));
@@ -1201,12 +1326,14 @@ function zbFleenModBigParts(fit, p, exeBytes) {
     const x = i % bw, y = Math.floor(i / bw);
     xa = Math.min(xa, x); xb = Math.max(xb, x); ya = Math.min(ya, y); yb = Math.max(yb, y);
   }
-  const center = [(xa + xb + 1) / 2 - brx, (ya + yb + 1) / 2 - bry], pivot = center;
+  const center = [(xa + xb + 1) / 2 - brx, (ya + yb + 1) / 2 - bry], pivot = fit.bigPivot(center);
   const sx = zbFleenModRound((pivot[0] - center[0]) * C.BIG_SCALE), sy = zbFleenModRound((pivot[1] - center[1]) * C.BIG_SCALE);
-  for (const part of C.PARTS) {
-    for (let v = 0; v < 5; v++) {
+  for (const part of fit.parts) {
+    for (const v of part === 'body' ? [0] : [0, 1, 2, 3, 4]) {
       const [raw, reg] = fit.frame(part, v, REST);
-      let [[w, h, px], [x0, y0]] = zbFleenModEnlarged(raw, reg, pivot, C.BIG_SCALE);
+      let [[w, h, px], [x0, y0]] = fit.bigScale === 1
+        ? [raw, [zbFleenModRound(-reg[0] - pivot[0]), zbFleenModRound(-reg[1] - pivot[1])]]
+        : zbFleenModEnlarged(raw, reg, pivot, fit.bigScale);
       x0 += sx; y0 += sy;
       if (!(x0 >= -128 && x0 <= 127 && y0 >= -128 && y0 <= 127)) throw new Error(`big ${part} ${v}: ${x0}, ${y0}`);
       const f = C.BIG_FRAME[part] + v;
@@ -1218,9 +1345,10 @@ function zbFleenModBigParts(fit, p, exeBytes) {
   return { change: { tag: 'tBMP', id: 4300, bytes: zbSheetBytes(tbmp, subs) }, exe };
 }
 
-/* The mod: see the top of this file. */
-function zbFleenMod(archives, exeBytes, green = false) {
-  const fit = zbFleenModFitter(archives, green);
+/* The mod: see the top of this file. With `whole`, the whole-Fleens mod,
+   which is always green. */
+function zbFleenMod(archives, exeBytes, green = false, whole = false) {
+  const fit = whole ? zbFleenModWholeFitter(archives) : zbFleenModFitter(archives, green);
   const p = archives.get('PICKER');
   const out = { ZOOMBINI: zbFleenModBuild(fit, archives.get('ZOOMBINI')), PICKER: [zbFleenModTiles(fit, p)], exe: null };
   if (exeBytes) {

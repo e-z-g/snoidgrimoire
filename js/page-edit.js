@@ -178,12 +178,13 @@ function soundTools(entry, arc, id, box) {
 /* ---- Mods ---------------------------------------------------------------------- */
 
 /* The Fleen-parts mod (zb-mod-fleen.js, the extraction project's
-   mod_fleen_parts.py), run on the archives open, its resources put in as
-   edits; ZOOMBINI.EXE, given, has its big figure's anchors rewritten and is
-   saved from Changes beside the archives. */
+   mod_fleen_parts.py) or, with `whole`, the whole-Fleens mod (mod_fleens.py),
+   run on the archives open, its resources put in as edits; ZOOMBINI.EXE,
+   given, has its big figure's anchors rewritten and is saved from Changes
+   beside the archives. */
 let MOD_EXE = null;           // { name, bytes }: the EXE given
 let EXE_EDIT = null;          // { name, bytes, what }: the EXE as the mod rewrote it
-const MOD_FLEEN = { green: false };
+const MOD_FLEEN = { green: false, whole: false };
 
 function isModsHash() { return location.hash === '#mods'; }
 function renderMods() {
@@ -192,10 +193,12 @@ function renderMods() {
   const modArchives = sortedArchives().filter(e => !/^MIDI/.test(e.name));
   const missing = modArchives.filter(e => !e.bytes);
   const view = $('view');
-  let html = '<h1>Mods</h1><div id="recolor"></div><h2 class="h">Fleen parts on the Zoombinis</h2>'
-    + '<p>This mod gives every Zoombini a Fleen’s hair, eyes, nose and feet, matching variant for variant. It changes every frame where the game draws them, including walking, tumbling, far away and in the builder’s tiles. With “Lime green” ticked, their skin turns a Fleen’s lemon-lime color too. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK. The big Zoombini in the builder also needs ZOOMBINI.EXE, because a table in it places that Zoombini’s parts.</p>';
+  let html = '<h1>Mods</h1><div id="recolor"></div><h2 class="h">Fleens for Zoombinis</h2>'
+    + '<p>With “Fleen parts”, this mod gives every Zoombini a Fleen’s hair, eyes, nose and feet, matching variant for variant. With “Lime green” ticked, their skin turns a Fleen’s lemon-lime color too. With “Whole Fleens”, every Zoombini is drawn as a whole lemon-lime Fleen instead. Each one stands as a Fleen does at rest, half again as tall as a Zoombini, and stretches and squashes with the Zoombini’s step. Either one changes every frame where the game draws a Zoombini, including walking, tumbling, far away and in the builder’s tiles. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK. The big Zoombini in the builder also needs ZOOMBINI.EXE, because a table in it places that Zoombini’s parts.</p>';
   if (missing.length) html += `<p class="note">To find which parts the game draws together, the mod reads every snoid script on the disc. So it needs every archive, and ${missing.length} more must come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
-  html += `<div class="tools"><label><input type="checkbox" id="modGreen"${MOD_FLEEN.green ? ' checked' : ''}> Lime green</label>`
+  html += `<div class="tools"><label><input type="radio" name="modKind" value="parts"${MOD_FLEEN.whole ? '' : ' checked'}> Fleen parts</label>`
+    + `<label><input type="radio" name="modKind" value="whole"${MOD_FLEEN.whole ? ' checked' : ''}> Whole Fleens</label>`
+    + `<label><input type="checkbox" id="modGreen"${MOD_FLEEN.green || MOD_FLEEN.whole ? ' checked' : ''}${MOD_FLEEN.whole ? ' disabled' : ''}> Lime green</label>`
     + `<label class="btn">${MOD_EXE ? esc(MOD_EXE.name) : 'ZOOMBINI.EXE…'}<input type="file" id="modExe" accept=".exe,.EXE" hidden></label>`
     + `<button id="modApply"${missing.length ? ' disabled' : ''}>Apply</button> <span id="modErr" class="bad"></span></div>`
     + `<p class="note">${MOD_EXE ? 'The big Zoombini on Zoombini Isle is modded too.' : 'Without the EXE, every Zoombini except the big one on Zoombini Isle is modded. ZOOMBINI.EXE is in the game’s folder after installing, or on the CD.'}</p>`
@@ -204,13 +207,14 @@ function renderMods() {
   wireFetchAll(view);
   recolorMaker($('recolor'));
   $('modGreen').addEventListener('change', e => { MOD_FLEEN.green = e.target.checked; });
+  for (const r of view.querySelectorAll('[name=modKind]')) r.addEventListener('change', e => { MOD_FLEEN.whole = e.target.value === 'whole'; renderMods(); });
   $('modExe').addEventListener('change', async e => {
     const f = e.target.files[0];
     if (f) { MOD_EXE = { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }; renderMods(); }
   });
   $('modApply').addEventListener('click', () => {
     $('modErr').textContent = '';
-    setStatus('Applying the Fleen parts…');
+    setStatus(MOD_FLEEN.whole ? 'Applying the whole Fleens…' : 'Applying the Fleen parts…');
     setTimeout(() => {
       try { modFleenApply(); } catch (x) { $('modErr').textContent = x.message; console.error(x); }
       setStatus('');
@@ -221,15 +225,15 @@ function renderMods() {
 }
 function modFleenApply() {
   const archives = new Map(sortedArchives().filter(e => !/^MIDI/.test(e.name) && e.bytes).map(e => [e.name, openedArchive(e)]));
-  const out = zbFleenMod(archives, MOD_EXE ? MOD_EXE.bytes : null, MOD_FLEEN.green);
-  const what = MOD_FLEEN.green ? 'Fleen parts, lime green' : 'Fleen parts';
+  const out = zbFleenMod(archives, MOD_EXE ? MOD_EXE.bytes : null, MOD_FLEEN.green, MOD_FLEEN.whole);
+  const what = MOD_FLEEN.whole ? 'Whole Fleens' : MOD_FLEEN.green ? 'Fleen parts, lime green' : 'Fleen parts';
   for (const name of ['ZOOMBINI', 'PICKER']) {
     const entry = ARCHIVES.get(name);
     if (!EDITS.has(name)) EDITS.set(name, { original: entry.bytes, changes: new Map() });
     for (const c of out[name]) EDITS.get(name).changes.set(editKey(c.tag, c.id), { tag: c.tag, id: c.id, bytes: c.bytes, what });
     editRebuild(entry);
   }
-  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: 'the big Zoombini’s anchor points, moved for the Fleen parts' } : null;
+  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: `the big Zoombini’s anchor points, moved for the ${MOD_FLEEN.whole ? 'whole Fleens' : 'Fleen parts'}` } : null;
   SSPRITES.clear();
 }
 /* Five Zoombinis as the archive now draws them, one of each variant. */

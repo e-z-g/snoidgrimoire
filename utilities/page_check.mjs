@@ -191,13 +191,13 @@ const VIEWS = [
       && EDITS.get('PICKER').changes.has('tBMP/4400') && document.querySelectorAll('#rcShow canvas').length === 2;
   })()`],
   ['changes', "/purples into reds/.test(document.getElementById('view').textContent) && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } return !EDITS.size; })()"],
-  // The Fleen-parts mod, green, with the installed EXE, put in from Mods and read back, then undone.
+  // The whole-Fleens mod, with the installed EXE, put in from Mods and read back, then undone.
   ['mods', `(() => {
     if (!window.__mod) {
       if (!document.getElementById('modApply')) return false;
       window.__mod = 'sent';
       fetch('reference/zombs-lair/HDD/ZOOMBINI/ZOOMBINI.EXE').then(r => r.arrayBuffer()).then(b => {
-        MOD_EXE = { name: 'ZOOMBINI.EXE', bytes: new Uint8Array(b) }; MOD_FLEEN.green = true; modFleenApply(); renderMods(); window.__mod = 'done';
+        MOD_EXE = { name: 'ZOOMBINI.EXE', bytes: new Uint8Array(b) }; MOD_FLEEN.whole = true; modFleenApply(); renderMods(); window.__mod = 'done';
       });
       return false;
     }
@@ -207,7 +207,7 @@ const VIEWS = [
       && EXE_EDIT && EXE_EDIT.bytes.length === MOD_EXE.bytes.length && /how they look in the archive now\./.test(document.getElementById('modShow').textContent)
       && document.querySelectorAll('#modShow canvas').length === 5 && openedArchive(ARCHIVES.get('ZOOMBINI')).list('tBMP').length === 6;
   })()`],
-  ['changes', "/Fleen parts, lime green/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],
+  ['changes', "/Whole Fleens/.test(document.getElementById('view').textContent) && document.getElementById('saveExe') && (() => { for (let n = 0; EDITS.size && n < 10; n++) { const a = document.querySelector('#view [data-undo$=\"||\"]'); if (!a) break; a.click(); } document.querySelector('#view [data-exe-undo]').click(); return !EDITS.size && !EXE_EDIT; })()"],
   // A saved game: the test one, opened as a person would, its band and places shown, then its roads on the map.
   ['saves', `(() => {
     if (!window.__save) {

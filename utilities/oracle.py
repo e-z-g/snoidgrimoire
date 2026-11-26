@@ -9,7 +9,7 @@ from $ZB_TOOLS (a front's tools, before it lands), and never changes them.
                                            # animate.py puts them together
     python3 utilities/oracle.py snoidticks # every snoid script's ticks, each
                                            # record the part animate.py fits
-    python3 utilities/oracle.py fleenmod [--green]
+    python3 utilities/oracle.py fleenmod [--green] [--whole]
                                            # the Fleen-parts mod's resources,
                                            # as SHA-1s, and its EXE bytes
     python3 utilities/oracle.py redshaggy  # mod_red_shaggy.py's archives, as SHA-1s
@@ -156,12 +156,17 @@ def write(spec_path):
     return out
 
 
-def fleenmod(green):
+def fleenmod(green, whole=False):
     """The Fleen-parts mod as tools/mod_fleen_parts.py makes it, from the disc,
     with the installed ZOOMBINI.EXE: each rebuilt resource's SHA-1, by
-    archive, and the EXE's changed bytes."""
+    archive, and the EXE's changed bytes. With `whole`, the whole-Fleens mod
+    as tools/mod_fleens.py makes it, which is always green."""
     import mod_fleen_parts as F
-    changes, fit = F.build(DATA, green)
+    fit = None
+    if whole:
+        import mod_fleens
+        fit = mod_fleens.WholeFleen(DATA)
+    changes, fit = F.build(DATA, green, fit)
     exe_path = os.path.join(ROOT, 'reference', 'zombs-lair', 'HDD', 'ZOOMBINI', 'ZOOMBINI.EXE')
     exe = open(exe_path, 'rb').read()
     big, new_exe = F.big_parts(fit, DATA, exe)
@@ -221,7 +226,7 @@ if __name__ == '__main__':
         json.dump(redshaggy(), sys.stdout)
         sys.exit()
     if what == 'fleenmod':
-        json.dump(fleenmod('--green' in sys.argv), sys.stdout, default=str)
+        json.dump(fleenmod('--green' in sys.argv, '--whole' in sys.argv), sys.stdout, default=str)
         sys.exit()
     if what == 'write':
         json.dump(write(sys.argv[2]), sys.stdout)
