@@ -660,7 +660,7 @@ const IO_PUZZLES = {
   z3a6: {
     rules: [
       'There are 12 berries, each a shape, a color and a leaf from 4 values, dealt at random and all different. The program compares two berries by the product of their three values plus one each, so two berries with the same values in another order also count as alike, and the deal draws again.',
-      'Each Zerble is dealt one of the berries at random as the one it eats. The projectors show the three traits in a random order, which matters at Very Very Hard, where they are unlabeled.',
+      'Each Zerble is dealt one of the berries at random as the one it eats, and its feet and tail at random, so its looks say nothing of its berry. The projectors show the three traits in a random order, which matters at Very Very Hard, where they are unlabeled.',
       'A beam projects one trait\'s value from the berry set in its projector, and a Zerble stands in every beam whose value is in the berry dealt to the Zerble. So the overlaps sort the Zerbles by their berries. At Not So Hard a Zerble eats a berry that has the dealt berry\'s values in the two projected traits, and at the higher levels in all three.',
     ],
     settings: [],
