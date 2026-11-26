@@ -126,6 +126,11 @@ function zbXref(archives, { pairs = true } = {}) {
       link(zbXrefKey(name, 'tBMP', sheet), zbXrefKey(name, 'REGS', regs), 'its registration points, x');
       link(zbXrefKey(name, 'tBMP', sheet), zbXrefKey(name, 'REGS', regs + 1), 'its registration points, y');
     }
+    for (const { id } of arc.list('SHPL')) {
+      let p;
+      try { p = parsePaletteResource(arc.get('SHPL', id), 'SHPL'); } catch (e) { continue; }
+      for (let k = 0; k < p.pictures; k++) if (arc.has('tBMP', id + k)) link(zbXrefKey(name, 'SHPL', id), zbXrefKey(name, 'tBMP', id + k), 'colors');
+    }
     for (const { id } of arc.list('NODE')) if (arc.has('PATH', id)) link(zbXrefKey(name, 'PATH', id), zbXrefKey(name, 'NODE', id), 'connects the waypoints in');
   }
   return { out, back };

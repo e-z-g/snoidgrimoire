@@ -180,8 +180,11 @@ function decodeBitmapResource(bytes) {
 
 /* ---- palettes ----------------------------------------------------------- */
 
-/* SHPL: id, flags, first index, count, then count entries of r, g, b and a
-   flag byte. tPAL (MAZE2 only) is the same without the id and flags. */
+/* SHPL: id, the number of tBMPs it colors counting from its id (`pictures`),
+   first index, count, then count entries of r, g, b and a flag byte. All 42
+   on the disc have that number, and BCTWO SHPL 9000 colors tBMP 9000-9015
+   (zbtools' handbook, the log of 22 October 2026). tPAL (MAZE2 only) is the
+   same without the id and the number. */
 function parsePaletteResource(bytes, tag) {
   const b = bytes;
   const head = tag === 'tPAL' ? 0 : 4;
@@ -193,7 +196,7 @@ function parsePaletteResource(bytes, tag) {
     const o = head + 4 + i * 4;
     colors.push([b[o], b[o + 1], b[o + 2], b[o + 3]]);
   }
-  return { id: head ? u16be(b, 0) : null, flags: head ? u16be(b, 2) : null, start, colors };
+  return { id: head ? u16be(b, 0) : null, pictures: head ? u16be(b, 2) : null, start, colors };
 }
 
 /* The twenty colors Windows reserves for the system, at 0-9 and 246-255.

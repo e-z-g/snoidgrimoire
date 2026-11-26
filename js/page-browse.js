@@ -508,7 +508,7 @@ function showPalette(tag, bytes, body) {
     const also = c && (s[0] !== c[0] || s[1] !== c[1] || s[2] !== c[2]) ? `, shown as ${s[0]}, ${s[1]}, ${s[2]}` : '';
     cells += c ? `<div style="background:rgb(${s[0]},${s[1]},${s[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${also}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id} and flags ${p.flags}` : ''}.</p>`
+  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id}. It colors ${plural(p.pictures, 'picture')} from tBMP ${p.id} on, listed under its references` : ''}.</p>`
     + `<div class="tools">${colorsControl()}</div>${colorsNote()}<div class="swatches">${cells}</div>`;
   wireColorsControl();
 }

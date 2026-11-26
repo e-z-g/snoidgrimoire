@@ -3,7 +3,7 @@
 //
 //   - every reference leads to a resource that is there, both ways: what a
 //     script cues, the sheet and points a snoid script draws with, a sheet's
-//     REGS pair, a PATH's NODE;
+//     REGS pair, a PATH's NODE, the pictures each palette colors;
 //   - every resource the site reads (zbSiteReads) is on the disc, bar the
 //     European map's (MAP), which the 1996 disc has too;
 //   - the sheets paired with REGS by length match the snoids' pairs
@@ -26,6 +26,16 @@ for (const [from, list] of x.out) {
   if (!there(from)) fail(`${from} refers onwards but is not there`);
   for (const r of list) { refs++; if (!there(r.key)) fail(`${from} ${r.why} ${r.key}, which is not there`); }
 }
+// Each SHPL colors the tBMPs from its id on, as many as its second word: all
+// 42 on the disc name at least one, and every one named is there.
+let palettes = 0, colored = 0;
+for (const [name, arc] of archives) for (const { id } of arc.list('SHPL')) {
+  const p = S.parsePaletteResource(arc.get('SHPL', id), 'SHPL');
+  palettes++;
+  if (!(p.pictures >= 1)) fail(`${name} SHPL ${id} colors no picture`);
+  for (let k = 0; k < p.pictures; k++) { if (!arc.has('tBMP', id + k)) fail(`${name} SHPL ${id} colors tBMP ${id + k}, which is not there`); else colored++; }
+}
+if (palettes !== 42) fail(`${palettes} SHPL on the disc, not 42`);
 let backs = 0;
 for (const list of x.back.values()) backs += list.length;
 if (backs !== refs) fail(`${refs} references out, ${backs} back`);
@@ -56,5 +66,5 @@ const help = S.zbSearch(docs, 'Arno');
 if (!help.hits.some(h => h.doc.kind === 'text' && /Pizza Pass/.test(h.doc.title))) fail('searching "Arno" does not find Pizza Pass’s help');
 if (S.zbSearch(docs, 'qqzzxx').total) fail('a word on no page found something');
 
-if (!fails) console.log(`${refs} references among ${archives.size} archives, every one there (${Object.entries(whys).map(([w, n]) => `${n} ${w}`).join(', ')}). ${reads.length} resources the site reads, all there. ${pairs.size} of ${sheets} sheets paired with their REGS, the snoids' and the clock's as the site has them. ${docs.length} documents searched`);
+if (!fails) console.log(`${refs} references among ${archives.size} archives, every one there (${Object.entries(whys).map(([w, n]) => `${n} ${w}`).join(', ')}). ${reads.length} resources the site reads, all there. ${palettes} palettes coloring ${colored} pictures. ${pairs.size} of ${sheets} sheets paired with their REGS, the snoids' and the clock's as the site has them. ${docs.length} documents searched`);
 process.exit(fails ? 1 : 0);
