@@ -473,8 +473,98 @@ const MOUNTAIN_SCENARIO_PANES = {
     const box = document.createElement('div');
     view.appendChild(box);
     mountainBytes(main).then(b => mountainPartsView(box, b, main)).catch(e => { box.innerHTML = `<p class="bad">${esc(e.message)}</p>`; });
+    const look = document.createElement('div');
+    view.appendChild(look);
+    mountainLookView(look, anms.filter(k => !/fleens\.anm$/.test(k)), main);
   },
 };
+
+/* ---- as the 1996 game draws them -------------------------------------------- */
+
+/* Each view of an .anm beside the 1996 Zoombini that zb-mountain-look.js
+   picks for it, both playing, the 1996 one scaled to the same height. A
+   preview of a mod, which nobody has written so far. */
+function mountainLookView(box, anms, first) {
+  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the same share of its cycle, scaled to the same height. Traits go by name. The 1996 game has no white or pink nose, so here they are purple and red. Nothing is written to the game’s files.</p>';
+  const z = ARCHIVES.get('ZOOMBINI');
+  if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from the start page.</p>'); return; }
+  const form = document.createElement('div');
+  form.className = 'tools';
+  const sel = (k, opts, on) => `<label>${k} <select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${v === on ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label> `;
+  form.innerHTML = sel('file', anms.map(k => [k, k]), first)
+    + ['feet', 'nose', 'hair', 'eyes'].map(p => sel(p, MR_LOOK_NAMES[p].map((n, i) => [String(i + 1), n]), '1')).join('');
+  box.appendChild(form);
+  const stage = document.createElement('div');
+  box.appendChild(stage);
+  let run = 0;
+  const draw = async () => {
+    const mine = ++run;
+    stage.innerHTML = '<p class="note">Reading…</p>';
+    try {
+      const entry = await ensureBytes(z), arc = openedArchive(entry);
+      const key = form.querySelector('[data-k="file"]').value, b = await mountainBytes(key);
+      if (mine !== run) return;
+      const slots = mrAnmSlots(b), views = mrAnmViews(slots), times = await mountainFrameTimes();
+      const mr = ['feet', 'nose', 'hair', 'eyes'].map(p => +form.querySelector(`[data-k="${p}"]`).value);
+      const old = {}, notes = [];
+      ['feet', 'nose', 'hair', 'eyes'].forEach((p, i) => { const t = mrLookTrait(p, mr[i]); old[p] = t.value; if (t.stand) notes.push(`the ${MR_LOOK_NAMES[p][mr[i] - 1].toLowerCase()} nose is drawn ${ZB_TRAIT_SHORT[p][t.value - 1].toLowerCase()}`); });
+      const sheet = zbSnoidSheet(arc), pal = paletteFor(entry, arc, 1 << 30).pal;
+      const ms = times.get(key) || 50;
+      stage.innerHTML = `<p class="note">${ms} ms a frame, as the game plays this file.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}</p>`;
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px';
+      stage.appendChild(grid);
+      const cells = [];
+      for (const [v, parts] of views) {
+        const values = MR_PARTS.map((p, i) => (!i ? (parts[0].length ? 0 : null) : parts[i].includes(mr[i - 1]) ? mr[i - 1] : null));
+        const n = Math.max(1, ...values.map((val, i) => (val == null ? 1 : (slots[mrAnmSlot(v, i, val)] || []).length)));
+        const walk = mrLookWalk(v, old.feet), script = parseScript(arc.get('SCRS', walk.script), 'SCRS');
+        const ticks = zbSnoidTicks(script, walk.facing), shown = zbSnoidShown(ticks);
+        // each 1996 tick drawn once, in one box around the script's origin
+        const imgs = ticks.map((t, k) => zbSnoidCompose(sheet, zbSnoidPlacements(sheet, old, ticks[Math.max(0, shown[k])])));
+        const left = Math.max(...imgs.map(m => m.ox)), top = Math.max(...imgs.map(m => m.oy));
+        const right = Math.max(...imgs.map(m => m.width - m.ox)), bottom = Math.max(...imgs.map(m => m.height - m.oy));
+        const old96 = imgs.map(m => { const c = document.createElement('canvas'); c.width = left + right; c.height = top + bottom; c.getContext('2d').drawImage(indexedCanvas(m, pal, true), left - m.ox, top - m.oy); return c; });
+        const first = mountainParts(b, slots, v, values, 0);
+        let opaque = 0;
+        for (let y = first.height - 1; y >= 0 && !opaque; y--) for (let x = 0; x < first.width; x++) if (first.data[4 * (y * first.width + x) + 3]) { opaque = y + 1; break; }
+        let topMr = 0;
+        for (let y = 0; y < first.height && !topMr; y++) for (let x = 0; x < first.width; x++) if (first.data[4 * (y * first.width + x) + 3]) { topMr = y + 1; break; }
+        const mrHeight = Math.max(1, opaque - topMr + 1), height = 120, kMr = height / mrHeight, k96 = height / Math.max(1, top + bottom);
+        const cell = document.createElement('div');
+        cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px';
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:flex-end;gap:6px';
+        const cMr = mountainCanvas(first), c96 = document.createElement('canvas');
+        c96.width = old96[0].width; c96.height = old96[0].height;
+        cMr.className = c96.className = 'px';
+        cMr.style.width = Math.round(first.width * kMr) + 'px';
+        c96.style.width = Math.round(c96.width * k96) + 'px';
+        row.append(cMr, c96);
+        cell.append(row);
+        cell.insertAdjacentHTML('beforeend', `<span class="note">view ${v} (${mrLookAngle(v)}°), SCRS ${walk.script}${walk.facing ? ', turned' : ''}</span>`);
+        grid.appendChild(cell);
+        cells.push({ v, values, n, cMr, c96, old96 });
+      }
+      let i = 0;
+      const tick = () => {
+        if (mine !== run || !stage.isConnected) return;
+        for (const c of cells) {
+          const f = mountainParts(b, slots, c.v, c.values, i % c.n);
+          c.cMr.getContext('2d').putImageData(new ImageData(f.data, f.width, f.height), 0, 0);
+          const g = c.c96.getContext('2d');
+          g.clearRect(0, 0, c.c96.width, c.c96.height);
+          g.drawImage(c.old96[mrLookTick(i % c.n, c.n, c.old96.length)], 0, 0);
+        }
+        i++;
+        setTimeout(tick, ms);
+      };
+      tick();
+    } catch (e) { if (mine === run) stage.innerHTML = `<p class="bad">${esc(e.message)}</p>`; }
+  };
+  for (const s of form.querySelectorAll('select')) s.addEventListener('change', draw);
+  draw();
+}
 
 async function mountainPlacePage(view, key) {
   const p = MR_PLACE_BY_KEY.get(key), z = MR_PUZZLES[key], folder = 'bmp/' + key;

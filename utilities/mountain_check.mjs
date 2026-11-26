@@ -162,6 +162,32 @@ let timesNote = '';
   }
 }
 
+// The preview of the 1996 look (zb-mountain-look.js): the walking
+// Zoombini's 16 views a full circle in steps of 22.5 degrees, each
+// direction the 1996 program has picked for some view, straight down,
+// up, left and right as the 1996 walks go, and the traits by name, one
+// 1996 value each, and stand-ins only for the white and pink noses.
+{
+  const L = site({ files: ['js/zb-puzzle.js', 'js/zb-snoid.js', 'js/zb-mountain-look.js'] });
+  const key = [...game.keys()].find(k => /zombis\/littlezomb\.anm$/.test(k));
+  const views = key ? [...S.mrAnmViews(S.mrAnmSlots(bytesOf(game.get(key).path))).keys()] : [];
+  const angles = views.map(v => L.mrLookAngle(v)).sort((a, b) => a - b);
+  if (views.length !== 16 || angles.some((a, i) => a !== i * 22.5)) fail(`littlezomb's views are at ${angles.join(', ')} degrees, not every 22.5`);
+  const dirs = new Set(views.map(v => L.mrLookWalk(v, 1).dir));
+  if (dirs.size !== 5) fail(`the views pick ${dirs.size} of the 1996 walk's 5 directions`);
+  for (const [v, dir, facing] of [[22, 0, 0], [88, 4, 0], [66, 2, 0], [44, 2, 1]]) {
+    const w = L.mrLookWalk(v, 1);
+    if (w.dir !== dir || w.facing !== facing) fail(`view ${v} walks ${w.dir} facing ${w.facing}, not ${dir} facing ${facing}`);
+  }
+  const stands = [];
+  for (const part of ['feet', 'nose', 'hair', 'eyes']) {
+    const got = [1, 2, 3, 4, 5].map(v => L.mrLookTrait(part, v));
+    if (new Set(got.map(t => t.value)).size !== 5) fail(`${part}: two Mountain Rescue values share a 1996 value`);
+    got.forEach((t, i) => { if (t.stand) stands.push(L.MR_LOOK_NAMES[part][i]); });
+  }
+  if (stands.join() !== 'White,Pink') fail(`stand-ins for ${stands.join(', ')}, not the white and pink noses`);
+}
+
 fs.closeSync(fd);
 // The page, in headless Chrome (utilities/mountain_page.mjs).
 const page = spawnSync('node', [path.join(ROOT, 'utilities', 'mountain_page.mjs')], { encoding: 'utf8', timeout: 600000 });
