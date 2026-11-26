@@ -475,7 +475,7 @@ const MOUNTAIN_SCENARIO_PANES = {
     mountainBytes(main).then(b => mountainPartsView(box, b, main)).catch(e => { box.innerHTML = `<p class="bad">${esc(e.message)}</p>`; });
     const look = document.createElement('div');
     view.appendChild(look);
-    mountainLookView(look, anms.filter(k => !/fleens\.anm$/.test(k)), main);
+    mountainLookView(look, anms.filter(k => !/^bmp\/fleens\//.test(k)), main);
   },
 };
 
@@ -485,7 +485,7 @@ const MOUNTAIN_SCENARIO_PANES = {
    picks for it, both playing, the 1996 one scaled to the same height. A
    preview of a mod, which nobody has written so far. */
 function mountainLookView(box, anms, first) {
-  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the 1996 game’s pace, scaled to the same height. Traits go by name. The noses keep a 1996 shape in Mountain Rescue’s colors, so its trait signs still match, with the purple nose’s shape for white and the red one’s for pink. Nothing is written to the game’s files.</p>';
+  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. In a walk, each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle. Each other set is beside the 1996 scripts proposed for it, such as the carried pose for <code>PRIS.ANM</code> and the bubble ride for <code>FLOTTE.ANM</code>, its body held still, as Mountain Rescue draws a set in one place and moves it. The cannon’s views are beside the tumble’s pose whose head points the same way. Each plays at the 1996 game’s pace, scaled to the same height. Traits go by name. The noses keep a 1996 shape in Mountain Rescue’s colors, so its trait signs still match, with the purple nose’s shape for white and the red one’s for pink. Nothing is written to the game’s files.</p>';
   const z = ARCHIVES.get('ZOOMBINI');
   if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
   const form = document.createElement('div');
@@ -508,14 +508,10 @@ function mountainLookView(box, anms, first) {
       const mr = ['feet', 'nose', 'hair', 'eyes'].map(p => +form.querySelector(`[data-k="${p}"]`).value);
       const old = {}, notes = [];
       ['feet', 'nose', 'hair', 'eyes'].forEach((p, i) => { const t = mrLookTrait(p, mr[i]); old[p] = t.value; if (t.stand) notes.push(`the ${MR_LOOK_NAMES[p][mr[i] - 1].toLowerCase()} nose has the 1996 ${ZB_TRAIT_SHORT[p][t.value - 1].toLowerCase()} nose’s shape`); });
-      const sheet = zbSnoidSheet(arc), pal = shownPalette(paletteFor(entry, arc, 1 << 30).pal);
-      // the 1996 nose's shades, counted over its block, and the Mountain
-      // Rescue nose's pixels from the view that shows the most of it
-      const counts = new Map(), block = ZB_SNOID_BLOCKS.nose;
-      for (let pose = 1; pose <= block.poses[old.nose - 1]; pose++) {
-        const f = sheet.frames[zbSnoidFrame('nose', old.nose, pose)];
-        for (const v of f.pixels) if (v) counts.set(v, (counts.get(v) || 0) + 1);
-      }
+      const pal = shownPalette(paletteFor(entry, arc, 1 << 30).pal);
+      // the Mountain Rescue nose's pixels, from the view that shows the most
+      // of it, and each 1996 sheet's nose in those colors, its shades
+      // counted over its block
       let mrNose = [];
       for (const [v, parts] of views) {
         if (!parts[2].includes(mr[1])) continue;
@@ -523,20 +519,31 @@ function mountainLookView(box, anms, first) {
         for (let k = 0; k < f.data.length; k += 4) if (f.data[k + 3] > 128) px.push([f.data[k], f.data[k + 1], f.data[k + 2]]);
         if (px.length > mrNose.length) mrNose = px;
       }
-      const noseColors = mrNose.length ? mrLookNoseColors(counts, pal, mrNose) : null;
-      const ms = times.get(key) || 50;
-      stage.innerHTML = `<p class="note">${ms} ms a frame, as the game plays this file.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}</p>`;
+      const noses = new Map();
+      const noseColors = sheet => {
+        if (!mrNose.length) return null;
+        if (!noses.has(sheet)) {
+          const counts = new Map();
+          for (let pose = 1; pose <= sheet.blocks.nose.poses[old.nose - 1]; pose++) {
+            const f = sheet.frames[zbSnoidFrame('nose', old.nose, pose, 0, sheet.blocks)];
+            if (f) for (const v of f.pixels) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+          }
+          noses.set(sheet, mrLookNoseColors(counts, pal, mrNose));
+        }
+        return noses.get(sheet);
+      };
+      const set = mrLookSet(key), ms = times.get(key) || 50;
+      stage.innerHTML = `<p class="note">${set ? esc(set.what) + '. ' : ''}${ms} ms a frame, as the game plays this file.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}${set && set.note ? ' ' + esc(set.note) : ''}</p>`;
       const grid = document.createElement('div');
       grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px';
       stage.appendChild(grid);
       const cells = [];
-      for (const [v, parts] of views) {
+      // one Mountain Rescue view beside 1996 ticks, each a list of placements
+      const add = (v, parts, sheet, placed, from, label) => {
         const values = MR_PARTS.map((p, i) => (!i ? (parts[0].length ? 0 : null) : parts[i].includes(mr[i - 1]) ? mr[i - 1] : null));
         const n = Math.max(1, ...values.map((val, i) => (val == null ? 1 : (slots[mrAnmSlot(v, i, val)] || []).length)));
-        const walk = mrLookWalk(v, old.feet), script = parseScript(arc.get('SCRS', walk.script), 'SCRS');
-        const ticks = zbSnoidTicks(script, walk.facing), shown = zbSnoidShown(ticks);
-        // each 1996 tick drawn once, in one box around the script's origin
-        const imgs = ticks.map((t, k) => mrLookPaint(sheet, zbSnoidPlacements(sheet, old, ticks[Math.max(0, shown[k])]), pal, noseColors));
+        // each 1996 tick drawn once, in one box around the body
+        const imgs = placed.map(p => mrLookPaint(sheet, p, pal, noseColors(sheet)));
         const left = Math.max(...imgs.map(m => m.ox)), top = Math.max(...imgs.map(m => m.oy));
         const right = Math.max(...imgs.map(m => m.width - m.ox)), bottom = Math.max(...imgs.map(m => m.height - m.oy));
         const old96 = imgs.map(m => { const c = document.createElement('canvas'); c.width = left + right; c.height = top + bottom; c.getContext('2d').putImageData(new ImageData(m.data, m.width, m.height), left - m.ox, top - m.oy); return c; });
@@ -557,9 +564,30 @@ function mountainLookView(box, anms, first) {
         c96.style.width = Math.round(c96.width * k96) + 'px';
         row.append(cMr, c96);
         cell.append(row);
-        cell.insertAdjacentHTML('beforeend', `<span class="note">view ${v} (${mrLookAngle(v)}°), SCRS ${walk.script}${walk.facing ? ', turned' : ''}</span>`);
+        cell.insertAdjacentHTML('beforeend', `<span class="note">${label}</span>`);
         grid.appendChild(cell);
-        cells.push({ v, values, n, cMr, c96, old96 });
+        cells.push({ v, values, n, cMr, c96, old96, from });
+      };
+      const zSheet = kind => zbSnoidSheet(arc, kind);
+      const facingOf = v => (Math.cos(mrLookAngle(v) * Math.PI / 180) < -1e-9 ? 1 : 0);
+      for (const [v, parts] of views) {
+        const where = `view ${v} (${mrLookAngle(v)}°)`;
+        if (set && set.tumble) {
+          const sheet = zSheet('tumble'), best = mrLookTumblePose(sheet, old, mrLookAngle(v));
+          add(v, parts, sheet, [zbSnoidPlacements(sheet, old, best.tick)], 0, `${where}, tumble pose ${best.pose} (head at ${best.angle}°)`);
+          continue;
+        }
+        const matches = set && !set.walk ? set.scripts(old.feet) : [{ archive: 'ZOOMBINI', ...(w => ({ id: w.script, facing: w.facing }))(mrLookWalk(v, old.feet)), from: 0 }];
+        for (const m of matches) {
+          const home = ARCHIVES.get(m.archive), label = `${where}, ${m.archive} SCRS ${m.id}`;
+          if (!home) { grid.insertAdjacentHTML('beforeend', `<p class="note">${esc(label)} needs ${m.archive}.MHK, which is not open.</p>`); continue; }
+          const mArc = openedArchive(await ensureBytes(home));
+          if (mine !== run) return;
+          const script = parseScript(mArc.get('SCRS', m.id), 'SCRS'), kind = ZB_SNOID_KIND_OF_LAYOUT[script.layout];
+          if (kind !== 'zoombini' && kind !== 'tumble') throw new Error(`${m.archive} SCRS ${m.id} draws no Zoombini`);
+          const facing = m.facing ?? facingOf(v), sheet = zSheet(kind);
+          add(v, parts, sheet, mrLookPlaced(sheet, old, zbSnoidTicks(script, facing, m.archive)), m.from, label + (facing ? ', turned' : ''));
+        }
       }
       let i = 0;
       const tick = () => {
@@ -569,7 +597,7 @@ function mountainLookView(box, anms, first) {
           c.cMr.getContext('2d').putImageData(new ImageData(f.data, f.width, f.height), 0, 0);
           const g = c.c96.getContext('2d');
           g.clearRect(0, 0, c.c96.width, c.c96.height);
-          g.drawImage(c.old96[mrLookTick(i, ms, c.old96.length, SNOID_TICK_MS)], 0, 0);
+          g.drawImage(c.old96[mrLookTickFrom(i, ms, c.old96.length, SNOID_TICK_MS, c.from)], 0, 0);
         }
         i++;
         setTimeout(tick, ms);

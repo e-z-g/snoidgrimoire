@@ -26,6 +26,16 @@
    green and blue on the 1996 nose of that name, white on the purple one and
    pink on the red one. mrLookNoseColors gives each shade of the 1996 nose
    the Mountain Rescue nose's shade at the same place from dark to light.
+
+   The other sets (MR_LOOK_SETS) have one view each and play in one place,
+   and the 1996 scripts proposed for them are doc/MOUNTAIN-RESCUE.md's
+   (§ Where each Zoombini set plays), for the maintainer to judge by eye
+   (26 November 2026). Mountain Rescue draws a set in place and moves the
+   sprite, so the 1996 script is drawn with its body held still
+   (mrLookPlaced). The cannon's five views are still pictures of a
+   Zoombini seen from behind, flying head first, and the 1996 match is the
+   tumble's pose whose head points the same way from its feet
+   (mrLookTumblePose).
 */
 
 const MR_LOOK_NAMES = {
@@ -89,9 +99,11 @@ function mrLookPaint(sheet, placed, pal, noseColors) {
 }
 
 /* A view's angle in degrees, 0 to the right and 90 up the screen, from its
-   keypad digits; 5, the keypad's middle, faces the viewer, as down. */
+   keypad digits; 5, the keypad's middle, faces the viewer, as down. A view
+   of one digit (cannon_zomb's) is that digit's angle. */
 function mrLookAngle(view) {
   const DIGIT = { 6: 0, 9: 45, 8: 90, 7: 135, 4: 180, 1: 225, 2: 270, 3: 315, 5: 270 };
+  if (view < 10 && DIGIT[view] != null) return DIGIT[view];
   const a = DIGIT[Math.floor(view / 10)], b = DIGIT[view % 10];
   if (a == null || b == null) throw new Error(`view ${view} is not two keypad digits`);
   const x = Math.cos(a * Math.PI / 180) + Math.cos(b * Math.PI / 180), y = Math.sin(a * Math.PI / 180) + Math.sin(b * Math.PI / 180);
@@ -112,4 +124,81 @@ function mrLookWalk(view, feet) {
    in a 1996 cycle of `ticks` of `tickMs` (102 ms). */
 function mrLookTick(frame, frameMs, ticks, tickMs) {
   return Math.floor(frame * frameMs / tickMs) % ticks;
+}
+
+/* The 1996 tick on Mountain Rescue's frame `frame` for a script that plays
+   once through and then loops from tick `from`, as the carried pose does
+   from its third tick (kSnoidAnimState005_Drag, ScummVM). */
+function mrLookTickFrom(frame, frameMs, ticks, tickMs, from) {
+  const t = Math.floor(frame * frameMs / tickMs);
+  return t < ticks ? t : from + (t - ticks) % (ticks - from);
+}
+
+/* Mountain Rescue's Zoombini sets besides the walks, by the end of the
+   file's key, each with what it shows and the 1996 match proposed: the
+   scripts, each { archive, id, from } for the 1996 feet `feet`, or the
+   tumble's still poses (`tumble`), or the walks (`walk`). A file not here
+   is a walk of 16 views (mrLookWalk), as are the transition's PitiZomb
+   files, the walk drawn smaller. Aqua Cube's sets are smaller copies of the ZOMBIS
+   ones, and the 1996 game's far-off Zoombini (tBMP 3200) has no script, so
+   they take the full-size scripts. */
+const MR_LOOK_RANGE = (archive, first, last) => Array.from({ length: last - first + 1 }, (_, i) => ({ archive, id: first + i, from: 0 }));
+const MR_LOOK_SETS = [
+  { file: 'zombis/pris/pris.anm', what: 'Carried by the pointer', scripts: feet => [{ archive: 'ZOOMBINI', id: 145 + feet, from: 2 }] },
+  { file: 'zombis/attente/attentezomb.anm', what: 'Waiting', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 130, 137) },
+  { file: 'zombis/attente2/attentezomb2.anm', what: 'Waiting and blinking', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131) },
+  { file: 'aquacube/smallest/smallest.anm', what: 'Walking in Aqua Cube', walk: true, note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
+  { file: 'aquacube/smallest/attente/attente.anm', what: 'Waiting in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 130, 137), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
+  { file: 'aquacube/smallest/attente2/attente2.anm', what: 'Waiting and blinking in Aqua Cube', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 131, 131), note: 'The 1996 game draws a far-off Zoombini (tBMP 3200) with no script, so these are the full-size scripts.' },
+  // ScummVM's ZoombiniPuzzleMaze: 15080 + feet, the ride down the screen
+  { file: 'zombis/flotte/flotte.anm', what: 'Riding a bubble in Bubble Bumpers', scripts: feet => [{ archive: 'MAZE2', id: 15080 + feet, from: 0 }] },
+  { file: 'zombis/tombe/tombe.anm', what: 'Flipped into the water in Turtle Hurdle', scripts: () => MR_LOOK_RANGE('BRIDGE', 1004, 1007) },
+  // FLEENS 7031-7035 are one for each feet (zbSnoidFeetOf)
+  { file: 'zombis/saut/saut.anm', what: 'Jumping into the cannon in Magic Mirrors', scripts: feet => [{ archive: 'FLEENS', id: 7030 + feet, from: 0 }, { archive: 'CAVES', id: 13004, from: 0 }] },
+  { file: 'zombis/aspiration/aspiration.anm', what: 'Sucked into the pipes in Pipes of Paloo', scripts: () => MR_LOOK_RANGE('MAZE2', 14000, 14007) },
+  { file: 'wall_of_fleens/cannon_zomb/cannon_zomb.anm', what: 'Shot from the cannon in Magic Mirrors', tumble: true },
+  { file: 'zombiniville/bigzomb/bigzomb.anm', what: 'The big Zoombini in Zoombiniville', scripts: () => MR_LOOK_RANGE('ZOOMBINI', 100, 100),
+    note: 'The big Zoombini of the 1996 Zoombini Isle (PICKER tBMP 4300) would match it better, but a table in ZOOMBINI.EXE places that one’s parts, so the standing Zoombini is shown.' },
+];
+function mrLookSet(key) {
+  return MR_LOOK_SETS.find(s => key.toLowerCase().endsWith(s.file)) || null;
+}
+
+/* A script's ticks placed with the body held still: for each tick the
+   placements of the tick it shows (zbSnoidShown), moved so that the body's
+   record is at the origin. A tick with no body is moved by the last
+   body's place. */
+function mrLookPlaced(sheet, traits, ticks) {
+  const shown = zbSnoidShown(ticks, sheet.effects);
+  let at = null;
+  const anchors = ticks.map(t => {
+    const body = zbSnoidParts(t, sheet.effects).find(p => p.part === 'body');
+    if (body) at = [body.x, body.y];
+    return at;
+  });
+  const first = anchors.find(a => a) || [0, 0];
+  return ticks.map((t, i) => {
+    const k = Math.max(0, shown[i]), [ax, ay] = anchors[k] || first;
+    return zbSnoidPlacements(sheet, traits, ticks[k]).map(p => ({ ...p, x: p.x - ax, y: p.y - ay }));
+  });
+}
+
+/* The tumble's pose (1-18) whose head points nearest to `angle` (degrees,
+   0 to the right and 90 up) from its feet, read from where the sheet puts
+   the hair's and the feet's sprites, and that pose as a tick. */
+function mrLookTumblePose(sheet, traits, angle) {
+  const order = ZB_LAYER_ORDERS[2], n = sheet.blocks.body.poses[0];
+  const center = p => { const f = sheet.frames[p.frame]; return [p.x + f.width / 2, p.y + f.height / 2]; };
+  let best = null;
+  for (let pose = 1; pose <= n; pose++) {
+    const tick = { records: order.map(() => ({ shape: pose, x: 0, y: 0 })), layout: 2, facing: 0 };
+    const placed = zbSnoidPlacements(sheet, traits, tick);
+    const hair = placed.find(p => p.part === 'hair'), feet = placed.find(p => p.part === 'feet');
+    if (!hair || !feet) continue;
+    const [hx, hy] = center(hair), [fx, fy] = center(feet);
+    const a = Math.atan2(fy - hy, hx - fx) * 180 / Math.PI;
+    const off = Math.abs(((a - angle) % 360 + 540) % 360 - 180);
+    if (!best || off < best.off) best = { pose, tick, off, angle: (Math.round(a) + 360) % 360 };
+  }
+  return best;
 }

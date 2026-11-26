@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, REF, site } from './load.mjs';
+import { ROOT, REF, site, haveDisc, archiveBytes } from './load.mjs';
 
 const MR = process.env.ZB_MOUNTAIN || path.join(REF, 'mountain-rescue');
 const ISO = path.join(MR, 'Zoombinis.iso'), DISC = path.join(MR, 'disc');
@@ -197,6 +197,49 @@ let timesNote = '';
   // the 1996 walk at the 1996 game's pace, a 102 ms tick over 50 ms frames
   const paced = [0, 1, 2, 3, 4, 5, 16, 17].map(i => L.mrLookTick(i, 50, 8, 102));
   if (paced.join() !== '0,0,0,1,1,2,7,0') fail(`the 1996 ticks over Mountain Rescue's frames are ${paced.join()}`);
+  // the carried pose's loop from its third tick
+  const looped = Array.from({ length: 10 }, (_, i) => L.mrLookTickFrom(i, 102, 5, 102, 2));
+  if (looped.join() !== '0,1,2,3,4,2,3,4,2,3') fail(`a script looping from tick 2 plays ${looped.join()}`);
+  // the other sets: every .anm but the Fleens' is a walk of 16 views or
+  // a set in MR_LOOK_SETS, and every set is on the disc with one view (the
+  // cannon's five)
+  for (const k of game.keys()) {
+    if (!/\.anm$/.test(k) || /^bmp\/fleens\//.test(k)) continue;
+    const n = S.mrAnmViews(S.mrAnmSlots(bytesOf(game.get(k).path))).size, set = L.mrLookSet(k);
+    if (!set && n !== 16) fail(`${k} has ${n} views and is no walk and no set`);
+    if (set && n !== (set.tumble ? 5 : 1)) fail(`${k} has ${n} views`);
+  }
+  for (const set of L.MR_LOOK_SETS) if (![...game.keys()].some(k => k.endsWith(set.file))) fail(`${set.file} is not on the disc`);
+  if (haveDisc()) {
+    // each proposed 1996 script draws a Zoombini, near or tumbling, and fits
+    // the feet it is proposed for; the body held still at the origin
+    const arcs = {};
+    const Z = site();
+    let scripts = 0;
+    for (const set of Z.MR_LOOK_SETS) {
+      if (set.tumble || set.walk) continue;
+      for (const feet of [1, 2, 3, 4, 5]) for (const m of set.scripts(feet)) {
+        const a = (arcs[m.archive] ||= Z.openMohawk(archiveBytes(m.archive))), s = Z.parseScript(a.get('SCRS', m.id), 'SCRS');
+        const kind = Z.ZB_SNOID_KIND_OF_LAYOUT[s.layout];
+        if (kind !== 'zoombini' && kind !== 'tumble') { fail(`${m.archive} SCRS ${m.id} draws ${kind || 'no snoid'}`); continue; }
+        const sheet = Z.zbSnoidSheet((arcs.ZOOMBINI ||= Z.openMohawk(archiveBytes('ZOOMBINI'))), kind), ticks = Z.zbSnoidTicks(s);
+        if (!Z.zbSnoidFeetFor(sheet, ticks).includes(feet)) fail(`${m.archive} SCRS ${m.id}, proposed for feet ${feet}, does not fit them`);
+        const placed = Z.mrLookPlaced(sheet, { feet, nose: 1, hair: 1, eyes: 1 }, ticks);
+        const body = placed.flat().find(p => p.part === 'body');
+        if (body && (body.x + sheet.xs[body.frame + 1] !== 0 || body.y + sheet.ys[body.frame + 1] !== 0)) fail(`${m.archive} SCRS ${m.id}'s body is not held at the origin`);
+        if (m.from >= ticks.length) fail(`${m.archive} SCRS ${m.id} loops from tick ${m.from} of ${ticks.length}`);
+        scripts++;
+      }
+    }
+    // the cannon's views each beside a tumble pose whose head points
+    // within 25 degrees of the way the view flies
+    const tumble = Z.zbSnoidSheet(arcs.ZOOMBINI, 'tumble');
+    for (const v of [4, 6, 7, 8, 9]) for (const feet of [1, 2, 3, 4, 5]) {
+      const best = Z.mrLookTumblePose(tumble, { feet, nose: 1, hair: 1, eyes: 1 }, Z.mrLookAngle(v));
+      if (!best || best.off > 25) fail(`cannon view ${v}: the nearest tumble pose's head is ${best ? best.off.toFixed(0) : '?'} degrees off`);
+    }
+    if (scripts < 40) fail(`only ${scripts} proposed scripts read`);
+  }
 }
 
 fs.closeSync(fd);
@@ -204,9 +247,14 @@ fs.closeSync(fd);
 const page = spawnSync('node', [path.join(ROOT, 'utilities', 'mountain_page.mjs')], { encoding: 'utf8', timeout: 600000 });
 const pageOut = (page.stdout || '') + (page.stderr || '');
 if (page.status !== 0) { bad++; console.log(pageOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the page check'); }
+// The preview of the 1996 look, every set in it (utilities/mountain_look_page.mjs).
+const look = spawnSync('node', [path.join(ROOT, 'utilities', 'mountain_look_page.mjs')], { encoding: 'utf8', timeout: 600000 });
+const lookOut = (look.stdout || '') + (look.stderr || '');
+if (look.status !== 0) { bad++; console.log(lookOut.split('\n').filter(l => /FAIL|Error/.test(l)).slice(0, 20).join('\n') || 'FAIL the look check'); }
+const lookNote = /^SKIP/m.test(lookOut) ? ' The preview was not opened (' + lookOut.trim() + ').' : look.status === 0 ? ` The preview plays all ${(lookOut.match(/^ok /gm) || []).length} files beside their 1996 matches.` : '';
 const pageNote = /^SKIP/m.test(pageOut) ? ' The page was not opened (' + pageOut.trim() + ').' : page.status === 0 ? ' The page opens it and shows every view, desktop and phone.' : '';
 console.log(`${iso.length} files on the ISO in ${reads} reads (${sampled} compared byte for byte), ${game.size} of the game's. `
   + `${counts.bb} .bb, ${counts.rb} .rb, ${counts.an} .an and ${counts.anm} .anm, with ${counts.frames} frames, `
   + `${bad ? bad + ' wrong' : 'every one pixel for pixel as mr_bitmap.py'} (${counts.dropped} pixels past the width dropped). `
-  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.` + timesNote + pageNote);
+  + `${counts.bmt} .bmt as Pillow reads them, and ${counts.pat} .pat with ${counts.legs} legs.` + timesNote + pageNote + lookNote);
 process.exit(bad ? 1 : 0);
