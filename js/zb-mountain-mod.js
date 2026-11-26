@@ -411,3 +411,169 @@ function mrModExe(exe, sets, names) {
   dv.setUint32(L.opt + 56, align(va + size, L.sectionAlign), true);
   return out;
 }
+
+/* ---- the Mac program's patch --------------------------------------------- */
+
+/* The places patched in the Mac program, Zoombinis2 (the 2001 disc's
+   Classic installer, a PEF container for PowerPC with CarbonLib), by code
+   offset, each with the word expected there, and the names of the
+   functions they are in, which the code's traceback tables give. The
+   program draws a Zoombini in DrawZomb__6CZombiFii as the Windows one
+   does in FUN_0045d580, with the set at +0x44, the slots 12 bytes, the
+   time a frame at +36000 and the walk's set's address in the TOC at
+   -0x7ae8 (r2), which is the data section's 0xad47c (the workbench's
+   tools/mountain/mr_pef.py reads the TOC). Game__Fv loads the walk's set (ReadCompressGfxZomb at
+   0xbd68 from r25) and sets its time (SetGfxZombiFrameTime at 0xc79c).
+   Each place is one instruction, replaced by a branch to the new code,
+   which does it and branches back. */
+const MR_MOD_MAC = {
+  walkToc: -0x7ae8, walkSet: 0xad47c, loader: 0xbd68, setTime: 0xc79c,
+  load: { at: 0x779a4, word: 0x60000000, before: 0x4bf94dfd },
+  sites: [
+    { at: 0xcd6c, word: 0x807f0044, reg: 3, scratch: 0, lift: true },
+    { at: 0xcdc8, word: 0x807f0044, reg: 3, scratch: 0 },
+    { at: 0xce34, word: 0x801f0044, reg: 0, scratch: 3 },
+    { at: 0xcfc0, word: 0x809f0044, reg: 4, scratch: 0 },
+  ],
+  limit: { at: 0xcfd8, word: 0x2c00000b },
+  setSize: 0x10000, fields: { time: 36000, dx: 36016, dy: 36020, limit: 36024 },
+};
+
+/* PowerPC instructions, as words. */
+const PPC = {
+  b: (from, to, link = 0) => (0x48000000 | ((to - from) & 0x3fffffc) | link) >>> 0,
+  bne: (from, to) => ((16 << 26) | (4 << 21) | (2 << 16) | ((to - from) & 0xfffc)) >>> 0,
+  d: (op, rt, ra, d) => ((op << 26) | (rt << 21) | (ra << 16) | (d & 0xffff)) >>> 0,
+  lwz: (rt, d, ra) => PPC.d(32, rt, ra, d),
+  stw: (rs, d, ra) => PPC.d(36, rs, ra, d),
+  lbz: (rt, d, ra) => PPC.d(34, rt, ra, d),
+  addi: (rt, ra, v) => PPC.d(14, rt, ra, v),
+  addis: (rt, ra, v) => PPC.d(15, rt, ra, v),
+  li: (rt, v) => PPC.d(14, rt, 0, v),
+  cmpwi: (ra, v) => PPC.d(11, 0, ra, v),
+  x: (rt, ra, rb, xo) => ((31 << 26) | (rt << 21) | (ra << 16) | (rb << 11) | (xo << 1)) >>> 0,
+  cmplw: (ra, rb) => PPC.x(0, ra, rb, 32),
+  cmpw: (ra, rb) => PPC.x(0, ra, rb, 0),
+  add: (rt, ra, rb) => PPC.x(rt, ra, rb, 266),
+  subf: (rt, ra, rb) => PPC.x(rt, ra, rb, 40),
+  or: (ra, rs, rb) => PPC.x(rs, ra, rb, 444),
+  slwi: (ra, rs, n) => ((21 << 26) | (rs << 21) | (ra << 16) | (n << 11) | ((31 - n) << 1)) >>> 0,
+  mflr: rt => (0x7c0802a6 | (rt << 21)) >>> 0,
+};
+/* A value v as addis and addi halves, the low half signed. */
+function mrModHalves(v) {
+  const lo = ((v & 0xffff) ^ 0x8000) - 0x8000;
+  return [(v - lo) >> 16, lo];
+}
+
+/* A PEF container's sections: { at (header), total, unpacked, packed,
+   offset, kind } each. */
+function mrModPefSections(b) {
+  if (String.fromCharCode(...b.subarray(0, 12)) !== 'Joy!peffpwpc') throw new Error('not a PowerPC PEF container');
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), count = dv.getUint16(0x20);
+  return Array.from({ length: count }, (_, i) => {
+    const at = 0x28 + 28 * i;
+    return { at, total: dv.getUint32(at + 8), unpacked: dv.getUint32(at + 12), packed: dv.getUint32(at + 16), offset: dv.getUint32(at + 20), kind: b[at + 24] };
+  });
+}
+
+/* The Mac program patched as mrModExe patches the Windows one: the five
+   sets added to the end of the data section, which is zero-filled there,
+   and the new code to the end of the code section, with the five names
+   after it. The sets are 64 kB apart, so a Zoombini's set is the walk's
+   set + (the sets' start - the walk's set) + (feet - 1) × 64 kB, with no
+   table to relocate. The data section after the code moves by as much as
+   the code grows. */
+function mrModMac(pef, sets, names, walkOffset = MR_MOD_MAC.walkSet) {
+  const M = MR_MOD_MAC, secs = mrModPefSections(pef), dv0 = new DataView(pef.buffer, pef.byteOffset, pef.byteLength);
+  const code = secs.find(s => s.kind === 0), data = secs.find(s => s.kind === 1 || s.kind === 2);
+  if (code.total !== code.packed || code.offset + code.packed > data.offset) throw new Error('the code section is not plain, or not before the data');
+  const word = at => dv0.getUint32(code.offset + at);
+  const expect = (at, w) => { if (word(at) !== w) throw new Error(`Zoombinis2 has ${word(at).toString(16)} at ${at.toString(16)} where this build has ${w.toString(16)}`); };
+  expect(M.load.at, M.load.word); expect(M.load.at - 4, M.load.before);
+  for (const s of M.sites) expect(s.at, s.word);
+  expect(M.limit.at, M.limit.word);
+  const align = (v, n) => Math.ceil(v / n) * n;
+  const setsAt = align(data.total, 16), delta = setsAt - walkOffset;
+  const out = [], at = () => code.total + 4 * out.length, put = (...ws) => out.push(...ws);
+  const jumps = [];
+  // reg = the set for the Zoombini's feet where reg is the walk's set,
+  // with `scratch` lost; past the end otherwise
+  const redirect = (reg, scratch) => {
+    const skip = [];
+    put(PPC.lwz(scratch, M.walkToc, 2), PPC.cmplw(reg, scratch));
+    skip.push(out.length); put(0);
+    put(PPC.lbz(scratch, 5, 31), PPC.slwi(scratch, scratch, 16));
+    const [hi, lo] = mrModHalves(delta - M.setSize);
+    if (reg === 0) {
+      put(PPC.add(scratch, reg, scratch), PPC.addis(scratch, scratch, hi), PPC.addi(scratch, scratch, lo), PPC.or(0, scratch, scratch));
+    } else {
+      put(PPC.add(reg, reg, scratch), PPC.addis(reg, reg, hi), PPC.addi(reg, reg, lo));
+    }
+    return skip;
+  };
+  const land = skips => { for (const k of skips) out[k] = PPC.bne(code.total + 4 * k, at()); };
+  // the start-up: after the walk's time is set, each new set loaded and
+  // its time, lift and limit written
+  jumps.push({ at: M.load.at, to: at() });
+  const namesFixups = [];
+  sets.forEach((s, i) => {
+    const [hi, lo] = mrModHalves(delta + i * M.setSize);
+    put(PPC.addis(3, 25, hi), PPC.addi(3, 3, lo));
+    // r4 = the name: bl over nothing to read the address here
+    namesFixups.push({ k: out.length + 2, i });
+    put(PPC.b(at(), at() + 4, 1), PPC.mflr(4), 0);
+    put(PPC.b(at(), M.loader, 1), 0x60000000);
+    put(PPC.addis(3, 25, hi), PPC.addi(3, 3, lo));
+    put(PPC.li(0, s.ms), PPC.addis(4, 3, 1));
+    for (const [field, v] of [['time', s.ms], ['dx', s.dx], ['dy', s.dy], ['limit', s.limit]]) put(PPC.li(0, v), PPC.stw(0, M.fields[field] - 0x10000, 4));
+  });
+  put(PPC.b(at(), M.load.at + 4));
+  // the draw's reads of the set
+  for (const s of M.sites) {
+    jumps.push({ at: s.at, to: at() });
+    put(s.word);
+    const skips = redirect(s.reg, s.scratch);
+    if (s.lift) {
+      // r30 -= dx, r27 -= dy, read from the set
+      put(PPC.addis(3, 3, 1), PPC.lwz(0, M.fields.dx - 0x10000, 3), PPC.subf(30, 0, 30), PPC.lwz(0, M.fields.dy - 0x10000, 3), PPC.subf(27, 0, 27), PPC.addis(3, 3, -1));
+    }
+    land(skips);
+    put(PPC.b(at(), s.at + 4));
+  }
+  // the frame limit: r0 compared with the new set's limit, or with 11
+  jumps.push({ at: M.limit.at, to: at() });
+  put(PPC.lwz(3, 0x44, 31));
+  const skips = redirect(3, 4);
+  put(PPC.addis(3, 3, 1), PPC.lwz(4, M.fields.limit - 0x10000, 3), PPC.cmpw(0, 4));
+  put(PPC.b(at(), M.limit.at + 4));
+  land(skips);
+  put(M.limit.word);
+  put(PPC.b(at(), M.limit.at + 4));
+  // the names, and each load's addi to it from the address mflr gives
+  const nameBytes = names.map(n => { const e = new TextEncoder().encode(n); const b = new Uint8Array(align(e.length + 1, 4)); b.set(e); return b; });
+  let nameAt = at();
+  for (const { k, i } of namesFixups) {
+    let o = nameAt;
+    for (let j = 0; j < i; j++) o += nameBytes[j].length;
+    out[k] = PPC.addi(4, 4, o - (code.total + 4 * (k - 1)));
+  }
+  const grown = new Uint8Array(4 * out.length + nameBytes.reduce((n, b) => n + b.length, 0));
+  const gv = new DataView(grown.buffer);
+  out.forEach((w, i) => gv.setUint32(4 * i, w));
+  let o = 4 * out.length;
+  for (const b of nameBytes) { grown.set(b, o); o += b.length; }
+  // the container rebuilt: the code grown, the data after it moved
+  const newCodeSize = code.total + grown.length, shift = align(code.offset + newCodeSize, 16) - data.offset;
+  const tail = pef.subarray(data.offset);
+  const result = new Uint8Array(data.offset + Math.max(0, shift) + tail.length);
+  result.set(pef.subarray(0, code.offset + code.total));
+  result.set(grown, code.offset + code.total);
+  result.set(tail, data.offset + Math.max(0, shift));
+  const dv = new DataView(result.buffer);
+  for (const s of secs) if (s.offset >= data.offset && s.packed) dv.setUint32(s.at + 20, s.offset + Math.max(0, shift));
+  for (const f of [8, 12, 16]) dv.setUint32(code.at + f, newCodeSize);
+  dv.setUint32(data.at + 8, setsAt + sets.length * M.setSize);
+  for (const j of jumps) dv.setUint32(code.offset + j.at, PPC.b(j.at, j.to));
+  return result;
+}
