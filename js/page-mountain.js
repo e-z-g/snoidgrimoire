@@ -485,7 +485,7 @@ const MOUNTAIN_SCENARIO_PANES = {
    picks for it, both playing, the 1996 one scaled to the same height. A
    preview of a mod, which nobody has written so far. */
 function mountainLookView(box, anms, first) {
-  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the 1996 game’s pace, scaled to the same height. Traits go by name. The 1996 game has no white or pink nose, so here they are purple and red. Nothing is written to the game’s files.</p>';
+  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the 1996 game’s pace, scaled to the same height. Traits go by name. The noses keep a 1996 shape in Mountain Rescue’s colors, so its trait signs still match, with the purple nose’s shape for white and the red one’s for pink. Nothing is written to the game’s files.</p>';
   const z = ARCHIVES.get('ZOOMBINI');
   if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
   const form = document.createElement('div');
@@ -507,8 +507,23 @@ function mountainLookView(box, anms, first) {
       const slots = mrAnmSlots(b), views = mrAnmViews(slots), times = await mountainFrameTimes();
       const mr = ['feet', 'nose', 'hair', 'eyes'].map(p => +form.querySelector(`[data-k="${p}"]`).value);
       const old = {}, notes = [];
-      ['feet', 'nose', 'hair', 'eyes'].forEach((p, i) => { const t = mrLookTrait(p, mr[i]); old[p] = t.value; if (t.stand) notes.push(`the ${MR_LOOK_NAMES[p][mr[i] - 1].toLowerCase()} nose is drawn ${ZB_TRAIT_SHORT[p][t.value - 1].toLowerCase()}`); });
-      const sheet = zbSnoidSheet(arc), pal = paletteFor(entry, arc, 1 << 30).pal;
+      ['feet', 'nose', 'hair', 'eyes'].forEach((p, i) => { const t = mrLookTrait(p, mr[i]); old[p] = t.value; if (t.stand) notes.push(`the ${MR_LOOK_NAMES[p][mr[i] - 1].toLowerCase()} nose has the 1996 ${ZB_TRAIT_SHORT[p][t.value - 1].toLowerCase()} nose’s shape`); });
+      const sheet = zbSnoidSheet(arc), pal = shownPalette(paletteFor(entry, arc, 1 << 30).pal);
+      // the 1996 nose's shades, counted over its block, and the Mountain
+      // Rescue nose's pixels from the view that shows the most of it
+      const counts = new Map(), block = ZB_SNOID_BLOCKS.nose;
+      for (let pose = 1; pose <= block.poses[old.nose - 1]; pose++) {
+        const f = sheet.frames[zbSnoidFrame('nose', old.nose, pose)];
+        for (const v of f.pixels) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+      }
+      let mrNose = [];
+      for (const [v, parts] of views) {
+        if (!parts[2].includes(mr[1])) continue;
+        const f = mountainParts(b, slots, v, MR_PARTS.map((_, i) => (i === 2 ? mr[1] : null)), 0), px = [];
+        for (let k = 0; k < f.data.length; k += 4) if (f.data[k + 3] > 128) px.push([f.data[k], f.data[k + 1], f.data[k + 2]]);
+        if (px.length > mrNose.length) mrNose = px;
+      }
+      const noseColors = mrNose.length ? mrLookNoseColors(counts, pal, mrNose) : null;
       const ms = times.get(key) || 50;
       stage.innerHTML = `<p class="note">${ms} ms a frame, as the game plays this file.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}</p>`;
       const grid = document.createElement('div');
@@ -521,10 +536,10 @@ function mountainLookView(box, anms, first) {
         const walk = mrLookWalk(v, old.feet), script = parseScript(arc.get('SCRS', walk.script), 'SCRS');
         const ticks = zbSnoidTicks(script, walk.facing), shown = zbSnoidShown(ticks);
         // each 1996 tick drawn once, in one box around the script's origin
-        const imgs = ticks.map((t, k) => zbSnoidCompose(sheet, zbSnoidPlacements(sheet, old, ticks[Math.max(0, shown[k])])));
+        const imgs = ticks.map((t, k) => mrLookPaint(sheet, zbSnoidPlacements(sheet, old, ticks[Math.max(0, shown[k])]), pal, noseColors));
         const left = Math.max(...imgs.map(m => m.ox)), top = Math.max(...imgs.map(m => m.oy));
         const right = Math.max(...imgs.map(m => m.width - m.ox)), bottom = Math.max(...imgs.map(m => m.height - m.oy));
-        const old96 = imgs.map(m => { const c = document.createElement('canvas'); c.width = left + right; c.height = top + bottom; c.getContext('2d').drawImage(indexedCanvas(m, pal, true), left - m.ox, top - m.oy); return c; });
+        const old96 = imgs.map(m => { const c = document.createElement('canvas'); c.width = left + right; c.height = top + bottom; c.getContext('2d').putImageData(new ImageData(m.data, m.width, m.height), left - m.ox, top - m.oy); return c; });
         const first = mountainParts(b, slots, v, values, 0);
         let opaque = 0;
         for (let y = first.height - 1; y >= 0 && !opaque; y--) for (let x = 0; x < first.width; x++) if (first.data[4 * (y * first.width + x) + 3]) { opaque = y + 1; break; }

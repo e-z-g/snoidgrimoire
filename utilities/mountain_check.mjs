@@ -186,6 +186,14 @@ let timesNote = '';
     got.forEach((t, i) => { if (t.stand) stands.push(L.MR_LOOK_NAMES[part][i]); });
   }
   if (stands.join() !== 'White,Pink') fail(`stand-ins for ${stands.join(', ')}, not the white and pink noses`);
+  // every nose, and nothing else, drawn in Mountain Rescue's colors, each
+  // 1996 shade taking the shade at its place from dark to light
+  for (const part of ['feet', 'nose', 'hair', 'eyes']) {
+    if ([1, 2, 3, 4, 5].some(v => L.mrLookTrait(part, v).recolor !== (part === 'nose'))) fail(`${part} is ${part === 'nose' ? 'not ' : ''}recolored`);
+  }
+  const pal = []; pal[10] = [0, 0, 0]; pal[11] = [120, 120, 120]; pal[12] = [250, 250, 250];
+  const mapped = L.mrLookNoseColors(new Map([[12, 2], [10, 1], [11, 1]]), pal, [[255, 200, 220], [20, 0, 10], [200, 90, 140], [230, 150, 180]]);
+  if (JSON.stringify([10, 11, 12].map(i => mapped.get(i))) !== JSON.stringify([[20, 0, 10], [200, 90, 140], [255, 200, 220]])) fail(`a nose's shades map to ${JSON.stringify([...mapped])}`);
   // the 1996 walk at the 1996 game's pace, a 102 ms tick over 50 ms frames
   const paced = [0, 1, 2, 3, 4, 5, 16, 17].map(i => L.mrLookTick(i, 50, 8, 102));
   if (paced.join() !== '0,0,0,1,1,2,7,0') fail(`the 1996 ticks over Mountain Rescue's frames are ${paced.join()}`);

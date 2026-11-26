@@ -20,9 +20,12 @@
 
    The traits go by name. Mountain Rescue's names are its trait pictures'
    (mystic_marsh/traits), as doc/MOUNTAIN-RESCUE.md reads them. Feet, hair
-   and eyes all have a 1996 value of the same name. Of the noses, orange,
-   green and blue do, and white and pink do not, so the preview gives them
-   purple and red and marks them.
+   and eyes all have a 1996 value of the same name. The noses keep a 1996
+   shape in Mountain Rescue's five colors, at the maintainer's choosing (26
+   November 2026), so that its puzzles' trait signs still match: orange,
+   green and blue on the 1996 nose of that name, white on the purple one and
+   pink on the red one. mrLookNoseColors gives each shade of the 1996 nose
+   the Mountain Rescue nose's shade at the same place from dark to light.
 */
 
 const MR_LOOK_NAMES = {
@@ -33,14 +36,56 @@ const MR_LOOK_NAMES = {
 };
 const MR_LOOK_NOSE_STAND_INS = { White: 'Purple', Pink: 'Red' };
 
-/* A Mountain Rescue trait value (1-5) as the 1996 value: { value, stand }
-   where `stand` is true for a nose with no 1996 match. */
+/* A Mountain Rescue trait value (1-5) as the 1996 value: { value, stand,
+   recolor }, `stand` true for a nose with no 1996 match by name, and
+   `recolor` true for every nose, drawn in Mountain Rescue's color. */
 function mrLookTrait(part, value) {
   const name = MR_LOOK_NAMES[part][value - 1];
   let at = ZB_TRAIT_SHORT[part].indexOf(name), stand = false;
   if (at < 0 && part === 'nose' && MR_LOOK_NOSE_STAND_INS[name]) { at = ZB_TRAIT_SHORT.nose.indexOf(MR_LOOK_NOSE_STAND_INS[name]); stand = true; }
   if (at < 0) throw new Error(`no 1996 ${part} for ${name}`);
-  return { value: at + 1, stand };
+  return { value: at + 1, stand, recolor: part === 'nose' };
+}
+
+/* The colors of a 1996 nose redone in a Mountain Rescue nose's: a Map of
+   palette index -> [r, g, b]. `counts` is the 1996 nose's pixels as a Map
+   of index -> count, `pal` its palette as [r, g, b] by index, and `mr` the
+   Mountain Rescue nose's pixels as [r, g, b]. Both are ordered dark to
+   light, and each 1996 index becomes the Mountain Rescue pixel at the
+   middle of its share of the 1996 nose. */
+function mrLookNoseColors(counts, pal, mr) {
+  const luma = ([r, g, b]) => 0.299 * r + 0.587 * g + 0.114 * b;
+  const theirs = [...mr].sort((a, b) => luma(a) - luma(b));
+  const ours = [...counts].sort((a, b) => luma(pal[a[0]]) - luma(pal[b[0]]));
+  const total = ours.reduce((n, [, k]) => n + k, 0), out = new Map();
+  let below = 0;
+  for (const [i, k] of ours) {
+    const q = (below + k / 2) / total;
+    out.set(i, theirs[Math.min(theirs.length - 1, Math.floor(q * theirs.length))]);
+    below += k;
+  }
+  return out;
+}
+
+/* Placed 1996 parts painted as RGBA, { width, height, data, ox, oy }, in
+   the box zbSnoidBox gives, the nose's colors from `noseColors` where it
+   has them. */
+function mrLookPaint(sheet, placed, pal, noseColors) {
+  const box = zbSnoidBox(sheet, placed), { width, height } = box;
+  const data = new Uint8ClampedArray(4 * width * height);
+  for (const p of placed) {
+    const f = sheet.frames[p.frame], own = p.part === 'nose' ? noseColors : null;
+    for (let y = 0; y < f.height; y++) {
+      const row = (p.y + box.oy + y) * width + (p.x + box.ox);
+      for (let x = 0; x < f.width; x++) {
+        const v = f.pixels[y * f.width + x];
+        if (!v) continue;
+        const [r, g, b] = (own && own.get(v)) || pal[v], o = 4 * (row + x);
+        data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
+      }
+    }
+  }
+  return { width, height, data, ox: box.ox, oy: box.oy };
 }
 
 /* A view's angle in degrees, 0 to the right and 90 up the screen, from its
