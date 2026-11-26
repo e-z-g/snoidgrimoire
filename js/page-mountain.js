@@ -487,7 +487,7 @@ const MOUNTAIN_SCENARIO_PANES = {
 function mountainLookView(box, anms, first) {
   box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the same share of its cycle, scaled to the same height. Traits go by name. The 1996 game has no white or pink nose, so here they are purple and red. Nothing is written to the game’s files.</p>';
   const z = ARCHIVES.get('ZOOMBINI');
-  if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from the start page.</p>'); return; }
+  if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
   const form = document.createElement('div');
   form.className = 'tools';
   const sel = (k, opts, on) => `<label>${k} <select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${v === on ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label> `;

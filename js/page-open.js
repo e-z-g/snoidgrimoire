@@ -301,9 +301,17 @@ function wireOpening() {
     await takeFiles(picked, picked.length === 1 ? picked[0].name : `${picked.length} files`);
   });
   document.getElementById('brand').addEventListener('click', () => {
-    if (!ARCHIVES.size) return;
+    if (!ARCHIVES.size && !zbEditionsOpen().length) return;
     history.replaceState(null, '', location.pathname + location.search);
-    browseStart();
+    if (ARCHIVES.size) browseStart(); else showStart();
+  });
+  // A link to the start page, from a view that needs the 1996 game.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('[data-start]');
+    if (!a) return;
+    e.preventDefault();
+    history.replaceState(null, '', location.pathname + location.search);
+    showStart();
   });
 
   // Once every script is in: the map and the town are the last to load,
@@ -324,6 +332,16 @@ function wireOpening() {
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
+}
+
+/* The start page, with its pickers and archive.org's buttons, over a
+   game already open: the way to open the 1996 game beside Mountain
+   Rescue, Island Odyssey or the remake. The bar stays, so a tab leads
+   back (route() hides the start page). */
+function showStart() {
+  for (const id of ['journey', 'town', 'solve', 'app']) document.getElementById(id).hidden = true;
+  document.getElementById('start').hidden = false;
+  window.scrollTo(0, 0);
 }
 
 async function openFromUrls(urls) {
