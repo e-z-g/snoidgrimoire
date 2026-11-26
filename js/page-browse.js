@@ -51,6 +51,9 @@ function route() {
   $('solve').hidden = !solve;
   $('journey').hidden = !map;
   $('app').hidden = map || town || solve;
+  // A game's files in Data pick that game for Scenario and Components.
+  const dataOf = remake ? '2015' : mountain ? '2001' : odyssey ? '2002' : !tab && search == null && ARCHIVES.has(parseHash().archive) ? '1996' : null;
+  if (dataOf && !ZB_EDITION_HELD && zbEditionsOpen().includes(dataOf)) localStorage.setItem('snoidgrimoire-edition', dataOf);
   renderTopTabs();
   if (search == null) $('q').value = '';
   if (mountain) renderMountain();
