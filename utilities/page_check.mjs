@@ -109,6 +109,8 @@ const VIEWS = [
   ['components/sheets', "document.querySelectorAll('#view .card').length === 112 && document.querySelector('#views a.on').dataset.view === 'components'"],
   ['components/sounds', "document.querySelectorAll('#view button.play').length === 1333 && /voice, kind/.test(document.getElementById('view').innerHTML)"],
   ['components/music', "document.querySelectorAll('#view table tr').length === 37"],
+  // The intro from the CD image, its first frame, then frame 701 picked with the slider.
+  ['components/movies', "document.getElementById('movieCanvas') && /frame 1 of 1392/.test(document.getElementById('movieFrame').textContent) && document.querySelectorAll('#movieList [data-movie]').length === 4 && (() => { const r = document.getElementById('movieAt'); r.value = 700; r.dispatchEvent(new Event('input')); const d = document.getElementById('movieCanvas').getContext('2d').getImageData(0, 0, 640, 480).data; let lit = 0; for (let i = 0; i < d.length; i += 4) if (d[i] | d[i + 1] | d[i + 2]) lit++; return /frame 701 of 1392/.test(document.getElementById('movieFrame').textContent) && lit > 10000; })()"],
   ['components/text', "document.querySelectorAll('#view details.sec').length === 53 && /the credits/.test(document.getElementById('view').textContent)"],
   ['components/palettes', "document.querySelectorAll('#view .palrow').length === 48 && !!document.getElementById('colorsPick')"],
   // A picture in the Windows colors: BRIDGE's room, its first pixel brightened from its palette.

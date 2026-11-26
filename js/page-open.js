@@ -134,6 +134,8 @@ async function takeFiles(picked, source) {
       try { files = isoFiles(bytes); } catch (e) { refused.push(name + ': ' + e.message); continue; }
       const mhk = files.filter(f => /^DATA\/[^/]+\.MHK$/i.test(f.path));
       if (!mhk.length) { refused.push(name + ' has no DATA/*.MHK'); continue; }
+      // the intro movies beside them, for Components' Movies (page-movie.js)
+      for (const f of files.filter(f => /^DATA\/[^/]+\.MOV$/i.test(f.path))) ZB_MOVIES.set(f.path.slice(5).toUpperCase(), bytes.subarray(f.offset, f.offset + f.size));
       for (const f of mhk) {
         const b = bytes.subarray(f.offset, f.offset + f.size);
         ARCHIVES.set(baseName(f.path), { name: baseName(f.path), size: f.size, bytes: b, arc: null, error: null, remote: false });

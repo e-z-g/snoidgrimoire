@@ -16,7 +16,7 @@
 const ZB_TABS = {
   scenario: { name: 'Scenario', subs: [['places', 'Places'], ['puzzles', 'Puzzles'], ['snoids', 'Snoids'], ['town', 'The town'], ['screenshot', 'Screenshot']] },
   components: { name: 'Components', subs: [['pictures', 'Pictures'], ['sheets', 'Sprite sheets'], ['sounds', 'Sounds'], ['music', 'Music'],
-    ['text', 'Text'], ['palettes', 'Palettes'], ['cursors', 'Cursors'], ['scripts', 'Scripts'], ['walks', 'Walks']] },
+    ['movies', 'Movies'], ['text', 'Text'], ['palettes', 'Palettes'], ['cursors', 'Cursors'], ['scripts', 'Scripts'], ['walks', 'Walks']] },
 };
 let DATA_LAST = null;   // the archive Data was last on, for its tab's link
 
