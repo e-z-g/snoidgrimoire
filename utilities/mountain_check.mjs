@@ -186,6 +186,9 @@ let timesNote = '';
     got.forEach((t, i) => { if (t.stand) stands.push(L.MR_LOOK_NAMES[part][i]); });
   }
   if (stands.join() !== 'White,Pink') fail(`stand-ins for ${stands.join(', ')}, not the white and pink noses`);
+  // the 1996 walk at the 1996 game's pace, a 102 ms tick over 50 ms frames
+  const paced = [0, 1, 2, 3, 4, 5, 16, 17].map(i => L.mrLookTick(i, 50, 8, 102));
+  if (paced.join() !== '0,0,0,1,1,2,7,0') fail(`the 1996 ticks over Mountain Rescue's frames are ${paced.join()}`);
 }
 
 fs.closeSync(fd);

@@ -485,7 +485,7 @@ const MOUNTAIN_SCENARIO_PANES = {
    picks for it, both playing, the 1996 one scaled to the same height. A
    preview of a mod, which nobody has written so far. */
 function mountainLookView(box, anms, first) {
-  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the same share of its cycle, scaled to the same height. Traits go by name. The 1996 game has no white or pink nose, so here they are purple and red. Nothing is written to the game’s files.</p>';
+  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. Each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle, at the 1996 game’s pace, scaled to the same height. Traits go by name. The 1996 game has no white or pink nose, so here they are purple and red. Nothing is written to the game’s files.</p>';
   const z = ARCHIVES.get('ZOOMBINI');
   if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
   const form = document.createElement('div');
@@ -554,7 +554,7 @@ function mountainLookView(box, anms, first) {
           c.cMr.getContext('2d').putImageData(new ImageData(f.data, f.width, f.height), 0, 0);
           const g = c.c96.getContext('2d');
           g.clearRect(0, 0, c.c96.width, c.c96.height);
-          g.drawImage(c.old96[mrLookTick(i % c.n, c.n, c.old96.length)], 0, 0);
+          g.drawImage(c.old96[mrLookTick(i, ms, c.old96.length, SNOID_TICK_MS)], 0, 0);
         }
         i++;
         setTimeout(tick, ms);

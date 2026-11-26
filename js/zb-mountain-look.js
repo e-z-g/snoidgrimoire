@@ -11,8 +11,12 @@
    digits of a numeric keypad (doc/MOUNTAIN-RESCUE.md), so its angle is
    halfway between its digits' angles, and the 1996 walk is the one the
    1996 program would pick for a move at that angle (zbWalkDirection's
-   thresholds). Frame k of the view's cycle shows the 1996 tick at the same
-   share of the 1996 walk's cycle.
+   thresholds). The 1996 walk plays at the 1996 game's pace, a tick every
+   102 ms, while Mountain Rescue shows a frame every 50 ms, so a 1996 tick
+   lasts about two frames. Squeezed into Mountain Rescue's cycle of 11
+   frames (0.55 s) instead, the 1996 walks played 1.5 to 4.5 times too
+   fast, which the maintainer saw. A mod would need a view's feet to have
+   about twice as many frames as the 1996 walk has ticks, 12 to 49.
 
    The traits go by name. Mountain Rescue's names are its trait pictures'
    (mystic_marsh/traits), as doc/MOUNTAIN-RESCUE.md reads them. Feet, hair
@@ -59,7 +63,8 @@ function mrLookWalk(view, feet) {
   return { dir, facing: dx < 0 ? 1 : 0, script: 100 + 5 * feet + dir };
 }
 
-/* The 1996 tick for frame `frame` of `frames`, in a cycle of `ticks`. */
-function mrLookTick(frame, frames, ticks) {
-  return Math.floor(frame * ticks / Math.max(1, frames)) % ticks;
+/* The 1996 tick on Mountain Rescue's frame `frame`, `frameMs` apart,
+   in a 1996 cycle of `ticks` of `tickMs` (102 ms). */
+function mrLookTick(frame, frameMs, ticks, tickMs) {
+  return Math.floor(frame * frameMs / tickMs) % ticks;
 }
