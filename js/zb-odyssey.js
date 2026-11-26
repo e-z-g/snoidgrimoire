@@ -622,7 +622,8 @@ const IO_PUZZLES = {
     rules: [
       'Each round is one of 13 machines, and the script deals one at random, more often one not played since all 13 were. Machines 1 to 5 have the first set of gears, 6 to 9 the second and 10 to 13 the third. The first round ever at Not So Hard is machine 9.',
       'The big wheel has 2, 3 or 4 buckets by machine (2, 3, 3, 3, 4, 3, 3, 3, 4, 2, 3, 3, 4). On machines 3, 4, 7, 8, 11 and 12 the three buckets stand a quarter turn apart, as if for four, with one place empty.',
-      'At Not So Hard the catcher moves at one pace. At the higher levels its pace and timing come from the machine\'s row of the program\'s tables, and at Very Very Hard the timing is fixed where the lower levels count it back from the wheel\'s last frame.',
+      'Each part of the machine is an animation that steps once a tick. The items roll down the chute in the order set, each stopping while it touches the one ahead, and the front one waits at the foot. The wheel turns in 36, 72 or 108 frames by gear set, and the waiting item drops into a bucket as the bucket passes the catch frame, so an item leaves the chute every turn ÷ buckets frames, with a double gap where a bucket is missing. The item rides the bucket and is thrown off the far side.',
+      'A flap goes down and up on a cycle of 72 to 144 frames, set by the machine\'s pace (one pace at Not So Hard). A thrown item reaches the paddle only while the flap is down, in one of three windows of the cycle, and otherwise falls into the sea. At Not So Hard the windows are frames 1 to 8, 26 to 42 and 59 to 72 of 72. Which places in the order reach the paddle depends on the flight\'s time and the cycles\' first frames, which are unread.',
       'There is one item for each Zoombini, 12 at most. A boulder that reaches the paddle launches the next Zoombini. A mudball that lands there, or anything that misses, uses its item up.',
     ],
     settings: [],
