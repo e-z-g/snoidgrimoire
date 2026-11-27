@@ -476,8 +476,54 @@ const MOUNTAIN_SCENARIO_PANES = {
     const look = document.createElement('div');
     view.appendChild(look);
     mountainLookView(look, anms.filter(k => !/^bmp\/fleens\//.test(k)), main);
+    const mod = document.createElement('div');
+    view.appendChild(mod);
+    mountainModView(mod);
   },
 };
+
+/* ---- the mod --------------------------------------------------------------- */
+
+/* The mod written for the game (zb-mountain-mod.js): every Zoombini set
+   redone as the 1996 game draws it and zoombini2.exe patched to load them,
+   saved as a zip to lay over the installed game and the disc's Data. It
+   needs the 1996 game's ZOOMBINI, BRIDGE, MAZE2 and PICKER archives. */
+function mountainModView(box) {
+  box.innerHTML = '<h2 class="h">The mod for the game</h2><p>Every Zoombini in Mountain Rescue drawn as the 1996 game draws it, in the game itself, made from the files open here. The zip has <code>zoombini2.exe</code>, patched to load the new sets, for the installed game’s folder, and <code>Data/Bmp/ZOMBIS</code> with the new sets, 76 files, for the folder the game reads as its disc. It runs on Windows, or under Wine with cnc-ddraw. Zoombiniville’s opening is a movie and stays as it is.</p>';
+  const need = ['ZOOMBINI', 'BRIDGE', 'MAZE2', 'PICKER'], missing = need.filter(n => !ARCHIVES.get(n));
+  if (missing.length) { box.insertAdjacentHTML('beforeend', `<p class="note">This needs the 1996 game’s ${missing.map(n => n + '.MHK').join(', ')} too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>`); return; }
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  tools.innerHTML = '<button type="button" data-make-mod>Make the mod as .zip</button> <span class="note" data-mod-state></span>';
+  box.appendChild(tools);
+  const state = tools.querySelector('[data-mod-state]');
+  tools.querySelector('[data-make-mod]').addEventListener('click', async e => {
+    e.target.disabled = true;
+    try {
+      state.textContent = 'Reading…';
+      const arcs = {};
+      for (const n of need) arcs[n] = openedArchive(await ensureBytes(ARCHIVES.get(n)));
+      const files = new Map();
+      await Promise.all(MR_MOD_SETS.map(async spec => {
+        const key = 'bmp/' + spec.file;
+        if (MOUNTAIN.files.has(key)) files.set(spec.file, await mountainBytes(key));
+      }));
+      const exe = await mountainBytes('zoombini2.exe');
+      state.textContent = 'Drawing the sets…';
+      await new Promise(r => setTimeout(r, 30));
+      const pal = zbWindowsPalette(zbPalette(parsePaletteResource(arcs.PICKER.get('SHPL', 4000), 'SHPL')));
+      const groups = mrModGroups(f => files.get(f) || null, zbSnoidSheet(arcs.ZOOMBINI, 'zoombini'), zbSnoidSheet(arcs.ZOOMBINI, 'tumble'), pal,
+        (a, id) => parseScript(arcs[a].get('SCRS', id), 'SCRS'));
+      const out = [{ name: 'zoombini2.exe', bytes: mrModExe(exe, groups) }];
+      for (const g of groups) g.sets.forEach((s, i) => out.push({ name: 'Data/Bmp/ZOMBIS/' + g.names[i].split('/').pop(), bytes: mrAnmWrite(s.slots) }));
+      dlBlob(buildZip(out), 'zoombinis-mountain-rescue-1996-mod.zip');
+      state.textContent = `Saved, ${out.length} files.`;
+    } catch (err) {
+      state.textContent = err.message;
+    }
+    e.target.disabled = false;
+  });
+}
 
 /* ---- as the 1996 game draws them -------------------------------------------- */
 

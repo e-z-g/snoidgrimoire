@@ -1,7 +1,7 @@
 // Mountain Rescue's Zoombinis as the 1996 game draws them, in headless
 // Chrome: both discs open, then each .anm in the preview's menu
 // (page-mountain.js mountainLookView), counting the pairs it plays and any
-// error. SHOTS=<dir> saves a screenshot of each. Exits 1 on an error or a
+// error, and then the mod's button (mountainModView), whose zip is caught. SHOTS=<dir> saves a screenshot of each. Exits 1 on an error or a
 // file with no pairs.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,6 +44,16 @@ const r = await loadPage(srv.base + 'index.html?src=reference/disc/ZOOMBINI.ISO'
       out.push([f, !state.bad && state.cells > 0, `${state.cells} pairs ${state.bad || ''}\n    ${state.note}\n    ${state.labels.slice(0, 8).join(' | ')}${state.missing.length ? '\n    ' + state.missing.join(' | ') : ''}`]);
       if (shots) await p.evaluate(`${menu}.scrollIntoView(); true`), await p.shot(path.join(shots, f.replace(/[/.]+/g, '-') + '.png'));
     }
+    // the mod for the game (mountainModView): the button saves a zip of
+    // zoombini2.exe and the 76 sets, caught here in place of the download
+    await p.evaluate("window.dlBlob = (blob, name) => { window.modSaved = { size: blob.size, name }; }; document.querySelector('[data-make-mod]').click(); true");
+    let saved = null, note = '';
+    for (let i = 0; i < 480 && !saved; i++) {
+      await new Promise(res => setTimeout(res, 250));
+      [saved, note] = await p.evaluate("[window.modSaved || null, (document.querySelector('[data-mod-state]') || {}).textContent || '']");
+      if (!saved && /not|error|no /i.test(note)) break;
+    }
+    out.push(['the mod', !!saved && saved.size > 30e6 && /77 files/.test(note), saved ? `${saved.name}, ${(saved.size / 1e6).toFixed(1)} MB, ${note}` : `nothing saved: ${note}`]);
     return out;
   },
 });

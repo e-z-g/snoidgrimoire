@@ -403,7 +403,7 @@ function mrModOtherSets(anm, spec, sheet, pal, script, k, noseColors, tumble) {
 }
 
 /* A set drawn as the builder draws its big Zoombini (FUN_0043c6e0): the
-   body and each part at the frame's corner, each from its own slot. So
+   body and each part at the frame's corner, each from the slot for it. So
    the body's slot has the 1996 body alone and each part's slot the 1996
    part for its value, standing (ZOOMBINI SCRS 100), the body's middle and
    lowest feet row on Mountain Rescue's at scale k, or smaller where the
@@ -429,7 +429,7 @@ function mrModWholeSet(anm, sheet, pal, script, k, noseColors) {
     const frames = ticks.map(tick => ({ tick, k: scale, ax: anchorMr[0] - anchor96[0] * scale, ay: anchorMr[1] - anchor96[1] * scale }));
     const f = mrModFrames(sheet, pal, noseColors, [{ v, frames: frames.slice(0, 1) }], mr);
     if (f.width !== mr.width || f.height !== mr.height) throw new Error(`the 1996 Zoombini does not fit BigZomb.anm's ${mr.width}×${mr.height}`);
-    // the body alone, each feet from its own tick, and the nose, hair and
+    // the body alone, each kind of feet from the tick for it, and the nose, hair and
     // eyes as mrModFrames draws them
     const feetOf = feet => mrModFrames(sheet, pal, noseColors, [{ v, frames: [{ ...frames[(feet - 1) * 1], tick: { base: { order: frames[feet - 1].tick.base.order, placed: frames[feet - 1].tick.base.placed.filter(p => p.part === 'feet') }, byValue: frames[0].tick.byValue } }] }], mr);
     const bodyOnly = mrModFrames(sheet, pal, noseColors, [{ v, frames: [{ ...frames[0], tick: { base: { order: frames[0].tick.base.order, placed: frames[0].tick.base.placed.filter(p => p.part === 'body') }, byValue: frames[0].tick.byValue } }] }], mr);
@@ -487,7 +487,15 @@ function mrModGroups(read, sheet, tumble, pal, script) {
    part's slot (0x45d80e) and the next frame's time (0x45da1f), and the
    frame number is held under 11 at 0x45da2d. A Zoombini's feet are its
    byte +5. Each site's `mask` is the groups it redirects: 1 every group,
-   2 the walks alone, which have the 1996 pace and length. */
+   2 the walks alone, which have the 1996 pace and length. The draw's loop
+   draws the parts 1 to 4 (ebx) as feet, nose, hair and eyes, each from
+   the slot (view × 5 + part) × 6 + value with the value at the
+   Zoombini's byte part + 4 (0x45d806 to 0x45d81a), and at the part's site
+   (`swap`) the patch draws a mod set's eyes before its hair, as the 1996
+   game does. FUN_0045d3d0 puts the Zoombini's sprite at its place for
+   the pointer (`sprite`, the sprite at +0x50, its +0x1c and +0x20), and
+   the patch moves a mod set's sprite by the set's lift, where it is
+   drawn. */
 const MR_MOD_EXE = {
   walkSet: 0x55a090, loader: 0x45c510, setTime: 0x45cec0,
   loaderEntry: { at: 0x45c510, bytes: '6aff68be0b4800', next: 0x45c517 },
@@ -495,10 +503,11 @@ const MR_MOD_EXE = {
   sites: [
     { at: 0x45d660, bytes: '8b5e448d3c49', reg: 'ebx', mask: 1, lift: true },
     { at: 0x45d7ba, bytes: '8b7e448d0440', reg: 'edi', mask: 1 },
-    { at: 0x45d80e, bytes: '8b4e448d1440', reg: 'ecx', mask: 1 },
+    { at: 0x45d80e, bytes: '8b4e448d144033c08a441e04', reg: 'ecx', mask: 1, swap: true },
     { at: 0x45da1f, bytes: '8b56440382' + '80bb0000', reg: 'edx', mask: 2 },
   ],
   limit: { at: 0x45da2d, bytes: '837e740b0f8c', next: 0x45da37 },
+  sprite: { at: 0x45d422, bytes: '8b4e508b492c' },
   setSize: 0xbba0, fields: { dx: 0xbb88, dy: 0xbb8c, limit: 0xbb90 },
 };
 const MR_REG = { eax: 0, ecx: 1, edx: 2, ebx: 3, esp: 4, ebp: 5, esi: 6, edi: 7 };
@@ -577,13 +586,13 @@ function mrModAsm(origin) {
    (`file`), its five sets by feet and their names. The patch is a new
    section, .zb96, with the start-up code that loads every set; the
    loader's hook, which notes the set each group's file is loaded into
-   (the group's source), and forgets a source loaded over with another
-   file; the lookup, which gives the group's set for the Zoombini's feet
+   (the group's source), and drops a source when another file is loaded
+   over it; the lookup, which gives the group's set for the Zoombini's feet
    where the set read is a group's source and the feet are 1 to 5; the
    draw's sites and the frame limit, each a jump to code that calls the
    lookup; and the names, the groups' entries, the names' addresses, the
-   groups' tables and the sets. A walk's set has its own time a frame and
-   limit, and the others keep the program's, since the places count their
+   groups' tables and the sets. A walk's set has the 1996 time a frame and
+   limit, and the others retain the program's, since the places count their
    frames. */
 function mrModExe(exe, groups) {
   const M = MR_MOD_EXE, L = mrModPe(exe), view = new DataView(exe.buffer, exe.byteOffset, exe.byteLength);
@@ -597,6 +606,7 @@ function mrModExe(exe, groups) {
   if (M.load.at + 12 + view.getInt32(loadOff + 8, true) !== M.setTime) throw new Error('the start-up call is not to the time setter');
   const entryOff = expect(M.loaderEntry.at, M.loaderEntry.bytes);
   for (const s of M.sites) expect(s.at, s.bytes);
+  const spriteOff = expect(M.sprite.at, M.sprite.bytes);
   const limitOff = expect(M.limit.at, M.limit.bytes), limitTarget = M.limit.at + 10 + view.getInt32(limitOff + 6, true);
   const pointers = mrModNamePointers(exe);
   for (const g of groups) if (!pointers.get(g.file)) throw new Error(`zoombini2.exe loads no ${g.file}`);
@@ -650,13 +660,27 @@ function mrModExe(exe, groups) {
     const o = mrModFileOffset(L, s.at), n = s.bytes.length / 2, r = MR_REG[s.reg];
     jumps.push({ at: s.at, n, to: a.here });
     a.bytes(...exe.subarray(o, o + 3)).bytes(0x60);
+    // the part to draw, carried in edx past popad: ebx, or for a mod
+    // set, 4 for 3 and 3 for 4 (mov [esp+20], ebx)
+    if (s.swap) a.hex('895c2414');
     if (r) a.bytes(0x8b, 0xc0 | r);
     a.call('lookup').bytes(0xf7, 0xc1).u32(s.mask); je(`restore${i}`);
+    // cmp ebx, 3; jb; xor dword [esp+20], 7
+    if (s.swap) { a.bytes(0x89, 0x44, 0x24, MR_PUSHAD[s.reg]).hex('83fb03').rel([0x0f, 0x82], `restore${i}`).hex('8374241407'); }
     a.bytes(0x89, 0x44, 0x24, MR_PUSHAD[s.reg]);
     if (s.lift) a.bytes(0x8b, 0x90).u32(M.fields.dx).hex('29542430').bytes(0x8b, 0x90).u32(M.fields.dy).hex('29542434');
-    a.label(`restore${i}`).bytes(0x61).bytes(...exe.subarray(o + 3, o + n)).jmp(s.at + n);
+    // with `swap`: mov edi, edx; sub eax, ebx; add eax, edi;
+    // lea edx, [eax+eax*2]; xor eax, eax; mov al, [esi+edi+4]
+    if (s.swap) a.label(`restore${i}`).bytes(0x61).hex('8bfa2bc303c78d144033c08a443e04').jmp(s.at + n);
+    else a.label(`restore${i}`).bytes(0x61).bytes(...exe.subarray(o + 3, o + n)).jmp(s.at + n);
   });
-  // the frame limit: a walk's own, and 11 for the others
+  // the sprite moved by the lift: pushad; mov eax, [esi+0x44]; lookup;
+  // sub the set's dx from the saved edi and its dy from the saved ebx
+  jumps.push({ at: M.sprite.at, n: 6, to: a.here });
+  a.bytes(0x60).hex('8b4644').call('lookup').bytes(0xf7, 0xc1).u32(1); je('spriteDone');
+  a.bytes(0x8b, 0x90).u32(M.fields.dx).hex('291424').bytes(0x8b, 0x90).u32(M.fields.dy).hex('29542410');
+  a.label('spriteDone').bytes(0x61).bytes(...exe.subarray(spriteOff, spriteOff + 6)).jmp(M.sprite.at + 6);
+  // the frame limit: a walk set's, and 11 for the others
   jumps.push({ at: M.limit.at, n: 10, to: a.here });
   a.bytes(0x60).hex('8b4644').call('lookup').bytes(0xf7, 0xc1).u32(2); je('old');
   a.bytes(0x8b, 0x80).u32(M.fields.limit).hex('394674').bytes(0x61).jl(limitTarget).jmp(M.limit.next);

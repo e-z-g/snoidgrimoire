@@ -284,7 +284,7 @@ let timesNote = '';
     const exe = bytesOf('INSTALL/hd/zoombini2.exe'), patched = Z.mrModExe(exe, groups);
     const P = Z.mrModPe(patched), zb = P.sections.find(s => s.name === '.zb96'), dvp = new DataView(patched.buffer);
     if (P.sections.length !== Z.mrModPe(exe).sections.length + 1 || !zb) fail('the patched program has no new section');
-    for (const at of [Z.MR_MOD_EXE.loaderEntry.at, Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at]) {
+    for (const at of [Z.MR_MOD_EXE.loaderEntry.at, Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at, Z.MR_MOD_EXE.sprite.at]) {
       const o = Z.mrModFileOffset(P, at), to = at + 5 + dvp.getInt32(o + 1, true) - P.base;
       if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x1000) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
     }
