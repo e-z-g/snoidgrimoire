@@ -1,7 +1,10 @@
 /* Mountain Rescue's Zoombinis as the 1996 game draws them, written for
-   the game: the walk as five .anm files, one for each kind of feet, and
-   zoombini2.exe patched to load them and draw each Zoombini from the one
-   for its feet (26 November 2026, at the maintainer's choosing).
+   the game: every Zoombini set (MR_MOD_SETS) as five .anm files, one for
+   each kind of feet, and zoombini2.exe patched to load them and draw each
+   Zoombini from the one for its feet (the walk on 26 November 2026, at
+   the maintainer's choosing, and every set on 27 November 2026, at the
+   maintainer's word: "Can't you make it so there is no more MR version
+   zoombini").
 
    Why the program is patched. Mountain Rescue draws a Zoombini
    (FUN_0045d580) from one set: the body, then the feet, nose, hair and
