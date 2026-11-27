@@ -22,10 +22,11 @@
    before the eyes and the 1996 game the eyes before the hair, and no
    frame can fix that, since the hair varies apart from the eyes. A part
    the 1996 game draws under the body (the nose, walking away) is cut
-   where the body covers it. The blink's set, where a Zoombini waits, is
-   redone the same way (MR_MOD_EXTRAS). Every other set (the celebration,
-   the carried pose, the transition's sizes, the puzzles' sets) is
-   unchanged. */
+   where the body covers it. The other sets are redone the same way
+   (mrModOtherSets), each with Mountain Rescue's frame count and pace, and
+   the builder's big Zoombini as one file (mrModWholeSet). Zoombiniville's
+   opening is a Bink movie (Data/movies/zoom_movie*.bik), which no set
+   reaches. */
 
 /* A picture { width, height, data (RGBA) } as an .anm frame: u32 size,
    the .rb header, then u16 count and the segments, each u16 x, u16 y,
@@ -109,73 +110,32 @@ function mrModParts(b, slots, view, values, frame = 0) {
   return out;
 }
 
-/* A 1996 walk's ticks placed for the mod: for each tick, the part order
-   and the placements (of the tick zbSnoidShown gives where it draws
-   nothing), each { part, frame, x, y }, moved so that the body's record
-   is at x 0 in every tick, since Mountain Rescue moves the sprite, and the
-   first tick's body at y 0, so the walk rises and falls as in 1996.
-   `traits` gives each part's 1996 value. */
-function mrModWalkTicks(sheet, traits, ticks) {
-  const shown = zbSnoidShown(ticks, sheet.effects);
-  const parts = ticks.map(t => zbSnoidParts(t, sheet.effects));
-  const firstBody = parts.map(p => p.find(q => q.part === 'body')).find(Boolean);
-  if (!firstBody) throw new Error('the walk draws no body');
-  return ticks.map((t, i) => {
-    const k = Math.max(0, shown[i]), body = parts[k].find(q => q.part === 'body') || firstBody;
-    return {
-      order: parts[k].map(q => q.part),
-      placed: zbSnoidPlacements(sheet, traits, ticks[k]).map(p => ({ ...p, x: p.x - body.x, y: p.y - firstBody.y })),
-    };
-  });
+/* A Mountain Rescue Zoombini's traits (feet 1-5, and one other part's
+   value, the rest 1) as the 1996 Zoombini's. */
+function mrModTraits(feet, part = null, value = 1) {
+  const t = { feet: mrLookTrait('feet', feet).value, nose: mrLookTrait('nose', 1).value, hair: mrLookTrait('hair', 1).value, eyes: mrLookTrait('eyes', 1).value };
+  if (part) t[part] = mrLookTrait(part, value).value;
+  return t;
 }
 
-/* The mod's five walk sets, one for each Mountain Rescue feet value, each
-   { feet, slots (for mrAnmWrite), ms, limit, dx, dy, width, height,
-   ticks, scale }. `limit` is the frame at which the program starts the
-   loop again (the 1996 walk's ticks + 1, frame 0 being the Zoombini
-   standing), and (dx, dy) is how far the new frames' corner is up and to
-   the left of Mountain Rescue's. `anm` is littleZomb.anm's bytes, `sheet`
-   the 1996 Zoombini's (zbSnoidSheet), `pal` the 1996 colors by index and
-   `scripts` a function from a ZOOMBINI script number to its parsed SCRS.
-   The 1996 Zoombini is scaled to the height of Mountain Rescue's,
-   standing and facing the viewer. Each view's walk is the one mrLookWalk
-   gives, with its first tick's lowest feet row on Mountain Rescue's frame
-   0 feet's and its body's middle on Mountain Rescue's body's. */
-/* The mod's other sets, each drawn for each kind of feet in the walk
-   set's frame and lift, so that the patch draws both alike: `view` is the
-   Mountain Rescue set's one view, frame 0 is the 1996 script `stand(feet)`
-   gives (its first tick), frames 1 on are that tick `before` times, the
-   script `script(feet)` gives, from its tick `from`, and that tick
-   `after` times, and the 1996 Zoombini is placed on Mountain Rescue's for
-   that view as the walk is. The blink is attenteZomb2.anm's
-   set (DAT_00542980), where the program puts a Zoombini that waits, and
-   its frame 0 is what a waiting Zoombini shows. The 1996 game blinks only
-   facing the viewer, so a waiting Zoombini stands facing the viewer
-   (ZOOMBINI SCRS 100) and blinks as ZOOMBINI SCRS 131 has it, and turns
-   to its view once it walks. Mountain Rescue's blink runs open, closed and
-   open again (attenteZomb2.anm's eyes, frames 0-2, 3-8 and 9-10), so the
-   1996 blink has a standing tick on each side. */
-const MR_MOD_EXTRAS = [
-  { key: 'blink', view: 33, stand: () => 100, script: () => 131, from: 0, before: 1, after: 1 },
-];
+/* How much larger Mountain Rescue's Zoombini in `anm` stands than the
+   1996 one: the height of its parts drawn together, facing the viewer
+   (view 22) or in its first view, over the 1996 Zoombini's standing. */
+function mrModScale(anm, sheet) {
+  const slots = mrAnmSlots(anm), views = [...mrAnmViews(slots).keys()];
+  const front = views.includes(22) ? 22 : views[0];
+  const mr = mrModOpaqueBox(mrModParts(anm, slots, front, [0, 1, 1, 1, 1]));
+  return (mr.y1 - mr.y0) / zbSnoidBox(sheet, zbZoombiniPlacements(sheet, mrModTraits(1))).height;
+}
 
-function mrModWalkSets(anm, sheet, pal, scripts, tickMs = 102, extras = MR_MOD_EXTRAS) {
-  const slots = mrAnmSlots(anm), views = mrAnmViews(slots), viewList = [...views.keys()];
-  const old = (feet, part = null, value = 1) => {
-    const t = { feet: mrLookTrait('feet', feet).value, nose: mrLookTrait('nose', 1).value, hair: mrLookTrait('hair', 1).value, eyes: mrLookTrait('eyes', 1).value };
-    if (part) t[part] = mrLookTrait(part, value).value;
-    return t;
-  };
-  const front = viewList.includes(22) ? 22 : viewList[0];
-  const mrStand = mrModOpaqueBox(mrModParts(anm, slots, front, [0, 1, 1, 1, 1]));
-  const box96 = zbSnoidBox(sheet, zbZoombiniPlacements(sheet, old(1)));
-  const k = (mrStand.y1 - mrStand.y0) / box96.height;
-  // each Mountain Rescue nose's pixels, from the view that shows the most
-  // of it, and the 1996 nose that stands for it in those colors
-  const noseColors = new Map();
+/* Each Mountain Rescue nose's colors for the 1996 nose that stands for
+   it, from the view of `anm` that shows the most of it (mrLookNoseColors):
+   a Map of the value (1-5) to a Map of 1996 index -> [r, g, b]. */
+function mrModNoseColors(anm, sheet, pal) {
+  const slots = mrAnmSlots(anm), views = [...mrAnmViews(slots).keys()], out = new Map();
   for (let n = 1; n <= 5; n++) {
     let px = [];
-    for (const v of viewList) {
+    for (const v of views) {
       const f = mrModParts(anm, slots, v, [null, null, n, null, null]);
       if (!f) continue;
       const here = [];
@@ -187,137 +147,380 @@ function mrModWalkSets(anm, sheet, pal, scripts, tickMs = 102, extras = MR_MOD_E
       const f = sheet.frames[zbSnoidFrame('nose', nose, pose, 0, sheet.blocks)];
       if (f) for (const v of f.pixels) if (v) counts.set(v, (counts.get(v) || 0) + 1);
     }
-    noseColors.set(n, px.length ? mrLookNoseColors(counts, pal, px) : null);
+    out.set(n, px.length ? mrLookNoseColors(counts, pal, px) : null);
   }
+  return out;
+}
+
+/* A 1996 script's ticks placed for the mod: for each tick, the part order
+   and the placements (of the tick zbSnoidShown gives where it draws
+   nothing), each { part, frame, x, y }, moved so that the body's record
+   is at x 0 in every tick, since Mountain Rescue moves the sprite, and the
+   first tick's body at y 0, so a walk rises and falls as in 1996.
+   `traits` gives each part's 1996 value. With `still`, the body's record
+   is at y 0 in every tick too, and with `rise`, every tick is moved by
+   the first body's place alone, so a hop is drawn rising. */
+function mrModWalkTicks(sheet, traits, ticks, { still = false, rise = false } = {}) {
+  const shown = zbSnoidShown(ticks, sheet.effects);
+  const parts = ticks.map(t => zbSnoidParts(t, sheet.effects));
+  const firstBody = parts.map(p => p.find(q => q.part === 'body')).find(Boolean);
+  if (!firstBody) throw new Error('the script draws no body');
+  let last = firstBody;
+  return ticks.map((t, i) => {
+    const k = Math.max(0, shown[i]), body = parts[k].find(q => q.part === 'body') || last;
+    last = body;
+    const ax = rise ? firstBody.x : body.x, ay = still && !rise ? body.y : firstBody.y;
+    return {
+      order: parts[k].map(q => q.part),
+      placed: zbSnoidPlacements(sheet, traits, ticks[k]).map(p => ({ ...p, x: p.x - ax, y: p.y - ay })),
+    };
+  });
+}
+
+/* The box of placed 1996 sprites ({ part, frame, x, y }, and `sheet`
+   where the sprite is from another sheet than `sheet`), or of those of
+   the parts given. */
+function mrModPlacedBox(sheet, placed, parts = null) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of placed) {
+    if (parts && !parts.includes(p.part)) continue;
+    const f = (p.sheet || sheet).frames[p.frame];
+    x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + f.width); y1 = Math.max(y1, p.y + f.height);
+  }
+  return x1 < x0 ? null : { x0, y0, x1, y1 };
+}
+
+/* A set's frames, from its views' plans: each plan { v, frames }, each
+   frame { tick: { base, byValue }, ax, ay, k } where `base` is the tick
+   with the Zoombini's traits, byValue[part][value - 1] the tick with that
+   part's value, and (ax, ay) where the 1996 origin lands in Mountain
+   Rescue's frame at scale k. The new frame has room for every sprite of
+   every frame and value and is at least Mountain Rescue's frame `mr` ({
+   width, height }), and (dx, dy) is how far its corner is up and to the
+   left of Mountain Rescue's. The body's slot has the 1996 feet and body
+   drawn together, the feet's slots are empty, and the nose, hair and eyes
+   are each a slot per value, the nose in Mountain Rescue's colors, cut
+   where the body covers a part the 1996 game draws under it. Returns {
+   slots, dx, dy, width, height }. */
+function mrModFrames(sheet, pal, noseColors, plans, mr) {
+  let x0 = 0, y0 = 0, x1 = mr.width, y1 = mr.height;
+  for (const pl of plans) for (const fr of pl.frames) for (const t of [fr.tick.base, ...Object.values(fr.tick.byValue).flat()]) for (const p of t.placed) {
+    const f = (p.sheet || sheet).frames[p.frame];
+    x0 = Math.min(x0, Math.floor(fr.ax + p.x * fr.k)); y0 = Math.min(y0, Math.floor(fr.ay + p.y * fr.k));
+    x1 = Math.max(x1, Math.ceil(fr.ax + (p.x + f.width) * fr.k)); y1 = Math.max(y1, Math.ceil(fr.ay + (p.y + f.height) * fr.k));
+  }
+  const dx = -x0, dy = -y0, width = x1 - x0, height = y1 - y0;
+  // sprites drawn into a picture of that frame, scaled by k to the nearest
+  // pixel, the nose in Mountain Rescue's colors, and left out where
+  // `under` is opaque
+  const draw = (fr, placed, colors = null, under = null) => {
+    const pic = { width, height, data: new Uint8ClampedArray(4 * width * height) }, k = fr.k;
+    for (const p of placed) {
+      const f = (p.sheet || sheet).frames[p.frame];
+      const cx0 = Math.floor(fr.ax + p.x * k) + dx, cy0 = Math.floor(fr.ay + p.y * k) + dy;
+      const cx1 = Math.ceil(fr.ax + (p.x + f.width) * k) + dx, cy1 = Math.ceil(fr.ay + (p.y + f.height) * k) + dy;
+      for (let cy = cy0; cy < cy1; cy++) {
+        const sy = Math.floor((cy + 0.5 - dy - fr.ay) / k - p.y);
+        if (sy < 0 || sy >= f.height) continue;
+        for (let cx = cx0; cx < cx1; cx++) {
+          const sx = Math.floor((cx + 0.5 - dx - fr.ax) / k - p.x);
+          if (sx < 0 || sx >= f.width) continue;
+          const v = f.pixels[sy * f.width + sx];
+          if (!v) continue;
+          const o = 4 * (cy * width + cx);
+          if (under && under.data[o + 3] >= 128) continue;
+          const [r, g, b] = (p.part === 'nose' && colors && colors.get(v)) || pal[v];
+          pic.data[o] = r; pic.data[o + 1] = g; pic.data[o + 2] = b; pic.data[o + 3] = 255;
+        }
+      }
+    }
+    return pic;
+  };
+  const empty = mrRbEncode({ width, height, data: new Uint8ClampedArray(4 * width * height) });
+  const slots = Array(MR_ANM_SLOTS).fill(null);
+  for (const pl of plans) {
+    const bodies = pl.frames.map(fr => draw(fr, fr.tick.base.placed.filter(p => p.part === 'feet' || p.part === 'body')));
+    slots[mrAnmSlot(pl.v, 0, 0)] = bodies.map(mrRbEncode);
+    for (let val = 1; val <= 5; val++) slots[mrAnmSlot(pl.v, 1, val)] = [empty];
+    for (const part of ['nose', 'hair', 'eyes']) {
+      for (let val = 1; val <= 5; val++) {
+        slots[mrAnmSlot(pl.v, MR_PARTS.indexOf(part), val)] = pl.frames.map((fr, j) => {
+          const t = fr.tick.byValue[part][val - 1], under = t.order.indexOf(part) < t.order.indexOf('body');
+          return mrRbEncode(draw(fr, t.placed.filter(p => p.part === part), part === 'nose' ? noseColors.get(val) : null, under ? bodies[j] : null));
+        });
+      }
+    }
+  }
+  return { slots, dx, dy, width, height };
+}
+
+/* Ticks placed for every value the mod draws: { base, byValue } for each
+   tick, `place(traits)` giving the ticks placed for those traits. */
+function mrModVariants(feet, place) {
+  const base = place(mrModTraits(feet)), byValue = {};
+  for (const part of ['nose', 'hair', 'eyes']) byValue[part] = [1, 2, 3, 4, 5].map(val => place(mrModTraits(feet, part, val)));
+  return base.map((b, i) => ({ base: b, byValue: Object.fromEntries(Object.entries(byValue).map(([part, lists]) => [part, lists.map(l => l[i])])) }));
+}
+
+/* The mod's five walk sets for a Mountain Rescue walk of 16 views or one
+   (littleZomb.anm, the transition's PitiZomb files, Aqua Cube's
+   smallest.anm), one for each Mountain Rescue feet value, each { feet,
+   slots (for mrAnmWrite), ms, limit, dx, dy, width, height, ticks, scale }.
+   `limit` is the frame at which the program starts the loop again (the
+   1996 walk's ticks + 1, frame 0 being the Zoombini standing), and (dx,
+   dy) is how far the new frames' corner is up and to the left of Mountain
+   Rescue's. `sheet` is the 1996 Zoombini's (zbSnoidSheet), `pal` the 1996
+   colors by index and `scripts` a function from a ZOOMBINI script number
+   to its parsed SCRS. The 1996 Zoombini is scaled to the height of
+   Mountain Rescue's standing (mrModScale), or by `k`. Each view's walk is
+   the one mrLookWalk gives, with its first tick's lowest feet row on
+   Mountain Rescue's frame 0 feet's and its body's middle on Mountain
+   Rescue's body's. */
+function mrModWalkSets(anm, sheet, pal, scripts, tickMs = 102, k = mrModScale(anm, sheet), noseColors = mrModNoseColors(anm, sheet, pal)) {
+  const slots = mrAnmSlots(anm), viewList = [...mrAnmViews(slots).keys()];
   const fr0 = slots[mrAnmSlot(viewList[0], 0, 0)][0];
   const sets = [];
   for (let feet = 1; feet <= 5; feet++) {
     const plans = viewList.map(v => {
       const w = mrLookWalk(v, mrLookTrait('feet', feet).value), ticks = zbSnoidTicks(scripts(w.script), w.facing);
-      const byValue = {};
-      for (const part of ['nose', 'hair', 'eyes']) byValue[part] = [1, 2, 3, 4, 5].map(val => mrModWalkTicks(sheet, old(feet, part, val), ticks));
-      const base = mrModWalkTicks(sheet, old(feet), ticks);
-      const spriteBox = p => ({ x0: p.x, y0: p.y, x1: p.x + sheet.frames[p.frame].width, y1: p.y + sheet.frames[p.frame].height });
-      const feet0 = base[0].placed.filter(p => p.part === 'feet').map(spriteBox), body0 = base[0].placed.filter(p => p.part === 'body').map(spriteBox);
-      const yb96 = Math.max(...(feet0.length ? feet0 : body0).map(b => b.y1)), xc96 = (body0[0].x0 + body0[0].x1) / 2;
+      const variants = mrModVariants(feet, traits => mrModWalkTicks(sheet, traits, ticks));
+      const t0 = variants[0].base.placed, feet0 = mrModPlacedBox(sheet, t0, ['feet']), body0 = mrModPlacedBox(sheet, t0, ['body']);
+      const yb96 = (feet0 || body0).y1, xc96 = (body0.x0 + body0.x1) / 2;
       const mrFeet = mrModOpaqueBox(mrModParts(anm, slots, v, [null, feet, null, null, null])) || mrModOpaqueBox(mrModParts(anm, slots, v, [0, null, null, null, null]));
       const mrBody = mrModOpaqueBox(mrModParts(anm, slots, v, [0, null, null, null, null]));
-      return { v, ticks, base, byValue, mx: (mrBody.x0 + mrBody.x1) / 2, my: mrFeet.y1, ax: (mrBody.x0 + mrBody.x1) / 2 - xc96 * k, ay: mrFeet.y1 - yb96 * k };
+      const ax = (mrBody.x0 + mrBody.x1) / 2 - xc96 * k, ay = mrFeet.y1 - yb96 * k;
+      return { v, ticks, frames: [0, ...ticks.map((_, i) => i)].map(i => ({ tick: variants[i], ax, ay, k })) };
     });
-    // the other sets' ticks, the standing one first, placed on Mountain
-    // Rescue's Zoombini for their view as the walk is
-    const extraPlans = extras.map(e => {
-      const walkPl = plans.find(p => p.v === e.view);
-      if (!walkPl) throw new Error(`littleZomb.anm has no view ${e.view}`);
-      const f96 = mrLookTrait('feet', feet).value;
-      const stand = zbSnoidTicks(scripts(e.stand(f96)), false).slice(0, 1), repeat = n => Array.from({ length: n || 0 }, () => stand[0]);
-      const ticks = [...stand, ...repeat(e.before), ...zbSnoidTicks(scripts(e.script(f96)), false).slice(e.from), ...repeat(e.after)];
-      const byValue = {};
-      for (const part of ['nose', 'hair', 'eyes']) byValue[part] = [1, 2, 3, 4, 5].map(val => mrModWalkTicks(sheet, old(feet, part, val), ticks));
-      const base = mrModWalkTicks(sheet, old(feet), ticks);
-      const spriteBox = p => ({ x0: p.x, y0: p.y, x1: p.x + sheet.frames[p.frame].width, y1: p.y + sheet.frames[p.frame].height });
-      const feet0 = base[0].placed.filter(p => p.part === 'feet').map(spriteBox), body0 = base[0].placed.filter(p => p.part === 'body').map(spriteBox);
-      const yb96 = Math.max(...(feet0.length ? feet0 : body0).map(b => b.y1)), xc96 = (body0[0].x0 + body0[0].x1) / 2;
-      const pl = { v: e.view, ax: walkPl.mx - xc96 * k, ay: walkPl.my - yb96 * k };
-      return { e, pl, ticks, base, byValue };
-    });
-    // the frame: every sprite of every view, tick and value, in Mountain
-    // Rescue's frame, and that frame at least
-    let x0 = 0, y0 = 0, x1 = fr0.width, y1 = fr0.height;
-    for (const pl of plans) for (const list of [pl.base, ...Object.values(pl.byValue).flat()]) for (const t of list) for (const p of t.placed) {
-      const f = sheet.frames[p.frame];
-      x0 = Math.min(x0, Math.floor(pl.ax + p.x * k)); y0 = Math.min(y0, Math.floor(pl.ay + p.y * k));
-      x1 = Math.max(x1, Math.ceil(pl.ax + (p.x + f.width) * k)); y1 = Math.max(y1, Math.ceil(pl.ay + (p.y + f.height) * k));
-    }
-    for (const { pl, base, byValue } of extraPlans) for (const list of [base, ...Object.values(byValue).flat()]) for (const t of list) for (const p of t.placed) {
-      const f = sheet.frames[p.frame];
-      x0 = Math.min(x0, Math.floor(pl.ax + p.x * k)); y0 = Math.min(y0, Math.floor(pl.ay + p.y * k));
-      x1 = Math.max(x1, Math.ceil(pl.ax + (p.x + f.width) * k)); y1 = Math.max(y1, Math.ceil(pl.ay + (p.y + f.height) * k));
-    }
-    const dx = -x0, dy = -y0, width = x1 - x0, height = y1 - y0;
-    // sprites drawn into a picture of that frame, scaled by k to the
-    // nearest pixel, the nose in Mountain Rescue's colors, and left out
-    // where `under` is opaque
-    const draw = (pl, placed, colors = null, under = null) => {
-      const pic = { width, height, data: new Uint8ClampedArray(4 * width * height) };
-      for (const p of placed) {
-        const f = sheet.frames[p.frame];
-        const cx0 = Math.floor(pl.ax + p.x * k) + dx, cy0 = Math.floor(pl.ay + p.y * k) + dy;
-        const cx1 = Math.ceil(pl.ax + (p.x + f.width) * k) + dx, cy1 = Math.ceil(pl.ay + (p.y + f.height) * k) + dy;
-        for (let cy = cy0; cy < cy1; cy++) {
-          const sy = Math.floor((cy + 0.5 - dy - pl.ay) / k - p.y);
-          if (sy < 0 || sy >= f.height) continue;
-          for (let cx = cx0; cx < cx1; cx++) {
-            const sx = Math.floor((cx + 0.5 - dx - pl.ax) / k - p.x);
-            if (sx < 0 || sx >= f.width) continue;
-            const v = f.pixels[sy * f.width + sx];
-            if (!v) continue;
-            const o = 4 * (cy * width + cx);
-            if (under && under.data[o + 3] >= 128) continue;
-            const [r, g, b] = (p.part === 'nose' && colors && colors.get(v)) || pal[v];
-            pic.data[o] = r; pic.data[o + 1] = g; pic.data[o + 2] = b; pic.data[o + 3] = 255;
-          }
-        }
-      }
-      return pic;
-    };
-    const empty = mrRbEncode({ width, height, data: new Uint8ClampedArray(4 * width * height) });
-    // a view's slots from its frames in order, each { base, byValue } with
-    // byValue[part][value - 1] that value's tick
-    const fill = (out, pl, seq) => {
-      const bodies = seq.map(s => draw(pl, s.base.placed.filter(p => p.part === 'feet' || p.part === 'body')));
-      out[mrAnmSlot(pl.v, 0, 0)] = bodies.map(mrRbEncode);
-      for (let val = 1; val <= 5; val++) out[mrAnmSlot(pl.v, 1, val)] = [empty];
-      for (const part of ['nose', 'hair', 'eyes']) {
-        for (let val = 1; val <= 5; val++) {
-          out[mrAnmSlot(pl.v, MR_PARTS.indexOf(part), val)] = seq.map((s, j) => {
-            const t = s.byValue[part][val - 1], under = t.order.indexOf(part) < t.order.indexOf('body');
-            return mrRbEncode(draw(pl, t.placed.filter(p => p.part === part), noseColors.get(val), under ? bodies[j] : null));
-          });
-        }
-      }
-    };
-    const tickOf = (base, byValue, i) => ({ base: base[i], byValue: Object.fromEntries(Object.entries(byValue).map(([part, lists]) => [part, lists.map(l => l[i])])) });
-    const out = Array(MR_ANM_SLOTS).fill(null);
     const n = plans[0].ticks.length;
     if (plans.some(pl => pl.ticks.length !== n)) throw new Error(`feet ${feet}: the views' walks differ in length`);
-    for (const pl of plans) fill(out, pl, [0, ...pl.ticks.map((_, i) => i)].map(i => tickOf(pl.base, pl.byValue, i)));
-    const more = extraPlans.map(({ e, pl, ticks, base, byValue }) => {
-      const slots = Array(MR_ANM_SLOTS).fill(null);
-      fill(slots, pl, ticks.map((_, i) => tickOf(base, byValue, i)));
-      return { key: e.key, slots, ms: tickMs, limit: ticks.length, dx, dy, ticks: ticks.length - 1 };
-    });
-    sets.push({ feet, slots: out, ms: tickMs, limit: n + 1, dx, dy, width, height, ticks: n, scale: k, extras: more });
+    const f = mrModFrames(sheet, pal, noseColors, plans, fr0);
+    sets.push({ feet, slots: f.slots, ms: tickMs, limit: n + 1, dx: f.dx, dy: f.dy, width: f.width, height: f.height, ticks: n, scale: k });
   }
   return sets;
+}
+
+/* Mountain Rescue's Zoombini sets the mod redoes, by their paths in the
+   program (mrProgramPath, without bmp/): the walks (`walk`, played at the
+   1996 pace and length), and the rest. Each of the rest has `family`, the
+   walk whose scale and noses apply to it, or `own` where the file's scale
+   and noses apply, and MR_LOOK_SETS has the 1996 match for it. The blinks
+   add a standing tick (ZOOMBINI SCRS 100) `before` and `after` times on
+   either side, since Mountain Rescue's blink runs open, closed and open
+   again (attenteZomb2.anm's eyes, frames 0-2, 3-8 and 9-10). The rest
+   retain Mountain Rescue's frame count and time a frame, since the
+   places' code counts their frames, and the 1996 animation is fitted to
+   them. The builder's big Zoombini (`whole`) is drawn by the builder's
+   code (FUN_0043c6e0), the body and each part picked from the set's
+   slots at one place, so it is one file (mrModWholeSet), which the
+   program loads in place of BigZomb.anm. The Fleens' sets are not
+   Zoombinis. */
+const MR_MOD_SETS = [
+  { file: 'zombis/littlezomb.anm', walk: true },
+  { file: 'transition1/pitizomb1.anm', walk: true },
+  { file: 'transition1/pitizomb2.anm', walk: true },
+  { file: 'transition1/pitizomb3.anm', walk: true },
+  { file: 'aquacube/smallest/smallest.anm', walk: true },
+  { file: 'zombis/attente2/attentezomb2.anm', family: 'zombis/littlezomb.anm', before: 2, after: 1 },
+  { file: 'zombis/attente/attentezomb.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'zombis/pris/pris.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'zombis/flotte/flotte.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'zombis/tombe/tombe.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'zombis/saut/saut.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'zombis/aspiration/aspiration.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'wall_of_fleens/cannon_zomb/cannon_zomb.anm', family: 'zombis/littlezomb.anm' },
+  { file: 'aquacube/smallest/attente/attente.anm', family: 'aquacube/smallest/smallest.anm', before: 2, after: 1 },
+  { file: 'aquacube/smallest/attente2/attente2.anm', family: 'aquacube/smallest/smallest.anm', before: 2, after: 1 },
+  { file: 'zombiniville/bigzomb/bigzomb.anm', own: true, whole: true },
+];
+
+/* The mod's five sets for one of MR_MOD_SETS that is not a walk, each
+   { feet, slots, dx, dy, width, height, ticks }. `anm` is the file's
+   bytes, `k` and `noseColors` its family's (mrModScale, mrModNoseColors),
+   `script(archive, id)` a 1996 script parsed and `tumble` the tumbling
+   Zoombini's sheet (zbSnoidSheet's 'tumble'), for the scripts of layout 2
+   and the cannon's poses. Each view has as many
+   frames as Mountain Rescue's, and frame i shows the 1996 tick i × ticks
+   / frames. The 1996 Zoombini's body's middle and lowest feet row are
+   placed on Mountain Rescue's at frame 0, or for the cannon's still poses
+   the middle of the whole Zoombini on the middle of Mountain Rescue's,
+   and the shrink is drawn as much smaller with each frame as Mountain
+   Rescue's, held at its feet. */
+function mrModOtherSets(anm, spec, sheet, pal, script, k, noseColors, tumble) {
+  const look = mrLookSet(spec.file);
+  if (!look) throw new Error(`no 1996 match for ${spec.file}`);
+  const slots = mrAnmSlots(anm), views = [...mrAnmViews(slots).keys()];
+  const fr0 = slots[mrAnmSlot(views[0], 0, 0)][0];
+  const frameCount = v => Math.max(1, ...[0, 1, 2, 3, 4].flatMap(part => [0, 1, 2, 3, 4, 5].map(val => (slots[mrAnmSlot(v, part, val)] || []).length)));
+  const stand = zbSnoidTicks(script('ZOOMBINI', 100), false).slice(0, 1);
+  const sets = [];
+  for (let feet = 1; feet <= 5; feet++) {
+    const f96 = mrLookTrait('feet', feet).value;
+    const plans = views.map(v => {
+      const n = frameCount(v);
+      let variants;
+      const from = sh => list => list.map(t => ({ ...t, placed: t.placed.map(p => ({ ...p, sheet: sh })) }));
+      if (look.tumble) {
+        variants = mrModVariants(feet, traits => {
+          const pose = mrLookTumblePose(tumble, traits, mrLookAngle(v));
+          return from(tumble)([{ order: ZB_LAYER_ORDERS[2], placed: zbSnoidPlacements(tumble, traits, pose.tick) }]);
+        });
+      } else {
+        const parsed = look.scripts(f96).map(s => ({ s, script: script(s.archive, s.id) }));
+        const sh = ZB_SNOID_KIND_OF_LAYOUT[parsed[0].script.layout] === 'tumble' ? tumble : sheet;
+        if (parsed.some(p => (ZB_SNOID_KIND_OF_LAYOUT[p.script.layout] === 'tumble') !== (sh === tumble))) throw new Error(`${spec.file}'s scripts draw from two sheets`);
+        const ticks = [...Array(spec.before || 0).fill(stand[0]),
+          ...parsed.flatMap(p => zbSnoidTicks(p.script, false).slice(p.s.from || 0)),
+          ...Array(spec.after || 0).fill(stand[0])];
+        variants = mrModVariants(feet, traits => from(sh)(mrModWalkTicks(sh, traits, ticks, { still: !look.rise, rise: look.rise })));
+      }
+      const tickAt = i => Math.min(variants.length - 1, Math.floor(i * variants.length / n));
+      const all = i => mrModOpaqueBox(mrModParts(anm, slots, v, [0, feet, 1, 1, 1], i));
+      const mr0 = all(0), t0 = variants[tickAt(0)].base.placed;
+      let anchor96, anchorMr;
+      if (look.tumble) {
+        const b = mrModPlacedBox(sheet, t0);
+        anchor96 = [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2]; anchorMr = [(mr0.x0 + mr0.x1) / 2, (mr0.y0 + mr0.y1) / 2];
+      } else {
+        const feet0 = mrModPlacedBox(sheet, t0, ['feet']), body0 = mrModPlacedBox(sheet, t0, ['body']);
+        const mrFeet = mrModOpaqueBox(mrModParts(anm, slots, v, [null, feet, null, null, null])) || mrModOpaqueBox(mrModParts(anm, slots, v, [0, null, null, null, null]));
+        const mrBody = mrModOpaqueBox(mrModParts(anm, slots, v, [0, null, null, null, null])) || mr0;
+        anchor96 = [(body0.x0 + body0.x1) / 2, (feet0 || body0).y1]; anchorMr = [(mrBody.x0 + mrBody.x1) / 2, (mrFeet || mrBody).y1];
+      }
+      const frames = Array.from({ length: n }, (_, i) => {
+        let kk = k;
+        if (look.shrink) { const b = all(i); kk = b ? k * (b.y1 - b.y0) / (mr0.y1 - mr0.y0) : k / 100; }
+        return { tick: variants[tickAt(i)], k: kk, ax: anchorMr[0] - anchor96[0] * kk, ay: anchorMr[1] - anchor96[1] * kk };
+      });
+      return { v, frames };
+    });
+    const f = mrModFrames(sheet, pal, noseColors, plans, fr0);
+    sets.push({ feet, slots: f.slots, dx: f.dx, dy: f.dy, width: f.width, height: f.height, ticks: Math.max(...plans.map(p => p.frames.length)), ms: 0, limit: 11 });
+  }
+  return sets;
+}
+
+/* A set drawn as the builder draws its big Zoombini (FUN_0043c6e0): the
+   body and each part at the frame's corner, each from its own slot. So
+   the body's slot has the 1996 body alone and each part's slot the 1996
+   part for its value, standing (ZOOMBINI SCRS 100), the body's middle and
+   lowest feet row on Mountain Rescue's at scale k, or smaller where the
+   1996 Zoombini would not fit the frame. Returns one set { slots, dx, dy,
+   width, height, ticks, scale }. */
+function mrModWholeSet(anm, sheet, pal, script, k, noseColors) {
+  const slots = mrAnmSlots(anm), views = [...mrAnmViews(slots).keys()], out = Array(MR_ANM_SLOTS).fill(null);
+  const stand = zbSnoidTicks(script('ZOOMBINI', 100), false).slice(0, 1);
+  let scale = k;
+  for (const v of views) {
+    const fr0 = slots[mrAnmSlot(v, 0, 0)][0], mr = { width: fr0.width, height: fr0.height };
+    const ticks = [];
+    for (let feet = 1; feet <= 5; feet++) ticks.push(...mrModVariants(feet, traits => mrModWalkTicks(sheet, traits, stand, { still: true })));
+    const t0 = ticks[0].base.placed, feet0 = mrModPlacedBox(sheet, t0, ['feet']), body0 = mrModPlacedBox(sheet, t0, ['body']);
+    const mrFeet = mrModOpaqueBox(mrModParts(anm, slots, v, [null, 1, null, null, null])), mrBody = mrModOpaqueBox(mrModParts(anm, slots, v, [0, null, null, null, null]));
+    const anchor96 = [(body0.x0 + body0.x1) / 2, (feet0 || body0).y1], anchorMr = [(mrBody.x0 + mrBody.x1) / 2, (mrFeet || mrBody).y1];
+    const fits = kk => ticks.every(t => [t.base, ...Object.values(t.byValue).flat()].every(x => {
+      const b = mrModPlacedBox(sheet, x.placed);
+      return anchorMr[0] + (b.x0 - anchor96[0]) * kk >= 1 && anchorMr[1] + (b.y0 - anchor96[1]) * kk >= 1
+        && anchorMr[0] + (b.x1 - anchor96[0]) * kk <= mr.width - 1 && anchorMr[1] + (b.y1 - anchor96[1]) * kk <= mr.height - 1;
+    }));
+    while (!fits(scale) && scale > k / 4) scale *= 0.97;
+    const frames = ticks.map(tick => ({ tick, k: scale, ax: anchorMr[0] - anchor96[0] * scale, ay: anchorMr[1] - anchor96[1] * scale }));
+    const f = mrModFrames(sheet, pal, noseColors, [{ v, frames: frames.slice(0, 1) }], mr);
+    if (f.width !== mr.width || f.height !== mr.height) throw new Error(`the 1996 Zoombini does not fit BigZomb.anm's ${mr.width}×${mr.height}`);
+    // the body alone, each feet from its own tick, and the nose, hair and
+    // eyes as mrModFrames draws them
+    const feetOf = feet => mrModFrames(sheet, pal, noseColors, [{ v, frames: [{ ...frames[(feet - 1) * 1], tick: { base: { order: frames[feet - 1].tick.base.order, placed: frames[feet - 1].tick.base.placed.filter(p => p.part === 'feet') }, byValue: frames[0].tick.byValue } }] }], mr);
+    const bodyOnly = mrModFrames(sheet, pal, noseColors, [{ v, frames: [{ ...frames[0], tick: { base: { order: frames[0].tick.base.order, placed: frames[0].tick.base.placed.filter(p => p.part === 'body') }, byValue: frames[0].tick.byValue } }] }], mr);
+    out[mrAnmSlot(v, 0, 0)] = bodyOnly.slots[mrAnmSlot(v, 0, 0)];
+    for (let feet = 1; feet <= 5; feet++) out[mrAnmSlot(v, 1, feet)] = feetOf(feet).slots[mrAnmSlot(v, 0, 0)];
+    for (const part of [2, 3, 4]) for (let val = 1; val <= 5; val++) out[mrAnmSlot(v, part, val)] = f.slots[mrAnmSlot(v, part, val)];
+  }
+  const fr = slots[mrAnmSlot(views[0], 0, 0)][0];
+  return { slots: out, dx: 0, dy: 0, width: fr.width, height: fr.height, ticks: 1, scale, ms: 0, limit: 11 };
+}
+
+/* Every group of the mod's sets, for mrModExe: { file, walk, whole, sets,
+   names }, `names` the new files' paths in the program's form
+   (./bmp/zombis/zb96<name><feet>.anm, or zb96<name>.anm for the one set
+   of a `whole` group). `read(file)` gives one of
+   MR_MOD_SETS's files' bytes, or null where the disc lacks it, `sheet`
+   and `tumble` are the 1996 Zoombini's sheets (zbSnoidSheet's 'zoombini'
+   and 'tumble'), `pal` its colors, and `script(archive, id)` a 1996
+   script parsed. */
+function mrModGroups(read, sheet, tumble, pal, script) {
+  const families = new Map(), groups = [];
+  for (const spec of MR_MOD_SETS) {
+    const anm = read(spec.file);
+    if (!anm) continue;
+    const name = spec.file.split('/').pop().replace(/\.anm$/, '');
+    let sets;
+    if (spec.whole) {
+      const set = mrModWholeSet(anm, sheet, pal, script, mrModScale(anm, sheet), mrModNoseColors(anm, sheet, pal));
+      groups.push({ file: spec.file, walk: false, whole: true, sets: [set], names: [`./bmp/zombis/zb96${name}.anm`] });
+      continue;
+    }
+    if (spec.walk) {
+      const k = mrModScale(anm, sheet), noseColors = mrModNoseColors(anm, sheet, pal);
+      families.set(spec.file, { k, noseColors });
+      sets = mrModWalkSets(anm, sheet, pal, id => script('ZOOMBINI', id), 102, k, noseColors);
+    } else {
+      const fam = spec.own ? { k: mrModScale(anm, sheet), noseColors: mrModNoseColors(anm, sheet, pal) } : families.get(spec.family);
+      if (!fam) throw new Error(`${spec.file} comes before its family ${spec.family}`);
+      sets = mrModOtherSets(anm, spec, sheet, pal, script, fam.k, fam.noseColors, tumble);
+    }
+    groups.push({ file: spec.file, walk: !!spec.walk, sets, names: sets.map(s => `./bmp/zombis/zb96${name}${s.feet}.anm`) });
+  }
+  return groups;
 }
 
 /* ---- the program's patch ------------------------------------------------- */
 
 /* The places patched in zoombini2.exe (the 2001 disc's), each with the
-   bytes expected there. The walk's set is DAT_0055a090, loaded at
-   start-up (FUN_00465220) by FUN_0045c510, with its time set by
-   FUN_0045cec0. In FUN_0045d580, the draw, the set is read for the body's
-   slot (0x45d660), the body's frame (0x45d7ba), each part's slot
-   (0x45d80e) and the next frame's time (0x45da1f), and the frame number
-   is held under 11 at 0x45da2d. A Zoombini's feet are its byte +5. The
-   blink's set, attenteZomb2.anm's, is DAT_00542980, where a Zoombini
-   waits (FUN_0045d520), and `sources` gives each of the mod's groups the
-   program's set it stands in for. */
+   bytes expected there. The program loads every set with FUN_0045c510
+   (set, name), whose first two pushes the patch moves (`loaderEntry`),
+   and the walk's set, DAT_0055a090, at start-up (FUN_00465220), with its
+   time set by FUN_0045cec0, where the patch loads the mod's sets
+   (`load`). In FUN_0045d580, the draw, the set at the Zoombini's +0x44 is
+   read for the body's slot (0x45d660), the body's frame (0x45d7ba), each
+   part's slot (0x45d80e) and the next frame's time (0x45da1f), and the
+   frame number is held under 11 at 0x45da2d. A Zoombini's feet are its
+   byte +5. Each site's `mask` is the groups it redirects: 1 every group,
+   2 the walks alone, which have the 1996 pace and length. */
 const MR_MOD_EXE = {
   walkSet: 0x55a090, loader: 0x45c510, setTime: 0x45cec0,
-  sources: { walk: 0x55a090, blink: 0x542980 },
+  loaderEntry: { at: 0x45c510, bytes: '6aff68be0b4800', next: 0x45c517 },
   load: { at: 0x465631, bytes: '6a326890a05500e8' },
   sites: [
-    { at: 0x45d660, bytes: '8b5e448d3c49', reg: 'ebx', lift: true },
-    { at: 0x45d7ba, bytes: '8b7e448d0440', reg: 'edi' },
-    { at: 0x45d80e, bytes: '8b4e448d1440', reg: 'ecx' },
-    { at: 0x45da1f, bytes: '8b56440382' + '80bb0000', reg: 'edx' },
+    { at: 0x45d660, bytes: '8b5e448d3c49', reg: 'ebx', mask: 1, lift: true },
+    { at: 0x45d7ba, bytes: '8b7e448d0440', reg: 'edi', mask: 1 },
+    { at: 0x45d80e, bytes: '8b4e448d1440', reg: 'ecx', mask: 1 },
+    { at: 0x45da1f, bytes: '8b56440382' + '80bb0000', reg: 'edx', mask: 2 },
   ],
   limit: { at: 0x45da2d, bytes: '837e740b0f8c', next: 0x45da37 },
   setSize: 0xbba0, fields: { dx: 0xbb88, dy: 0xbb8c, limit: 0xbb90 },
 };
 const MR_REG = { eax: 0, ecx: 1, edx: 2, ebx: 3, esp: 4, ebp: 5, esi: 6, edi: 7 };
+// a register's place in the frame pushad leaves on the stack
+const MR_PUSHAD = { edi: 0, esi: 4, ebp: 8, esp: 12, ebx: 16, edx: 20, ecx: 24, eax: 28 };
+
+/* The file names pushed before each load of a set (a push of a string
+   ending .anm and a call within 32 bytes), as a Map of the path
+   (mrProgramPath, without bmp/) to a list of { va, at }, the name's
+   address and the file offset of the push's operand. */
+function mrModNamePointers(exe) {
+  const { code, text, callAfter } = mrPe(exe), out = new Map();
+  for (const s of code) {
+    for (let i = s.raw; i + 5 <= s.raw + s.rsize; i++) {
+      if (exe[i] !== 0x68) continue;
+      const va = mrU32(exe, i + 1), name = text(va);
+      if (!/\.anm$/i.test(name) || callAfter(i + 5, 32) < 0) continue;
+      const key = mrProgramPath(name).replace(/^bmp\//, '');
+      if (!out.has(key)) out.set(key, []);
+      out.get(key).push({ va, at: i + 1 });
+    }
+  }
+  return out;
+}
+
 
 /* A PE file's layout: its headers' places and its sections, each
    { name, va, vsize, raw, rsize, header }. */
@@ -366,32 +569,19 @@ function mrModAsm(origin) {
   };
   return a;
 }
-/* Where `reg` is one of the groups' sources, the set of that group for
-   the Zoombini's feet in its place, and otherwise a jump to `skip`. For
-   each group: cmp reg, source; jne next; movzx reg, byte [esi+5];
-   mov reg, [reg*4 + table - 4]; jmp found. */
-function mrModRedirect(a, reg, groups, skip, found) {
-  const r = MR_REG[reg], tag = `${skip}-g`;
-  groups.forEach((g, i) => {
-    if (i) a.label(`${tag}${i}`);
-    if (r === 0) a.bytes(0x3d).u32(g.source); else a.bytes(0x81, 0xf8 | r).u32(g.source);
-    a.jne(i + 1 < groups.length ? `${tag}${i + 1}` : skip);
-    a.bytes(0x0f, 0xb6, 0x46 | (r << 3), 0x05);
-    a.bytes(0x8b, 0x04 | (r << 3), 0x85 | (r << 3)).u32(g.tableAt - 4);
-    a.jmp(found);
-  });
-  return a;
-}
-
 /* zoombini2.exe patched to load the mod's sets and draw each Zoombini
-   from them. `groups` is a list of { source, sets, names }: `source` the
-   program's set the group stands in for (MR_MOD_EXE.sources), `sets` its
-   five sets, by feet, each with the time, limit and lift that
-   mrModWalkSets gives it, and `names` their paths as the program names
-   its files, such as ./bmp/zombis/zb96walk1.anm. Wherever the draw reads
-   a source, it reads the group's set for the Zoombini's feet. The patch
-   is a new section, .zb96, with the code, the names, the groups' tables
-   and the sets, and a jump at each place in MR_MOD_EXE. */
+   from them. `groups` is mrModGroups's list, each with its program file
+   (`file`), its five sets by feet and their names. The patch is a new
+   section, .zb96, with the start-up code that loads every set; the
+   loader's hook, which notes the set each group's file is loaded into
+   (the group's source), and forgets a source loaded over with another
+   file; the lookup, which gives the group's set for the Zoombini's feet
+   where the set read is a group's source and the feet are 1 to 5; the
+   draw's sites and the frame limit, each a jump to code that calls the
+   lookup; and the names, the groups' entries, the names' addresses, the
+   groups' tables and the sets. A walk's set has its own time a frame and
+   limit, and the others keep the program's, since the places count their
+   frames. */
 function mrModExe(exe, groups) {
   const M = MR_MOD_EXE, L = mrModPe(exe), view = new DataView(exe.buffer, exe.byteOffset, exe.byteLength);
   const expect = (va, hex) => {
@@ -402,70 +592,106 @@ function mrModExe(exe, groups) {
   if (L.sections.some(s => s.name === '.zb96')) throw new Error('zoombini2.exe is patched already');
   const loadOff = expect(M.load.at, M.load.bytes);
   if (M.load.at + 12 + view.getInt32(loadOff + 8, true) !== M.setTime) throw new Error('the start-up call is not to the time setter');
+  const entryOff = expect(M.loaderEntry.at, M.loaderEntry.bytes);
   for (const s of M.sites) expect(s.at, s.bytes);
   const limitOff = expect(M.limit.at, M.limit.bytes), limitTarget = M.limit.at + 10 + view.getInt32(limitOff + 6, true);
+  const pointers = mrModNamePointers(exe);
+  for (const g of groups) if (!pointers.get(g.file)) throw new Error(`zoombini2.exe loads no ${g.file}`);
+  const whole = groups.filter(g => g.whole);
+  groups = groups.filter(g => !g.whole);
   const last = L.sections[L.sections.length - 1];
   const align = (v, n) => Math.ceil(v / n) * n;
   const va = align(last.va + Math.max(last.vsize, last.rsize), L.sectionAlign), base = L.base + va;
   const all = groups.flatMap(g => g.sets.map((s, i) => ({ s, name: g.names[i] })));
+  const named = groups.flatMap((g, i) => [...new Set(pointers.get(g.file).map(p => p.va))].map(p => ({ p, i })));
+  const wholeNames = whole.map(g => g.names[0]);
   // The sets start on a new page. With the first set on the code's page,
   // the loader's writes there crashed the game under Wine on an Apple
   // silicon Mac (Rosetta), on 26 November 2026.
-  const codeSize = 0x800, namesAt = base + codeSize, tablesAt = namesAt + 0x40 * all.length;
-  const setsAt = align(tablesAt + 0x20 * groups.length, 0x1000);
-  const setAt = i => setsAt + i * M.setSize;
-  groups = groups.map((g, i) => ({ ...g, tableAt: tablesAt + 0x20 * i }));
+  const codeSize = 0x1000, namesAt = base + codeSize, entriesAt = namesAt + 0x40 * (all.length + wholeNames.length);
+  const pointersAt = entriesAt + 12 * (groups.length + 1), tablesAt = pointersAt + 8 * (named.length + 1);
+  const setsAt = align(tablesAt + 20 * groups.length, 0x1000);
+  const setAt = i => setsAt + i * M.setSize, entryAt = i => entriesAt + 12 * i, tableAt = i => tablesAt + 20 * i;
   const a = mrModAsm(base);
+  const je = l => a.rel([0x0f, 0x84], l), ja = l => a.rel([0x0f, 0x87], l);
   // start-up: the walk's time set as before, then every set loaded
   a.bytes(0x6a, 0x32).bytes(0x68).u32(M.walkSet).call(M.setTime).bytes(0x60);
   all.forEach((_, i) => { a.bytes(0x68).u32(namesAt + 0x40 * i).bytes(0x68).u32(setAt(i)).call(M.loader).bytes(0x83, 0xc4, 0x08); });
   a.bytes(0x61).jmp(M.load.at + 12);
-  // the draw's reads of the set
-  const entries = [];
+  // the loader's hook: push eax, ebx, ecx, edx; eax the set, ecx the name
+  const hookAt = a.here;
+  a.bytes(0x50, 0x53, 0x51, 0x52).hex('8b442414').bytes(0xbb).u32(entriesAt);
+  a.label('clear').hex('8b4b04').hex('85c9'); je('named');
+  a.hex('3903').jne('clearNext').hex('c70300000000');
+  a.label('clearNext').hex('83c30c').jmp('clear');
+  a.label('named').hex('8b4c2418').bytes(0xbb).u32(pointersAt);
+  a.label('name').hex('833b00'); je('hookDone');
+  a.hex('390b').jne('nameNext').hex('8b5304').hex('8902').jmp('hookDone');
+  a.label('nameNext').hex('83c308').jmp('name');
+  a.label('hookDone').bytes(0x5a, 0x59, 0x5b, 0x58).bytes(...exe.subarray(entryOff, entryOff + 7)).jmp(M.loaderEntry.next);
+  // the lookup: in eax the set read and esi the Zoombini, out ecx the
+  // group's flags (0 for none) and eax the group's set for the feet
+  a.label('lookup').bytes(0x53, 0x52).hex('85c0'); je('none');
+  a.bytes(0xbb).u32(entriesAt);
+  a.label('look').hex('8b5304').hex('85d2'); je('none');
+  a.hex('3b03'); je('found');
+  a.hex('83c30c').jmp('look');
+  a.label('found').hex('0fb64605').bytes(0x48).hex('83f804'); ja('none');
+  a.hex('8b0482').hex('8b4b08').bytes(0x5a, 0x5b, 0xc3);
+  a.label('none').hex('31c9').bytes(0x5a, 0x5b, 0xc3);
+  // the draw's reads of the set: pushad, look up, and where the group
+  // answers to the site's mask, the saved register replaced (and the
+  // place lifted by the set's dx, dy at the body's slot), then popad
+  const jumps = [{ at: M.loaderEntry.at, n: 7, to: hookAt }, { at: M.load.at, n: 12, to: base }];
   M.sites.forEach((s, i) => {
-    const o = mrModFileOffset(L, s.at), n = s.bytes.length / 2;
-    entries.push({ at: s.at, n, to: a.here });
-    a.bytes(...exe.subarray(o, o + 3));
-    mrModRedirect(a, s.reg, groups, `skip${i}`, `found${i}`);
-    a.label(`found${i}`);
-    // push edx; mov edx, [ebx+dx]; sub [esp+0x14], edx;
-    // mov edx, [ebx+dy]; sub [esp+0x18], edx; pop edx
-    if (s.lift) a.bytes(0x52, 0x8b, 0x93).u32(M.fields.dx).hex('29542414').bytes(0x8b, 0x93).u32(M.fields.dy).hex('29542418').bytes(0x5a);
-    a.label(`skip${i}`).bytes(...exe.subarray(o + 3, o + n)).jmp(s.at + n);
+    const o = mrModFileOffset(L, s.at), n = s.bytes.length / 2, r = MR_REG[s.reg];
+    jumps.push({ at: s.at, n, to: a.here });
+    a.bytes(...exe.subarray(o, o + 3)).bytes(0x60);
+    if (r) a.bytes(0x8b, 0xc0 | r);
+    a.call('lookup').bytes(0xf7, 0xc1).u32(s.mask); je(`restore${i}`);
+    a.bytes(0x89, 0x44, 0x24, MR_PUSHAD[s.reg]);
+    if (s.lift) a.bytes(0x8b, 0x90).u32(M.fields.dx).hex('29542430').bytes(0x8b, 0x90).u32(M.fields.dy).hex('29542434');
+    a.label(`restore${i}`).bytes(0x61).bytes(...exe.subarray(o + 3, o + n)).jmp(s.at + n);
   });
-  // the frame limit, a new set's limit for the new sets and 11 for the
-  // others: push eax; mov eax, [esi+0x44]; (redirect); mov eax,
-  // [eax+limit]; cmp [esi+0x74], eax; pop eax; jl; jmp
-  entries.push({ at: M.limit.at, n: 10, to: a.here });
-  a.bytes(0x50, 0x8b, 0x46, 0x44);
-  mrModRedirect(a, 'eax', groups, 'old', 'new');
-  a.label('new').bytes(0x8b, 0x80).u32(M.fields.limit).hex('394674').bytes(0x58).jl(limitTarget).jmp(M.limit.next);
-  a.label('old').bytes(0x58).hex('837e740b').jl(limitTarget).jmp(M.limit.next);
+  // the frame limit: a walk's own, and 11 for the others
+  jumps.push({ at: M.limit.at, n: 10, to: a.here });
+  a.bytes(0x60).hex('8b4644').call('lookup').bytes(0xf7, 0xc1).u32(2); je('old');
+  a.bytes(0x8b, 0x80).u32(M.fields.limit).hex('394674').bytes(0x61).jl(limitTarget).jmp(M.limit.next);
+  a.label('old').bytes(0x61).hex('837e740b').jl(limitTarget).jmp(M.limit.next);
   const code = a.done();
   if (code.length > codeSize) throw new Error('the patch is longer than its room');
   const size = setAt(all.length) - base, rsize = align(size, L.fileAlign), raw = align(exe.length, L.fileAlign);
   const out = new Uint8Array(raw + rsize), dv = new DataView(out.buffer);
   out.set(exe);
   out.set(code, raw);
-  const enc = new TextEncoder();
+  const enc = new TextEncoder(), at = v => raw + v - base;
   all.forEach(({ s, name }, i) => {
     if (name.length >= 0x40) throw new Error(`${name} is too long`);
-    out.set(enc.encode(name), raw + namesAt - base + 0x40 * i);
-    const so = raw + setAt(i) - base;
-    dv.setUint32(so + 48000, s.ms, true);
-    dv.setUint32(so + M.fields.dx, s.dx, true);
-    dv.setUint32(so + M.fields.dy, s.dy, true);
-    dv.setUint32(so + M.fields.limit, s.limit, true);
+    out.set(enc.encode(name), at(namesAt + 0x40 * i));
+    dv.setUint32(at(setAt(i)) + 48000, s.ms || 0, true);
+    dv.setUint32(at(setAt(i)) + M.fields.dx, s.dx, true);
+    dv.setUint32(at(setAt(i)) + M.fields.dy, s.dy, true);
+    dv.setUint32(at(setAt(i)) + M.fields.limit, s.limit, true);
   });
   let k = 0;
-  for (const g of groups) g.sets.forEach((_, i) => dv.setUint32(raw + g.tableAt - base + 4 * i, setAt(k++), true));
-  const jump = (at, n, to) => {
-    const o = mrModFileOffset(L, at);
-    out[o] = 0xe9; dv.setInt32(o + 1, to - (at + 5), true);
+  groups.forEach((g, i) => {
+    dv.setUint32(at(entryAt(i)) + 4, tableAt(i), true);
+    dv.setUint32(at(entryAt(i)) + 8, g.walk ? 3 : 1, true);
+    g.sets.forEach((_, j) => dv.setUint32(at(tableAt(i)) + 4 * j, setAt(k++), true));
+  });
+  // a whole group's file loaded by its new name, where the program pushes
+  // the old one
+  whole.forEach((g, i) => {
+    const nameAt = namesAt + 0x40 * (all.length + i);
+    out.set(enc.encode(wholeNames[i]), at(nameAt));
+    for (const p of pointers.get(g.file)) dv.setUint32(p.at, nameAt, true);
+  });
+  named.forEach(({ p, i }, j) => { dv.setUint32(at(pointersAt + 8 * j), p, true); dv.setUint32(at(pointersAt + 8 * j) + 4, entryAt(i), true); });
+  for (const { at: where, n, to } of jumps) {
+    const o = mrModFileOffset(L, where);
+    out[o] = 0xe9; dv.setInt32(o + 1, to - (where + 5), true);
     for (let i = 5; i < n; i++) out[o + i] = 0x90;
-  };
-  jump(M.load.at, 12, base);
-  for (const e of entries) jump(e.at, e.n, e.to);
+  }
   // the section's header, after the last one
   const h = last.header + 40, firstRaw = Math.min(...L.sections.map(s => s.raw).filter(Boolean));
   if (h + 40 > firstRaw) throw new Error('no room for another section header');
@@ -479,16 +705,6 @@ function mrModExe(exe, groups) {
   dv.setUint16(L.pe + 6, L.sections.length + 1, true);
   dv.setUint32(L.opt + 56, align(va + size, L.sectionAlign), true);
   return out;
-}
-
-/* The mod's groups for mrModExe from mrModWalkSets's sets: the walk, then
-   each of MR_MOD_EXTRAS, with their files' names in ./bmp/zombis. */
-function mrModGroups(sets) {
-  const groups = [{ source: MR_MOD_EXE.sources.walk, sets, names: sets.map(s => `./bmp/zombis/zb96walk${s.feet}.anm`) }];
-  sets[0].extras.forEach((e, i) => groups.push({
-    source: MR_MOD_EXE.sources[e.key], sets: sets.map(s => s.extras[i]), names: sets.map(s => `./bmp/zombis/zb96${e.key}${s.feet}.anm`),
-  }));
-  return groups;
 }
 
 /* ---- the Mac program's patch --------------------------------------------- */

@@ -243,51 +243,57 @@ let timesNote = '';
       if (!best || best.off > 25) fail(`cannon view ${v}: the nearest tumble pose's head is ${best ? best.off.toFixed(0) : '?'} degrees off`);
     }
     if (scripts < 40) fail(`only ${scripts} proposed scripts read`);
-    // the walk mod (js/zb-mountain-mod.js): five sets written and read
-    // back, each view's every frame the same size, with the 1996 walk's
-    // ticks and one more, and a frame written again the same; the program
-    // patched once, with a jump into the new section at each place
+    // the mod (js/zb-mountain-mod.js): every set of MR_MOD_SETS written
+    // and read back, with Mountain Rescue's views and, but for the walks,
+    // its frame counts, every frame of a set the same size; the walk with
+    // the 1996 walk's ticks and one more, a frame written again the same,
+    // and the spring and the propeller lifted; the program patched once,
+    // with a jump into the new section at each place and the big
+    // Zoombini's name pushed as the new file's
     const zoom = arcs.ZOOMBINI, picker = Z.openMohawk(archiveBytes('PICKER'));
     const pal = Z.zbWindowsPalette(Z.zbPalette(Z.parsePaletteResource(picker.get('SHPL', 4000), 'SHPL')));
-    const walk = bytesOf(game.get('bmp/zombis/littlezomb.anm').path);
-    const sets = Z.mrModWalkSets(walk, Z.zbSnoidSheet(zoom, 'zoombini'), pal, id => Z.parseScript(zoom.get('SCRS', id), 'SCRS'));
+    const arcOf = a => arcs[a] || (arcs[a] = Z.openMohawk(archiveBytes(a)));
+    const readMr = rel => game.get('bmp/' + rel) ? bytesOf(game.get('bmp/' + rel).path) : null;
+    const groups = Z.mrModGroups(readMr, Z.zbSnoidSheet(zoom, 'zoombini'), Z.zbSnoidSheet(zoom, 'tumble'), pal, (a, id) => Z.parseScript(arcOf(a).get('SCRS', id), 'SCRS'));
     const alone = f => { const b = Z.mrAnmWrite(Array.from({ length: Z.MR_ANM_SLOTS }, (_, i) => (i ? null : [f]))); return Z.mrAnmFrame(b, Z.mrAnmSlots(b)[0][0]); };
-    for (const s of sets) {
-      const b = Z.mrAnmWrite(s.slots), slots = Z.mrAnmSlots(b), what = `the walk mod's feet ${s.feet}`;
-      if (s.limit !== s.ticks + 1 || s.ms !== 102) fail(`${what} has the limit ${s.limit} for ${s.ticks} ticks at ${s.ms} ms`);
-      slots.forEach((frames, i) => {
-        if (!frames) return;
-        const { name, part } = Z.mrAnmSlotName(i);
-        if (frames.length !== (part === 1 ? 1 : s.limit)) fail(`${what} has ${frames.length} frames in ${name}`);
-        if (frames.some(f => f.width !== s.width || f.height !== s.height)) fail(`${what} has a frame in ${name} not ${s.width}×${s.height}`);
-      });
-      if (Z.mrAnmViews(slots).size !== 16) fail(`${what} has ${Z.mrAnmViews(slots).size} views`);
-      const pic = Z.mrAnmFrame(b, slots[Z.mrAnmSlot(22, 3, 1)][2]), again = alone(Z.mrRbEncode(pic));
-      if (pic.data.some((v, j) => v !== again.data[j])) fail(`${what} has a frame that differs when written again`);
-      // each other set: its view alone, and its frames in the walk's frame
-      // and lift, one standing and then the script's
-      s.extras.forEach((e, i) => {
-        const x = Z.MR_MOD_EXTRAS[i], eb = Z.mrAnmWrite(e.slots), es = Z.mrAnmSlots(eb), ew = `${what}'s ${e.key}`;
-        if (Z.mrAnmViews(es).size !== 1 || !es[Z.mrAnmSlot(x.view, 0, 0)]) fail(`${ew} is not view ${x.view} alone`);
-        if (e.dx !== s.dx || e.dy !== s.dy || e.limit !== e.ticks + 1) fail(`${ew} has the lift ${e.dx}, ${e.dy} and the limit ${e.limit}`);
-        es.forEach((frames, j) => {
+    if (groups.length !== Z.MR_MOD_SETS.length) fail(`the mod has ${groups.length} of ${Z.MR_MOD_SETS.length} sets`);
+    for (const g of groups) {
+      const mrSlots = Z.mrAnmSlots(readMr(g.file)), mrViews = [...Z.mrAnmViews(mrSlots).keys()];
+      if (g.sets.length !== (g.whole ? 1 : 5)) fail(`the mod's ${g.file} has ${g.sets.length} sets`);
+      for (const s of g.sets) {
+        const b = Z.mrAnmWrite(s.slots), slots = Z.mrAnmSlots(b), what = `the mod's ${g.file}${g.whole ? '' : ` for feet ${s.feet}`}`;
+        const views = [...Z.mrAnmViews(slots).keys()];
+        if (views.join() !== mrViews.join()) fail(`${what} has the views ${views.join()}, not ${mrViews.join()}`);
+        if (g.walk && (s.limit !== s.ticks + 1 || s.ms !== 102)) fail(`${what} has the limit ${s.limit} for ${s.ticks} ticks at ${s.ms} ms`);
+        slots.forEach((frames, i) => {
           if (!frames) return;
-          if (frames.length !== (Z.mrAnmSlotName(j).part === 1 ? 1 : e.limit)) fail(`${ew} has ${frames.length} frames in ${Z.mrAnmSlotName(j).name}`);
-          if (frames.some(f => f.width !== s.width || f.height !== s.height)) fail(`${ew} has a frame not ${s.width}×${s.height}`);
+          const { name, part, view: v } = Z.mrAnmSlotName(i);
+          const mrCount = Math.max(1, ...[0, 1, 2, 3, 4].flatMap(pp => [0, 1, 2, 3, 4, 5].map(val => (mrSlots[Z.mrAnmSlot(v, pp, val)] || []).length)));
+          const want = g.whole || part === 1 ? 1 : g.walk ? s.limit : mrCount;
+          if (frames.length !== want) fail(`${what} has ${frames.length} frames in ${name}, not ${want}`);
+          if (frames.some(f => f.width !== s.width || f.height !== s.height)) fail(`${what} has a frame in ${name} not ${s.width}×${s.height}`);
         });
-      });
+        if (g.file === 'zombis/littlezomb.anm') {
+          const pic = Z.mrAnmFrame(b, slots[Z.mrAnmSlot(22, 3, 1)][2]), again = alone(Z.mrRbEncode(pic));
+          if (pic.data.some((v, j) => v !== again.data[j])) fail(`${what} has a frame that differs when written again`);
+        }
+      }
     }
-    if (sets[2].dy < 20 || sets[4].dy < 20) fail(`the walk mod lifts the spring ${sets[2].dy} and the propeller ${sets[4].dy}, too little for their rise`);
-    const exe = bytesOf('INSTALL/hd/zoombini2.exe'), groups = Z.mrModGroups(sets), patched = Z.mrModExe(exe, groups);
+    const walkSets = groups[0].sets;
+    if (walkSets[2].dy < 20 || walkSets[4].dy < 20) fail(`the walk mod lifts the spring ${walkSets[2].dy} and the propeller ${walkSets[4].dy}, too little for their rise`);
+    const exe = bytesOf('INSTALL/hd/zoombini2.exe'), patched = Z.mrModExe(exe, groups);
     const P = Z.mrModPe(patched), zb = P.sections.find(s => s.name === '.zb96'), dvp = new DataView(patched.buffer);
     if (P.sections.length !== Z.mrModPe(exe).sections.length + 1 || !zb) fail('the patched program has no new section');
-    for (const at of [Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at]) {
+    for (const at of [Z.MR_MOD_EXE.loaderEntry.at, Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at]) {
       const o = Z.mrModFileOffset(P, at), to = at + 5 + dvp.getInt32(o + 1, true) - P.base;
-      if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x800) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
+      if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x1000) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
+    }
+    for (const g of groups.filter(x => x.whole)) for (const p of Z.mrModNamePointers(exe).get(g.file)) {
+      const to = dvp.getUint32(p.at, true) - P.base;
+      if (to < zb.va || to >= zb.va + zb.vsize) fail(`the patched program still loads ${g.file} by its name at ${p.at.toString(16)}`);
     }
     let twice = false;
     try { Z.mrModExe(patched, groups); } catch { twice = true; }
-    if (groups.length !== 1 + Z.MR_MOD_EXTRAS.length || groups.some(g => !g.source || g.sets.length !== 5)) fail(`the walk mod has ${groups.length} groups`);
     if (!twice) fail('the program was patched a second time');
   }
 }
