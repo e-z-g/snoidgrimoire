@@ -2,17 +2,18 @@
 // output in <mod>), for a look by eye: for each feet, the views given
 // (default 22, 66, 88, 44) and each frame, with nose, hair and eyes 1,
 // against a gray ground, a red line where Mountain Rescue's frame is.
-//   node utilities/mr_mod_sheet.mjs <mod> <png> [views]
+//   node utilities/mr_mod_sheet.mjs <mod> <png> [views] [walk | blink]
+// The last word picks the sets, zb96walk<feet>.anm or zb96blink<feet>.anm.
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { site } from './load.mjs';
 const S = site({ files: ['js/zb-mountain.js'] });
-const [mod, png, list] = process.argv.slice(2);
+const [mod, png, list, kind = 'walk'] = process.argv.slice(2);
 const viewsWanted = (list || '22,66,88,44').split(',').map(Number);
 const rows = [];
 for (let feet = 1; feet <= 5; feet++) {
-  const b = new Uint8Array(fs.readFileSync(path.join(mod, 'zombis', `zb96walk${feet}.anm`)));
+  const b = new Uint8Array(fs.readFileSync(path.join(mod, 'zombis', `zb96${kind}${feet}.anm`)));
   const slots = S.mrAnmSlots(b);
   for (const v of viewsWanted) {
     const body = slots[S.mrAnmSlot(v, 0, 0)];

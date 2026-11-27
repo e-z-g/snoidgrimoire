@@ -264,17 +264,30 @@ let timesNote = '';
       if (Z.mrAnmViews(slots).size !== 16) fail(`${what} has ${Z.mrAnmViews(slots).size} views`);
       const pic = Z.mrAnmFrame(b, slots[Z.mrAnmSlot(22, 3, 1)][2]), again = alone(Z.mrRbEncode(pic));
       if (pic.data.some((v, j) => v !== again.data[j])) fail(`${what} has a frame that differs when written again`);
+      // each other set: its view alone, and its frames in the walk's frame
+      // and lift, one standing and then the script's
+      s.extras.forEach((e, i) => {
+        const x = Z.MR_MOD_EXTRAS[i], eb = Z.mrAnmWrite(e.slots), es = Z.mrAnmSlots(eb), ew = `${what}'s ${e.key}`;
+        if (Z.mrAnmViews(es).size !== 1 || !es[Z.mrAnmSlot(x.view, 0, 0)]) fail(`${ew} is not view ${x.view} alone`);
+        if (e.dx !== s.dx || e.dy !== s.dy || e.limit !== e.ticks + 1) fail(`${ew} has the lift ${e.dx}, ${e.dy} and the limit ${e.limit}`);
+        es.forEach((frames, j) => {
+          if (!frames) return;
+          if (frames.length !== (Z.mrAnmSlotName(j).part === 1 ? 1 : e.limit)) fail(`${ew} has ${frames.length} frames in ${Z.mrAnmSlotName(j).name}`);
+          if (frames.some(f => f.width !== s.width || f.height !== s.height)) fail(`${ew} has a frame not ${s.width}×${s.height}`);
+        });
+      });
     }
     if (sets[2].dy < 20 || sets[4].dy < 20) fail(`the walk mod lifts the spring ${sets[2].dy} and the propeller ${sets[4].dy}, too little for their rise`);
-    const exe = bytesOf('INSTALL/hd/zoombini2.exe'), patched = Z.mrModExe(exe, sets, sets.map(s => `./bmp/zombis/zb96walk${s.feet}.anm`));
+    const exe = bytesOf('INSTALL/hd/zoombini2.exe'), groups = Z.mrModGroups(sets), patched = Z.mrModExe(exe, groups);
     const P = Z.mrModPe(patched), zb = P.sections.find(s => s.name === '.zb96'), dvp = new DataView(patched.buffer);
     if (P.sections.length !== Z.mrModPe(exe).sections.length + 1 || !zb) fail('the patched program has no new section');
     for (const at of [Z.MR_MOD_EXE.load.at, ...Z.MR_MOD_EXE.sites.map(s => s.at), Z.MR_MOD_EXE.limit.at]) {
       const o = Z.mrModFileOffset(P, at), to = at + 5 + dvp.getInt32(o + 1, true) - P.base;
-      if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x400) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
+      if (patched[o] !== 0xe9 || !zb || to < zb.va || to >= zb.va + 0x800) fail(`the patched program has no jump into the new code at ${at.toString(16)}`);
     }
     let twice = false;
-    try { Z.mrModExe(patched, sets, ['a', 'b', 'c', 'd', 'e']); } catch { twice = true; }
+    try { Z.mrModExe(patched, groups); } catch { twice = true; }
+    if (groups.length !== 1 + Z.MR_MOD_EXTRAS.length || groups.some(g => !g.source || g.sets.length !== 5)) fail(`the walk mod has ${groups.length} groups`);
     if (!twice) fail('the program was patched a second time');
   }
 }
