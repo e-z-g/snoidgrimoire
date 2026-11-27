@@ -347,6 +347,9 @@ function mrModExe(exe, sets, names) {
   const last = L.sections[L.sections.length - 1];
   const align = (v, n) => Math.ceil(v / n) * n;
   const va = align(last.va + Math.max(last.vsize, last.rsize), L.sectionAlign), base = L.base + va;
+  // The sets start on a new page. With the first set on the code's page,
+  // the loader's writes there crashed the game under Wine on an Apple
+  // silicon Mac (Rosetta), on 26 November 2026.
   const codeSize = 0x400, namesAt = base + codeSize, tableAt = namesAt + 0x200, setsAt = align(tableAt + 0x20, 0x1000);
   const setAt = i => setsAt + i * M.setSize;
   const a = mrModAsm(base);
