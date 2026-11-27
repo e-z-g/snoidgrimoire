@@ -10,7 +10,7 @@
  * the sniff useless.
  *
  * openResourceFork(bytes) returns a fork object rather than setting globals, so
- * two forks can be open at once -- which is the point of putting it here.
+ * two forks can be open together. That is the reason this file exists.
  * index.html has the Cythera Data *data* fork open as the game archive and
  * its *resource* fork at the same time, and the application's fork beside them.
  */

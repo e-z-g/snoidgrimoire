@@ -32,8 +32,8 @@ function zipDosStamp(d) {
  * the CRC of the ORIGINAL bytes. Without it the entry is stored uncompressed,
  * as every entry was before the option was added. */
 function buildZip(files) { return new Blob(buildZipParts(files), { type: 'application/zip' }); }
-// The same archive as one array of bytes, for a caller that has to read it
-// back at once (a check, or a zip made to be handed straight to a reader).
+// The same archive as one array of bytes, for a caller that reads it back
+// immediately (a check, or a zip handed straight to a reader).
 function buildZipBytes(files) {
   const parts = buildZipParts(files);
   let n = 0; for (const p of parts) n += p.length;
