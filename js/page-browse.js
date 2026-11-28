@@ -747,7 +747,7 @@ function snoidPlayer(entry, arc, id, script, box) {
     return `<option value="${i + 1}"${i + 1 === traits[k] ? ' selected' : ''}${off ? ' disabled' : ''}>${esc(cap(n))}</option>`;
   }).join('')}</select></label>`;
   const zoom = SNOID_PICK.zoom;
-  box.innerHTML = `<p class="note">${cap(K.name)}, tBMP ${K.sheet} in ${K.archive}, ${plural(ticks.length, 'tick')}, one every ${SNOID_TICK_MS} ms.`
+  box.innerHTML = `<p class="note">${cap(K.name)}: tBMP ${K.sheet} in ${K.archive}. It has ${plural(ticks.length, 'tick')} of ${SNOID_TICK_MS} ms each.`
     + (own ? ` It is made for Zoombinis with ${names.feet[own - 1].toLowerCase()}.`
       : feetFor.length < 5 ? ` Its foot poses only fit ${zbWordsOr(feetFor.map(v => names.feet[v - 1].toLowerCase()))}.` : '')
     + (movie.missing.length ? ` <span class="warn">${plural(movie.missing.length, 'part')} ${movie.missing.length === 1 ? 'lies' : 'lie'} past the end of ${movie.missing.length === 1 ? 'its' : 'their'} block and ${movie.missing.length === 1 ? 'is' : 'are'} not drawn.</span>` : '') + '</p>'
