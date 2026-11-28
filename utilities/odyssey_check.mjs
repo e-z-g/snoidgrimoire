@@ -127,7 +127,7 @@ for (const [k, f] of game) {
   const r = spawnSync('python3', ['-I', scriptPy, '-', '--source'], { input: b, encoding: 'utf8', maxBuffer: 1 << 26 });
   if (r.status !== 0) { fail(`io_script.py fails on ${k}`); continue; }
   const py = r.stdout.split('\n').slice(1).join('\n').replace(/\n$/, '');
-  if (py !== js) { const a = js.split('\n'), c = py.split('\n'); const i = a.findIndex((l, j) => l !== c[j]); fail(`${k} differs from io_script.py's at line ${i + 1}: ${a[i]} | ${c[i]}`); }
+  if (py !== js) { const a = js.split('\n'), c = py.split('\n'); const i = a.findIndex((l, j) => l !== c[j]); fail(`${k} differs from io_script.py's at line ${i + 1} (${a[i]} | ${c[i]})`); }
   scripts++; statements += js.split('\n').length;
 }
 // Every setting a puzzle shows is a list in its script.

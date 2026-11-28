@@ -231,7 +231,7 @@ function mountainSideHtml(key) {
 }
 
 function mountainHomeHtml() {
-  let html = '<h1>Mountain Rescue</h1><p class="sub"><i>Zoombinis Mountain Rescue</i> (TERC and The Learning Company, 2001) is the second game. Its pictures, animations, sounds and paths are loose files in the disc\'s <code>Data</code> folder, and none is a Mohawk archive. Open the disc\'s image (<code>.iso</code>), the disc\'s folder or its <code>Data</code> folder, or read archive.org\'s copy.</p>'
+  let html = '<h1>Mountain Rescue</h1><p class="sub"><i>Zoombinis Mountain Rescue</i> is the second game. TERC and The Learning Company made it in 2001. Its pictures, animations, sounds, and paths are loose files in the disc\'s <code>Data</code> folder. None of them is a Mohawk archive. Open the disc\'s image (<code>.iso</code>), the disc\'s folder, or its <code>Data</code> folder. Or read archive.org\'s copy.</p>'
     + '<div class="tools"><label class="btn">Image…<input type="file" class="mountainPick" accept=".iso,.ISO" hidden></label> <label class="btn">Folder…<input type="file" class="mountainPick" webkitdirectory hidden></label> <button id="mountainRemote">Read archive.org\'s copy</button></div>';
   if (!mountainIsOpen()) return html + '<p class="note">Mountain Rescue is not open.</p>';
   const kinds = new Map();
@@ -259,7 +259,7 @@ function mountainFolderHtml(folder) {
 /* A file's view by its kind. */
 async function mountainFileView(view, key, seq) {
   const f = MOUNTAIN.files.get(key), kind = mrKind(key), ext = key.split('.').pop();
-  view.innerHTML = `<h1>${esc(mountainName(f.path))}</h1><p class="sub">${esc(f.path)}, ${f.size.toLocaleString()} bytes, ${esc(kind)}</p><p class="note">Reading it…</p>`;
+  view.innerHTML = `<h1>${esc(mountainName(f.path))}</h1><p class="sub">${esc(f.path)} (${esc(kind)}) has ${f.size.toLocaleString()} bytes.</p><p class="note">Reading it…</p>`;
   const b = await mountainBytes(key);
   if (seq !== MOUNTAIN_SEQ) return;
   view.querySelector('p.note').remove();
@@ -295,7 +295,7 @@ async function mountainFileView(view, key, seq) {
     a.src = URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
     view.appendChild(a);
     const fmt = new DataView(b.buffer, b.byteOffset, b.byteLength);
-    if (b.length > 36) view.insertAdjacentHTML('beforeend', `<p class="note">${fmt.getUint16(22, true) === 2 ? 'Stereo' : 'Mono'}, ${fmt.getUint32(24, true).toLocaleString()} Hz, ${fmt.getUint16(34, true)}-bit.</p>`);
+    if (b.length > 36) view.insertAdjacentHTML('beforeend', `<p class="note">${fmt.getUint16(22, true) === 2 ? 'Stereo' : 'Mono'} sound at ${fmt.getUint32(24, true).toLocaleString()} Hz in ${fmt.getUint16(34, true)}-bit samples.</p>`);
   } else if (kind === 'path') {
     await mountainPathView(view, key, new TextDecoder('latin1').decode(b));
   } else if (kind === 'text') {
@@ -357,7 +357,7 @@ function mountainPlayer(view, frame, n, scale = 2, ms = 0, steps = null) {
   const box = document.createElement('div');
   box.className = 'tools';
   const total = steps ? steps.reduce((a, s) => a + (s[1] || 0), 0) : 0;
-  box.innerHTML = '<button>Stop</button> <span class="note">' + (steps ? `${plural(steps.length, 'step')} over ${(total / 1000).toLocaleString()} s, as the game plays it` : ms ? `${ms} ms a frame, as the game plays it` : '12 frames a second, an estimate') + '</span>';
+  box.innerHTML = '<button>Stop</button> <span class="note">' + (steps ? `The game plays ${plural(steps.length, 'step')} over ${(total / 1000).toLocaleString()} s.` : ms ? `The game shows each frame for ${ms} ms.` : 'The page estimates 12 frames a second.') + '</span>';
   const wait = ms || 1000 / 12;
   if (steps) n = steps.length;
   view.appendChild(c);
@@ -387,7 +387,7 @@ function mountainPlayer(view, frame, n, scale = 2, ms = 0, steps = null) {
 /* An .anm: its views, each part's values, and the parts put together. */
 function mountainPartsView(view, b, key) {
   const slots = mrAnmSlots(b), views = mrAnmViews(slots), list = [...views.keys()];
-  view.insertAdjacentHTML('beforeend', `<p>${plural(list.length, 'view')} (${list.join(', ')}), each with ${MR_PARTS.slice(1).join(', ')} values over its body. A slot is view × 30 + part × 6 + value. The parts stack as the game stacks them, the body first and the eyes on top.</p>`);
+  view.insertAdjacentHTML('beforeend', `<p>${plural(list.length, 'view')} (${list.join(', ')}). Each view has ${MR_PARTS.slice(1).join(', ')} values over its body. A slot is view × 30 + part × 6 + value. The parts stack as the game stacks them. The body is at the bottom and the eyes are on top.</p>`);
   const form = document.createElement('div');
   form.className = 'tools';
   const sel = (name, opts) => `<label>${name} <select data-k="${name}">${opts.map(o => `<option value="${o}">${o}</option>`).join('')}</select></label> `;
@@ -416,7 +416,7 @@ function mountainPartsView(view, b, key) {
 /* A path's legs drawn over its folder's picture, or its place's. */
 async function mountainPathView(view, key, text) {
   const legs = mrReadPat(text);
-  view.insertAdjacentHTML('beforeend', `<pre>${esc(text)}</pre><p>${plural(legs.length, 'leg')}, on the 800 × 600 screen.</p>`);
+  view.insertAdjacentHTML('beforeend', `<pre>${esc(text)}</pre><p>${plural(legs.length, 'leg')} on the 800 × 600 screen.</p>`);
   const folder = mountainFolder(key), place = MR_PLACES.find(p => folder.startsWith('bmp/' + p.key));
   const bg = mountainKeys(k => mountainFolder(k) === folder && /\.bb$/.test(k))[0] || (place && 'bmp/' + place.background);
   const c = document.createElement('canvas');
@@ -447,7 +447,7 @@ const MOUNTAIN_NOT_OPEN = '<p class="note">Mountain Rescue is not open. <a href=
 const MOUNTAIN_SCENARIO_PANES = {
   places(view, item) {
     if (item) return mountainPlacePage(view, item);
-    view.innerHTML = '<h1>Places</h1><p class="sub">The places of Mountain Rescue in the order of the program\'s code, with their names from the user\'s guide and their folders on the disc. From Rescue Site I the band goes by the left or the right route, and the two meet at Rescue Site II.</p>'
+    view.innerHTML = '<h1>Places</h1><p class="sub">The places of Mountain Rescue in the order of the program\'s code. Each has its name from the user\'s guide and its folder on the disc. From Rescue Site I the band goes by the left or the right route. The two routes meet at Rescue Site II.</p>'
       + (mountainIsOpen() ? '' : MOUNTAIN_NOT_OPEN)
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>folder</th></tr>'
       + MR_PLACES.map(p => `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td><a href="${mountainLink('bmp/' + p.key)}">bmp/${esc(p.key)}</a></td></tr>`).join('') + '</table></div>';
@@ -455,7 +455,7 @@ const MOUNTAIN_SCENARIO_PANES = {
     galleryCards(view, cards, async (c, pic) => { pic.appendChild(mountainThumb(await mountainPicture(c.key))); });
   },
   puzzles(view) {
-    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s goal and its three levels. Some are read from the program, and nobody has checked them against play. The rest are as the user\'s guide on the disc gives them (<code>INSTALL/Data/Zoombinimr.pdf</code>). A note under each gives its source.</p>';
+    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s goal and its three levels. Some come from the program. Nobody has checked those against play. The rest come from the user\'s guide on the disc (<code>INSTALL/Data/Zoombinimr.pdf</code>). A note under each gives its source.</p>';
     for (const [key, z] of Object.entries(MR_PUZZLES)) {
       const p = MR_PLACE_BY_KEY.get(key);
       view.insertAdjacentHTML('beforeend', `<h2 class="h"><a href="#scenario/places/${key}">${esc(p.name)}</a></h2><p>${esc(z.goal)}</p><p class="note">${z.from === 'program' ? 'Read from the program.' : 'As the user\'s guide gives it.'}</p><table class="plain">`
@@ -489,9 +489,9 @@ const MOUNTAIN_SCENARIO_PANES = {
    saved as a zip to lay over the installed game and the disc's Data. It
    needs the 1996 game's ZOOMBINI, BRIDGE, MAZE2 and PICKER archives. */
 function mountainModView(box) {
-  box.innerHTML = '<h2 class="h">The mod for the game</h2><p>Every Zoombini in Mountain Rescue drawn as the 1996 game draws it, in the game itself, made from the files open here. The zip has <code>zoombini2.exe</code>, patched to load the new sets, for the installed game’s folder, and <code>Data/Bmp/ZOMBIS</code> with the new sets, 76 files, for the folder the game reads as its disc. It runs on Windows, or under Wine with cnc-ddraw. Zoombiniville’s opening is a movie and stays as it is.</p>';
+  box.innerHTML = '<h2 class="h">The mod for the game</h2><p>This mod draws every Zoombini in Mountain Rescue as the 1996 game draws it. It works in the game itself. The page makes it from the files open here. The zip has a patched <code>zoombini2.exe</code> that loads the new sets. It goes in the installed game’s folder. The zip also has <code>Data/Bmp/ZOMBIS</code> with the new sets in 76 files. That folder goes in the folder the game reads as its disc. The mod runs on Windows or under Wine with cnc-ddraw. Zoombiniville’s opening is a movie and stays as it is.</p>';
   const need = ['ZOOMBINI', 'BRIDGE', 'MAZE2', 'PICKER'], missing = need.filter(n => !ARCHIVES.get(n));
-  if (missing.length) { box.insertAdjacentHTML('beforeend', `<p class="note">This needs the 1996 game’s ${missing.map(n => n + '.MHK').join(', ')} too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>`); return; }
+  if (missing.length) { box.insertAdjacentHTML('beforeend', `<p class="note">This also needs the 1996 game’s ${missing.map(n => n + '.MHK').join(', ')}. Open the 1996 game’s files or archive.org’s copy from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>`); return; }
   const tools = document.createElement('div');
   tools.className = 'tools';
   tools.innerHTML = '<button type="button" data-make-mod>Make the mod as .zip</button> <span class="note" data-mod-state></span>';
@@ -517,7 +517,7 @@ function mountainModView(box) {
       const out = [{ name: 'zoombini2.exe', bytes: mrModExe(exe, groups) }];
       for (const g of groups) g.sets.forEach((s, i) => out.push({ name: 'Data/Bmp/ZOMBIS/' + g.names[i].split('/').pop(), bytes: mrAnmWrite(s.slots) }));
       dlBlob(buildZip(out), 'zoombinis-mountain-rescue-1996-mod.zip');
-      state.textContent = `Saved, ${out.length} files.`;
+      state.textContent = `Saved ${out.length} files.`;
     } catch (err) {
       state.textContent = err.message;
     }
@@ -531,9 +531,9 @@ function mountainModView(box) {
    picks for it, both playing, the 1996 one scaled to the same height. A
    preview of a mod, which nobody has written so far. */
 function mountainLookView(box, anms, first) {
-  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. In a walk, each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle. Each other set is beside the 1996 scripts proposed for it, such as the carried pose for <code>PRIS.ANM</code> and the bubble ride for <code>FLOTTE.ANM</code>, its body held still, as Mountain Rescue draws a set in one place and moves it. The cannon’s views are beside the tumble’s pose whose head points the same way. Each plays at the 1996 game’s pace, scaled to the same height. Traits go by name. The noses keep a 1996 shape in Mountain Rescue’s colors, so its trait signs still match, with the purple nose’s shape for white and the red one’s for pink. Nothing is written to the game’s files.</p>';
+  box.innerHTML = '<h2 class="h">As the 1996 game draws them</h2><p>A preview of a mod that would draw Mountain Rescue’s Zoombinis as the 1996 game draws them. In a walk each view is beside the 1996 walk that the 1996 program would pick for a move at that view’s angle. Each other set is beside the 1996 scripts proposed for it. The carried pose goes with <code>PRIS.ANM</code> and the bubble ride with <code>FLOTTE.ANM</code>. Their bodies stay in one place because Mountain Rescue draws a set in one place and moves it. The cannon’s views are beside the tumble’s pose whose head points the same way. Each plays at the 1996 game’s pace. The page scales each to the same height. Traits go by name. Each nose has a 1996 shape in Mountain Rescue’s colors. So Mountain Rescue’s trait signs still match. White noses get the purple nose’s shape. Pink noses get the red nose’s shape. The preview writes nothing to the game’s files.</p>';
   const z = ARCHIVES.get('ZOOMBINI');
-  if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This needs the 1996 game’s ZOOMBINI.MHK too. Open the 1996 game’s files, or archive.org’s copy, from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
+  if (!z) { box.insertAdjacentHTML('beforeend', '<p class="note">This also needs the 1996 game’s ZOOMBINI.MHK. Open the 1996 game’s files or archive.org’s copy from <a href="#" data-start>the start page</a>. Mountain Rescue stays open.</p>'); return; }
   const form = document.createElement('div');
   form.className = 'tools';
   const sel = (k, opts, on) => `<label>${k} <select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${v === on ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label> `;
@@ -579,7 +579,7 @@ function mountainLookView(box, anms, first) {
         return noses.get(sheet);
       };
       const set = mrLookSet(key), ms = times.get(key) || 50;
-      stage.innerHTML = `<p class="note">${set ? esc(set.what) + '. ' : ''}${ms} ms a frame, as the game plays this file.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}${set && set.note ? ' ' + esc(set.note) : ''}</p>`;
+      stage.innerHTML = `<p class="note">${set ? esc(set.what) + '. ' : ''}The game shows each frame of this file for ${ms} ms.${notes.length ? ' Here ' + notes.join(', ') + '.' : ''}${set && set.note ? ' ' + esc(set.note) : ''}</p>`;
       const grid = document.createElement('div');
       grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px';
       stage.appendChild(grid);
@@ -632,7 +632,7 @@ function mountainLookView(box, anms, first) {
         const matches = set && !set.walk ? set.scripts(old.feet) : [{ archive: 'ZOOMBINI', ...(w => ({ id: w.script, facing: w.facing }))(mrLookWalk(v, old.feet)), from: 0 }];
         for (const m of matches) {
           const home = ARCHIVES.get(m.archive), label = `${where}, ${m.archive} SCRS ${m.id}`;
-          if (!home) { grid.insertAdjacentHTML('beforeend', `<p class="note">${esc(label)} needs ${m.archive}.MHK, which is not open.</p>`); continue; }
+          if (!home) { grid.insertAdjacentHTML('beforeend', `<p class="note">${esc(label)} needs ${m.archive}.MHK. That archive is not open.</p>`); continue; }
           const mArc = openedArchive(await ensureBytes(home));
           if (mine !== run) return;
           const script = parseScript(mArc.get('SCRS', m.id), 'SCRS'), kind = ZB_SNOID_KIND_OF_LAYOUT[script.layout];
@@ -669,7 +669,7 @@ function mountainLookView(box, anms, first) {
 
 async function mountainPlacePage(view, key) {
   const p = MR_PLACE_BY_KEY.get(key), z = MR_PUZZLES[key], folder = 'bmp/' + key;
-  view.innerHTML = `<h1>${esc(p.name)}</h1><p class="sub">${esc(p.kind)}, in the folder <a href="${mountainLink(folder)}">${esc(folder)}</a>.</p>`;
+  view.innerHTML = `<h1>${esc(p.name)}</h1><p class="sub">${esc(p.kind)} in the folder <a href="${mountainLink(folder)}">${esc(folder)}</a>.</p>`;
   if (!mountainIsOpen()) { view.insertAdjacentHTML('beforeend', MOUNTAIN_NOT_OPEN); return; }
   if (MOUNTAIN.files.has('bmp/' + p.background)) {
     try { mountainPictureBlock(view, await mountainPicture('bmp/' + p.background), key + '.png'); } catch (e) { view.insertAdjacentHTML('beforeend', `<p class="bad">${esc(e.message)}</p>`); }
@@ -723,7 +723,7 @@ function mountainSoundRows(d, keys) {
     if (!named) return;
     for (const td of d.querySelectorAll('td[data-voice]')) {
       const t = named.get(keys[+td.dataset.voice]);
-      td.innerHTML = t ? `named <code>${esc(t)}</code>` : 'never named, so never played';
+      td.innerHTML = t ? `named <code>${esc(t)}</code>` : 'never named and so never played';
     }
   });
   d.addEventListener('click', async e => {
@@ -737,17 +737,17 @@ const isMountainMusic = k => /^sounds\/music\//.test(k);
 const MOUNTAIN_GALLERIES = {
   pictures(view) {
     const keys = mountainKeys(k => mrKind(k) === 'picture');
-    mountainGalleryHead(view, 'Pictures', `${plural(keys.length, 'picture')} on the disc, by folder. The backgrounds (<code>.bb</code>) are 800 × 600 in 24-bit color, the sprites (<code>.rb</code>) have an alpha for each pixel, and the <code>.bmt</code> files are Windows BMPs, among them the click maps and the font.`);
+    mountainGalleryHead(view, 'Pictures', `The gallery lists ${plural(keys.length, 'picture')} on the disc by folder. The backgrounds (<code>.bb</code>) are 800 × 600 in 24-bit color. The sprites (<code>.rb</code>) have an alpha for each pixel. The <code>.bmt</code> files are Windows BMPs. Among them are the click maps and the font.`);
     mountainFolds(view, keys, mountainCards);
   },
   sheets(view) {
     const keys = mountainKeys(k => mrKind(k) === 'animation' || mrKind(k) === 'parts');
-    mountainGalleryHead(view, 'Animations', `${plural(keys.length, 'animation')} on the disc, by folder. An <code>.an</code> file is a run of frames, and an <code>.anm</code> file a snoid\'s parts in up to 100 views. Each card shows the first frame, and a file\'s view in Data plays it.`);
+    mountainGalleryHead(view, 'Animations', `The gallery lists ${plural(keys.length, 'animation')} on the disc by folder. An <code>.an</code> file is a run of frames. An <code>.anm</code> file has a snoid\'s parts in up to 100 views. Each card shows the first frame. A file\'s view in Data plays it.`);
     mountainFolds(view, keys, mountainCards);
   },
   sounds(view) {
     const keys = mountainKeys(k => mrKind(k) === 'sound' && !isMountainMusic(k));
-    mountainGalleryHead(view, 'Sounds', `${plural(keys.length, 'sound')} on the disc, besides the music, by folder. Each is a plain WAV file. An effect's name in FX starts with its place's number, as a tune's does. A voice's name starts with letters for its place. The program plays a voice by its name, or by a pattern such as <code>blw22.%d</code>, so a voice it never names is never played.`);
+    mountainGalleryHead(view, 'Sounds', `The gallery lists ${plural(keys.length, 'sound')} on the disc by folder. The music is not among them. Each is a plain WAV file. An effect's name in FX starts with its place's number. A tune's name does too. A voice's name starts with letters for its place. The program plays a voice by its name or by a pattern such as <code>blw22.%d</code>. So the program never plays a voice that it never names.`);
     mountainFolds(view, keys, mountainSoundRows);
   },
   music(view) {
@@ -757,7 +757,7 @@ const MOUNTAIN_GALLERIES = {
   },
   text(view) {
     const keys = mountainKeys(k => mrKind(k) === 'path' || mrKind(k) === 'text');
-    mountainGalleryHead(view, 'Paths and text', `${plural(keys.length, 'file')} on the disc, by folder. A <code>.pat</code> file is a path on the screen, and its view in Data draws it over its place.`);
+    mountainGalleryHead(view, 'Paths and text', `The gallery lists ${plural(keys.length, 'file')} on the disc by folder. A <code>.pat</code> file is a path on the screen. Its view in Data draws it over its place.`);
     mountainFolds(view, keys, (d, items) => d.insertAdjacentHTML('beforeend', '<div class="ids">' + items.map(k => `<a href="${mountainLink(k)}">${esc(mountainName(MOUNTAIN.files.get(k).path))}</a>`).join('') + '</div>'));
   },
 };

@@ -336,7 +336,7 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       picture, sprite sheet, sound, tune, palette, cursor, string, walk, and animation script in
       the game’s Mohawk archives.</p>
     <div id="drop">
-      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder or its CD image here, or the 2015 remake's <code>Zoombinis.app</code> or Android APKs, or <i>Mountain Rescue</i>'s or <i>Island Odyssey</i>'s CD image or folder</div>
+      <div>Drop the game's <code>.MHK</code> archives, its <code>DATA</code> folder, or its CD image here. The page also opens the 2015 remake's <code>Zoombinis.app</code> or Android APKs. It opens the CD image or folder of <i>Mountain Rescue</i> or <i>Island Odyssey</i> too.</div>
       <div class="row">
         <label class="btn">Files…<input id="pickFiles" type="file" multiple accept=".mhk,.MHK,.iso,.ISO" hidden></label>
         <label class="btn">DATA folder…<input id="pickFolder" type="file" webkitdirectory hidden></label>
@@ -350,8 +350,8 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
       <li><i>Zoombinis Mountain Rescue</i> (2001), the second game, opens from its CD image (<code>.iso</code>), with “Files…”, or from the disc's folder or its <code>Data</code> folder.</li>
       <li><i>Zoombinis Island Odyssey</i> (2002), the third game, opens from its CD image (<code>.iso</code>), with “Files…”, or from the disc's folder.</li>
       <li>The 2015 remake opens from its <code>Zoombinis.app</code> dropped on the page. A Mac’s folder picker shows an app as one file, but in it ⌘⇧G and the app’s path, such as <code>/Applications/Zoombinis.app/</code>, goes inside the app, and the picker then accepts it as a folder.</li>
-      <li>Nothing leaves your browser. What you open is remembered there, so it is already open on your next visit.</li>
-      <li>Pictures show the colors the Windows game shows, which brightens every color of a palette. The art was made on Macs, and the Mac game shows the colors as stored, a little darker on a screen of today. “Colors”, beside a picture’s palette, switches between the two. Saved pictures keep the stored colors.</li>
+      <li>Nothing leaves your browser. The browser stores what you open. On your next visit it is already open.</li>
+      <li>Pictures show the colors as the Windows game shows them. The Windows game brightens every color of a palette. The artists drew the art on Macs. The Mac game shows the colors as the archives store them. They look a little darker on a screen of today. The “Colors” menu beside a picture’s palette switches between the two. Saved pictures have the stored colors.</li>
     </ul>
     <div id="remote">
       <p>Or read the Internet Archive’s copy of the Learning Company’s 2001 re-release. Its archives
@@ -362,14 +362,14 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
     </div>
     <div id="mountainRemoteStart">
       <p>Or read the Internet Archive’s copy of <i>Mountain Rescue</i>’s CD. The page reads the list of
-        its files and then fetches each file a view needs. The browser saves the choice, and the next
-        visit opens it again.</p>
+        its files and then fetches each file a view needs. The browser saves the choice. The next
+        visit opens the CD again.</p>
       <button id="useMountainRemote">Read archive.org's copy of Mountain Rescue</button>
     </div>
     <div id="odysseyRemoteStart">
       <p>Or read the Internet Archive’s copy of <i>Island Odyssey</i>’s CD. The page reads the list of
-        its files and then fetches each bundle a view needs, 1 to 21 MB each. The browser saves the
-        choice, and the next visit opens it again.</p>
+        its files and then fetches each bundle a view needs. A bundle is 1 to 21 MB. The browser saves
+        the choice. The next visit opens the CD again.</p>
       <button id="useOdysseyRemote">Read archive.org's copy of Island Odyssey</button>
     </div>
     <div id="remakeRemote">
@@ -377,8 +377,8 @@ ol.sols li p { margin: 3px 0; color: var(--text); font-size: 13px; }
         build's <code>base.apk</code>, <code>split_config.arm64_v8a.apk</code> and
         <code>split_UnityDataAssetPack.apk</code>, or any build's files with an index of them,
         <code>snoidgrimoire-index.bin</code>, or an index of several builds in folders under it. Its server must answer range requests and list this
-        site in its CORS rules. The page fetches the pieces each view needs. The address is saved in
-        your browser, and your next visit opens it again.</p>
+        site in its CORS rules. The page fetches the pieces each view needs. Your browser saves the
+        address. On your next visit the page reads the remake from it again.</p>
       <input id="remakeAddress" type="url" placeholder="https://…/" autocomplete="off" spellcheck="false">
       <button id="useRemakeAddress">Read the remake from this address</button>
     </div>

@@ -274,7 +274,7 @@ function zbShotOtherButton(out, r, from) {
     box.innerHTML = '<p class="note">Drawing…</p>';
     try {
       const d = await (to === '2015' ? zbShotIn2015(r) : zbShotIn1996(r));
-      box.innerHTML = `<p>The Zoombinis as read, in <a href="${d.link}">${esc(d.title)}</a>${d.left ? `, without ${plural(d.left, 'Zoombini')} whose traits are not all read` : ''}. ${d.waiting || 'Each stands at its share of the frame, and the other game lays out its picture differently, so that is near the spot only.'}</p>`;
+      box.innerHTML = `<p>The page draws the Zoombinis as read in <a href="${d.link}">${esc(d.title)}</a>.${d.left ? ` It leaves out ${plural(d.left, 'Zoombini')} whose traits are not all read.` : ''} ${d.waiting || 'Each one stands at the same share of the frame. The other game lays out its picture differently. Each place is only close to the right spot.'}</p>`;
       d.canvas.style.maxWidth = '100%';
       d.canvas.className = 'scene';
       box.appendChild(d.canvas);

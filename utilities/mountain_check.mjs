@@ -244,7 +244,7 @@ let timesNote = '';
     }
     if (scripts < 40) fail(`only ${scripts} proposed scripts read`);
     // the mod (js/zb-mountain-mod.js): every set of MR_MOD_SETS written
-    // and read back, with Mountain Rescue's views and, but for the walks,
+    // and read back, with Mountain Rescue's views and, except for the walks,
     // its frame counts, every frame of a set the same size; the walk with
     // the 1996 walk's ticks and one more, a frame written again the same,
     // and the spring and the propeller lifted; the program patched once,

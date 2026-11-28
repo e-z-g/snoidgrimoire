@@ -22,13 +22,13 @@ let SHOT_BUSY = false;
 SCENARIO_PANES.screenshot = function shotPane(view) {
   view.innerHTML = '<h1>Screenshot</h1>'
     + '<p class="sub">Give the page a screenshot of the game. It shows the place and each Zoombini’s traits. '
-    + 'At a puzzle it also shows the puzzle’s pieces as they stand, and the hidden rules that fit them.</p>'
+    + 'At a puzzle it also shows the puzzle’s pieces as they stand and the hidden rules that fit them.</p>'
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
-    + ' <span class="note">or drop one here, or paste one.</span></div>'
-    + '<p class="note">The page reads a screenshot taken straight from the screen, at any size. '
-    + 'It also reads one enlarged or shrunk with smoothing, as a browser or a forum shows a picture, and one saved as a JPEG. '
-    + 'Such a reading needs several seconds, and a Zoombini mostly hidden behind others may go unread. '
-    + 'It cannot read a photo of a screen.</p>'
+    + ' <span class="note">or drop one here or paste one.</span></div>'
+    + '<p class="note">The page reads a screenshot taken straight from the screen at any size. '
+    + 'It also reads one that a browser or a forum enlarged or shrank with smoothing. It reads one saved as a JPEG too. '
+    + 'Such a reading needs several seconds. A Zoombini mostly hidden behind others may go unread. '
+    + 'The page cannot read a photo of a screen.</p>'
     + '<div id="shotOut"></div>';
   $('shotFile').addEventListener('change', e => {
     const f = e.target.files[0];
@@ -90,7 +90,7 @@ async function shotTake(file) {
     g.drawImage(bitmap, 0, 0);
     const rgba = g.getImageData(0, 0, c.width, c.height).data;
     const archives = await shotArchives();
-    if (!archives.has('ZOOMBINI')) throw new Error('reading the Zoombinis needs ZOOMBINI.MHK, which is not open');
+    if (!archives.has('ZOOMBINI')) throw new Error('ZOOMBINI.MHK is not open and the page reads the Zoombinis from it');
     // a pause, so that the note shows before the reading starts
     await new Promise(r => setTimeout(r, 30));
     const t = performance.now();
@@ -125,13 +125,13 @@ function shotShow() {
     ? 'It shows the game’s whole 640 × 480 frame'
     : `It shows ${s.width} × ${s.height} of the game’s 640 × 480 frame`;
   const factor = `${s.scaleX.toFixed(3)} times${Math.abs(s.scaleX - s.scaleY) > 0.002 ? ` across and ${s.scaleY.toFixed(3)} down` : ''}`;
-  const same = Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001, lossy = s.compressed ? ' Its colors are a compressed picture’s, as a JPEG’s are, so the page leaves a trait unread where the compression puts it in doubt.' : '';
+  const same = Math.abs(s.scaleX - 1) < 0.001 && Math.abs(s.scaleY - 1) < 0.001, lossy = s.compressed ? ' Its colors are those of a compressed picture such as a JPEG. The page leaves a trait unread where the compression puts it in doubt.' : '';
   const scale = s.smoothed ? (same ? `, at the game’s size.${lossy}` : `, ${s.scaleX < 1 ? 'shrunk to' : 'enlarged'} ${factor} with smoothing.${lossy}`)
     : same ? ', pixel for pixel.'
     : `, enlarged ${factor}.`;
   html += `<p>The screenshot is ${L.width} × ${L.height}${s.bars ? ', with plain bars around the frame' : ''}. ${size}${scale}`;
   if (!r.place) {
-    out.innerHTML = html + ' No picture of the game’s matches it. The page reads a screenshot of a puzzle, a camp, Zoombini Isle, the map or a passage between places.</p>';
+    out.innerHTML = html + ' No picture of the game’s matches it. The page reads a screenshot of a puzzle, a camp, Zoombini Isle, the map, or a passage between places.</p>';
     return;
   }
   const place = ZB_SHOT_PLACE_BY_KEY.get(r.place);
@@ -247,9 +247,9 @@ function shotDrawZoombinis(out, r) {
 function shotBridgeHtml(r) {
   const P = r.puzzle;
   let html = '<h2>Allergic Cliffs</h2><p>';
-  if (P.gateFit < 0.8) html += 'Something covers the gate, so the page cannot count its pegs. ';
-  else if (P.pegsGone === 0) html += 'The gate has all six pegs, so the cliffs have not sneezed at anyone. ';
-  else html += `The gate has lost ${P.pegsGone} of its 6 pegs, so the cliffs have sneezed ${P.pegsGone === 1 ? 'once' : `${P.pegsGone} times`}. `;
+  if (P.gateFit < 0.8) html += 'Something covers the gate. The page cannot count its pegs. ';
+  else if (P.pegsGone === 0) html += 'The gate has all six pegs. The cliffs have not sneezed at anyone. ';
+  else html += `The gate has lost ${P.pegsGone} of its 6 pegs. The cliffs have sneezed ${P.pegsGone === 1 ? 'once' : `${P.pegsGone} times`}. `;
   const counts = [];
   if (P.upper.length) counts.push(`${P.upper.length} across the upper bridge`);
   if (P.lower.length) counts.push(`${P.lower.length} across the lower bridge`);
@@ -257,21 +257,21 @@ function shotBridgeHtml(r) {
   if (P.crossing.length) counts.push(`${P.crossing.length} on the way`);
   if (counts.length) html += `There are ${zbWordsOr(counts, 'and')}.`;
   html += '</p>';
-  if (!P.upper.length && !P.lower.length) return html + '<p>Nobody has crossed so far, so every rule fits.</p>';
+  if (!P.upper.length && !P.lower.length) return html + '<p>Nobody has crossed so far. Every rule fits.</p>';
   const band = [...P.upper, ...P.lower, ...P.waiting, ...P.crossing].map(z => z.traits);
   const complete = band.every(t => ZB_TRAIT_KINDS.every(k => t[k] != null));
   const fitting = P.levels.filter(l => l.fitting.length);
-  if (!fitting.length) return html + '<p>No rule of any level puts the Zoombinis where they stand. A Zoombini may be misread, or a sneeze may be under way.</p>';
+  if (!fitting.length) return html + '<p>No rule of any level puts the Zoombinis where they stand. Either the page misread a Zoombini or a sneeze is under way.</p>';
   for (const l of fitting) {
     const shown = l.fitting.slice(0, 12);
     const noneDealt = l.dealt && !l.dealt.length;
     html += `<p><b>Level ${l.level}, ${esc(ZB_LEVELS[l.level - 1])}.</b> ${l.fitting.length === 1 ? '1 rule fits.' : `${l.fitting.length} rules fit.`}`
-      + (noneDealt ? ` <span class="note">The program would ${l.fitting.length === 1 ? 'not deal it' : 'deal none of them'} for this band, so either the screenshot leaves out some of the band or the level is another.</span>` : '') + '</p><ul>';
+      + (noneDealt ? ` <span class="note">The program would ${l.fitting.length === 1 ? 'not deal it' : 'deal none of them'} for this band. Either the screenshot leaves out some of the band or the level is another.</span>` : '') + '</p><ul>';
     for (const f of shown) {
       const words = zbBridgeRuleWords(f.rule), dealable = l.dealt && l.dealt.some(d => d.rule === f.rule && d.upperMatches === f.upperMatches);
       const accepts = `The ${f.upperMatches ? 'upper' : 'lower'} bridge accepts Zoombinis with ${words}`;
       const link = complete ? ` <a href="#solve=BRIDGE${l.level === 1 ? '' : `&level=${l.level}`}&band=${zbBandCode(band)}&set=${encodeURIComponent(JSON.stringify(shotBridgeForm(l.level, f)))}">Take it apart</a>` : '';
-      html += `<li>${esc(accepts)}.${l.dealt && !noneDealt ? (dealable ? '' : ' <span class="note">The program would not deal it for this band, so either the screenshot leaves out some of the band or the level is another.</span>') : ''}${link}</li>`;
+      html += `<li>${esc(accepts)}.${l.dealt && !noneDealt ? (dealable ? '' : ' <span class="note">The program would not deal it for this band. Either the screenshot leaves out some of the band or the level is another.</span>') : ''}${link}</li>`;
     }
     if (l.fitting.length > shown.length) html += `<li class="note">and ${l.fitting.length - shown.length} more</li>`;
     html += '</ul>';
@@ -289,12 +289,12 @@ function shotMaze2Html(r) {
     + (small ? 'level 4’s layout for a band under five' : `the ${P.variant ? 'second' : 'first'} layout of level ${P.level}, ${esc(ZB_LEVELS[P.level - 1])}`) + '.';
   const colors = [...new Set(P.cells.filter(c => c.group > 1).map(c => c.color))];
   if (colors.length) html += ` Its colors are ${esc(zbWordsOr(colors, 'and'))}.`;
-  html += P.turned.length ? ` ${plural(P.turned.length, 'arrow')} ${P.turned.length === 1 ? 'points' : 'point'} away from its starting way, so a bubble has passed.` : ' Every arrow points its starting way.';
+  html += P.turned.length ? ` ${plural(P.turned.length, 'arrow')} ${P.turned.length === 1 ? 'points' : 'point'} away from its starting way. A bubble has passed through.` : ' Every arrow points its starting way.';
   html += '</p><ul>';
   arrows.forEach((c, k) => {
     const n = r.zoombinis.filter(z => c.value && z.traits[c.kind] === c.value).length;
-    html += `<li>Arrow ${ZB_MAZE2_LETTERS[k]}, ${c.row + 1} across and ${c.col + 1} down, pointing ${ZB_MAZE2_WAYS[c.dir]}, `
-      + (c.value ? `turns Zoombinis with ${esc(zbTraitWith(c.kind, c.value))} (${n || 'none'} of those read).` : 'shows no feature.') + '</li>';
+    html += `<li>Arrow ${ZB_MAZE2_LETTERS[k]} is ${c.row + 1} across and ${c.col + 1} down and points ${ZB_MAZE2_WAYS[c.dir]}. `
+      + (c.value ? `It turns Zoombinis with ${esc(zbTraitWith(c.kind, c.value))} (${n || 'none'} of those read).` : 'It shows no feature.') + '</li>';
   });
   html += '</ul>';
   const band = r.zoombinis.map(z => z.traits);
@@ -310,7 +310,7 @@ function shotMaze2Html(r) {
 function shotTunnelsHtml(r) {
   const P = r.puzzle, gone = P.through.flat().length;
   let html = '<h2>Stone Cold Caves</h2>';
-  if (!gone) return html + '<p>Nobody has gone through a tunnel so far, so every rule fits.</p>';
+  if (!gone) return html + '<p>Nobody has gone through a tunnel so far. Every rule fits.</p>';
   const counts = ZB_TUNNELS_CAVES.names.map((n, c) => [n, P.through[ZB_TUNNELS_CAVES.entrance[c]].length]).filter(([, k]) => k)
     .map(([n, k]) => `${k} in the ${n} cave`);
   if (P.waiting.length) counts.push(`${P.waiting.length} still to go`);
@@ -331,10 +331,10 @@ function shotTunnelsHtml(r) {
     if (l.level === 1) {
       html += `The two ${l.closed} tunnels are closed. ${l.side.length === 1 ? '1 rule fits.' : `${l.side.length} rules fit.`}</p>` + list(l.side, ['left', 'right'], 'leftMatches');
     } else {
-      html += `${l.side.length === 1 ? '1 rule fits' : `${l.side.length} rules fit`} the left and right guardians, and ${l.upper.length === 1 ? '1 fits' : `${l.upper.length} fit`} the upper and lower.</p>`
+      html += `${l.side.length === 1 ? '1 rule fits' : `${l.side.length} rules fit`} the left and right guardians. ${l.upper.length === 1 ? '1 rule fits' : `${l.upper.length} rules fit`} the upper and lower.</p>`
         + list(l.side, ['left', 'right'], 'leftMatches') + list(l.upper, ['upper', 'lower'], 'upperMatches');
     }
-    if (l.dealt && !l.dealt.length) html += '<p class="note">The program would not deal these rules for this band, so either the screenshot leaves out some of the band or the level is another.</p>';
+    if (l.dealt && !l.dealt.length) html += '<p class="note">The program would not deal these rules for this band. Either the screenshot leaves out some of the band or the level is another.</p>';
     const pair = l.dealt && l.dealt.length ? l.dealt[0] : l.level === 1 ? [l.side[0]] : [l.side[0], l.upper.find(u => JSON.stringify(u.rule) !== JSON.stringify(l.side[0].rule))];
     if (complete && pair.every(Boolean)) {
       html += `<p><a href="#solve=TUNNELS${l.level === 1 ? '' : `&level=${l.level}`}&band=${zbBandCode(band)}&set=${encodeURIComponent(JSON.stringify(shotTunnelsForm(l, pair)))}">Take it apart</a></p>`;

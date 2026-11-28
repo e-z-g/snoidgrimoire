@@ -51,7 +51,7 @@ function zbSceneLocal(t) {
    { kind: 'clip', swf, symbol, label, frame, matrix, color }, with name
    (the GameObject's), layer, order and z, in drawing order. With root, a
    GameObject's path id, the list is of that GameObject and the ones under
-   it, as for a prefab in Resources, and the root's own position counts. */
+   it, as for a prefab in Resources, and the root's position counts as well. */
 async function zbRemakeScene(file, api, sortingLayers = [], root = null) {
   const objs = api.objects(file);
   const byId = new Map(objs.map(o => [o.pathId, o]));

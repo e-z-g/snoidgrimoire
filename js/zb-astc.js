@@ -17,9 +17,10 @@
    blocks first).
    WHERE IT CAME FROM
    texture2ddecoder's astc.cpp, by K0lb3, under the MIT license (see
-   NOTICE), ported line for line, with the LDR mix changed to astcenc's
-   (texture2ddecoder rounds it, and was 1 off in some pixels), and checked against UnityPy over every
-   ASTC texture of the iPhone build (utilities/remake_check.mjs).
+   NOTICE), ported line for line. The LDR mix is astcenc's, since
+   texture2ddecoder rounds it and is 1 off in some pixels.
+   utilities/remake_check.mjs checks the port against UnityPy over every
+   ASTC texture of the iPhone build.
    =========================================================================
    Pure: bytes in, pixels out. Used by zb-unity.js. */
 

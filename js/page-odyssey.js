@@ -209,7 +209,7 @@ function odysseySideHtml(path) {
 }
 
 function odysseyHomeHtml() {
-  let html = '<h1>Island Odyssey</h1><p class="sub"><i>Zoombinis Island Odyssey</i> (Riverdeep and The Learning Company, 2002) is the third game. Its pictures, animations and sounds are in bundles (<code>.bul</code>), each place\'s help and voices in its XML, and its puzzles in the program\'s <code>PuzzleEngine.dll</code>. Open the disc\'s image (<code>.iso</code>) or the disc\'s folder, or read archive.org\'s copy.</p>'
+  let html = '<h1>Island Odyssey</h1><p class="sub"><i>Zoombinis Island Odyssey</i> is the third game. Riverdeep and The Learning Company made it in 2002. Its pictures, animations, and sounds are in bundles (<code>.bul</code>). Each place\'s help and voices are in its XML. Its puzzles are in the program\'s <code>PuzzleEngine.dll</code>. Open the disc\'s image (<code>.iso</code>) or the disc\'s folder. Or read archive.org\'s copy.</p>'
     + '<div class="tools"><label class="btn">Image…<input type="file" class="odysseyPick" accept=".iso,.ISO" hidden></label> <label class="btn">Folder…<input type="file" class="odysseyPick" webkitdirectory hidden></label> <button id="odysseyRemote">Read archive.org\'s copy</button></div>';
   if (!odysseyIsOpen()) return html + '<p class="note">Island Odyssey is not open.</p>';
   const bundles = odysseyKeys(isOdysseyBundle);
@@ -276,8 +276,8 @@ async function odysseyEntryView(view, key, name, seq) {
       ao.frames.forEach((fr, i) => { const p = frame(i), d = document.createElement('div'); d.className = 'card'; d.innerHTML = `<div class="pic"></div><div class="cap">frame ${i}</div>`; if (p.width && p.height) d.firstChild.appendChild(mountainThumb(p)); strip.appendChild(d); });
       view.appendChild(strip);
     }
-    view.insertAdjacentHTML('beforeend', '<h2 class="h">Sequences</h2><p class="note">Each step is an x and a y offset, a frame (below 0 a code, −1 the end) and a fourth word that nobody has read.</p>'
-      + ao.sequences.map((s, i) => `<p><b>${i}</b>, at (${ao.points[i][0]}, ${ao.points[i][1]}), ${s.map(st => `(${st.join(', ')})`).join(' ')}</p>`).join(''));
+    view.insertAdjacentHTML('beforeend', '<h2 class="h">Sequences</h2><p class="note">Each step has four words. The first two are an x and a y offset. The third is a frame. A frame below 0 is a code. A frame of −1 is the end. Nobody has worked out the fourth word.</p>'
+      + ao.sequences.map((s, i) => `<p><b>${i}</b> at (${ao.points[i][0]}, ${ao.points[i][1]}) has the steps ${s.map(st => `(${st.join(', ')})`).join(' ')}</p>`).join(''));
   } else if (kind === 'sound') {
     const a = document.createElement('audio');
     a.controls = true;
@@ -297,7 +297,7 @@ async function odysseyEntryView(view, key, name, seq) {
     let l;
     try { l = ioLips(bundle.b, e.start, e.end); } catch (err) { view.insertAdjacentHTML('beforeend', `<p class="note">This lip sync does not read (${esc(err.message)}).</p>`); return; }
     const voice = bundle.byName.get(e.name.toLowerCase().replace(/\.lips$/, '.wav'));
-    view.insertAdjacentHTML('beforeend', `<p>${plural(l.shapes.length, 'mouth shape')}${voice ? `, for the voice <a href="${odysseyLink(`${bundle.key}/${voice.name}`)}">${esc(voice.name)}</a>` : ''}. Each shape is a step of the speaker's lips animation, step shape + 1 (RCharacter::playSpeechUsingParts in trinket.dll).</p><p class="ids">${l.shapes.join(' ')}</p><p class="note">Each record also has a 16.16 number that grows by ${l.shapes.length > 1 ? (l.marks[1] - l.marks[0]).toLocaleString() : 'one step'} a record, and the header a word (${l.unread}). The program reads neither.</p>`);
+    view.insertAdjacentHTML('beforeend', `<p>${plural(l.shapes.length, 'mouth shape')}${voice ? ` for the voice <a href="${odysseyLink(`${bundle.key}/${voice.name}`)}">${esc(voice.name)}</a>` : ''}. Each shape picks a step of the speaker's lips animation. The step is shape + 1 (RCharacter::playSpeechUsingParts in trinket.dll).</p><p class="ids">${l.shapes.join(' ')}</p><p class="note">Each record also has a 16.16 number that grows by ${l.shapes.length > 1 ? (l.marks[1] - l.marks[0]).toLocaleString() : 'one step'} a record. The header also has a word (${l.unread}). The program reads neither.</p>`);
   }
 }
 
@@ -348,7 +348,7 @@ function odysseyRulesHtml(key, script) {
   if (!p) return '';
   let html = p.rules.map(r => `<p>${esc(r)}</p>`).join('');
   if (!p.settings.length) return html;
-  if (!script) return html + '<p class="note">The script does not read, so the settings are not shown.</p>';
+  if (!script) return html + '<p class="note">The page could not read the script. So the page shows no settings.</p>';
   const lists = ioScriptLists(script);
   const cell = (v) => Array.isArray(v) ? v.join(', ') : esc(v);
   html += `<div class="wide"><table class="plain"><tr><th>setting</th>${IO_LEVELS.map(l => `<th>${esc(l)}</th>`).join('')}<th>list</th></tr>`;
@@ -370,14 +370,14 @@ function odysseyHelpHtml(x) {
 const ODYSSEY_SCENARIO_PANES = {
   places(view, item) {
     if (item) return odysseyPlacePage(view, item);
-    view.innerHTML = '<h1>Places</h1><p class="sub">The places of Island Odyssey, as the user\'s guide calls them, in the order of their scripts. In each place\'s XML are its neighbors on the map, its background and its help.</p>'
+    view.innerHTML = '<h1>Places</h1><p class="sub">The places of Island Odyssey in the order of their scripts. Their names are the ones the user\'s guide gives. Each place\'s XML has its neighbors on the map, its background, and its help.</p>'
       + (odysseyIsOpen() ? '' : ODYSSEY_NOT_OPEN)
       + '<div class="wide"><table class="plain"><tr><th>place</th><th>what</th><th>script</th></tr>'
       + IO_PLACES.map(p => `<tr><td><a href="#scenario/places/${p.key}">${esc(p.name)}</a></td><td class="note">${esc(p.kind)}</td><td>${p.key}</td></tr>`).join('') + '</table></div>';
   },
   snoids(view) { return odysseySnoids(view); },
   async puzzles(view) {
-    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s rules, read from the program\'s code (<code>Zoombinis Island Odyssey.exe</code>), its settings by level, read from the place\'s script on the disc, and its help at each level, from the place\'s XML. Nobody has checked the rules against play.</p>';
+    view.innerHTML = '<h1>Puzzles</h1><p class="sub">Each puzzle\'s rules, its settings by level, and its help at each level. The rules come from the program\'s code (<code>Zoombinis Island Odyssey.exe</code>). The settings come from the place\'s script on the disc. The help comes from the place\'s XML. Nobody has checked the rules against play.</p>';
     if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
     const [xml, scripts] = await Promise.all([odysseyXml(), odysseyScripts()]);
     for (const p of IO_PLACES.filter(p => p.kind === 'puzzle')) {
@@ -407,10 +407,10 @@ async function odysseyCharacterNames(kinds) {
 /* A character walking, put together from z3common's parts as the program
    does (ioCharacterDraw), with its kind, facing and traits to pick. */
 async function odysseySnoids(view) {
-  view.innerHTML = '<h1>Snoids</h1><p class="sub">The program puts each character together from its parts in <code>z3common</code>, one animation for each trait, drawn in the order its table gives. The kinds, their traits and the numbering of the parts are read from the program, <code>Zoombinis Island Odyssey.exe</code>, and the names from <code>main.mps</code>. A facing to the left is the facing to the right mirrored. A character stands in one of its poses, and now and then a fidget, such as a blink, plays over the parts it covers.</p>';
+  view.innerHTML = '<h1>Snoids</h1><p class="sub">The program builds each character from its parts in <code>z3common</code>. Each trait has one animation. The program draws them in the order its table gives. The page reads the kinds, their traits, and the numbering of the parts from the program (<code>Zoombinis Island Odyssey.exe</code>). It reads the names from <code>main.mps</code>. A facing to the left is the facing to the right mirrored. A character stands in one of its poses. Now and then a fidget such as a blink plays over the parts it covers.</p>';
   if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
   const exeKey = 'win/zoombinis island odyssey.exe';
-  if (!ODYSSEY.files.has(exeKey) || !ODYSSEY.files.has('rsc/z3common.bul')) { view.insertAdjacentHTML('beforeend', '<p class="note">This needs the program and z3common.bul, which the files opened lack.</p>'); return; }
+  if (!ODYSSEY.files.has(exeKey) || !ODYSSEY.files.has('rsc/z3common.bul')) { view.insertAdjacentHTML('beforeend', '<p class="note">This needs the program and z3common.bul. The files open here do not include them.</p>'); return; }
   const seq = ODYSSEY_SEQ;
   view.insertAdjacentHTML('beforeend', '<p class="note">Reading the program and z3common…</p>');
   let kinds, bundle;
@@ -430,7 +430,7 @@ async function odysseySnoids(view) {
   const draw = () => {
     const k = kinds[pick.kind], n = names[pick.kind], fs = facings(k), ps = poses(k), values = pick.values[pick.kind];
     const [pi, pmirror] = ps[pick.pose] || ps[0] || [];
-    const fidgets = pi === undefined ? [] : k.poses[pi].fidgets.flatMap((fg, j) => fg.anims.map((a, i) => [`${j}.${i}`, `fidget ${j + 1}${fg.anims.length > 1 ? `, animation ${i + 1} of ${fg.anims.length}` : ''}, every ${fg.seconds[0]} to ${fg.seconds[1] - 1} s`]));
+    const fidgets = pi === undefined ? [] : k.poses[pi].fidgets.flatMap((fg, j) => fg.anims.map((a, i) => [`${j}.${i}`, `fidget ${j + 1}${fg.anims.length > 1 ? ` (animation ${i + 1} of ${fg.anims.length})` : ''} every ${fg.seconds[0]} to ${fg.seconds[1] - 1} s`]));
     if (!fidgets.some(([v]) => v === pick.fidget)) pick.fidget = '';
     form.innerHTML = `<label>Kind <select data-k="kind">${options('kind', kinds.map((x, i) => [i, names[i].label]), pick.kind)}</select></label> `
       + `<label>Doing <select data-k="doing">${options('doing', [['walk', 'walking'], ['stand', 'standing']], pick.doing)}</select></label> `
@@ -467,7 +467,7 @@ async function odysseySnoids(view) {
     };
     mountainPlayer(stage, frame, frames.length, 2);
     const part = id => bundle.byName.has(`${id}.ao`) ? `<a href="${odysseyLink(`rsc/z3common.bul/${id}.ao`)}">${id}</a>` : `${id} (not in z3common)`;
-    stage.insertAdjacentHTML('beforeend', `<p class="note">The parts, in draw order, are ${ids.map(part).join(', ')}. ${esc(n.label)} has ${plural(k.facings.length, 'facing')} to the right and ${plural(k.traits.length, 'trait')}, and the value of its trait ${esc(n.traits[k.block])} picks a block of ${k.length} animations.</p>`);
+    stage.insertAdjacentHTML('beforeend', `<p class="note">In draw order the parts are ${ids.map(part).join(', ')}. ${esc(n.label)} has ${plural(k.facings.length, 'facing')} to the right and ${plural(k.traits.length, 'trait')}. The value of its trait ${esc(n.traits[k.block])} picks a block of ${k.length} animations.</p>`);
   };
   form.addEventListener('change', e => {
     const el = e.target;
@@ -480,7 +480,7 @@ async function odysseySnoids(view) {
 
 async function odysseyPlacePage(view, key) {
   const p = IO_PLACE_BY_KEY.get(key);
-  view.innerHTML = `<h1>${esc(p.name)}</h1><p class="sub">${esc(p.kind)}, the script ${p.key}.</p>`;
+  view.innerHTML = `<h1>${esc(p.name)}</h1><p class="sub">${esc(p.kind)} (the script ${p.key}).</p>`;
   if (!odysseyIsOpen()) { view.insertAdjacentHTML('beforeend', ODYSSEY_NOT_OPEN); return; }
   const x = (await odysseyXml()).get(key);
   if (!x) { view.insertAdjacentHTML('beforeend', '<p class="note">The disc has no XML for this place.</p>'); return; }
@@ -501,7 +501,7 @@ async function odysseyPlacePage(view, key) {
   if (near.length) view.insertAdjacentHTML('beforeend', `<p>On the map it leads to ${near.map(n => `<a href="#scenario/places/${n}">${esc(IO_PLACE_BY_KEY.get(n).name)}</a>`).join(', ')}.</p>`);
   const bundles = ['rsc/' + key + '.bul', 'rsc/' + key + 'cd.bul'].filter(k => ODYSSEY.files.has(k));
   if (bundles.length) view.insertAdjacentHTML('beforeend', `<p>Its bundles are ${bundles.map(k => `<a href="${odysseyLink(k)}">${esc(k.slice(4))}</a>`).join(' and ')}.</p>`);
-  if (x.right.length || x.partly.length) view.insertAdjacentHTML('beforeend', `<p>Its voices when the band is right are ${x.right.join(', ') || 'none'}, and when partly right ${x.partly.join(', ') || 'none'} (entries in its bundles, as <code>&lt;id&gt;.wav</code>).</p>`);
+  if (x.right.length || x.partly.length) view.insertAdjacentHTML('beforeend', `<p>Its voices when the band is right are ${x.right.join(', ') || 'none'}. Its voices when the band is partly right are ${x.partly.join(', ') || 'none'}. They are entries in its bundles named <code>&lt;id&gt;.wav</code>.</p>`);
   if (x.help.some(h => h.length)) view.insertAdjacentHTML('beforeend', '<h2 class="h">Help</h2>' + odysseyHelpHtml(x));
 }
 
@@ -551,22 +551,22 @@ const odysseyBundlesOf = test => odysseyKeys(k => isOdysseyBundle(k) && test(k))
 const ODYSSEY_GALLERIES = {
   sheets(view) {
     const bundles = odysseyBundlesOf(k => !/z3music|z3bkgd/.test(k));
-    odysseyGalleryHead(view, 'Animations', `The animations and pictures (<code>.ao</code>) of ${plural(bundles.length, 'bundle')}, a fold a bundle, read when opened. Each card shows the first frame, and an entry\'s view in Data plays it.`);
+    odysseyGalleryHead(view, 'Animations', `The animations and pictures (<code>.ao</code>) of ${plural(bundles.length, 'bundle')}. Each bundle has a fold. The page reads a bundle when the visitor opens its fold. Each card shows the first frame. An entry\'s view in Data plays it.`);
     odysseyFolds(view, bundles, n => /\.ao$/i.test(n), (d, bundle, list) => odysseyCards(d, bundle, list));
   },
   backgrounds(view) {
     const bundles = odysseyBundlesOf(k => /z3bkgd/.test(k));
-    odysseyGalleryHead(view, 'Backgrounds', 'The places\' backgrounds, JPEGs in <code>z3bkgd.bul</code>, by the number in each place\'s XML.');
+    odysseyGalleryHead(view, 'Backgrounds', 'The places\' backgrounds by the number in each place\'s XML. They are JPEGs in <code>z3bkgd.bul</code>.');
     odysseyFolds(view, bundles, n => /\.jpg$/i.test(n), (d, bundle, list) => odysseyCards(d, bundle, list));
   },
   sounds(view) {
     const bundles = odysseyBundlesOf(k => !/z3music|z3bkgd/.test(k));
-    odysseyGalleryHead(view, 'Sounds', `The voices and sounds (<code>.wav</code>) of ${plural(bundles.length, 'bundle')}, a fold a bundle. An entry\'s number is the id that the places\' XML and scripts use.`);
+    odysseyGalleryHead(view, 'Sounds', `The voices and sounds (<code>.wav</code>) of ${plural(bundles.length, 'bundle')}. Each bundle has a fold. An entry\'s number is the id that the places\' XML and scripts use.`);
     odysseyFolds(view, bundles, n => /\.wav$/i.test(n), odysseySoundRows);
   },
   music(view) {
     const bundles = odysseyBundlesOf(k => /z3music/.test(k));
-    odysseyGalleryHead(view, 'Music', 'The tunes, in <code>z3music.bul</code>.');
+    odysseyGalleryHead(view, 'Music', 'The tunes in <code>z3music.bul</code>.');
     odysseyFolds(view, bundles, n => /\.wav$/i.test(n), odysseySoundRows);
   },
   text(view) {

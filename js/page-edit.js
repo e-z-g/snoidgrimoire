@@ -194,8 +194,8 @@ function renderMods() {
   const missing = modArchives.filter(e => !e.bytes);
   const view = $('view');
   let html = '<h1>Mods</h1><div id="recolor"></div><h2 class="h">Fleens for Zoombinis</h2>'
-    + '<p>With “Fleen parts”, this mod gives every Zoombini a Fleen’s hair, eyes, nose and feet, matching variant for variant. With “Lime green” ticked, their skin turns a Fleen’s lemon-lime color too. With “Whole Fleens”, every Zoombini is drawn as a whole lemon-lime Fleen instead. Each one stands as a Fleen does at rest, half again as tall as a Zoombini, and stretches and squashes with the Zoombini’s step. Either one changes every frame where the game draws a Zoombini, including walking, tumbling, far away and in the builder’s tiles. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK. The big Zoombini in the builder also needs ZOOMBINI.EXE, because a table in it places that Zoombini’s parts.</p>';
-  if (missing.length) html += `<p class="note">To find which parts the game draws together, the mod reads every snoid script on the disc. So it needs every archive, and ${missing.length} more must come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
+    + '<p>The “Fleen parts” choice gives every Zoombini a Fleen’s hair, eyes, nose, and feet. Each Zoombini variant receives the parts of the matching Fleen variant. The “Lime green” box also turns their skin a Fleen’s lemon-lime color. The “Whole Fleens” choice draws every Zoombini as a whole lemon-lime Fleen instead. Each one stands as a Fleen does at rest. It is half again as tall as a Zoombini. It stretches and squashes with the Zoombini’s step. Either choice changes every frame where the game draws a Zoombini. That includes walking, tumbling, Zoombinis far away, and the builder’s tiles. The mod rebuilds ZOOMBINI.MHK and PICKER.MHK. The big Zoombini in the builder also needs ZOOMBINI.EXE. A table in that file places the big Zoombini’s parts.</p>';
+  if (missing.length) html += `<p class="note">The mod reads every snoid script on the disc to find which parts the game draws together. So the mod reads every archive. ${missing.length} more must come from archive.org. <a data-fetchall>Fetch them</a> (about 100 MB in all).</p>`;
   html += `<div class="tools"><label><input type="radio" name="modKind" value="parts"${MOD_FLEEN.whole ? '' : ' checked'}> Fleen parts</label>`
     + `<label><input type="radio" name="modKind" value="whole"${MOD_FLEEN.whole ? ' checked' : ''}> Whole Fleens</label>`
     + `<label><input type="checkbox" id="modGreen"${MOD_FLEEN.green || MOD_FLEEN.whole ? ' checked' : ''}${MOD_FLEEN.whole ? ' disabled' : ''}> Lime green</label>`
@@ -226,14 +226,14 @@ function renderMods() {
 function modFleenApply() {
   const archives = new Map(sortedArchives().filter(e => !/^MIDI/.test(e.name) && e.bytes).map(e => [e.name, openedArchive(e)]));
   const out = zbFleenMod(archives, MOD_EXE ? MOD_EXE.bytes : null, MOD_FLEEN.green, MOD_FLEEN.whole);
-  const what = MOD_FLEEN.whole ? 'Whole Fleens' : MOD_FLEEN.green ? 'Fleen parts, lime green' : 'Fleen parts';
+  const what = MOD_FLEEN.whole ? 'Whole Fleens' : MOD_FLEEN.green ? 'Fleen parts in lime green' : 'Fleen parts';
   for (const name of ['ZOOMBINI', 'PICKER']) {
     const entry = ARCHIVES.get(name);
     if (!EDITS.has(name)) EDITS.set(name, { original: entry.bytes, changes: new Map() });
     for (const c of out[name]) EDITS.get(name).changes.set(editKey(c.tag, c.id), { tag: c.tag, id: c.id, bytes: c.bytes, what });
     editRebuild(entry);
   }
-  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: `the big Zoombini’s anchor points, moved for the ${MOD_FLEEN.whole ? 'whole Fleens' : 'Fleen parts'}` } : null;
+  EXE_EDIT = out.exe ? { name: MOD_EXE.name, bytes: out.exe, what: `the big Zoombini’s anchor points moved for the ${MOD_FLEEN.whole ? 'whole Fleens' : 'Fleen parts'}` } : null;
   SSPRITES.clear();
 }
 /* Five Zoombinis as the archive now draws them, one of each variant. */

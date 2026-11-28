@@ -212,7 +212,7 @@ function remakeResourcesHtml() {
     if (!groups.has(dir)) groups.set(dir, []);
     groups.get(dir).push([p.slice(cut + 1), key]);
   }
-  let html = `<h1>Resources</h1><p class="sub">${plural(REMAKE_CATALOG.byObject.size, 'asset')} that the remake loads by path, from its Resources folder, grouped by folder.</p>`;
+  let html = `<h1>Resources</h1><p class="sub">${plural(REMAKE_CATALOG.byObject.size, 'asset')} that the remake loads by path from its Resources folder. The list groups them by folder.</p>`;
   for (const [dir, list] of [...groups].sort((a, b) => a[0].localeCompare(b[0]))) {
     html += `<details class="type"${list.length <= 40 ? ' open' : ''}><summary><span>${esc(dir)}</span><span class="n">${list.length}</span></summary><div class="ids">`;
     for (const [name, key] of list.sort((a, b) => a[0].localeCompare(b[0], 'en', { numeric: true }))) {
@@ -246,7 +246,7 @@ async function renderRemake() {
     try { localStorage.removeItem(REMAKE_ADDRESS_KEY); localStorage.removeItem(REMAKE_BUILD_KEY); } catch (e) { /* nothing saved */ }
     REMAKE_ADDRESS = null;
     clear.parentNode.remove();
-    setStatus(`The address is cleared, and the next visit opens the remake only from files you choose.`);
+    setStatus(`The page cleared the address. On the next visit it opens the remake only from files the visitor chooses.`);
   });
   const entry = h.file && REMAKE_FILES.get(h.file);
   try {
@@ -269,13 +269,13 @@ async function renderRemake() {
 
 function remakeHomeHtml() {
   const files = [...REMAKE_FILES.values()].filter(e => e.sf);
-  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. Its files are read here, and nothing leaves the page. Open or drop its <code>Zoombinis.app</code>. On a Mac with the iPhone app installed, that is <code>/Applications/Zoombinis.app</code>. Steam\'s Mac copy is in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The Android app opens as its three APKs, copied off the phone with <code>adb</code>. The command <code>adb shell pm path edu.terc.zoombinis.f2p</code> prints their paths. The <code>Data</code> folder alone also opens, without the scripts\' fields.</p>'
+  let html = '<h1>The 2015 remake</h1><p class="sub">FableVision and TERC remade the game in Unity in 2015. The page reads its files here. Nothing leaves the page. Open or drop its <code>Zoombinis.app</code>. The iPhone app on a Mac is <code>/Applications/Zoombinis.app</code>. Steam\'s Mac copy is in <code>~/Library/Application Support/Steam/steamapps/common/Zoombinis</code>. The Android app opens as its three APKs. Copy them off the phone with <code>adb</code>. The command <code>adb shell pm path edu.terc.zoombinis.f2p</code> prints their paths. The <code>Data</code> folder also opens alone. The scripts\' fields then stay unread.</p>'
     + '<div class="tools"><label class="btn">Folder…<input type="file" id="remakePick" webkitdirectory hidden></label></div>';
   if (!files.length) return html + '<p class="note">No remake files are open.</p>';
   const byClass = new Map();
   for (const e of files) for (const o of e.sf.objects) byClass.set(o.classId, (byClass.get(o.classId) || 0) + 1);
   const unity = files[0].sf.unityVersion;
-  html += `<p>${plural(files.length, 'file')} from Unity ${esc(unity)}, with ${plural(files.reduce((n, e) => n + e.sf.objects.length, 0), 'object')}.</p><table class="plain"><tr><th>class</th><th>objects</th></tr>`;
+  html += `<p>${plural(files.reduce((n, e) => n + e.sf.objects.length, 0), 'object')} in ${plural(files.length, 'file')} from Unity ${esc(unity)}.</p><table class="plain"><tr><th>class</th><th>objects</th></tr>`;
   for (const [id, n] of [...byClass].sort((a, b) => b[1] - a[1])) html += `<tr><td>${esc(zbUnityClassName(id))}</td><td>${n.toLocaleString()}</td></tr>`;
   return html + '</table>';
 }
@@ -290,8 +290,8 @@ async function renderRemakeFile(entry, view, seq) {
     groups.get(o.classId).push(o);
   }
   const scene = remakeSceneName(entry.name), resource = REMAKE_CATALOG && REMAKE_CATALOG.byFile.get(entry.name);
-  const what = scene ? `The scene ${esc(scene)}, ` : isRemakeIdFile(entry.name) && resource ? `The Resources asset <code>${esc(resource)}</code>, ` : '';
-  let html = `<h1>${esc(entry.name)}</h1><p class="sub">${what}${plural(entry.sf.objects.length, 'object')}, Unity ${esc(entry.sf.unityVersion)}</p>`;
+  const what = scene ? `The scene ${esc(scene)} has ` : isRemakeIdFile(entry.name) && resource ? `The Resources asset <code>${esc(resource)}</code> has ` : '';
+  let html = `<h1>${esc(entry.name)}</h1><p class="sub">${what}${plural(entry.sf.objects.length, 'object')} from Unity ${esc(entry.sf.unityVersion)}.</p>`;
   for (const [id, list] of [...groups].sort((a, b) => zbUnityClassName(a[0]).localeCompare(zbUnityClassName(b[0])))) {
     html += `<details class="type"${list.length <= 60 ? ' open' : ''}><summary><span>${esc(zbUnityClassName(id))}</span><span class="n">${list.length}</span></summary><div class="ids">`;
     for (const o of list) html += `<a href="${remakeLink(entry.name, o.pathId)}">${esc(names.get(o.pathId) || o.pathId)}</a>`;
@@ -351,7 +351,7 @@ async function renderRemakeObject(entry, id, view, seq) {
     else if (script) {
       try { Object.assign(v, zbUnityScriptFields(layouts, script, v.rest, entry.sf.little)); delete v.rest; }
       catch (e) { note = `Its fields after the header could not be read (${e.message}).`; }
-    } else note = 'Its script is in a file that is not open, so only its header is read.';
+    } else note = 'Its script is in a file that is not open. The page reads only its header.';
   }
   if (seq !== REMAKE_SEQ) return;
   view.innerHTML = `<h1>${esc(v && v.m_Name || (entry.names && entry.names.get(id)) || cls + ' ' + id)}</h1><p class="sub">${esc(cls)} ${id} in ${esc(entry.name)}, ${obj.size.toLocaleString()} bytes${REMAKE_CATALOG && REMAKE_CATALOG.byObject.has(entry.name + '/' + id) ? `, Resources path <code>${esc(REMAKE_CATALOG.byObject.get(entry.name + '/' + id))}</code>` : ''}</p><div id="remakeBody"></div><h2 class="h">Fields</h2>${note ? `<p class="note">${esc(note)}</p>` : ''}<pre class="fields"></pre>`;
@@ -378,7 +378,7 @@ async function renderRemakeObject(entry, id, view, seq) {
   } else if (obj.classId === 49) {
     const s = v.m_Script, text = new TextDecoder().decode(s);
     const printable = !/[\x00-\x08\x0e-\x1f]/.test(text.slice(0, 4000));
-    body.innerHTML = printable ? '<pre class="fields"></pre>' : `<p class="note">${s.length.toLocaleString()} bytes, not text.</p>`;
+    body.innerHTML = printable ? '<pre class="fields"></pre>' : `<p class="note">${s.length.toLocaleString()} bytes that are not text.</p>`;
     if (printable) body.querySelector('pre').textContent = text.length > 200000 ? text.slice(0, 200000) + '\n…' : text;
     remakeSaveButton(body, v.m_Name + (printable ? '.txt' : '.bytes'), s);
   } else if (obj.classId === 83) {
@@ -401,7 +401,7 @@ async function remakeSound(v) {
   const res = v.m_Resource;
   const bank = zbFsbRead(await remakeSide(res.m_Source, res.m_Offset, res.m_Size));
   const s = bank.samples[0], wav = s && zbFsbWav(bank, s);
-  const about = `${bank.codecName}, ${s ? `${s.rate.toLocaleString()} Hz, ${s.channels === 1 ? 'mono' : s.channels + ' channels'}, ${(s.count / s.rate).toFixed(2)} s` : 'no samples'}`;
+  const about = s ? `${(s.count / s.rate).toFixed(2)} s of ${bank.codecName} at ${s.rate.toLocaleString()} Hz in ${s.channels === 1 ? 'mono' : s.channels + ' channels'}` : `${bank.codecName} with no samples`;
   if (wav) return { about, bytes: wav, type: 'audio/wav', ext: '.wav' };
   if (bank.codec !== 15 || !s) return { about, note: `The page does not decode ${bank.codecName} so far.` };
   const setup = await remakeVorbisSetup(s.setupCrc);
@@ -455,7 +455,7 @@ async function remakeOpen(files, stay = false, heads = null) {
   if (app) {
     let readable = true;
     try { await app.slice(0, 4).arrayBuffer(); } catch (e) { readable = false; }
-    setStatus(`The browser gave ${app.name} as one file of ${app.size.toLocaleString()} bytes${readable ? '' : ' that cannot be read'}, and not as its folder. Drop ${app.name} on the page instead.`, true);
+    setStatus(`The browser gave ${app.name} as one file of ${app.size.toLocaleString()} bytes${readable ? '' : ' that cannot be read'} rather than as its folder. Drop ${app.name} on the page instead.`, true);
     return;
   }
   let n = 0;

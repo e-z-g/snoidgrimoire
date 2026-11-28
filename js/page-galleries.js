@@ -200,7 +200,7 @@ const ZB_GALLERIES = {
   },
 
   palettes(view) {
-    galleryHead(view, 'Palettes', 'Every palette, with its colors in order.', 'Palettes');
+    galleryHead(view, 'Palettes', 'Every palette and its colors in order.', 'Palettes');
     let html = `<div class="tools">${colorsControl()}</div>${colorsNote()}`;
     for (const { entry, arc } of openArchives()) for (const tag of ['SHPL', 'tPAL']) for (const { id } of arc.list(tag)) {
       const p = parsePaletteResource(arc.get(tag, id), tag);

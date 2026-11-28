@@ -58,7 +58,7 @@ function featurePlayer(entry, arc, id, script, box) {
     for (const s of placed.ticks[at]) if (s.width && s.height) g.drawImage(sprite(s.shape), (s.x - x0) * zoom, (s.y - y0) * zoom, s.width * zoom, s.height * zoom);
     $('featAt').value = at;
     const f = placed.played[at];
-    $('featTick').textContent = `tick ${at}` + (f.held ? ', no records, so the last picture stays' : placed.ticks[at].length ? '' : ', nothing drawn') + (f.event ? `, event 0x${f.end.toString(16)}` : '');
+    $('featTick').textContent = `Tick ${at}.` + (f.held ? ' The tick has no records. The last picture stays.' : placed.ticks[at].length ? '' : ' The tick draws nothing.') + (f.event ? ` Event 0x${f.end.toString(16)}.` : '');
   };
   const sound = () => {
     const snd = placed.played[at].sound;

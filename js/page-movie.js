@@ -13,14 +13,14 @@ const ZB_MOVIE_NAMES = ['LOGO025.MOV', 'LOGO025B.MOV', 'LOGO027.MOV', 'LOGO027B.
 const ZB_MOVIE_REMOTE = name => 'https://archive.org/cors/logical-journey-of-the-zoombinis/Logical%20Journey%20of%20the%20Zoombinis.iso/DATA%2F' + name;
 const ZB_MOVIE_ABOUT = {
   'LOGO025.MOV': 'the one the 1996 programs play',
-  'LOGO025B.MOV': 'the same, its sound at twice the rate',
+  'LOGO025B.MOV': 'the same movie with its sound at twice the rate',
   'LOGO027.MOV': 'its sound at the Mac’s rate',
   'LOGO027B.MOV': 'its sound at twice the Mac’s rate',
 };
 let MOVIE_PLAYING = null;           // the player running, stopped when the view changes
 
 ZB_GALLERIES.movies = function (view) {
-  view.innerHTML = '<h1>Movies</h1><p class="sub">The intro, in four versions in the disc’s DATA folder. Each is QuickTime, 640 × 480 at 10 frames a second, with 8-bit sound. Its pictures are Brøderbund’s QkBk scenes, which place pictures from a cast rather than storing pixels.</p>'
+  view.innerHTML = '<h1>Movies</h1><p class="sub">The disc’s DATA folder has the intro in four versions. Each is a QuickTime movie of 640 × 480 at 10 frames a second with 8-bit sound. Its pictures are Brøderbund’s QkBk scenes. Each scene places pictures from a cast rather than storing pixels.</p>'
     + '<div class="tools"><label class="btn">A movie file…<input type="file" id="movieFile" accept=".mov,.MOV" hidden></label> <span id="movieErr" class="bad"></span></div>'
     + '<div id="movieList"></div><div id="moviePlayer"></div>';
   $('movieFile').addEventListener('change', async e => {
@@ -65,11 +65,11 @@ function movieShow(name) {
   const box = $('moviePlayer');
   let m;
   try { m = zbMovieRead(ZB_MOVIES.get(name)); } catch (e) { box.innerHTML = `<p class="bad">${esc(name)} could not be read (${esc(e.message)}).</p>`; return; }
-  if (!m.video || m.video.codec !== 'QkBk') { box.innerHTML = `<p class="bad">${esc(name)} has no QkBk pictures, so it is not one of the game’s movies.</p>`; return; }
+  if (!m.video || m.video.codec !== 'QkBk') { box.innerHTML = `<p class="bad">${esc(name)} has no QkBk pictures. It is not one of the game’s movies.</p>`; return; }
   const n = m.video.samples.length, perSecond = m.video.timescale / m.video.durations[0];
   const sound = zbMovieSound(m);
   box.innerHTML = `<h2 class="h">${esc(name)}</h2>`
-    + `<p class="note">${n} frames, ${(n / perSecond).toFixed(1)} s${sound ? `, the sound at ${sound.rate} Hz` : ''}.</p>`
+    + `<p class="note">${n} frames in ${(n / perSecond).toFixed(1)} s.${sound ? ` The sound plays at ${sound.rate} Hz.` : ''}</p>`
     + `<canvas id="movieCanvas" width="${m.width}" height="${m.height}" style="width:100%;max-width:${m.width}px;background:#000"></canvas>`
     + `<div class="tools"><button id="moviePlay">Play</button><input type="range" id="movieAt" min="0" max="${n - 1}" value="0" style="flex:1"><span id="movieFrame"></span>`
     + (sound ? '<button id="movieWav">Save the sound as WAV</button>' : '') + '<button id="moviePng">Save this frame as PNG</button></div>';

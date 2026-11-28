@@ -24,10 +24,10 @@ REMAKE_SCENARIO_PANES.screenshot = function remakeShotPane(view) {
   view.innerHTML = '<h1>Screenshot</h1>'
     + '<p class="sub">Give the page a screenshot of the remake. It shows the scene and each Zoombini’s traits.</p>'
     + '<div class="shotdrop" id="shotDrop"><label class="btn">Choose a screenshot<input type="file" accept="image/*" id="shotFile" hidden></label>'
-    + ' <span class="note">or drop one here, or paste one.</span></div>'
-    + '<p class="note">The page reads a screenshot from a phone, a tablet or a computer, at any size, and a picture cut from one. '
-    + 'The first reading draws every scene, which reads their pictures, some hundreds of MB from an address, so it lasts a minute or more. '
-    + 'A Zoombini mostly hidden behind others, or in the middle of a move, may go unread or read wrong.</p>'
+    + ' <span class="note">or drop one here or paste one.</span></div>'
+    + '<p class="note">The page reads a screenshot from a phone, a tablet, or a computer at any size. It also reads a picture cut from one. '
+    + 'The first reading draws every scene. From an address it reads some hundreds of MB of pictures and lasts a minute or more. '
+    + 'A Zoombini mostly hidden behind others may go unread or read wrong. So may one in the middle of a move.</p>'
     + '<div id="shotOut"></div>';
   $('shotFile').addEventListener('change', e => {
     const f = e.target.files[0];
@@ -60,7 +60,7 @@ async function remakeShotScenes(note) {
   for (let n = 0; n < cat.scenes.length; n++) {
     const entry = REMAKE_FILES.get('level' + n);
     if (!entry || !entry.sf) continue;
-    note(`Drawing the scenes to compare, ${n + 1} of ${cat.scenes.length}…`);
+    note(`Drawing scene ${n + 1} of ${cat.scenes.length} to compare…`);
     const c = document.createElement('canvas');
     try { await remakeDrawScene(c, await remakeScene(entry.name), REMAKE_SHOT_SMALL); } catch (e) { console.error(e); continue; }
     const img = remakeShotPixels(c);
@@ -78,7 +78,7 @@ async function remakeShotScenes(note) {
 async function remakeShotParts() {
   if (REMAKE_SHOT_PARTS) return REMAKE_SHOT_PARTS;
   const path = 'swf/zoombinis/zmb_characterlibrary.swf', swf = await remakeSwf(path);
-  if (!swf || !swf.byClass.zmb_feet_0) throw new Error('the character library, ZMB_CharacterLibrary.swf, is not among the files open');
+  if (!swf || !swf.byClass.zmb_feet_0) throw new Error('the character library ZMB_CharacterLibrary.swf is not among the files open');
   const st = Object.fromEntries(remakeClipStretches(swf.byClass.zmb_feet_0).map(s => [s.name, s]));
   const frames = [];
   const add = f => { if (f != null && !frames.includes(f)) frames.push(f); };
@@ -180,7 +180,7 @@ async function remakeShotShow() {
   const names = await remakeTraitNames();
   const T = r.place.trim, trimmed = T.width !== L.width || T.height !== L.height;
   let html = `<h2>${esc(L.name)}</h2><p>The screenshot is ${L.width} × ${L.height}${trimmed ? `, ${T.width} × ${T.height} without its plain bars` : ''}.`
-    + ` The scene is <a href="#scenario/places/${b.n}">${esc(remakeSceneTitle(b.n))}</a>, matched at ${b.score.toFixed(2)}${next && next.score != null ? `, where the next best, ${esc(remakeSceneTitle(next.n))}, matches at ${next.score.toFixed(2)}` : ''}.`
+    + ` The scene is <a href="#scenario/places/${b.n}">${esc(remakeSceneTitle(b.n))}</a> with a match of ${b.score.toFixed(2)}.${next && next.score != null ? ` The next best is ${esc(remakeSceneTitle(next.n))} at ${next.score.toFixed(2)}.` : ''}`
     + ` The screenshot shows ${Math.round(100 * Math.min(1, T.width * b.scale / (REMAKE_SHOT_SMALL * 16 / 9)))}% of the scene’s width.`
     + ` ${r.zoombinis.length ? `The page found ${plural(r.zoombinis.length, 'Zoombini')}.` : 'The page found no Zoombinis.'}`
     + ` <span class="note">${L.seconds.toFixed(1)} s</span></p>`;
@@ -192,7 +192,7 @@ async function remakeShotShow() {
       + ['hair', 'eyes', 'nose', 'feet'].map(t => `<td>${esc(word(t, z.traits[t]))}</td>`).join('')
       + `<td>${z.flip ? 'left' : 'right'}</td></tr>`;
   });
-  html += '</table></div><p class="note">Beside the screenshot is the scene as the page draws it, with each Zoombini as read. The numbers mark the Zoombinis in the table.</p>';
+  html += '</table></div><p class="note">Beside the screenshot the page draws the scene with each Zoombini as read. The numbers mark the Zoombinis in the table.</p>';
   out.innerHTML = html;
   const frame = $('shotFrame'), drawing = remakeShotDrawing(r), g = drawing.getContext('2d');
   g.font = `bold ${Math.max(12, Math.round(r.shot.height / 40))}px sans-serif`;

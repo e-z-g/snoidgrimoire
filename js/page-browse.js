@@ -134,7 +134,7 @@ function renderSide(entry, h) {
   const edits = [...EDITS.values()].reduce((n, e) => n + e.changes.size, 0);
   html += `<div class="arc${isChangesHash() ? ' on' : ''}" data-arc="changes"><span class="name">Changes</span><span class="place">${edits || EXE_EDIT ? plural(edits + (EXE_EDIT ? 1 : 0), 'edit') : 'nothing edited'}</span></div>`;
   html += `<div class="arc${isSavesHash() ? ' on' : ''}" data-arc="saves"><span class="name">Saves</span><span class="place">${SAVES.length ? plural(SAVES.length, 'game') + ' open' : 'saved games'}</span></div>`;
-  html += `<div class="arc${isModsHash() ? ' on' : ''}" data-arc="mods"><span class="name">Mods</span><span class="place">recolor, Fleen parts</span></div>`;
+  html += `<div class="arc${isModsHash() ? ' on' : ''}" data-arc="mods"><span class="name">Mods</span><span class="place">recolor and Fleen parts</span></div>`;
   html += `<div class="arc${isRemakeHash() ? ' on' : ''}" data-arc="remake"><span class="name">2015 remake</span><span class="place">${REMAKE_FILES.size ? plural([...REMAKE_FILES.values()].filter(e => e.sf).length, 'file') + ' open' : 'its Unity files'}</span></div>`;
   html += `<div class="arc${isMountainHash() ? ' on' : ''}" data-arc="mountain"><span class="name">Mountain Rescue</span><span class="place">${mountainIsOpen() ? plural(MOUNTAIN.files.size, 'file') + ' open' : 'its disc'}</span></div>`;
   html += `<div class="arc${isOdysseyHash() ? ' on' : ''}" data-arc="odyssey"><span class="name">Island Odyssey</span><span class="place">${odysseyIsOpen() ? plural(ODYSSEY.files.size, 'file') + ' open' : 'its disc'}</span></div>`;
@@ -248,8 +248,8 @@ function colorsControl() {
 }
 function colorsNote() {
   return COLORS_STORED
-    ? '<p class="note">The colors are as the archive stores them, which is how the Mac game shows them. The Windows game brightens them.</p>'
-    : '<p class="note">The colors are brightened as the Windows game shows them, each part c of a color becoming c + 31 − c/8. That brings the art, made on Macs, to a PC’s darker screen, and the Mac game shows the colors as stored. “Colors” switches between the two. Saved PNGs have the stored colors.</p>';
+    ? '<p class="note">The colors are as the archive stores them. The Mac game shows them this way. The Windows game brightens them.</p>'
+    : '<p class="note">The page shows the colors brightened the way the Windows game shows them. Each part c of a color becomes c + 31 − c/8. The artists drew the art on Macs. The brighter colors suit a PC’s darker screen. The Mac game shows the colors as stored. The “Colors” menu switches between the two. Saved PNGs have the stored colors.</p>';
 }
 // The page draws again from the start, as the map, the town and the diagrams keep what they drew.
 function wireColorsControl() {
@@ -377,7 +377,7 @@ function showBitmap(entry, arc, id, bytes, body) {
   if (!d.sheet) {
     const f = d.frames[0];
     const zc = zoomControl('picture', f.width <= 200 ? 2 : 1);
-    body.innerHTML = `<p class="sub">A picture, ${f.width} × ${f.height}.</p>`
+    body.innerHTML = `<p class="sub">A ${f.width} × ${f.height} picture.</p>`
       + `<div class="tools">${paletteControl(entry, pf)} ${zc.html} <button id="save">Save as PNG</button></div>${colorsNote()}<div id="pic" class="picture"></div>`;
     const c = indexedCanvas(f, pf.pal, false);
     c.style.width = f.width * zc.z + 'px';
@@ -512,7 +512,7 @@ function showPalette(tag, bytes, body) {
     const also = c && (s[0] !== c[0] || s[1] !== c[1] || s[2] !== c[2]) ? `, shown as ${s[0]}, ${s[1]}, ${s[2]}` : '';
     cells += c ? `<div style="background:rgb(${s[0]},${s[1]},${s[2]})" title="${i}: ${c[0]}, ${c[1]}, ${c[2]}${also}${c[3] !== 1 ? ' (flag ' + c[3] + ')' : ''}"></div>` : `<div class="off" title="${i}: not in this palette"></div>`;
   }
-  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')}, starting at index ${p.start}${p.id != null ? `, with id ${p.id}. It colors ${plural(p.pictures, 'picture')} from tBMP ${p.id} on, listed under its references` : ''}.</p>`
+  body.innerHTML = `<p class="sub">${plural(p.colors.length, 'color')} from index ${p.start}.${p.id != null ? ` Its id is ${p.id}. It colors ${plural(p.pictures, 'picture')} from tBMP ${p.id} on. Its references list them.` : ''}</p>`
     + `<div class="tools">${colorsControl()}</div>${colorsNote()}<div class="swatches">${cells}</div>`;
   wireColorsControl();
 }

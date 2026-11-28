@@ -266,7 +266,7 @@ async function remakeSwfView(body, entry, obj, v) {
   const swfPath = remakeSwfPathOf(entry, obj);
   const swf = zbUniSwfRead(v.m_Script);
   const clips = Object.keys(swf.byClass).filter(k => swf.byClass[k].kind === 'clip').sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
-  body.innerHTML = `<p>A uniSWF file, with ${plural(clips.length, 'named clip')}${swfPath ? '' : '. Its Resources path is not known, so its atlases are not found'}.</p>`
+  body.innerHTML = `<p>A uniSWF file with ${plural(clips.length, 'named clip')}.${swfPath ? '' : ' Its Resources path is unknown. Without it the page cannot find its atlases.'}</p>`
     + `<div class="tools"><select class="clipname">${clips.map(k => `<option>${esc(k)}</option>`).join('')}</select></div><div class="player"></div>`;
   if (!swfPath || !clips.length) return;
   const pick = body.querySelector('.clipname');
@@ -360,7 +360,7 @@ const REMAKE_SCENARIO_PANES = {
   async places(view, item) {
     const cat = await remakeCatalog();
     if (item != null) return remakePlacePage(view, +item);
-    let html = `<h1>Places</h1><p class="sub">The remake’s ${plural(cat.scenes.length, 'scene')}, in the order of its build settings. Scene n is the file level<i>n</i>. Its <a href="#remake/@resources">Resources</a> have ${plural(cat.byObject.size, 'asset')} that the scenes load by path.</p>`
+    let html = `<h1>Places</h1><p class="sub">The remake has ${plural(cat.scenes.length, 'scene')}. They are here in the order of its build settings. Scene n is the file level<i>n</i>. Its <a href="#remake/@resources">Resources</a> have ${plural(cat.byObject.size, 'asset')} that the scenes load by path.</p>`
       + '<div class="wide"><table class="plain"><tr><th></th><th>scene</th><th>file</th><th>objects</th><th>scripts</th></tr>';
     cat.scenes.forEach((p, i) => {
       const e = REMAKE_FILES.get('level' + i), open = e && e.sf;
@@ -371,7 +371,7 @@ const REMAKE_SCENARIO_PANES = {
   },
 
   puzzles(view) {
-    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles as the remake deals them, read from its code and its stored data. Nobody has checked these readings against play. The trait values have the 1996 names.</p>';
+    let html = '<h1>Puzzles</h1><p class="sub">The twelve puzzles as the remake deals them. The page reads them from its code and its stored data. Nobody has checked these readings against play. The trait values have the 1996 names.</p>';
     const scenes = REMAKE_CATALOG ? REMAKE_CATALOG.scenes.map(p => p.split('/').pop().replace(/\.unity$/, '').toLowerCase()) : [];
     for (const [key, P] of Object.entries(ZB_REMAKE_PUZZLES)) {
       const name = P.name.replace(/[^A-Za-z]/g, '').toLowerCase(), scene = scenes.findIndex(s => s.length > 4 && (name.includes(s) || s.includes(name.slice(0, 10))));
@@ -385,7 +385,7 @@ const REMAKE_SCENARIO_PANES = {
   },
 
   async snoids(view) {
-    view.innerHTML = '<h1>Snoids</h1><p class="sub">The remake draws its Zoombinis and Fleens with uniSWF, Flash animations turned into clips and atlases. A Zoombini is five clips drawn at one origin, one for the feet and shadow, then the head, the eyes, the nose and the hair, all on the same frame. The trait names are the remake’s, from the sprites of Bubblewonder Abyss’s arrows. The numbers are the remake’s, from 0, not 1996’s.</p><div id="snoidBox"><p class="note">Reading the character libraries…</p></div>';
+    view.innerHTML = '<h1>Snoids</h1><p class="sub">The remake draws its Zoombinis and Fleens with uniSWF. That tool turns Flash animations into clips and atlases. A Zoombini is five clips drawn at one origin on the same frame. The first has the feet and shadow. Then come the head, the eyes, the nose, and the hair. The trait names are the remake’s. They come from the sprites of Bubblewonder Abyss’s arrows. The numbers are the remake’s numbers from 0 and not the 1996 game’s.</p><div id="snoidBox"><p class="note">Reading the character libraries…</p></div>';
     await remakeCatalog();
     const box = $('snoidBox'), names = await remakeTraitNames();
     box.innerHTML = '';
@@ -410,13 +410,13 @@ const REMAKE_SCENARIO_PANES = {
   },
 
   async town(view) {
-    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville, where the band ends up. The remake shows it from four sides. Each side is a backdrop that the town’s code loads from Resources, with the buildings and Zoombinis that the scene places over it.</p><div id="townBox"></div>';
+    view.innerHTML = '<h1>The town</h1><p class="sub">Zoombiniville is where the band ends up. The remake shows it from four sides. Each side is a backdrop that the town’s code loads from Resources. The scene places buildings and Zoombinis over it.</p><div id="townBox"></div>';
     const cat = await remakeCatalog(), box = $('townBox');
     const n = cat.scenes.findIndex(p => /zoombiniville/i.test(p));
-    if (n >= 0) box.insertAdjacentHTML('beforeend', `<p>${REMAKE_FILES.has('level' + n) ? `<a href="#scenario/places/${n}">The scene, ${esc(remakeSceneTitle(n))}</a>` : `The scene, level${n}, is not open.`}</p>`);
+    if (n >= 0) box.insertAdjacentHTML('beforeend', `<p>${REMAKE_FILES.has('level' + n) ? `<a href="#scenario/places/${n}">The scene ${esc(remakeSceneTitle(n))}</a>` : `The scene file level${n} is not open.`}</p>`);
     // Each backdrop is a prefab, a GameObject with others under it.
     const sides = ['north', 'east', 'south', 'west'].map(d => [d, remakeAtPath(`zoombiniville/zoombiniville_${d}_bg`, 1)]).filter(s => s[1]);
-    if (!sides.length) { box.insertAdjacentHTML('beforeend', '<p class="note">The backdrops, in Resources/zoombiniville, are not among the files open.</p>'); return; }
+    if (!sides.length) { box.insertAdjacentHTML('beforeend', '<p class="note">The backdrops in Resources/zoombiniville are not among the files open.</p>'); return; }
     for (const [d, at] of sides) {
       const fig = document.createElement('figure');
       fig.innerHTML = `<figcaption>Looking ${d} · <a href="${remakeLink(at.entry.name, at.obj.pathId)}">zoombiniville_${d}_bg</a></figcaption>`;
@@ -473,8 +473,8 @@ async function remakeTraitNames() {
 async function remakePlacePage(view, n) {
   const entry = REMAKE_FILES.get('level' + n);
   view.innerHTML = `<h1>${esc(remakeSceneTitle(n))}</h1>`;
-  if (!entry || !entry.sf) { view.insertAdjacentHTML('beforeend', `<p class="note">The scene’s file, level${n}, is not open.</p>`); return; }
-  view.insertAdjacentHTML('beforeend', `<p class="sub">The scene as its file has it when it opens, before its code runs. The code moves things, shows and hides them, and sets the clips’ frames, so the game shows more than this, or less. <a href="${remakeLink(entry.name)}">level${n}</a> in Data.</p><p class="note reading">Reading the scene…</p>`);
+  if (!entry || !entry.sf) { view.insertAdjacentHTML('beforeend', `<p class="note">The scene’s file level${n} is not open.</p>`); return; }
+  view.insertAdjacentHTML('beforeend', `<p class="sub">The page draws the scene as its file stores it. That is the scene before its code runs. The code moves things and sets the clips’ frames. It also shows and hides things. The game can show more than this or less. <a href="${remakeLink(entry.name)}">level${n}</a> in Data.</p><p class="note reading">Reading the scene…</p>`);
   const layouts = await remakeLayouts(), scene = await remakeScene(entry.name);
   const canvas = document.createElement('canvas');
   canvas.className = 'scene';
@@ -484,11 +484,11 @@ async function remakePlacePage(view, n) {
   view.appendChild(canvas);
   const notes = [];
   if (!layouts) notes.push('The clips need the scripts’ fields. Open the whole Zoombinis.app or the APKs to draw them.');
-  if (missed.sprites) notes.push(`${plural(missed.sprites, 'sprite')} could not be drawn, since a texture is in a file not open or in a format not decoded.`);
-  if (missed.clips) notes.push(`${plural(missed.clips, 'clip')} could not be drawn, since a .swf is not among the files open.`);
+  if (missed.sprites) notes.push(`The page could not draw ${plural(missed.sprites, 'sprite')}. Their textures are in files not open or in formats it does not decode.`);
+  if (missed.clips) notes.push(`The page could not draw ${plural(missed.clips, 'clip')}. Their .swf files are not among the files open.`);
   if (notes.length) view.insertAdjacentHTML('beforeend', `<p class="note">${notes.map(esc).join(' ')}</p>`);
   const layers = await remakeSortingLayers();
-  let html = `<h2 class="h">What it draws</h2><p class="sub">${plural(scene.items.length, 'thing')}, back to front.${scene.camera ? ` The camera, ${esc(scene.camera.name || '')}, sees ${Math.round(scene.camera.size * 2)} units high.` : ''}</p><div class="wide"><table class="plain"><tr><th>GameObject</th><th>draws</th><th>layer</th><th>order</th></tr>`;
+  let html = `<h2 class="h">What it draws</h2><p class="sub">${plural(scene.items.length, 'thing')} from back to front.${scene.camera ? ` The camera ${esc(scene.camera.name || '')} sees ${Math.round(scene.camera.size * 2)} units high.` : ''}</p><div class="wide"><table class="plain"><tr><th>GameObject</th><th>draws</th><th>layer</th><th>order</th></tr>`;
   for (const it of scene.items) {
     let what;
     if (it.kind === 'sprite') what = `<a href="${remakeLink(it.file, it.pathId)}">a sprite</a>`;
@@ -572,20 +572,20 @@ async function remakeNameTunes(view, list) {
   head.className = 'note';
   view.querySelector('details').before(head);
   const todo = list.filter(it => it.name && saved[it.name] === undefined);
-  if (!todo.length) { head.textContent = 'The tunes are named after the soundtrack that comes with Steam’s copies, by the track each is found in.'; return; }
+  if (!todo.length) { head.textContent = 'Each tune has the name of the track it appears in. The tracks are from the soundtrack that comes with Steam’s copies.'; return; }
   const tracks = REMAKE_SOUNDTRACK.filter(f => /\.mp3$/i.test(f.name)).sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
-  if (!tracks.length) { head.textContent = 'The soundtrack that comes with Steam’s copies, as MP3 files, names these tunes. Open Steam’s whole Zoombinis folder, or an address with the soundtrack, and the page finds each tune in it.'; return; }
+  if (!tracks.length) { head.textContent = 'The MP3 soundtrack that comes with Steam’s copies names these tunes. Open Steam’s whole Zoombinis folder or an address with the soundtrack. The page then finds each tune in it.'; return; }
   try {
     if (!REMAKE_TRACKS || REMAKE_TRACKS.files !== tracks.length) {
       const chroma = [];
       for (const [i, f] of tracks.entries()) {
-        head.textContent = `Reading the soundtrack, ${i + 1} of ${tracks.length} (${zbTrackTitle(f.name)})…`;
+        head.textContent = `Reading soundtrack file ${i + 1} of ${tracks.length} (${zbTrackTitle(f.name)})…`;
         chroma.push(zbChroma(await remakeSamples(new Uint8Array(await f.arrayBuffer()))));
       }
       REMAKE_TRACKS = { files: tracks.length, chroma, titles: tracks.map(f => zbTrackTitle(f.name)) };
     }
     for (const [i, it] of todo.entries()) {
-      head.textContent = `Finding the tunes in the soundtrack, ${i + 1} of ${todo.length}…`;
+      head.textContent = `Finding tune ${i + 1} of ${todo.length} in the soundtrack…`;
       const snd = await remakeSound(await remakeObject(it.entry, it.obj));
       if (!snd.bytes) continue;
       const r = zbTuneFind(zbChroma(await remakeSamples(snd.bytes)), REMAKE_TRACKS.chroma);
@@ -594,7 +594,7 @@ async function remakeNameTunes(view, list) {
       await new Promise(res => setTimeout(res, 0));
     }
     try { localStorage.setItem(REMAKE_TUNES_KEY, JSON.stringify(saved)); } catch (e) { /* kept for this visit only */ }
-    head.textContent = 'The tunes are named after the soundtrack that comes with Steam’s copies, by the track each is found in.';
+    head.textContent = 'Each tune has the name of the track it appears in. The tracks are from the soundtrack that comes with Steam’s copies.';
   } catch (err) { head.textContent = `The soundtrack could not be read. ${err.message}`; }
 }
 
@@ -623,7 +623,7 @@ const REMAKE_GALLERIES = {
   async sheets(view) {
     await remakeCatalog();
     const swfs = remakeAll(49).filter(isRemakeSwf), sprites = remakeAll(213), atlases = remakeAll(28).filter(isRemakeAtlas);
-    remakeGalleryHead(view, 'Sprite sheets', `The remake’s animations are ${plural(swfs.length, 'uniSWF file')}, each with its clips and atlases, and its still pieces are ${plural(sprites.length, 'sprite')} cut from textures. A .swf file’s view in Data plays its clips.`);
+    remakeGalleryHead(view, 'Sprite sheets', `The remake’s animations are ${plural(swfs.length, 'uniSWF file')}. Each has its clips and atlases. Its still pieces are ${plural(sprites.length, 'sprite')} cut from textures. A .swf file’s view in Data plays its clips.`);
     if (swfs.length) {
       view.insertAdjacentHTML('beforeend', '<h2 class="h">uniSWF files</h2>');
       const groups = swfs.map(it => [it.path.slice(0, it.path.lastIndexOf('/')), [it]]).sort((a, b) => a[0].localeCompare(b[0]));
@@ -655,7 +655,7 @@ const REMAKE_GALLERIES = {
   async music(view) {
     await remakeCatalog();
     const list = remakeAll(83).filter(isRemakeMusic);
-    remakeGalleryHead(view, 'Music', `${plural(list.length, 'tune')} in the remake’s Resources/audio/music. The remake plays recordings, where the 1996 game played MIDI.`);
+    remakeGalleryHead(view, 'Music', `${plural(list.length, 'tune')} in the remake’s Resources/audio/music. The remake plays recordings. The 1996 game played MIDI.`);
     remakeFolds(view, remakeGrouped(list), remakeSoundRows);
     await remakeNameTunes(view, list);
   },
